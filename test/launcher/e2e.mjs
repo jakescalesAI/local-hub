@@ -914,13 +914,13 @@ async function variants(browser, baselineErrors) {
     await hub.stop()
   }
 
-  section('The one-line chat.js change proposed for the owner')
+  section('The chat.js line that leaves Ctrl+K to the search bar')
   {
     const dir = freshCopy('chat-line')
     const file = path.join(dir, 'tabs', 'chat.js')
     const before = fs.readFileSync(file, 'utf8')
     const after = before.replace("else if (e.key === 'k' || e.key === 'K') {", "else if ((e.key === 'k' || e.key === 'K') && !window.LAUNCHER) {")
-    check('The proposed change applies to one line', after !== before)
+    check('chat.js leaves Ctrl+K to the search bar', after.includes("else if ((e.key === 'k' || e.key === 'K') && !window.LAUNCHER) {"))
     fs.writeFileSync(file, after)
     const hub = await startHub(dir)
     const context = await browser.newContext({ viewport: { width: 1280, height: 800 } })
