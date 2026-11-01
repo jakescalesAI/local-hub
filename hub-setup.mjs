@@ -15,7 +15,7 @@ import { HERE, ADDONS, hubConfig, needsSetup, saveHubConfig, saveSecrets, pageCo
 import { IS_MAC, tailscalePath } from './platform.mjs'
 import { MIN_PASSCODE, hashPasscode, isLocal, setPasscode } from './access.mjs'
 import { findClaude } from './chat.mjs'
-import { STYLE, BUILTIN_WALLPAPERS, webUrl } from './hub-settings.mjs'
+import { STYLE, BUILTIN_WALLPAPERS, pluginTabs, webUrl } from './hub-settings.mjs'
 
 const THEME_DIR = path.join(HERE, 'data', 'themes')
 const MAX_THEME = 16 * 1024
@@ -96,7 +96,9 @@ export function create({ onAccessChange }) {
   return async function route(url, req, res, { send, readBody }) {
     const p = url.pathname
     if (p === '/hub-config.js' && req.method === 'GET') {
-      send(res, 200, `window.HUB_CONF = ${JSON.stringify(pageConfig()).replace(/</g, '\\u003c')};\n`, 'text/javascript; charset=utf-8')
+      // index.html loads the browser's own script; any other plug-in tab file loads from this list.
+      const conf = { ...pageConfig(), pluginTabs: pluginTabs(HERE).filter(t => t !== 'browser') }
+      send(res, 200, `window.HUB_CONF = ${JSON.stringify(conf).replace(/</g, '\\u003c')};\n`, 'text/javascript; charset=utf-8')
       return true
     }
     if (p === '/icons/manifest.webmanifest' && req.method === 'GET') {

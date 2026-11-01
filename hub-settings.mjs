@@ -177,7 +177,8 @@ function checker() {
   return { errors, fail, obj, list, oneOf, int, color, bool, text, ids, done() { if (errors.length) throw Object.assign(new Bad(errors[0].message), { errors }) } }
 }
 
-const widgetIdOk = id => typeof id === 'string' && (WIDGET_IDS.includes(id) || FAMILY_RE.test(id))
+// x-<name> is your own widget, from a tab file (HUB-GUIDE.md, "Extending the hub").
+const widgetIdOk = id => typeof id === 'string' && (WIDGET_IDS.includes(id) || FAMILY_RE.test(id) || /^x-[a-z0-9-]{1,40}$/.test(id))
 const itemIdOk = it => it?.id === 'stack' || it?.id === 'app' || widgetIdOk(it?.id)
 
 function cleanOpts(c, p, id, opts) {

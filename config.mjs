@@ -107,7 +107,7 @@ export const ADDONS = {
   server: { label: 'Server', tab: true, what: 'Services and files of a server you reach over ssh', how: 'Set server.sshAlias in config/hub.json', auto: () => !!hubConfig().server.sshAlias },
   ai: { label: 'AI', tab: true, what: 'Claude usage and AI provider balances', auto: s => filled(s.claudeAccounts) || filled(s.openrouter) || filled(s.deepseek) },
   cloud: { label: 'Cloud', tab: true, what: 'Read-only view of your hosting: Coolify, Cloudflare, AWS, Azure', how: 'Add a key to config/secrets.json', auto: s => filled(s.coolify) || filled(s.cloudflare) || filled(s.aws) || filled(s.azure) || filled(s.euronodes) },
-  calendar: { label: 'Calendar', tab: true, what: 'Read-only calendar feeds and bookings', how: 'Add a calendar link to config/secrets.json', auto: s => filled(s.calendars) || filled(s.calcom) },
+  calendar: { label: 'Calendar', tab: true, what: 'Read-only calendar feeds and bookings', how: 'Add a calendar link to config/secrets.json', auto: s => filled(s.calendars) || filled(s.calcom) || filled(hubConfig().calendar?.sources) },
   stripe: { label: 'Stripe', tab: true, what: 'Read-only balance, revenue and payouts', how: 'Add a restricted key to config/secrets.json', auto: s => filled(s.stripe) },
   drives: { label: 'Drives', what: 'Disk space for each drive on the Files tab' },
   icloud: { label: 'iCloud', what: 'iCloud Drive and its storage on the Files tab', available: () => fs.existsSync(ICLOUD) },

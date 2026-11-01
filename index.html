@@ -278,6 +278,10 @@ html.offline .reconnect { opacity: 1; transform: translate(-50%, 0); }
 <script src="/tabs/chat.js"></script>
 <script src="/tabs/setup.js"></script>
 <script>
+// Your own tab files in tabs/ load here, after Home, so they can add widgets too.
+for (const t of window.HUB_CONF?.pluginTabs || []) document.write(`<script src="/tabs/${t}.js" onerror="this.remove()"><\/script>`)
+</script>
+<script>
 // A plug-in tab that failed to load, or lacks render() and load(), is dropped so the rest of the page still works.
 for (const [k, t] of Object.entries(window.TABS || {})) if (typeof t?.render !== 'function' || typeof t?.load !== 'function') delete window.TABS[k]
 // An add-on tab that is off isn't part of this hub.
