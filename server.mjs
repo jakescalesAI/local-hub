@@ -1,4 +1,4 @@
-// Quartzi Hub: one page for your computer, your files, your chat and browser, and any services you add.
+// Local Hub: one page for your computer, your files, your chat and browser, and any services you add.
 // Laptop listeners come from Get-NetTCPConnection; server listeners from server-probe.py
 // over ssh. Server dev and session ports are kept tunnelled to this computer (loopback and
 // the Tailscale address), so every URL also works from your tailnet devices.
@@ -362,7 +362,7 @@ async function handle(req, res) {
     send(res, 404, { error: 'not found' })
   } catch (e) {
     if (res.headersSent) return res.destroy()
-    send(res, [400, 403, 404, 409, 500, 502].includes(e.code) ? e.code : e.code === 'ENOENT' ? 404 : ['EPERM', 'EBUSY', 'EACCES', 'ENOTEMPTY'].includes(e.code) ? 409 : 500, { error: e.message })
+    send(res, [400, 403, 404, 409, 500, 502].includes(e.code) ? e.code : e.code === 'ENOENT' ? 404 : ['ENOTDIR', 'EISDIR'].includes(e.code) ? 400 : ['EPERM', 'EBUSY', 'EACCES', 'ENOTEMPTY'].includes(e.code) ? 409 : 500, { error: e.message })
   }
 }
 

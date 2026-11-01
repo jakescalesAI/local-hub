@@ -37,7 +37,7 @@
   ]
   const field = (key, label, type, value, ph = '') => `<label>${esc(label)}<input data-f="${key}" type="${type}" value="${esc(value)}" placeholder="${esc(ph)}" autocomplete="off" spellcheck="false"></label>`
   const STEPS = [
-    () => `<h1>Set up your hub</h1><p>A private dashboard and assistant on this computer. This takes a minute, and you can change it all later.</p>${field('name', 'Hub name', 'text', answers.name, 'Quartzi Hub')}`,
+    () => `<h1>Set up your hub</h1><p>A private dashboard and assistant on this computer. This takes a minute, and you can change it all later.</p>${field('name', 'Hub name', 'text', answers.name, 'Local Hub')}`,
     () => `<h1>Who can reach it?</h1><p>You can widen this later.</p>
       <label class="hs-choice"><input type="radio" name="hs-access" value="localhost" ${answers.access === 'localhost' ? 'checked' : ''}><span>Only this computer<small>The safe default. The hub answers on localhost and nowhere else.</small></span></label>
       <label class="hs-choice" ${status.tailscale.installed ? '' : 'style="opacity:.55"'}><input type="radio" name="hs-access" value="tailnet" ${answers.access === 'tailnet' ? 'checked' : ''} ${status.tailscale.installed ? '' : 'disabled'}><span>My tailnet<small>${status.tailscale.installed ? 'Your own devices on Tailscale can open it too, with a passcode. Nothing on the public internet can.' : 'Needs Tailscale, which isn’t installed on this computer.'}</small></span></label>

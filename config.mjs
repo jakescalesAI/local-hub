@@ -17,7 +17,7 @@ export const PORT = Number(process.env.HUB_PORT || savedPort() || 3100)
 const SECRETS_FILE = configPath('secrets.json')
 
 const NEUTRAL = {
-  name: 'Quartzi Hub',
+  name: 'Local Hub',
   owner: '',
   access: 'localhost', // or "tailnet"
   passcodeRequired: true, // other devices need the passcode (npm run passcode); this computer never does
@@ -30,7 +30,7 @@ const NEUTRAL = {
   browser: { profiles: { default: { label: 'Default', email: '' } }, current: 'default' },
   worldClock: [['New York', 'America/New_York'], ['London', 'Europe/London'], ['UTC', 'UTC']],
   siteSuggestions: [],
-  theme: 'quartzi',
+  theme: 'default',
   claudeConfigDir: '',
   // The assistant: every choice here is yours (see HUB-GUIDE.md, "Make it yours").
   assistant: {
@@ -124,16 +124,16 @@ export const TAB_ORDER = ['home', 'laptop', 'server', 'drives', 'ai', 'cloud', '
 export const tabOn = id => id === 'home' || id === 'drives' || !ADDONS[id]?.tab || addonOn(id)
 export const enabledTabs = () => TAB_ORDER.filter(tabOn)
 
-// Themes: themes/quartzi.json is the default look (glass style, wallpapers, house icon), all in one place.
+// Themes: themes/default.json is the default look (glass style, wallpapers, house icon), all in one place.
 // Others are shared as files and imported into data/themes. Applying one is a settings patch (Style panel).
 const THEME_DIRS = [path.join(HERE, 'themes'), path.join(HERE, 'data', 'themes')]
-export const baseTheme = () => readJson(path.join(THEME_DIRS[0], 'quartzi.json')) || { name: 'Quartzi', style: {}, wallpaper: 'none', wallpapers: [] }
+export const baseTheme = () => readJson(path.join(THEME_DIRS[0], 'default.json')) || { name: 'Default', style: {}, wallpaper: 'none', wallpapers: [] }
 export const themeById = id => {
   if (!/^[a-z0-9-]+$/.test(id || '')) return null
   for (const dir of THEME_DIRS) { const t = readJson(path.join(dir, `${id}.json`)); if (t) return { ...t, id } }
   return null
 }
-export const activeTheme = () => themeById(hubConfig().theme) || { ...baseTheme(), id: 'quartzi' }
+export const activeTheme = () => themeById(hubConfig().theme) || { ...baseTheme(), id: 'default' }
 export function themes() {
   const ids = THEME_DIRS.flatMap(dir => { try { return fs.readdirSync(dir) } catch { return [] } }).map(f => /^([a-z0-9-]+)\.json$/.exec(f)?.[1]).filter(Boolean)
   return [...new Set(ids)].map(themeById).filter(Boolean).map(({ id, name, style, wallpaper }) => ({ id, name, style, wallpaper }))

@@ -1,4 +1,4 @@
-# Quartzi Hub
+# Local Hub
 
 Your own private dashboard and AI agent, running on your own computer. One page for your files, your
 services and a chat that can look things up, write, and work in a real browser while you watch.
@@ -10,8 +10,8 @@ Nothing leaves your computer unless you connect something, and no account is nee
 Needs [Node.js](https://nodejs.org) 20 or newer. No other dependencies.
 
 ```bash
-git clone <this repo> quartzi-hub
-cd quartzi-hub
+git clone <this repo> local-hub
+cd local-hub
 npm start
 ```
 
@@ -29,15 +29,15 @@ Windows and Linux are tested. Mac is written for but has not been run yet, so pl
 ### Start it at login
 
 - **Windows:** put a shortcut to `start-hidden.vbs` in your Startup folder (Win+R, `shell:startup`).
-- **Linux:** a user service, `~/.config/systemd/user/quartzi-hub.service`, then
-  `systemctl --user enable --now quartzi-hub`:
+- **Linux:** a user service, `~/.config/systemd/user/local-hub.service`, then
+  `systemctl --user enable --now local-hub`:
 
   ```ini
   [Unit]
-  Description=Quartzi Hub
+  Description=Local Hub
 
   [Service]
-  WorkingDirectory=%h/quartzi-hub
+  WorkingDirectory=%h/local-hub
   ExecStart=/usr/bin/env node server.mjs
   Restart=on-failure
 
@@ -45,15 +45,15 @@ Windows and Linux are tested. Mac is written for but has not been run yet, so pl
   WantedBy=default.target
   ```
 
-- **Mac:** a LaunchAgent, `~/Library/LaunchAgents/ai.quartzi.hub.plist`, then
-  `launchctl load ~/Library/LaunchAgents/ai.quartzi.hub.plist`. Use your own paths, and the full path to `node`:
+- **Mac:** a LaunchAgent, `~/Library/LaunchAgents/local.hub.plist`, then
+  `launchctl load ~/Library/LaunchAgents/local.hub.plist`. Use your own paths, and the full path to `node`:
 
   ```xml
   <?xml version="1.0" encoding="UTF-8"?>
   <plist version="1.0"><dict>
-    <key>Label</key><string>ai.quartzi.hub</string>
+    <key>Label</key><string>local.hub</string>
     <key>ProgramArguments</key><array><string>/usr/local/bin/node</string><string>server.mjs</string></array>
-    <key>WorkingDirectory</key><string>/Users/you/quartzi-hub</string>
+    <key>WorkingDirectory</key><string>/Users/you/local-hub</string>
     <key>RunAtLoad</key><true/>
     <key>KeepAlive</key><true/>
   </dict></plist>

@@ -11,7 +11,7 @@
 // Self-contained: it injects its own bar, card and overlay inside a Shadow DOM (so the hub's
 // generic CSS, click handlers and shortcuts cannot touch it), plus two small global rules that
 // keep the page and the hub's toast clear of the bar. Colours come from the hub's :root tokens,
-// so light and dark match. The bar is modelled on the Quartzi app's chat composer (54px glass
+// so light and dark match. The bar is a chat composer (54px glass
 // pill, round send button).
 //
 //   * Bar: fixed, bottom centre, max 640px (full width minus 16px on a phone), safe-area padding.
@@ -887,7 +887,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
     // Hub browser: one card per turn. While the turn runs it streams live (HubBrowser.mini, only in the
     // view on screen, so one stream); after, it keeps the last step's screenshot. History shows that too.
     v.browser = null
-    const watch = () => { if (S.full) setFull(false); window.HubBrowser?.open ? window.HubBrowser.open() : (location.hash = '#browser') }
+    const watch = () => { if (S.full) setFull(false); window.HubBrowser?.open() }
     v.addBrowser = (b, live) => {
       v.clearEmpty()
       const m = document.createElement('div'); m.className = 'msg bro'
@@ -1014,10 +1014,11 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
 
   function updateSub() {
     const t = curTitle()
-    const text = t ? `Looking at the ${t} tab` : (window.HUB_CONF?.name || 'Quartzi Hub')
+    const text = window.HubBrowser?.isOpen?.() ? 'Looking at the browser' : t ? `Looking at the ${t} tab` : (window.HUB_CONF?.name || 'Local Hub')
     ctxEls.forEach(el => { if (el.textContent !== text) el.textContent = text })
   }
   setInterval(() => { if (S.cardOn && !S.full) updateSub() }, 1500)
+  document.addEventListener('hub-browser-state', updateSub)
   function updateCtx() {
     updateSub()
     const em = flogEl.querySelector('.empty')
@@ -1422,7 +1423,10 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
         eachView(v => { v.hidePending(); v.finishCur(); v.addError(ev.message || 'Something went wrong.') })
         break
       case 'site':
-        if (ev.url) eachView(v => { v.hidePending(); v.finishCur(); v.addSite(ev); v.showPending() })
+        if (ev.url) {
+          eachView(v => { v.hidePending(); v.finishCur(); v.addSite(ev); v.showPending() })
+          window.HubBrowser?.open(ev.url, { name: ev.name, icon: ev.icon })
+        }
         break
       case 'settings':
         window.HUB?.refresh?.() // show the change now instead of at the next 15 s poll

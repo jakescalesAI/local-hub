@@ -65,7 +65,7 @@ export const STYLE = {
   effect: { enum: ['none', 'grain', 'glow'], default: 'none' },
 }
 
-// The default look lives in themes/quartzi.json: style defaults, these wallpapers, the icon.
+// The default look lives in themes/default.json: style defaults, these wallpapers, the icon.
 for (const [k, v] of Object.entries(baseTheme().style || {})) if (STYLE[k]) STYLE[k].default = v
 export const BUILTIN_WALLPAPERS = (baseTheme().wallpapers || []).map(w => ({ ...w, url: `/wallpapers/${w.id}.svg` }))
 

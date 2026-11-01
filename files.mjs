@@ -34,12 +34,16 @@ const shown = name => !name.startsWith('.') && !HIDDEN.test(name)
 // Files that hold keys or sign-ins. On every root the hub hides them from lists and search and
 // refuses to open, download, rename, move, delete or write them; the real path is checked too,
 // so a link or junction can't reach one. server-files.py keeps the same list for /root.
-const KEY_NAMES = /^(secrets\.json|\.credentials\.json|\.claude\.json(\.backup.*)?|auth\.json|\.git-credentials|\.npmrc|\.yarnrc(\.yml)?|_?\.?netrc|\.pypirc|\.pgpass|\.env(\.(?!example$|sample$|template$).+)?|\.envrc|\.dev\.vars|(?!.*[._-](example|sample|template)\.env$).+\.env|(.+[._-])?private\.key|.+\.(pem|p12|pfx|ppk|jks|keystore|kdbx)|id_(rsa|dsa|ecdsa|ed25519)(\.pub)?|\.infisical.*|login data( for account)?|cookies|web data|local state|access_tokens\.db|credentials\.db|credentials\.tfrc\.json)$/i
-const KEY_DIRS = new Set(['.ssh', '.aws', '.azure', '.gnupg', '.kube', '.infisical', 'gcloud', '.wrangler', '.vercel'])
+const KEY_NAMES = /^(secrets\.json|\.credentials\.json|\.claude\.json(\.backup.*)?|auth\.json|\.git-credentials|\.npmrc|\.yarnrc(\.yml)?|_?\.?netrc|\.pypirc|\.pgpass|\.env(\.(?!example$|sample$|template$).+)?|\.envrc|\.dev\.vars|(?!.*[._-](example|sample|template)\.env$).+\.env|(.+[._-])?private\.key|.+\.(pem|p12|pfx|ppk|jks|keystore|kdbx)|id_(rsa|dsa|ecdsa|ed25519)(\.pub)?|\.infisical.*|login data( for account)?|cookies|web data|local state|access_tokens\.db|credentials\.db|credentials\.tfrc\.json|credentials(\.toml)?|\.s3cfg|\.boto)$/i
+// appdata, .config and Library/Application Support are where programs keep sign-ins, and no list of names
+// can cover every program, so those folders are refused whole.
+const KEY_DIRS = new Set(['.ssh', '.aws', '.azure', '.gnupg', '.kube', '.infisical', 'gcloud', '.wrangler', '.vercel',
+  'appdata', '.config', '.claude-accounts', 'tailscale', '.password-store', 'keyrings', '.oci', '.terraform.d', '.doppler', '.fly', '.netlify', '.supabase'])
 // <hub folder>/data covers data/browser/<profile> (the hub browser's Chrome profiles, with your cookies);
 // <hub folder>/config holds your keys and settings. hub.json keyDirs and keyPairs add your own.
 const HUB_DIR = path.basename(HERE).toLowerCase()
-const KEY_PAIRS = [[HUB_DIR, 'data'], [HUB_DIR, 'config'], ['local-hub', 'data'], ['local-hub', 'config'], ['.docker', 'config.json'], ['gh', 'hosts.yml']]
+const KEY_PAIRS = [[HUB_DIR, 'data'], [HUB_DIR, 'config'], ['local-hub', 'data'], ['local-hub', 'config'], ['.docker', 'config.json'], ['gh', 'hosts.yml'],
+  ['.git', 'config'], ['.claude', 'projects'], ['.claude', 'history.jsonl'], ['library', 'keychains'], ['library', 'application support'], ['library', 'cookies']]
 export function holdsKeys(p) {
   const segs = String(p || '').split(/[\\/]+/).filter(Boolean).map(s => s.toLowerCase())
   if (segs.length && KEY_NAMES.test(segs.at(-1))) return true
