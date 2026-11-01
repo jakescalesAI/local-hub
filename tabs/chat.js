@@ -11,7 +11,7 @@
 // Self-contained: it injects its own bar, card and overlay inside a Shadow DOM (so the hub's
 // generic CSS, click handlers and shortcuts cannot touch it), plus two small global rules that
 // keep the page and the hub's toast clear of the bar. Colours come from the hub's :root tokens,
-// so light and dark match. The bar is modelled on the Quartzi app's chat composer (54px glass
+// so light and dark match. The bar is a chat composer (54px glass
 // pill, round send button).
 //
 //   * Bar: fixed, bottom centre, max 640px (full width minus 16px on a phone), safe-area padding.
@@ -415,6 +415,13 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
 .tool .det pre:last-child { margin-bottom: 0; }
 .spin { width: 13px; height: 13px; border-radius: 50%; border: 2px solid var(--fill-2, rgba(118, 118, 128, .2)); border-top-color: var(--label-2, rgba(60, 60, 67, .6)); animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
+.confirm { align-self: stretch; display: grid; gap: 6px; padding: 12px; border-radius: 14px; font-size: 14px; background: var(--fill, rgba(120,120,128,.12)); }
+.confirm-what { font-weight: 600; }
+.confirm-on { color: var(--label-2, #6b6b72); overflow-wrap: anywhere; }
+.confirm-row { display: flex; gap: 8px; margin-top: 4px; }
+.confirm-row button { flex: 1; min-height: 36px; border: 0; border-radius: 10px; font: inherit; font-weight: 600; cursor: pointer; color: var(--label, #111); background: var(--fill, rgba(120,120,128,.16)); }
+.confirm-row button.yes { color: #fff; background: var(--blue, #007aff); }
+.confirm-row button:disabled { opacity: .5; cursor: default; }
 .err { align-self: stretch; padding: 8px 12px; border-radius: 12px; font-size: 13.5px; color: var(--red, #ff3b30); background: color-mix(in srgb, var(--red, #ff3b30) 12%, transparent); overflow-wrap: anywhere; flex: none; }
 .dots { display: inline-flex; gap: 4px; padding: 6px 2px; }
 .dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--label-3, rgba(60, 60, 67, .3)); animation: dot 1.1s ease-in-out infinite; }
@@ -887,7 +894,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
     // Hub browser: one card per turn. While the turn runs it streams live (HubBrowser.mini, only in the
     // view on screen, so one stream); after, it keeps the last step's screenshot. History shows that too.
     v.browser = null
-    const watch = () => { if (S.full) setFull(false); window.HubBrowser?.open ? window.HubBrowser.open() : (location.hash = '#browser') }
+    const watch = () => { if (S.full) setFull(false); window.HubBrowser?.open() }
     v.addBrowser = (b, live) => {
       v.clearEmpty()
       const m = document.createElement('div'); m.className = 'msg bro'
@@ -927,6 +934,25 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
       if (d.handoff) h.querySelector('span').textContent = `Your turn: ${d.handoff}`
     }
     v.endBrowser = () => { if (v.browser) v.setBrowser(v.browser, {}, false); v.browser = null }
+    // A send, buy or delete in the browser waits for this. Allow is the only yes the hub accepts.
+    v.addConfirm = (c, answered) => {
+      v.clearEmpty()
+      const el = document.createElement('div'); el.className = 'confirm'; el.dataset.confirm = c.id
+      let site = ''
+      try { site = new URL(c.url).hostname } catch {}
+      const h = document.createElement('div'); h.className = 'confirm-what'; h.textContent = c.what || 'Allow this step in the browser?'
+      const d = document.createElement('div'); d.className = 'confirm-on'; d.textContent = [c.label && `“${c.label}”`, site && `on ${site}`].filter(Boolean).join(' ')
+      const row = document.createElement('div'); row.className = 'confirm-row'
+      const yes = document.createElement('button'); yes.type = 'button'; yes.className = 'yes'; yes.textContent = 'Allow'
+      const no = document.createElement('button'); no.type = 'button'; no.textContent = 'Don’t'
+      yes.addEventListener('click', () => answerConfirm(c.id, true))
+      no.addEventListener('click', () => answerConfirm(c.id, false))
+      row.append(yes, no)
+      el.append(h, ...(d.textContent ? [d] : []), row)
+      log.append(el)
+      if (answered) settleConfirm(c.id, 'Answered')
+      v.scrollEnd(true)
+    }
     v.addError = text => {
       v.clearEmpty()
       const el = document.createElement('div'); el.className = 'err'; el.setAttribute('role', 'alert'); el.textContent = text
@@ -1014,10 +1040,11 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
 
   function updateSub() {
     const t = curTitle()
-    const text = t ? `Looking at the ${t} tab` : (window.HUB_CONF?.name || 'Quartzi Hub')
+    const text = window.HubBrowser?.isOpen?.() ? 'Looking at the browser' : t ? `Looking at the ${t} tab` : (window.HUB_CONF?.name || 'Local Hub')
     ctxEls.forEach(el => { if (el.textContent !== text) el.textContent = text })
   }
   setInterval(() => { if (S.cardOn && !S.full) updateSub() }, 1500)
+  document.addEventListener('hub-browser-state', updateSub)
   function updateCtx() {
     updateSub()
     const em = flogEl.querySelector('.empty')
@@ -1306,6 +1333,23 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
     syncCard()
   }
   const submit = text => (S.busy ? enqueue(text) : send(text))
+
+  const confirmCards = id => [...flogEl.querySelectorAll('.confirm'), ...clogEl.querySelectorAll('.confirm')].filter(el => el.dataset.confirm === id)
+  function settleConfirm(id, note) {
+    for (const el of confirmCards(id)) {
+      const row = el.querySelector('.confirm-row')
+      if (row) { const done = document.createElement('div'); done.className = 'confirm-on'; done.textContent = note; row.replaceWith(done) }
+    }
+  }
+  async function answerConfirm(id, allow) {
+    for (const el of confirmCards(id)) el.querySelectorAll('button').forEach(b => { b.disabled = true })
+    try {
+      const r = await hubFetch(`/api/browser/confirm/${id}`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: JSON.stringify({ allow }) })
+      if (!r.ok) return settleConfirm(id, 'This ask has run out. Ask again if you still want it.')
+    } catch { return settleConfirm(id, 'Couldn’t reach the hub, so nothing happened. Ask again.') }
+    settleConfirm(id, allow ? 'Allowed' : 'Not allowed')
+    submit(allow ? 'Allowed. Go ahead.' : 'Not allowed. Don’t do that.')
+  }
   for (const [t, pill, b] of [[bta, barPill, bsend], [fta, fPill, fsend]]) {
     t.addEventListener('input', () => { grow(t, pill); syncSend() })
     t.addEventListener('keydown', e => {
@@ -1422,7 +1466,13 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
         eachView(v => { v.hidePending(); v.finishCur(); v.addError(ev.message || 'Something went wrong.') })
         break
       case 'site':
-        if (ev.url) eachView(v => { v.hidePending(); v.finishCur(); v.addSite(ev); v.showPending() })
+        if (ev.url) {
+          eachView(v => { v.hidePending(); v.finishCur(); v.addSite(ev); v.showPending() })
+          window.HubBrowser?.open(ev.url, { name: ev.name, icon: ev.icon })
+        }
+        break
+      case 'confirm':
+        eachView(v => { v.hidePending(); v.finishCur(); v.addConfirm(ev); v.showPending() })
         break
       case 'settings':
         window.HUB?.refresh?.() // show the change now instead of at the next 15 s poll
@@ -1484,8 +1534,9 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
       S.cardOn = false
       cardView.clear()
       fullView.clear()
-      for (const it of c.items || []) {
-        if (it.kind === 'user') fullView.addUser(it.text || '', it.files, it.reply)
+      for (const [n, it] of (c.items || []).entries()) {
+        if (it.kind === 'confirm') fullView.addConfirm(it, c.items.slice(n + 1).some(x => x.kind === 'user'))
+        else if (it.kind === 'user') fullView.addUser(it.text || '', it.files, it.reply)
         else if (it.kind === 'assistant') fullView.addAssistant(it.text || '', true, it.meta || (it.at ? { at: it.at } : null))
         else if (it.kind === 'tool') fullView.addTool(it)
         else if (it.kind === 'site') fullView.addSite(it)

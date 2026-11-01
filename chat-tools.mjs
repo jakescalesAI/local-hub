@@ -4,6 +4,8 @@
 //   hub_read        { path }        GET /api/<path>: the hub's live data. Never a file's content.
 //   settings_update { patch }       POST /api/hub/settings (the hub's look and layout only)
 //   show_site       { url?, name? } shows a website to the user as a card in the chat
+//   system_info     { folder? }     memory, top programs, or one folder's size
+//   git_read        { repo, op, .. } git status, log or diff of a repo. Key files are left out.
 //
 // The settings API keeps the previous version in data/hub-settings.prev.json, so every change can
 // be undone with another patch.
@@ -50,6 +52,35 @@ const TOOLS = [
     },
   },
 ]
+
+TOOLS.push(
+  {
+    name: 'system_info',
+    description: 'Look at this computer: memory, platform and the programs using the most memory. Pass folder to get that folder\'s size and its largest items instead. Listening ports are in hub_read /api/state, and a folder\'s files are in hub_read /api/files/laptop?path=.',
+    inputSchema: {
+      type: 'object',
+      properties: { folder: { type: 'string', description: 'A full path, or one starting with ~' } },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'git_read',
+    description: 'Read a git repository: status, log or diff. It can\'t change anything. Key files are left out of a diff. A repo with settings in its own config that could run programs is refused.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        repo: { type: 'string', description: 'A folder in the repository: a full path, or one starting with ~' },
+        op: { type: 'string', enum: ['status', 'log', 'diff'] },
+        ref: { type: 'string', description: 'For log and diff: a branch, commit or range such as main..HEAD or abc123^!' },
+        path: { type: 'string', description: 'Only this file or folder, relative to repo' },
+        staged: { type: 'boolean', description: 'For diff: what is staged' },
+        n: { type: 'number', description: 'For log: how many commits, 20 by default' },
+      },
+      required: ['repo', 'op'],
+      additionalProperties: false,
+    },
+  },
+)
 
 const text = (t, isError = false) => ({ content: [{ type: 'text', text: t }], ...(isError ? { isError: true } : {}) })
 
@@ -125,7 +156,16 @@ async function showSite({ url, name } = {}) {
   return text(JSON.stringify({ shown: true, url: href, name: label || undefined, icon, note: 'The user now sees this as a card in the chat. You cannot see or click inside it.' }))
 }
 
-const HANDLERS = { hub_read: hubRead, settings_update: settingsUpdate, show_site: showSite }
+async function looked(pathname, params) {
+  const q = new URLSearchParams(Object.entries(params).filter(([, v]) => v !== undefined && v !== '' && v !== false).map(([k, v]) => [k, String(v)]))
+  const r = await fetch(`${API}${pathname}?${q}`, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(60e3) })
+  const body = await r.json().catch(() => ({}))
+  return r.ok ? text(JSON.stringify(body)) : text(body.error || `HTTP ${r.status}`, true)
+}
+const systemInfo = ({ folder } = {}) => folder ? looked('/api/system/size', { path: folder }) : looked('/api/system/info', {})
+const gitRead = ({ repo, op, ref, path, staged, n } = {}) => ['status', 'log', 'diff'].includes(op) ? looked(`/api/git/${op}`, { repo, ref, path, staged: staged ? 1 : '', n }) : text('op must be status, log or diff.', true)
+
+const HANDLERS = { hub_read: hubRead, settings_update: settingsUpdate, show_site: showSite, system_info: systemInfo, git_read: gitRead }
 
 function reply(id, result, error) {
   process.stdout.write(JSON.stringify({ jsonrpc: '2.0', id, ...(error ? { error } : { result }) }) + '\n')

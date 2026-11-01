@@ -19,10 +19,12 @@ class Fail(Exception):
 
 # Files that hold keys or sign-ins (same list as files.mjs holdsKeys). They're hidden from lists
 # and search and refused for every op, checked on the path and on where it really points.
-KEY_NAMES = re.compile(r'^(secrets\.json|\.credentials\.json|\.claude\.json(\.backup.*)?|auth\.json|\.git-credentials|\.npmrc|\.yarnrc(\.yml)?|_?\.?netrc|\.pypirc|\.pgpass|\.env(\.(?!example$|sample$|template$).+)?|\.envrc|\.dev\.vars|(?!.*[._-](example|sample|template)\.env$).+\.env|(.+[._-])?private\.key|.+\.(pem|p12|pfx|ppk|jks|keystore|kdbx)|id_(rsa|dsa|ecdsa|ed25519)(\.pub)?|\.infisical.*|login data( for account)?|cookies|web data|local state|access_tokens\.db|credentials\.db|credentials\.tfrc\.json)$', re.I)
-KEY_DIRS = {'.ssh', '.aws', '.azure', '.gnupg', '.kube', '.infisical', 'gcloud', '.wrangler', '.vercel'}
+KEY_NAMES = re.compile(r'^(secrets\.json|\.credentials\.json|\.claude\.json(\.backup.*)?|auth\.json|\.git-credentials|\.npmrc|\.yarnrc(\.yml)?|_?\.?netrc|\.pypirc|\.pgpass|\.env(\.(?!example$|sample$|template$).+)?|\.envrc|\.dev\.vars|(?!.*[._-](example|sample|template)\.env$).+\.env|(.+[._-])?private\.key|.+\.(pem|p12|pfx|ppk|jks|keystore|kdbx)|id_(rsa|dsa|ecdsa|ed25519)(\.pub)?|\.infisical.*|login data( for account)?|cookies|web data|local state|access_tokens\.db|credentials\.db|credentials\.tfrc\.json|credentials(\.toml)?|\.s3cfg|\.boto)$', re.I)
+KEY_DIRS = {'.ssh', '.aws', '.azure', '.gnupg', '.kube', '.infisical', 'gcloud', '.wrangler', '.vercel',
+            'appdata', '.config', '.claude-accounts', 'tailscale', '.password-store', 'keyrings', '.oci', '.terraform.d', '.doppler', '.fly', '.netlify', '.supabase'}
 # A folder and what's inside it. The hub sends its own config's keyDirs and keyPairs on top of these.
-KEY_PAIRS = [('local-hub', 'data'), ('local-hub', 'config'), ('quartzi-hub', 'data'), ('quartzi-hub', 'config'), ('.docker', 'config.json'), ('gh', 'hosts.yml')]
+KEY_PAIRS = [('local-hub', 'data'), ('local-hub', 'config'), ('.docker', 'config.json'), ('gh', 'hosts.yml'),
+             ('.git', 'config'), ('.claude', 'projects'), ('.claude', 'history.jsonl'), ('library', 'keychains'), ('library', 'application support'), ('library', 'cookies')]
 
 
 def holds_keys(p):
