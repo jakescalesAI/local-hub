@@ -1,6 +1,7 @@
 import AVFoundation
 import Capacitor
 import UIKit
+import WebKit
 
 // QR scanning with AVFoundation, which runs on the device, and text left by the share extension.
 // Shared text only fills in a composer: nothing is sent until the person says so.
@@ -10,7 +11,8 @@ public class HubNativePlugin: CAPPlugin, CAPBridgedPlugin {
     public let jsName = "HubNative"
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "scanQr", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "takeShare", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "takeShare", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "clearCookies", returnType: CAPPluginReturnPromise)
     ]
 
     // Must match ShareViewController and both entitlements files.
@@ -27,6 +29,15 @@ public class HubNativePlugin: CAPPlugin, CAPBridgedPlugin {
         let text = pending.removeFirst()
         shared.set(pending, forKey: Self.pendingKey)
         call.resolve(["text": text])
+    }
+
+    // The Hub page's sign-in. The in-app browser keeps its cookies in the default data store.
+    @objc func clearCookies(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            WKWebsiteDataStore.default().removeData(ofTypes: [WKWebsiteDataTypeCookies], modifiedSince: .distantPast) {
+                call.resolve()
+            }
+        }
     }
 
     @objc func scanQr(_ call: CAPPluginCall) {

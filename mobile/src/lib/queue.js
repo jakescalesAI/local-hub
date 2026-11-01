@@ -1,5 +1,6 @@
-// Shared text waiting for the Hub. Kept in the app's private storage, on this device only. An item
-// marked `unsure` may already have arrived, so it is never sent again without the person saying so.
+// Shared text waiting for the Hub, kept in the app's private storage, which an iOS device backup can
+// include. An item marked `unsure` may already have arrived, so it is never sent again without the
+// person saying so.
 const KEY = 'share-queue'
 export const MAX_QUEUE = 20
 

@@ -111,7 +111,7 @@ write(
 write(
     "android/app/src/main/res/xml/data_extraction_rules.xml",
     '<?xml version="1.0" encoding="utf-8"?>\n'
-    "<!-- The key and any waiting messages stay on this device. -->\n"
+    "<!-- On Android, the key and any waiting messages are left out of backups and transfers. -->\n"
     "<data-extraction-rules>\n"
     "    <cloud-backup>\n"
     '        <exclude domain="root" />\n'
@@ -191,6 +191,29 @@ write(
     "</dict>\n</plist>\n",
 )
 write(
+    "ios/App/ShareExtension/PrivacyInfo.xcprivacy",
+    '<?xml version="1.0" encoding="UTF-8"?>\n'
+    '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n'
+    '<plist version="1.0">\n<dict>\n'
+    "\t<key>NSPrivacyTracking</key>\n\t<false/>\n"
+    "\t<key>NSPrivacyTrackingDomains</key>\n\t<array/>\n"
+    "\t<key>NSPrivacyCollectedDataTypes</key>\n\t<array/>\n"
+    "\t<key>NSPrivacyAccessedAPITypes</key>\n\t<array>\n\t\t<dict>\n"
+    "\t\t\t<key>NSPrivacyAccessedAPIType</key>\n\t\t\t<string>NSPrivacyAccessedAPICategoryUserDefaults</string>\n"
+    "\t\t\t<key>NSPrivacyAccessedAPITypeReasons</key>\n\t\t\t<array>\n"
+    "\t\t\t\t<string>1C8F.1</string>\n"
+    "\t\t\t</array>\n\t\t</dict>\n\t</array>\n"
+    "</dict>\n</plist>\n",
+)
+write(
+    "android/app/src/main/res/xml/file_paths.xml",
+    '<?xml version="1.0" encoding="utf-8"?>\n'
+    '<paths xmlns:android="http://schemas.android.com/apk/res/android">\n'
+    '    <external-files-path name="my_images" path="." />\n'
+    '    <cache-path name="my_cache_images" path="." />\n'
+    "</paths>\n",
+)
+write(
     "ios/App/ShareExtension/Info.plist",
     '<?xml version="1.0" encoding="UTF-8"?>\n'
     '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n'
@@ -259,6 +282,7 @@ edit(
         "		A1000000000000000000000E /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000000F /* PrivacyInfo.xcprivacy */; };\n"
         "		A10000000000000000000010 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000011 /* ShareViewController.swift */; };\n"
         "		A10000000000000000000012 /* ShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = A10000000000000000000013 /* ShareExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };\n"
+        "		A10000000000000000000023 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000024 /* PrivacyInfo.xcprivacy */; };\n"
         "/* End PBXBuildFile section */\n\n"
         "/* Begin PBXContainerItemProxy section */\n"
         "		A10000000000000000000014 /* PBXContainerItemProxy */ = {\n"
@@ -292,6 +316,7 @@ edit(
         "		A10000000000000000000011 /* ShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = \"<group>\"; };\n"
         "		A10000000000000000000018 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = \"<group>\"; };\n"
         "		A10000000000000000000019 /* ShareExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ShareExtension.entitlements; sourceTree = \"<group>\"; };\n"
+        "		A10000000000000000000024 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = \"<group>\"; };\n"
         "		A10000000000000000000013 /* ShareExtension.appex */ = {isa = PBXFileReference; explicitFileType = \"wrapper.app-extension\"; includeInIndex = 0; path = ShareExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };\n"
         "/* End PBXFileReference section */",
     ),
@@ -330,6 +355,7 @@ edit(
         "				A10000000000000000000011 /* ShareViewController.swift */,\n"
         "				A10000000000000000000018 /* Info.plist */,\n"
         "				A10000000000000000000019 /* ShareExtension.entitlements */,\n"
+        "				A10000000000000000000024 /* PrivacyInfo.xcprivacy */,\n"
         "			);\n"
         "			path = ShareExtension;\n"
         '			sourceTree = "<group>";\n'
@@ -375,6 +401,7 @@ edit(
         "			isa = PBXResourcesBuildPhase;\n"
         "			buildActionMask = 2147483647;\n"
         "			files = (\n"
+        "				A10000000000000000000023 /* PrivacyInfo.xcprivacy in Resources */,\n"
         "			);\n"
         "			runOnlyForDeploymentPostprocessing = 0;\n"
         "		};\n"

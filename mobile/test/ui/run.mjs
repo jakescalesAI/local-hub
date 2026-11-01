@@ -50,6 +50,19 @@ const noSideScroll = async label => {
   assert.equal(over, 0, `${label}: page scrolls sideways by ${over}px`)
 }
 const recheck = () => page.evaluate(() => window.__hubTest.refresh())
+const cookiesCleared = () => page.evaluate(() => window.__hubCookiesCleared ?? 0)
+const pairByLink = async () => {
+  const c = await code()
+  await page.evaluate(l => window.__hubTest.link(l), `localhub://pair?u=${encodeURIComponent(`http://localhost:${HUB_PORT}`)}&c=${c}`)
+  await T('pair-confirm').click()
+  await stateIs('ok')
+}
+const openForget = async () => {
+  await T('settings').click()
+  await T('forget').click()
+  await T('forget-confirm').click()
+  await T('scan').waitFor()
+}
 
 let passed = 0
 async function step(name, fn) {
@@ -57,6 +70,17 @@ async function step(name, fn) {
   passed++
   console.log(`ok  ${name}`)
 }
+
+// Every write to browser storage, so a token that is saved and later overwritten still shows.
+const storageWrites = []
+await page.exposeFunction('__recordStorageWrite', (key, value) => { storageWrites.push([key, value]) })
+await page.addInitScript(() => {
+  const setItem = Storage.prototype.setItem
+  Storage.prototype.setItem = function (key, value) {
+    window.__recordStorageWrite(key, String(value))
+    return setItem.call(this, key, value)
+  }
+})
 
 let failure = null
 try {
@@ -155,6 +179,8 @@ try {
     await shot('07-home-connected')
     token = await page.evaluate(() => Object.entries(localStorage).find(([k]) => k.includes('device-token'))?.[1] ?? '')
     assert.ok(token.length > 20, 'token stored')
+    const holders = await page.evaluate(t => Object.entries(localStorage).filter(([, v]) => v.includes(t)).map(([k]) => k), token.replace(/"/g, ''))
+    assert.deepEqual(holders, ['localhub_device-token'], 'the token sits under the secure storage key and nowhere else')
     assert.ok(!(await page.content()).includes(token.replace(/"/g, '')), 'token not in the DOM')
     assert.ok(!page.url().includes(token), 'token not in the URL')
   })
@@ -292,8 +318,10 @@ try {
     await recheck()
     await stateIs('removed')
     await shot('14-removed')
+    const cleared = await cookiesCleared()
     await T('pair-again').click()
     await T('scan').waitFor()
+    assert.equal(await cookiesCleared(), cleared + 1, 'web sign-in cleared')
     const stored = await page.evaluate(() => Object.keys(localStorage))
     assert.ok(!stored.some(k => k.includes('device-token')), 'token gone')
   })
@@ -307,11 +335,35 @@ try {
     await shot('15-settings')
     await T('forget').click()
     await shot('16-forget')
+    const cleared = await cookiesCleared()
     await T('forget-confirm').click()
     await T('scan').waitFor()
     assert.equal((await (await fetch(`${hub.base}/api/pair/devices`)).json()).devices.length, 0)
+    assert.equal(await cookiesCleared(), cleared + 1, 'web sign-in cleared')
+    assert.equal(await T('notice').count(), 0)
     const stored = await page.evaluate(() => Object.keys(localStorage))
     assert.ok(!stored.some(k => k.includes('device-token')), 'token gone')
+  })
+
+  await step('Forget with the Hub unreachable still clears this device, and says the Hub keeps it listed', async () => {
+    await pairByLink()
+    const cleared = await cookiesCleared()
+    await mock({ down: true })
+    await openForget()
+    await mock({ down: false })
+    assert.match(await T('notice').textContent(), /couldn't be reached\. It stays on the Hub's list until you remove it there/)
+    assert.equal(await cookiesCleared(), cleared + 1, 'web sign-in cleared')
+    const { devices } = await (await fetch(`${hub.base}/api/pair/devices`)).json()
+    assert.equal(devices.length, 1, 'still listed on the Hub')
+    assert.equal((await fetch(`${hub.base}/api/pair/devices/${devices[0].id}/remove`, { method: 'POST', headers: { 'x-hub': '1' } })).status, 200)
+  })
+
+  await step('Forget says so when the web sign-in couldn\'t be cleared', async () => {
+    await pairByLink()
+    await page.evaluate(() => { window.__testCookiesFail = true })
+    await openForget()
+    await page.evaluate(() => { window.__testCookiesFail = false })
+    assert.match(await T('notice').textContent(), /sign-in to the Hub page couldn't be cleared\. Remove it on your Hub/)
   })
 
   await step('a share that arrives before pairing is kept for after', async () => {
@@ -326,6 +378,30 @@ try {
     await T('settings').click()
     await T('forget').click()
     await T('forget-confirm').click()
+  })
+
+  await step('secure storage failing at start shows a way out, not a blank page', async () => {
+    const failing = await context.newPage()
+    const errors = []
+    failing.on('pageerror', e => errors.push(e.message))
+    await failing.addInitScript(() => { if (!sessionStorage.getItem('storage-back')) window.__testStorageFails = true })
+    await failing.goto(SHELL)
+    await failing.getByRole('heading', { name: 'Local Hub couldn\'t start' }).waitFor()
+    await failing.screenshot({ path: path.join(OUT, '20-start-failed.png') })
+    await failing.evaluate(() => sessionStorage.setItem('storage-back', '1'))
+    await failing.locator('[data-test="start-retry"]').click()
+    await failing.locator('[data-test="scan"]').waitFor()
+    assert.deepEqual(errors, [])
+    await failing.close()
+  })
+
+  await step('no token was ever written anywhere but secure storage', async () => {
+    const isToken = ([key]) => key === 'localhub_device-token'
+    const tokens = storageWrites.filter(isToken).map(([, value]) => value.replace(/"/g, ''))
+    assert.ok(tokens.length >= 3, 'several pairings were watched')
+    for (const [key, value] of storageWrites.filter(w => !isToken(w))) {
+      assert.ok(!tokens.some(t => value.includes(t)), `token written under ${key}`)
+    }
   })
 
   await step('the token and codes never reach the console, and the page raises no errors', async () => {

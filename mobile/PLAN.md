@@ -131,6 +131,17 @@ that we will pass.
 5. **Upload blocks.** [Xcode 26 and the iOS 26 SDK](https://developer.apple.com/news/upcoming-requirements/)
    have been required since 2026-04-28. These fail at upload, not review.
 
+### To settle before a store build
+
+- **Android `minifyEnabled false`.** The release build isn't shrunk, so the APK is larger than it has
+  to be and its code is easier to read. Turning on R8 can strip what plugins reach by reflection, and
+  there is no release build or device here to prove it doesn't, so it waits for the first release build.
+- **File provider.** It now covers the app's own external files and its cache, not all external
+  storage. Capacitor's and the in-app browser's camera files use those two places. Photo and video
+  capture through the Hub page hasn't been run on a device.
+- **Share extension privacy manifest.** It's there and CI checks that it lands in the extension. Apple's
+  reading of it is only known at upload.
+
 ## 3. Connection and security
 
 ### Finding and pairing
@@ -145,6 +156,17 @@ that we will pass.
 
 Five wrong guesses burn the code. Removing a phone in the Hub ends its access, and the app shows
 "This phone was removed" with a way to pair again.
+
+Two choices, made on purpose:
+
+- **Any HTTPS address is accepted.** People host on any domain, so no list of allowed hosts could
+  work. The confirm screen, which shows the full address with its warning, is the only guard. Someone
+  who says yes to a hostile address, which can accept any code, would see its page and send it whatever
+  they share.
+- **The guess limit is per code, not per caller.** Behind `tailscale serve` every request arrives from
+  the computer itself, and forwarding headers can't be trusted, so the Hub can't tell callers apart. Anyone
+  who can reach the claim route can burn a live code. The cost is making a new one, and guessing stays
+  negligible.
 
 ### Reaching it away from home, without exposing it
 
@@ -172,6 +194,15 @@ Keychain (device-only, after first unlock, no iCloud sync) on iOS. An AES-GCM ke
 Keystore on Android, with `allowBackup=false` so nothing leaves in backups. The token never goes in a
 URL, is never logged, and is never exposed to the Hub page, which only gets an HttpOnly cookie.
 
+The rest is ordinary app data. On iOS the Hub's address and name and any text waiting to send sit in
+`UserDefaults` and the App Group, and a device backup such as iCloud Backup can include them. The app
+says so in Settings. Keeping them out would mean moving them from those stores into excluded files, so
+it stays this way unless review or a user asks.
+
+Forgetting a Hub clears the web view's cookies, so its 365-day sign-in cookie doesn't outlive the
+device. If the Hub can't be reached then, the app says the device stays on the Hub's list until removed
+there. The Hub page's own browser storage isn't cleared. Neither native call has run on a device yet.
+
 ### States the app must tell apart
 
 | What the app sees | What it says |
@@ -192,7 +223,7 @@ The Hub's passcode gate closes it to every other device, and it has no way to re
 paired device has to become a second way past that gate. It is written and tested in
 [`hub-changes/`](hub-changes/README.md), with the exact lines for `server.mjs` and `chat.mjs`, for the
 Hub's owner to apply. Nothing in the Hub itself has been changed. It was tested against the real
-`server.mjs` at commit `7a0c889`, and refuses to apply to a Hub without the gate.
+`server.mjs` at commit `cfe83f9`, and refuses to apply to a Hub without the gate.
 
 | Route | Who | What |
 | --- | --- | --- |
@@ -244,7 +275,9 @@ The app uses neither, so the manifest removes them and the workflow fails if the
 APK lists only internet, network state, camera and Android's own receiver permission.
 
 These runs used `.github/workflows/mobile.yml`, the one file outside `mobile/`, and need no signing or
-secrets. Whether it goes into `main` is the Hub owner's call at merge time.
+secrets. Whether it goes into `main` is the Hub owner's call at merge time. The Android job also runs
+the UI test in headless Edge. `hub-changes/test/real-hub.mjs` stays out of CI because it only runs on
+Windows, so run it by hand when the Hub moves.
 
 ## 5. What the owner has to do
 

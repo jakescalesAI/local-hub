@@ -6,9 +6,9 @@ import { DefaultAndroidWebViewOptions, DefaultWebViewOptions, DefaultiOSWebViewO
 import { Network } from '@capacitor/network'
 import { Preferences } from '@capacitor/preferences'
 import { KeychainAccess, SecureStorage } from '@aparajita/capacitor-secure-storage'
+import { createConnectionStore } from './store.js'
 
 const TOKEN_KEY = 'device-token'
-const CONN_KEY = 'connection'
 const isNative = Capacitor.isNativePlatform()
 
 class HubNativeWeb extends WebPlugin {
@@ -18,6 +18,12 @@ class HubNativeWeb extends WebPlugin {
   }
   async takeShare() {
     return {}
+  }
+  async clearCookies() {
+    if (__DEV__) {
+      if (window.__testCookiesFail) throw new Error('test')
+      window.__hubCookiesCleared = (window.__hubCookiesCleared ?? 0) + 1
+    }
   }
 }
 const HubNative = registerPlugin('HubNative', { web: () => new HubNativeWeb() })
@@ -36,31 +42,26 @@ export const http = {
 
 // --- Stored connection
 
+const store = createConnectionStore({
+  secure: {
+    set: token => SecureStorage.set(TOKEN_KEY, token, false, false),
+    get: () => SecureStorage.get(TOKEN_KEY, false, false),
+    remove: () => SecureStorage.remove(TOKEN_KEY, false),
+  },
+  prefs: Preferences,
+})
+
 export async function prepareStorage() {
+  if (__DEV__ && window.__testStorageFails) throw new Error('test')
   await SecureStorage.setKeyPrefix('localhub_')
   await SecureStorage.setSynchronize(false) // never to iCloud Keychain
   if (Capacitor.getPlatform() === 'ios') await SecureStorage.setDefaultKeychainAccess(KeychainAccess.afterFirstUnlockThisDeviceOnly)
 }
 
-export async function saveConnection(conn, token) {
-  await SecureStorage.set(TOKEN_KEY, token, false, false)
-  await saveConnectionInfo(conn)
-}
-
-export const saveConnectionInfo = conn => Preferences.set({ key: CONN_KEY, value: JSON.stringify(conn) })
-
-export async function loadConnection() {
-  const { value } = await Preferences.get({ key: CONN_KEY })
-  if (!value) return null
-  const token = await SecureStorage.get(TOKEN_KEY, false, false)
-  if (typeof token !== 'string' || !token) return null // restored onto a new device: pair again
-  return { conn: JSON.parse(value), token }
-}
-
-export async function clearConnection() {
-  await SecureStorage.remove(TOKEN_KEY, false)
-  await Preferences.remove({ key: CONN_KEY })
-}
+export const saveConnection = store.save
+export const saveConnectionInfo = store.saveInfo
+export const loadConnection = store.load
+export const clearConnection = store.clear
 
 export const queueStorage = {
   get: async key => (await Preferences.get({ key })).value,
@@ -91,6 +92,10 @@ export async function openHub(address, token) {
     },
   })
 }
+
+// The Hub page's sign-in lives in the web view's cookies. This app has no other cookies, so all of
+// them go. True when they're gone.
+export const clearHubCookies = () => HubNative.clearCookies().then(() => true, () => false)
 
 export function onHubClosed(fn) {
   if (isNative) InAppBrowser.addListener('browserClosed', fn)

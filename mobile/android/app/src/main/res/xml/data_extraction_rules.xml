@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The key and any waiting messages stay on this device. -->
+<!-- On Android, the key and any waiting messages are left out of backups and transfers. -->
 <data-extraction-rules>
     <cloud-backup>
         <exclude domain="root" />

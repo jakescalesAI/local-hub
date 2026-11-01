@@ -1,8 +1,10 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import fs from 'node:fs'
 import { cleanCode, isCode, normalizeAddress, parsePairLink, showCode } from '../src/lib/address.js'
 import { classify, STATES } from '../src/lib/status.js'
-import { createClient } from '../src/lib/client.js'
+import { MAX_HUB_NAME, createClient } from '../src/lib/client.js'
+import { createConnectionStore } from '../src/lib/store.js'
 import { createQueue, MAX_QUEUE } from '../src/lib/queue.js'
 
 test('addresses: release builds take HTTPS only', () => {
@@ -99,6 +101,83 @@ test('client: send asks the Hub to carry on after the phone goes away', async ()
   assert.equal((await createClient({ http: fakeHttp(() => ({ status: 503, data: '' })) }).send('https://h.test', 't', 'x')).result, 'retry')
   assert.equal((await createClient({ http: fakeHttp(() => ({ status: 401, data: '' })) }).send('https://h.test', 't', 'x')).result, 'retry')
   assert.equal((await createClient({ http: fakeHttp(() => ({ status: 400, data: '{"error":"Too long"}' })) }).send('https://h.test', 't', 'x')).error, 'Too long')
+})
+
+test('client: a reply only counts as a Hub if it names itself', async () => {
+  const opts = { name: 'n', platform: 'ios' }
+  const reply = data => createClient({ http: fakeHttp(() => ({ status: 200, data: JSON.stringify(data) })) })
+  for (const hub of [undefined, null, 'x', 7, [], {}, { name: '' }, { name: '   ' }, { name: 7 }, { name: { a: 1 } }]) {
+    assert.equal((await reply({ token: 'T', deviceId: 'D', hub }).claim('https://h.test', 'X', opts)).ok, false, JSON.stringify(hub))
+    assert.deepEqual(await reply({ hub }).check('https://h.test', 't'), { status: 500 }, JSON.stringify(hub))
+  }
+  for (const bad of [{ token: '', deviceId: 'D' }, { token: 7, deviceId: 'D' }, { deviceId: 'D' }, { token: 'T', deviceId: 7 }, { token: 'T' }]) {
+    assert.equal((await reply({ ...bad, hub: { name: 'H' } }).claim('https://h.test', 'X', opts)).ok, false, JSON.stringify(bad))
+  }
+  assert.equal((await reply({ token: 'T', deviceId: 'D', hub: { id: 7, name: 'H' } }).claim('https://h.test', 'X', opts)).hub.id, undefined)
+})
+
+test('client: a long or untidy Hub name is cut to what the screens can hold', async () => {
+  const reply = name => createClient({ http: fakeHttp(() => ({ status: 200, data: JSON.stringify({ token: 'T', deviceId: 'D', hub: { id: '1', name } }) })) })
+  const nameOf = async name => [(await reply(name).check('https://h.test', 't')).hub.name, (await reply(name).claim('https://h.test', 'X', { name: 'n', platform: 'ios' })).hub.name]
+  assert.deepEqual(await nameOf('  My \n\t Hub  '), ['My Hub', 'My Hub'])
+  for (const name of await nameOf('x'.repeat(5000))) assert.equal(name.length, MAX_HUB_NAME)
+  for (const name of await nameOf('\u{1F48E}'.repeat(5000))) assert.deepEqual([...name], Array(MAX_HUB_NAME).fill('\u{1F48E}'))
+})
+
+test('client: a server error that isn\'t text never reaches the screen as text', async () => {
+  const opts = { name: 'n', platform: 'ios' }
+  const answer = (status, error) => createClient({ http: fakeHttp(() => ({ status, data: JSON.stringify({ error }) })) })
+  for (const error of [{ a: 1 }, ['x'], 7, true, null, '', '   ']) {
+    assert.match((await answer(403, error).claim('https://h.test', 'X', opts)).error, /^That code didn't work/, JSON.stringify(error))
+    assert.match((await answer(400, error).send('https://h.test', 't', 'x')).error, /^Your Hub didn't accept/, JSON.stringify(error))
+  }
+  assert.ok((await answer(403, 'e'.repeat(5000)).claim('https://h.test', 'X', opts)).error.length <= 300)
+})
+
+const fakeStores = () => {
+  const secure = { value: null, set: async v => { secure.value = v }, get: async () => secure.value, remove: async () => { secure.value = null } }
+  const entries = new Map()
+  const prefs = {
+    entries,
+    set: async ({ key, value }) => { entries.set(key, value) },
+    get: async ({ key }) => ({ value: entries.has(key) ? entries.get(key) : null }),
+    remove: async ({ key }) => { entries.delete(key) },
+  }
+  return { secure, prefs }
+}
+
+test('the token goes to secure storage and nowhere else', async () => {
+  const { secure, prefs } = fakeStores()
+  const store = createConnectionStore({ secure, prefs })
+  const conn = { address: 'https://h.test', hubName: 'H' }
+  await store.save(conn, 'THE-TOKEN')
+  assert.equal(secure.value, 'THE-TOKEN')
+  assert.ok(prefs.entries.size > 0, 'the connection details are saved')
+  for (const [key, value] of prefs.entries) assert.ok(!key.includes('THE-TOKEN') && !value.includes('THE-TOKEN'), key)
+  await store.saveInfo({ ...conn, lastSeen: 1 })
+  for (const value of prefs.entries.values()) assert.ok(!value.includes('THE-TOKEN'))
+  assert.deepEqual(await store.load(), { conn: { ...conn, lastSeen: 1 }, token: 'THE-TOKEN' })
+  await store.clear()
+  assert.equal(secure.value, null)
+  assert.equal(prefs.entries.size, 0)
+})
+
+test('load reads the token only from secure storage: restored details alone mean pair again', async () => {
+  const { secure, prefs } = fakeStores()
+  const store = createConnectionStore({ secure, prefs })
+  await store.save({ address: 'https://h.test' }, 'THE-TOKEN')
+  secure.value = null
+  assert.equal(await store.load(), null)
+})
+
+test('the app wires the store to the real secure storage plugin', () => {
+  const source = fs.readFileSync(new URL('../src/lib/native.js', import.meta.url), 'utf8')
+  const wiring = source.slice(source.indexOf('createConnectionStore({'), source.indexOf('prefs: Preferences'))
+  assert.match(wiring, /set: token => SecureStorage\.set\(TOKEN_KEY, token, false, false\)/)
+  assert.match(wiring, /get: \(\) => SecureStorage\.get\(TOKEN_KEY, false, false\)/)
+  assert.match(wiring, /remove: \(\) => SecureStorage\.remove\(TOKEN_KEY, false\)/)
+  assert.ok(!wiring.includes('Preferences'), 'secure storage must not fall back to Preferences')
+  for (const line of source.split('\n').filter(l => l.includes('Preferences.'))) assert.ok(!/token/i.test(line), line)
 })
 
 const memoryStorage = (start = {}) => {

@@ -2,7 +2,7 @@
 
 The Hub's passcode gate (`access.mjs`) closes it to every other device. These changes add a second way
 past that gate, a paired device, for the Hub's owner to apply. **Nothing in the Hub has been changed
-by this branch.** They were written against commit `7a0c889`.
+by this branch.** They apply to, and were tested against, Hub commit `cfe83f9`.
 
 Browsers that sign in with the passcode work as they did. There is no setting to turn on.
 
@@ -93,6 +93,9 @@ login page at `/`. POSTs still need the Hub's existing `x-hub: 1` header.
 - **The claim route reads at most 4 KB,** because it's open to anyone who can reach the Hub.
 - **Codes:** 8 characters, 5 minutes, one use, one live at a time. Five wrong guesses burn the code, so
   guessing from many addresses does not help. Codes are held in memory and never logged.
+- **The guess limit is per code, not per caller, on purpose.** Behind `tailscale serve` every request
+  arrives from this computer, and forwarding headers can't be trusted, so the Hub can't tell callers apart.
+  Anyone who can reach the claim route can burn a live code, and the cost is making a new one.
 - **Tokens:** 32 random bytes. Only the SHA-256 hash is stored, written by temp file and rename, and
   compared in constant time. `lastSeen` is written at most once a minute.
 - **The page never sees the token.** The first load carries `Authorization: Bearer`. The Hub answers with
@@ -115,7 +118,7 @@ login page at `/`. POSTs still need the Hub's existing `x-hub: 1` header.
 ```bash
 cd mobile/hub-changes
 node --test test/device-auth.test.mjs
-node test/real-hub.mjs <path-to-hub-checkout> 7a0c889
+node test/real-hub.mjs <path-to-hub-checkout> cfe83f9
 ```
 
 The first runs the module behind a test server and a stand-in for `tailscale serve`. The second copies the

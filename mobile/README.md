@@ -64,7 +64,8 @@ tapped, and the Android build has never been opened.
 
 Everything here needs a real device or a real Hub, and has not been run:
 
-- The native code: the QR scanner, the share sheet and share extension, Keychain and Keystore storage.
+- The native code: the QR scanner, the share sheet and share extension, Keychain and Keystore storage,
+  and clearing the Hub page's cookies when a device is forgotten.
 - Android's content security policy with Capacitor's bridge.
 - The Hub page inside the in-app web view, including file picking and how the shell behaves behind it.
 - The Hub chat's voice input, which uses `SpeechRecognition`, inside that web view.

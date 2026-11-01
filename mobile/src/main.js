@@ -113,16 +113,19 @@ async function forget() {
   app.busy = true
   render()
   let removed = true
+  let cleared = true
   if (!demo) {
     removed = await app.hub.forget()
     await native.clearConnection()
     await app.queue.clear()
+    cleared = await native.clearHubCookies()
   }
   app.busy = false
   app.conn = app.hub = app.queue = null
   app.waiting = []
   app.draft = ''
-  app.notice = removed ? '' : 'This device is forgotten here, but your Hub couldn\'t be reached. It stays on the Hub\'s list until you remove it there.'
+  if (!removed) app.notice = 'This device is forgotten here, but your Hub couldn\'t be reached. It stays on the Hub\'s list until you remove it there.'
+  else app.notice = cleared ? '' : 'This device is forgotten here, but its sign-in to the Hub page couldn\'t be cleared. Remove it on your Hub to end its access.'
   show('welcome')
 }
 
@@ -337,6 +340,7 @@ const SCREENS = {
       h('div', { class: 'card prose' },
         h('p', {}, 'This app has no account, no analytics and no server of its own. Everything you send goes only to the Hub address above.'),
         h('p', {}, 'The key that connects this device is kept in the system\'s secure storage. It isn\'t backed up and it never appears in a web page.'),
+        h('p', {}, 'Your Hub\'s address and any text waiting to send are ordinary app data. On iPhone and iPad, a device backup such as iCloud Backup can include them. On Android they\'re left out of backups.'),
         h('p', {}, 'Hub chat runs on your computer, using the AI login you set up there. What you send to chat goes wherever that assistant sends it.')),
       h('div', { class: 'stack' }, button(app.conn.demo ? 'Leave the demo' : 'Forget this Hub', () => (app.conn.demo ? forget() : show('forget')), { kind: 'danger', test: 'forget' }))),
 
@@ -346,6 +350,13 @@ const SCREENS = {
       title('Forget this Hub?'),
       h('p', { class: 'sub' }, `This device disconnects from ${app.conn.hubName}. Messages still waiting here are deleted. To connect again, you'll need a new code.`),
       h('div', { class: 'stack' }, button(app.busy ? 'Forgetting' : 'Forget this Hub', forget, { kind: 'danger', test: 'forget-confirm' }))),
+
+  startFailed: () =>
+    h('main', { class: 'screen center' },
+      h('img', { class: 'logo', src: 'icon.png', alt: '', width: '72', height: '72' }),
+      title('Local Hub couldn\'t start'),
+      h('p', { class: 'lead' }, 'This device\'s secure storage didn\'t respond. Nothing was changed. Try again, or restart the device if this keeps happening.'),
+      h('div', { class: 'stack' }, button('Try again', () => location.reload(), { kind: 'primary', test: 'start-retry' }))),
 
   demoHub: () =>
     h('main', { class: 'hubview' },
@@ -380,7 +391,10 @@ async function discard(id) {
 
 // This device was removed on the Hub: its key is useless, so drop it and start over.
 async function forgetLocal() {
-  if (!app.conn.demo) await native.clearConnection()
+  if (!app.conn.demo) {
+    await native.clearConnection()
+    await native.clearHubCookies()
+  }
   app.conn = app.hub = app.queue = null
   app.waiting = []
   show('welcome')
@@ -389,12 +403,17 @@ async function forgetLocal() {
 // --- Start
 
 async function start() {
-  await native.prepareStorage()
-  const saved = await native.loadConnection().catch(() => null)
-  if (saved) {
-    connect(saved.conn, realHub(saved.conn, saved.token), native.queueStorage)
-    app.waiting = await app.queue.list()
-    app.screen = 'home'
+  try {
+    await native.prepareStorage()
+    const saved = await native.loadConnection().catch(() => null)
+    if (saved) {
+      connect(saved.conn, realHub(saved.conn, saved.token), native.queueStorage)
+      app.waiting = await app.queue.list()
+      app.screen = 'home'
+    }
+  } catch {
+    app.screen = 'startFailed'
+    return render()
   }
   render()
 

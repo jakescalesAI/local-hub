@@ -1,6 +1,7 @@
 package com.example.localhub;
 
 import android.content.Intent;
+import android.webkit.CookieManager;
 import androidx.activity.result.ActivityResult;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
@@ -50,6 +51,18 @@ public class HubNativePlugin extends Plugin {
         if (pendingShare != null) result.put("text", pendingShare);
         pendingShare = null;
         call.resolve(result);
+    }
+
+    /** The Hub page's sign-in. The manager is shared by every web view in the app. */
+    @PluginMethod
+    public void clearCookies(PluginCall call) {
+        getActivity().runOnUiThread(() -> {
+            CookieManager cookies = CookieManager.getInstance();
+            cookies.removeAllCookies(done -> {
+                cookies.flush();
+                call.resolve();
+            });
+        });
     }
 
     @PluginMethod
