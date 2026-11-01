@@ -1,0 +1,1182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Hub">
+<title>Quartzi Hub</title>
+<link rel="icon" href="/icons/hub.svg" type="image/svg+xml">
+<link rel="icon" href="/icons/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="manifest" href="/icons/manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Apple system palette (iOS / macOS semantic colors), light then dark. */
+:root {
+  --bg: #f2f2f7; --surface: #ffffff; --surface-2: #f2f2f7; --press: #e5e5ea;
+  --label: #000000; --label-2: rgba(60, 60, 67, .6); --label-3: rgba(60, 60, 67, .3);
+  --sep: rgba(60, 60, 67, .18); --fill: rgba(118, 118, 128, .12); --fill-2: rgba(118, 118, 128, .2);
+  --thumb: #ffffff; --thumb-shadow: 0 3px 8px rgba(0, 0, 0, .12), 0 3px 1px rgba(0, 0, 0, .04);
+  --material: rgba(249, 249, 249, .78); --menu-bg: rgba(246, 246, 248, .86);
+  --blue: #007aff; --green: #34c759; --orange: #ff9500; --red: #ff3b30; --gray: #8e8e93; --indigo: #5856d6;
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, "Segoe UI", system-ui, sans-serif;
+  --display: -apple-system, BlinkMacSystemFont, "SF Pro Display", Inter, "Segoe UI", system-ui, sans-serif;
+  --rounded: ui-rounded, "SF Pro Rounded", -apple-system, BlinkMacSystemFont, Inter, system-ui, sans-serif;
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  --ease: cubic-bezier(.32, .72, 0, 1);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #000000; --surface: #1c1c1e; --surface-2: #2c2c2e; --press: #3a3a3c;
+    --label: #ffffff; --label-2: rgba(235, 235, 245, .6); --label-3: rgba(235, 235, 245, .3);
+    --sep: rgba(84, 84, 88, .6); --fill: rgba(118, 118, 128, .24); --fill-2: rgba(118, 118, 128, .32);
+    --thumb: #636366; --thumb-shadow: 0 3px 8px rgba(0, 0, 0, .3);
+    --material: rgba(22, 22, 24, .72); --menu-bg: rgba(44, 44, 46, .86);
+    --blue: #0a84ff; --green: #30d158; --orange: #ff9f0a; --red: #ff453a; --gray: #8e8e93; --indigo: #5e5ce6;
+  }
+}
+/* Dark chosen in Edit Style (data-theme is set by tabs/custom.js; no attribute means follow the system). */
+:root[data-theme="dark"] {
+  --bg: #000000; --surface: #1c1c1e; --surface-2: #2c2c2e; --press: #3a3a3c;
+  --label: #ffffff; --label-2: rgba(235, 235, 245, .6); --label-3: rgba(235, 235, 245, .3);
+  --sep: rgba(84, 84, 88, .6); --fill: rgba(118, 118, 128, .24); --fill-2: rgba(118, 118, 128, .32);
+  --thumb: #636366; --thumb-shadow: 0 3px 8px rgba(0, 0, 0, .3);
+  --material: rgba(22, 22, 24, .72); --menu-bg: rgba(44, 44, 46, .86);
+  --blue: #0a84ff; --green: #30d158; --orange: #ff9f0a; --red: #ff453a; --gray: #8e8e93; --indigo: #5e5ce6;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+/* Same gutter on every tab, so pages that scroll and pages that don't share one width. */
+html { scrollbar-gutter: stable; }
+html, body { margin: 0; background: var(--bg); color: var(--label); font: 17px/1.29 var(--font); letter-spacing: -0.022em; -webkit-font-smoothing: antialiased; }
+button { font: inherit; color: inherit; letter-spacing: inherit; cursor: pointer; border: 0; background: none; padding: 0; }
+a { color: inherit; text-decoration: none; }
+svg { display: block; }
+
+/* Navigation bar: translucent material, compact title appears once the large title scrolls away. */
+.nav { position: sticky; top: 0; z-index: 10; padding-top: env(safe-area-inset-top); background: transparent; transition: background .25s, border-color .25s; border-bottom: .5px solid transparent; }
+.nav.scrolled { background: var(--material); -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px); border-bottom-color: var(--sep); }
+.nav-in { max-width: 1040px; margin: 0 auto; height: 52px; padding: 0 20px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; }
+.nav-title { font: 600 17px var(--display); opacity: 0; transform: translateY(4px); transition: opacity .2s, transform .2s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 50vw; }
+.nav.scrolled .nav-title { opacity: 1; transform: none; }
+.nav-left, .nav-right { display: flex; align-items: center; gap: 4px; }
+.nav-right { justify-content: flex-end; }
+.bar-btn { color: var(--blue); display: inline-flex; align-items: center; gap: 2px; height: 36px; padding: 0 6px; border-radius: 10px; font-size: 17px; white-space: nowrap; transition: opacity .15s; }
+.bar-btn:active { opacity: .35; }
+.bar-btn[hidden] { display: none; }
+.spin svg { animation: spin .9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Quiet pill while the hub restarts; reads wait behind it and the page refreshes on its own. */
+.reconnect { position: fixed; z-index: 11; left: 50%; top: calc(env(safe-area-inset-top) + 60px); transform: translate(-50%, -8px); background: var(--material); -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px); box-shadow: 0 4px 18px rgba(0, 0, 0, .12); border-radius: 99px; padding: 7px 14px; font-size: 13px; font-weight: 600; color: var(--label-2); display: flex; align-items: center; gap: 8px; opacity: 0; pointer-events: none; transition: opacity .25s, transform .35s var(--ease); }
+.reconnect::before { content: ''; width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--sep); border-top-color: var(--label-2); animation: spin .9s linear infinite; }
+html.offline .reconnect { opacity: 1; transform: translate(-50%, 0); }
+
+.page { max-width: 1040px; margin: 0 auto; padding: 0 20px calc(48px + env(safe-area-inset-bottom)); }
+.head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin: 2px 0 14px; }
+.large-title { font: 700 34px/1.12 var(--display); letter-spacing: .011em; margin: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.updated { color: var(--label-2); font-size: 13px; letter-spacing: -0.006em; padding-bottom: 6px; white-space: nowrap; }
+
+.controls { display: flex; gap: 12px; align-items: center; margin-bottom: 22px; }
+/* Segmented control with a sliding thumb. */
+.seg { position: relative; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; padding: 2px; background: var(--fill); border-radius: 9px; min-width: 620px; }
+.seg-scroll { min-width: 0; }
+.seg.sub { width: 240px; min-width: 0; margin: -8px 0 22px; }
+.seg[hidden] { display: none; }
+.seg-thumb { position: absolute; top: 2px; bottom: 2px; left: 2px; width: calc((100% - 4px) / var(--n, 3)); background: var(--thumb); border-radius: 7px; box-shadow: var(--thumb-shadow); transform: translateX(calc(var(--i, 0) * 100%)); transition: transform .35s var(--ease); }
+.seg button { position: relative; z-index: 1; height: 28px; font-size: 13px; font-weight: 500; letter-spacing: -0.006em; border-radius: 7px; display: flex; align-items: center; justify-content: center; gap: 5px; }
+.seg button[aria-pressed="true"] { font-weight: 600; }
+.seg .count { color: var(--label-2); font-variant-numeric: tabular-nums; font-weight: 500; }
+.search { flex: 1; position: relative; }
+.search input { width: 100%; height: 36px; background: var(--fill); border: 0; border-radius: 10px; padding: 0 30px 0 12px; color: var(--label); font: 17px var(--font); letter-spacing: -0.022em; outline: none; }
+.search input::placeholder { color: var(--label-2); }
+.search input:focus { box-shadow: 0 0 0 3.5px color-mix(in srgb, var(--blue) 30%, transparent); }
+.search .clear { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); color: var(--label-3); display: none; }
+.search input:not(:placeholder-shown) ~ .clear { display: block; }
+
+/* Widgets */
+.widgets { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-bottom: 30px; }
+.widget { background: var(--surface); border-radius: 18px; padding: 14px 16px 16px; min-width: 0; }
+.w-label { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--label-2); letter-spacing: -0.006em; }
+.w-label i { width: 8px; height: 8px; border-radius: 50%; background: var(--c, var(--gray)); }
+.w-value { font: 700 30px/1.15 var(--rounded); letter-spacing: -0.01em; margin-top: 6px; font-variant-numeric: tabular-nums; }
+.w-value small { font-size: 17px; font-weight: 600; color: var(--label-2); margin-left: 2px; }
+.w-sub { color: var(--label-2); font-size: 13px; letter-spacing: -0.006em; margin-top: 2px; }
+.gauge { height: 6px; border-radius: 99px; background: var(--fill); margin-top: 12px; overflow: hidden; }
+.gauge i { display: block; height: 100%; border-radius: 99px; background: var(--c, var(--green)); transition: width .6s var(--ease); }
+
+/* Inset grouped lists */
+.group { margin-bottom: 30px; }
+.group-head { display: flex; align-items: baseline; gap: 8px; padding: 0 16px 7px; }
+.group-head h2 { margin: 0; font-size: 13px; font-weight: 400; text-transform: uppercase; letter-spacing: -0.006em; color: var(--label-2); }
+.group-head .n { color: var(--label-3); font-size: 13px; }
+.group-head .more { margin-left: auto; color: var(--blue); font-size: 15px; }
+.group-head .more:active { opacity: .35; }
+.list { background: var(--surface); border-radius: 12px; overflow: hidden; }
+.group-foot { color: var(--label-2); font-size: 13px; letter-spacing: -0.006em; padding: 7px 16px 0; }
+
+.row { position: relative; }
+.row + .row::before { content: ""; position: absolute; top: 0; left: 40px; right: 0; border-top: .5px solid var(--sep); }
+.list.plain .row + .row::before { left: 58px; }
+.row-line { display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 8px 16px; width: 100%; text-align: left; transition: background .2s; }
+.row-line > .row-line { flex: 1; min-width: 0; }
+.row-line:active, .row-line.tap:active { background: var(--press); }
+@media (hover: hover) { .row-line.tap:hover { background: color-mix(in srgb, var(--press) 45%, transparent); } }
+.status { width: 12px; flex: none; display: grid; place-items: center; }
+.status i { width: 10px; height: 10px; border-radius: 50%; background: var(--c, var(--gray)); }
+.txt { flex: 1; min-width: 0; }
+.t1 { font-size: 17px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.t2 { font-size: 13px; color: var(--label-2); letter-spacing: -0.006em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 1px; }
+.port { font: 15px var(--mono); letter-spacing: 0; color: var(--label-2); flex: none; }
+.chev { color: var(--label-3); flex: none; transition: transform .3s var(--ease); }
+.row.open .chev.disclose { transform: rotate(90deg); }
+.get { flex: none; height: 30px; padding: 0 16px; border-radius: 99px; background: var(--fill); color: var(--blue); font-size: 15px; font-weight: 600; letter-spacing: -0.016em; display: inline-flex; align-items: center; transition: opacity .15s, transform .15s; }
+.get:active { opacity: .5; transform: scale(.96); }
+.row-actions { display: flex; align-items: center; gap: 10px; flex: none; }
+
+.details { display: none; padding: 2px 16px 14px 40px; }
+.row.open .details { display: block; animation: drop .3s var(--ease); }
+@keyframes drop { from { opacity: 0; transform: translateY(-4px); } }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.tag { font-size: 12px; font-weight: 500; letter-spacing: -0.003em; color: var(--label-2); background: var(--fill); border-radius: 6px; padding: 2px 8px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tag.code { font-family: var(--mono); letter-spacing: 0; color: var(--label); }
+.tag.ok { color: var(--green); background: color-mix(in srgb, var(--green) 14%, transparent); }
+.urls { background: var(--surface-2); border-radius: 10px; overflow: hidden; }
+.url { display: flex; align-items: center; gap: 10px; padding: 9px 12px; min-width: 0; }
+.url + .url { border-top: .5px solid var(--sep); }
+.url .k { flex: none; width: 56px; font-size: 13px; color: var(--label-2); }
+.url code { flex: 1; min-width: 0; font: 13px var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.icon-btn { color: var(--blue); flex: none; padding: 2px; border-radius: 6px; }
+.icon-btn:active { opacity: .35; }
+.link-btn { color: var(--blue); font-size: 15px; margin-top: 10px; }
+.link-btn.red { color: var(--red); }
+
+.trail { flex: none; display: flex; align-items: center; gap: 6px; color: var(--label-2); font-size: 15px; }
+.trail i { width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
+.fileicon { flex: none; width: 30px; display: grid; place-items: center; }
+
+.notice { background: var(--surface); border-radius: 12px; padding: 14px 16px; margin-bottom: 22px; font-size: 15px; }
+.notice.err { color: var(--red); }
+.empty { color: var(--label-2); text-align: center; padding: 28px 16px; font-size: 15px; }
+
+.hud { position: fixed; z-index: 80; left: 50%; bottom: calc(28px + env(safe-area-inset-bottom)); transform: translate(-50%, 12px) scale(.96); background: var(--material); -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px); box-shadow: 0 8px 30px rgba(0, 0, 0, .18); border-radius: 99px; padding: 10px 18px; font-size: 15px; font-weight: 600; opacity: 0; transition: opacity .25s, transform .35s var(--ease); pointer-events: none; display: flex; align-items: center; gap: 8px; }
+.hud.on { opacity: 1; transform: translate(-50%, 0) scale(1); }
+.hud svg { color: var(--green); }
+
+/* Storage bar: one segment per category, like Settings > iCloud. */
+.gauge.split { display: flex; gap: 1.5px; }
+.gauge.split i { border-radius: 0; flex: none; }
+
+/* Context menu, alerts and the move sheet share the menu material. */
+[data-menu] { -webkit-touch-callout: none; }
+.menu { position: fixed; z-index: 60; min-width: 220px; max-width: calc(100vw - 24px); padding: 5px; border-radius: 13px; background: var(--menu-bg); -webkit-backdrop-filter: saturate(180%) blur(30px); backdrop-filter: saturate(180%) blur(30px); box-shadow: 0 0 0 .5px var(--sep), 0 12px 40px rgba(0, 0, 0, .22); animation: pop .16s var(--ease); user-select: none; }
+@keyframes pop { from { opacity: 0; transform: scale(.94); } }
+.menu button { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 18px; padding: 7px 10px; border-radius: 8px; font-size: 15px; text-align: left; }
+.menu button svg { flex: none; color: var(--label-2); }
+.menu button:hover, .menu button:focus-visible { background: var(--blue); color: #fff; outline: none; }
+.menu button:hover svg, .menu button:focus-visible svg { color: #fff; }
+.menu button.danger, .menu button.danger svg { color: var(--red); }
+.menu button.danger:hover, .menu button.danger:focus-visible { background: var(--red); color: #fff; }
+.menu button.danger:hover svg { color: #fff; }
+.menu .m-title { padding: 6px 10px 4px; font-size: 12px; font-weight: 600; color: var(--label-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.menu hr { border: 0; border-top: .5px solid var(--sep); margin: 5px 8px; }
+
+.scrim { position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; padding: 16px; background: rgba(0, 0, 0, .28); animation: fade .2s; }
+@keyframes fade { from { opacity: 0; } }
+.alert { width: 280px; border-radius: 14px; background: var(--menu-bg); -webkit-backdrop-filter: saturate(180%) blur(30px); backdrop-filter: saturate(180%) blur(30px); text-align: center; overflow: hidden; box-shadow: 0 0 0 .5px var(--sep), 0 20px 50px rgba(0, 0, 0, .3); animation: pop .22s var(--ease); }
+.alert-body { padding: 19px 16px 15px; }
+.alert h3 { margin: 0; font: 600 17px var(--display); letter-spacing: -0.022em; }
+.alert p { margin: 4px 0 0; font-size: 13px; letter-spacing: -0.006em; color: var(--label); }
+.alert input { width: 100%; margin-top: 14px; height: 32px; border-radius: 8px; border: .5px solid var(--sep); background: var(--surface); color: var(--label); padding: 0 8px; font: 15px var(--font); outline: none; }
+.alert input:focus { border-color: var(--blue); }
+.alert-btns { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; border-top: .5px solid var(--sep); }
+.alert-btns button { height: 44px; color: var(--blue); font-size: 17px; }
+.alert-btns button + button { border-left: .5px solid var(--sep); }
+.alert-btns button.primary { font-weight: 600; }
+.alert-btns button.danger { color: var(--red); font-weight: 600; }
+.alert-btns button:active { background: var(--fill); }
+.alert-btns button:disabled { color: var(--label-3); }
+
+.sheet { width: min(560px, 100%); max-height: min(640px, 86vh); display: flex; flex-direction: column; border-radius: 14px; background: var(--bg); overflow: hidden; box-shadow: 0 20px 60px rgba(0, 0, 0, .3); animation: rise .35s var(--ease); }
+@keyframes rise { from { transform: translateY(40px); opacity: 0; } }
+.sheet-bar { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; height: 54px; padding: 0 8px; border-bottom: .5px solid var(--sep); background: var(--material); }
+.sheet-bar h3 { margin: 0; font: 600 17px var(--display); max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sheet-bar .bar-btn:last-child { justify-self: end; font-weight: 600; }
+.sheet-body { overflow-y: auto; padding: 16px; }
+.sheet .where { color: var(--label-2); font-size: 13px; padding: 0 16px 7px; }
+
+.sheet.editor { width: min(900px, 100%); height: min(760px, 88vh); max-height: none; }
+.editor textarea { flex: 1; width: 100%; border: 0; resize: none; padding: 16px 18px; background: var(--surface); color: var(--label); font: 13px/1.55 var(--mono); letter-spacing: 0; outline: none; tab-size: 2; }
+.editor .status-line { padding: 6px 16px; font-size: 12px; color: var(--label-2); border-top: .5px solid var(--sep); background: var(--material); }
+.crumbs { color: var(--label-2); font-size: 13px; margin: -10px 0 18px 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--mono); letter-spacing: 0; }
+.row.drop .row-line { background: color-mix(in srgb, var(--blue) 18%, transparent); box-shadow: inset 0 0 0 2px var(--blue); border-radius: 12px; }
+.bar-btn.drop { background: color-mix(in srgb, var(--blue) 18%, transparent); }
+
+@media (max-width: 720px) {
+  .nav-in, .page { padding-left: 16px; padding-right: 16px; }
+  .controls { flex-direction: column; align-items: stretch; gap: 10px; }
+  .seg { min-width: 0; }
+  /* Eight tabs scroll sideways on a phone instead of squeezing. */
+  .seg-scroll { overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 0 16px; }
+  .seg-scroll::-webkit-scrollbar { display: none; }
+  .seg-scroll > .seg { width: max-content; min-width: 100%; grid-auto-columns: minmax(64px, 1fr); }
+  .seg-scroll > .seg button { padding: 0 10px; white-space: nowrap; }
+  .widgets { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .w-value { font-size: 24px; }
+  .updated { display: none; }
+  .port { display: none; }
+}
+</style>
+</head>
+<body>
+<header class="nav" id="nav"><div class="nav-in">
+  <div class="nav-left"><button class="bar-btn" id="back" hidden><svg width="13" height="21" viewBox="0 0 13 21" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 2 2.5 10.5l8 8.5"/></svg><span id="back-label"></span></button></div>
+  <div class="nav-title" id="nav-title">Quartzi Hub</div>
+  <div class="nav-right"><button class="bar-btn" id="newfolder" title="New Folder" aria-label="New Folder" hidden><svg width="26" height="22" viewBox="0 0 26 22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M2 5.5A2.5 2.5 0 0 1 4.5 3h4.6c.7 0 1.3.3 1.8.8L12.5 5.5h9A2.5 2.5 0 0 1 24 8v9.5a2.5 2.5 0 0 1-2.5 2.5h-17A2.5 2.5 0 0 1 2 17.5z"/><path d="M13 9v7m-3.5-3.5h7" stroke-linecap="round"/></svg></button><button class="bar-btn" id="refresh" title="Refresh (R)" aria-label="Refresh"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4v5h-5"/></svg></button></div>
+</div></header>
+
+<div class="page">
+  <div class="head"><h1 class="large-title" id="title">Quartzi Hub</h1><span class="updated" id="ago"></span></div>
+  <div class="controls">
+    <div class="seg-scroll"><div class="seg" role="tablist" id="seg" style="--n:8">
+      <span class="seg-thumb"></span>
+      <button data-env="home" role="tab">Home</button>
+      <button data-env="laptop" role="tab">Laptop <span class="count" id="n-laptop"></span></button>
+      <button data-env="server" role="tab">Server <span class="count" id="n-server"></span></button>
+      <button data-env="drives" role="tab">Drives</button>
+      <button data-env="ai" role="tab">AI</button>
+      <button data-env="cloud" role="tab">Cloud</button>
+      <button data-env="calendar" role="tab">Calendar</button>
+      <button data-env="stripe" role="tab">Stripe</button>
+    </div></div>
+    <label class="search">
+      <input id="q" placeholder="Search" autocomplete="off" spellcheck="false">
+      <button class="clear" id="clear" aria-label="Clear"><svg width="17" height="17" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="currentColor"/><path d="m8.5 8.5 7 7m0-7-7 7" stroke="var(--surface)" stroke-width="2" stroke-linecap="round"/></svg></button>
+    </label>
+  </div>
+  <div class="seg sub" id="subseg" style="--n:2" hidden>
+    <span class="seg-thumb"></span>
+    <button data-view="services">Services</button>
+    <button data-view="files">Files</button>
+  </div>
+  <main id="main"></main>
+</div>
+<div class="reconnect" role="status">Reconnecting…</div>
+<div class="hud" id="hud"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg><span id="hud-text"></span></div>
+
+<script src="/hub-config.js"></script>
+<script src="/tabs/ai.js"></script>
+<script src="/tabs/cloud.js"></script>
+<script src="/tabs/calendar.js"></script>
+<script src="/tabs/stripe.js"></script>
+<script src="/tabs/browser.js" onerror="this.remove()"></script>
+<script src="/tabs/custom.js"></script>
+<script src="/tabs/home.js"></script>
+<script src="/tabs/chat.js"></script>
+<script src="/tabs/setup.js"></script>
+<script>
+// A plug-in tab that failed to load, or lacks render() and load(), is dropped so the rest of the page still works.
+for (const [k, t] of Object.entries(window.TABS || {})) if (typeof t?.render !== 'function' || typeof t?.load !== 'function') delete window.TABS[k]
+// An add-on tab that is off isn't part of this hub.
+const HUB_CONF = window.HUB_CONF || {}
+const HUB_NAME = HUB_CONF.name || 'Quartzi Hub'
+const addonOn = id => !!HUB_CONF.addons?.[id]?.on
+for (const k of ['laptop', 'server', 'ai', 'cloud', 'calendar', 'stripe']) if (!addonOn(k)) delete window.TABS?.[k]
+const $ = s => document.querySelector(s)
+const store = {
+  get(k, d) { try { return localStorage.getItem(k) ?? d } catch { return d } },
+  set(k, v) { try { localStorage.setItem(k, v) } catch {} },
+}
+// Plug-in tabs join from the saved tab order; which tabs show and in what order is HUB's (tabs/custom.js).
+const ENVS = [...(HUB_CONF.tabs || ['home', 'drives']), ...(window.HUB?.pluginTabs() || [])]
+// Extra tabs register from tabs/<env>.js, which load before this script:
+// (window.TABS ||= {}).<env> = { title, search, render() -> html, load(force) -> Promise,
+//   menu?(row, x, y) -> true when it opened a menu, ago?() -> text for the Updated label }.
+// They call the globals here (render, widget, group, esc, api, showMenu, MI, copy, hud, ...).
+const TABS = (window.TABS ||= {})
+const ROOT_TITLE = { icloud: 'iCloud Drive', laptop: 'Home', server: 'root', drives: 'This PC' }
+const TRASH_WORDS = { icloud: 'Move to Recycle Bin', laptop: 'Move to Recycle Bin', server: 'Move to Server Trash', drives: 'Move to Recycle Bin' }
+let data = null
+let storage = null
+let env = store.get('hub-env', 'home')
+if (env === 'icloud') { env = 'drives'; store.set('hub-paths', JSON.stringify({ ...JSON.parse(store.get('hub-paths', '{}') || '{}'), drives: ['iCloud', store.get('hub-icloud', '')].filter(Boolean).join('/') })) }
+if (!ENVS.includes(env)) env = 'home'
+const view = { laptop: 'services', server: 'services' }
+const fsPath = { icloud: store.get('hub-icloud', ''), laptop: '', server: '', drives: '' }
+try { Object.assign(view, JSON.parse(store.get('hub-view', '{}'))) } catch {}
+try { Object.assign(fsPath, JSON.parse(store.get('hub-paths', '{}'))) } catch {}
+const listing = {} // root -> { root, path, entries } | { error }
+let search = null // { root, q, results, partial } while a file search is showing
+const open = { production: false, 'laptop-other': true }
+try { Object.assign(open, JSON.parse(store.get('hub-open', '{}'))) } catch {}
+const expanded = new Set()
+const services = {} // "where:port" -> { s, where }, rebuilt on each render
+let dragging = false
+let kept = null // env of a persistent tab whose node is mounted in #main
+
+const FILES_ONLY = new Set(['drives'])
+const isFiles = () => FILES_ONLY.has(env) || view[env] === 'files'
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+const ago = t => { if (!t) return ''; const s = Math.round((Date.now() - t) / 1000); return s < 5 ? 'Updated just now' : s < 60 ? `Updated ${s}s ago` : `Updated ${Math.round(s / 60)}m ago` }
+const gb = b => (b / 2 ** 30).toFixed(1)
+const size = b => b < 1024 ? `${b} bytes` : b < 2 ** 20 ? `${(b / 1024).toFixed(0)} KB` : b < 2 ** 30 ? `${(b / 2 ** 20).toFixed(1)} MB` : b < 2 ** 40 ? `${(b / 2 ** 30).toFixed(2)} GB` : `${(b / 2 ** 40).toFixed(2)} TB`
+const big = b => b >= 2 ** 40 ? [(b / 2 ** 40).toFixed(2).replace(/\.?0+$/, ''), 'TB'] : [(b / 2 ** 30).toFixed(1), 'GB']
+const dur = s => { const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60); return d ? `${d}d ${h}h` : h ? `${h}h ${m}m` : `${m}m` }
+const date = t => new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: new Date(t).getFullYear() === new Date().getFullYear() ? undefined : 'numeric' })
+const parentOf = p => p.split('/').slice(0, -1).join('/')
+const baseName = p => p.split('/').pop()
+const join = (a, b) => (a ? `${a}/${b}` : b)
+const saveFs = () => { store.set('hub-paths', JSON.stringify(fsPath)); store.set('hub-view', JSON.stringify(view)) }
+
+// The hub restarts now and then. While it's away, reads wait behind one shared probe
+// (1, 2, 4, then every 8 s) with a quiet "Reconnecting…" in the bar, then carry on, and the
+// page refreshes itself once the hub answers. Writes never retry on their own.
+const RETRY_MS = [1000, 2000, 4000, 8000]
+const sleep = ms => new Promise(r => setTimeout(r, ms))
+let hubWait = null
+function waitForHub() {
+  if (hubWait) return hubWait
+  document.documentElement.classList.add('offline')
+  return (hubWait = (async () => {
+    for (let i = 0; ; i++) {
+      await sleep(RETRY_MS[Math.min(i, RETRY_MS.length - 1)])
+      try { if ((await fetch('/api/ping', { cache: 'no-store' })).ok) break } catch {}
+    }
+    hubWait = null
+    document.documentElement.classList.remove('offline')
+    recover()
+  })())
+}
+// Reads (and read-only POSTs such as refresh, opts.read) wait for the hub; writes fail fast.
+// Only a dropped connection counts: an HTTP error (a 502 from ssh, say) is the hub answering.
+async function hubFetch(url, init, opts = {}) {
+  const read = !init?.method || init.method === 'GET' || opts.read
+  for (;;) {
+    if (hubWait && read) await hubWait
+    try { return await fetch(url, init) } catch (e) {
+      if (!(e instanceof TypeError) || init?.signal?.aborted) throw e
+      waitForHub()
+      if (!read) throw new Error('The hub is restarting. Try again in a moment.')
+    }
+  }
+}
+// Every change carries x-hub; the hub refuses POSTs without it, so other sites can't make them.
+async function api(url, body, opts) {
+  const res = await hubFetch(url, body === undefined ? undefined : { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: JSON.stringify(body) }, opts)
+  const out = await res.json().catch(() => ({}))
+  if (!res.ok) throw Object.assign(new Error(out.error || `${res.status} ${res.statusText}`), { status: res.status })
+  return out
+}
+// Back from a restart: drop errors left from before and load the open tab again.
+// Plug-in tab loads never throw into the page.
+function loadTab(force) {
+  try { return Promise.resolve(TABS[env]?.load(force)).catch(e => console.error(e)) } catch (e) { console.error(e) }
+}
+function recover() {
+  for (const r in listing) if (listing[r]?.error) delete listing[r]
+  if (storage?.error) storage = null
+  load()
+  if (isFiles()) enterFiles()
+  else loadTab()
+}
+const filesApi = (root, op = '', params = {}) => api(`/api/files/${root}${op ? '/' + op : ''}?${new URLSearchParams(params)}`)
+const filesPost = (root, op, body) => api(`/api/files/${root}/${op}`, body)
+const rawUrl = (root, p, download) => `/files/${root}/raw?path=${encodeURIComponent(p)}${download ? '&download' : ''}`
+
+const ICON = {
+  chev: '<svg class="chev" width="8" height="14" viewBox="0 0 8 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m1.5 1.5 5 5.5-5 5.5"/></svg>',
+  disclose: '<svg class="chev disclose" width="8" height="14" viewBox="0 0 8 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m1.5 1.5 5 5.5-5 5.5"/></svg>',
+  copy: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><rect x="8.5" y="8.5" width="12" height="12" rx="2.5"/><path d="M15.5 8.5V6a2.5 2.5 0 0 0-2.5-2.5H6A2.5 2.5 0 0 0 3.5 6v7A2.5 2.5 0 0 0 6 15.5h2.5"/></svg>',
+  cloud: '<svg width="30" height="26" viewBox="0 0 30 26" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M8.5 21h13.5a5 5 0 0 0 .6-9.96A7.5 7.5 0 0 0 8.1 10.2 5.4 5.4 0 0 0 8.5 21z"/></svg>',
+  drive: '<svg width="30" height="26" viewBox="0 0 30 26" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M3 15.5 6.6 5.6A2.5 2.5 0 0 1 9 4h12a2.5 2.5 0 0 1 2.4 1.6L27 15.5"/><rect x="3" y="15.5" width="24" height="7.5" rx="2.5"/><circle cx="22" cy="19.25" r="1.2" fill="currentColor" stroke="none"/></svg>',
+  folder: '<svg width="30" height="26" viewBox="0 0 30 26"><path d="M2 5.5A3.5 3.5 0 0 1 5.5 2h6c1 0 1.9.4 2.6 1.1L16 5h8.5A3.5 3.5 0 0 1 28 8.5v.5H2z" fill="var(--blue)" opacity=".75"/><path d="M2 8h26v13.5a3.5 3.5 0 0 1-3.5 3.5h-19A3.5 3.5 0 0 1 2 21.5z" fill="var(--blue)"/></svg>',
+  file: c => `<svg width="24" height="30" viewBox="0 0 24 30"><path d="M3 1.5h12l7.5 7.5v17a3 3 0 0 1-3 3H3a3 3 0 0 1-3-3V4.5a3 3 0 0 1 3-3z" transform="translate(.75 0)" fill="var(--surface-2)" stroke="var(--sep)"/><path d="M15.75 1.5V7a2 2 0 0 0 2 2h5.5" fill="none" stroke="var(--sep)"/><rect x="4" y="18" width="16" height="7" rx="2" fill="${c}"/></svg>`,
+}
+// Small SF-Symbol-like glyphs for menu items.
+const G = d => `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`
+const MI = {
+  open: G('<path d="M14 4h6v6M20 4l-9 9M18 14v4.5A1.5 1.5 0 0 1 16.5 20h-11A1.5 1.5 0 0 1 4 18.5v-11A1.5 1.5 0 0 1 5.5 6H10"/>'),
+  edit: G('<path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>'),
+  download: G('<path d="M12 4v11m-4.5-4.5L12 15l4.5-4.5M5 20h14"/>'),
+  rename: G('<path d="M4 7h11M4 12h8M4 17h5"/><path d="m14 19 6.5-6.5-2-2L12 17v2z"/>'),
+  move: G('<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M10 13h6m-2.5-2.5L16 13l-2.5 2.5"/>'),
+  folder: G('<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 10.5v5m-2.5-2.5h5"/>'),
+  copy: G('<rect x="8.5" y="8.5" width="12" height="12" rx="2.5"/><path d="M15.5 8.5V6a2.5 2.5 0 0 0-2.5-2.5H6A2.5 2.5 0 0 0 3.5 6v7A2.5 2.5 0 0 0 6 15.5h2.5"/>'),
+  trash: G('<path d="M4 7h16M9 7V4.5h6V7M6 7l1 13h10l1-13M10 11v5m4-5v5"/>'),
+  reveal: G('<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="2.5"/>'),
+  refresh: G('<path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4v5h-5"/>'),
+  info: G('<circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8.5v.5"/>'),
+  close: G('<path d="m6 6 12 12M18 6 6 18"/>'),
+}
+const FILE_COLOR = { mov: 'var(--indigo)', mp4: 'var(--indigo)', m4v: 'var(--indigo)', mp3: 'var(--red)', m4a: 'var(--red)', wav: 'var(--red)', png: 'var(--green)', jpg: 'var(--green)', jpeg: 'var(--green)', heic: 'var(--green)', webp: 'var(--green)', gif: 'var(--green)', svg: 'var(--green)', pdf: 'var(--red)', zip: 'var(--orange)' }
+const TEXT_EXT = new Set('md txt json jsonc js mjs cjs ts tsx jsx py sh bash ps1 bat cmd yml yaml toml ini cfg conf env css scss html htm xml csv tsv log sql service gitignore dockerignore editorconfig lock rs go java kt swift c h cpp hpp cs rb php lua vue svelte'.split(' '))
+const isText = name => { const ext = name.includes('.') ? name.split('.').pop().toLowerCase() : ''; return TEXT_EXT.has(ext) || /^(dockerfile|makefile|readme|license|\.?env.*)$/i.test(name) }
+
+function hud(msg) { $('#hud-text').textContent = msg; const h = $('#hud'); h.classList.add('on'); clearTimeout(h._t); h._t = setTimeout(() => h.classList.remove('on'), 1800) }
+async function copy(text, label = 'Copied') { try { await navigator.clipboard.writeText(text); hud(label) } catch { hud(text) } }
+
+/* ---------- services ---------- */
+
+function status(s) {
+  if (!s.code) return { c: 'var(--gray)', text: 'No web page' }
+  if (s.code >= 200 && s.code < 400) return { c: 'var(--green)', text: s.code === 200 ? 'Running' : `Running · ${s.code}` }
+  return { c: 'var(--blue)', text: s.code === 401 ? 'Running · sign-in' : `API · ${s.code}` }
+}
+
+function nameOf(s, where) {
+  const named = data.names?.[where]?.[s.port]
+  if (named) return named
+  if (s.kind === 'session') {
+    if (s.branch && s.branch !== 'HEAD') return s.branch.replace(/^to\//, '')
+    // Detached scratchpad checkouts: name them by folder and the owning session id.
+    const m = /\/([0-9a-f]{8})-[0-9a-f-]+\/scratchpad\/([^/]+)/.exec(s.cwd)
+    return m ? `Scratch ${m[2]} · session ${m[1]}` : (s.title || `Preview ${s.port}`)
+  }
+  if (s.kind === 'dev') return s.unit.replace(/\.service$/, '')
+  if (s.kind === 'production') return (HUB_CONF.server?.unitPrefix && s.unit.startsWith(HUB_CONF.server.unitPrefix) ? s.unit.slice(HUB_CONF.server.unitPrefix.length) : s.unit).replace(/\.service$/, '')
+  return s.title || s.process || `Port ${s.port}`
+}
+
+// The workspace app's Vite base (/workspace/_app/) only serves assets; its router
+// answers /workspace/<slug>, and sandbox is the dev fixture workspace.
+const openPath = s => (s.path === '/workspace/_app/' ? '/workspace/sandbox' : s.path || '/')
+const tunnelFor = port => data.tunnels.find(t => t.remote === port)
+const tsIp = () => data.tailnet?.ip
+const hubOrigin = () => tsIp() ? `http://${tsIp()}:${data.hubPort}` : ''
+const isWebRow = (s, where) => !!s.code && !(where === 'laptop' && s.kind !== 'web')
+
+// Direct URLs once a port is reachable on the laptop; otherwise the hub's /go link,
+// which opens the tunnel first and then redirects.
+function urlsFor(s, where) {
+  const p = openPath(s)
+  const go = `/go/${s.port}?where=${where}&p=${encodeURIComponent(p)}`
+  if (where === 'laptop') {
+    const onTailnet = ['0.0.0.0', '::', tsIp()].includes(s.bind)
+    return { go, local: `http://localhost:${s.port}${p}`, tailnet: onTailnet && tsIp() ? `http://${tsIp()}:${s.port}${p}` : '' }
+  }
+  const t = tunnelFor(s.port)
+  if (t) return { go, local: `http://localhost:${t.local}${p}`, tailnet: tsIp() ? `http://${tsIp()}:${t.local}${p}` : '' }
+  return { go, local: '', tailnet: hubOrigin() ? hubOrigin() + go : '' }
+}
+
+function urlRow(label, url) {
+  return url ? `<div class="url"><span class="k">${label}</span><code title="${esc(url)}">${esc(url.replace(/^http:\/\//, ''))}</code><button class="icon-btn" data-copy="${esc(url)}" aria-label="Copy ${label} URL">${ICON.copy}</button></div>` : ''
+}
+
+function serviceRow(s, where) {
+  const key = `${where}:${s.port}`
+  services[key] = { s, where }
+  const st = status(s)
+  const name = nameOf(s, where)
+  const tun = where === 'server' && tunnelFor(s.port)
+  const web = isWebRow(s, where)
+  const u = web ? urlsFor(s, where) : {}
+  const sub = where === 'server'
+    ? [s.branch && s.branch !== 'HEAD' ? s.branch : '', s.kind === 'session' ? '' : s.unit.replace(/\.service$/, '')].filter(Boolean).join(' · ') || st.text
+    : [s.process, s.bind].filter(Boolean).join(' · ')
+  const tags = [`<span class="tag">${esc(st.text)}</span>`]
+  if (s.branch && s.branch !== 'HEAD') tags.push(`<span class="tag code">${esc(s.branch)}</span>`)
+  if (s.title && s.title !== name) tags.push(`<span class="tag">${esc(s.title)}</span>`)
+  if (tun) tags.push(`<span class="tag ok">${tun.auto ? 'Always connected' : 'Connected'} · :${tun.local}</span>`)
+  else if (where === 'server' && web) tags.push(`<span class="tag">Connects when opened</span>`)
+  const folder = where === 'server' ? s.cwd : s.cmd
+  const hay = [name, s.port, s.branch, s.unit, s.cwd, s.title, s.process].join(' ').toLowerCase()
+  return `<div class="row${expanded.has(key) ? ' open' : ''}" data-hay="${esc(hay)}" data-menu="service" data-key="${key}">
+    <div class="row-line">
+      <button class="row-line tap" style="padding:0;min-height:44px" data-expand="${key}" aria-expanded="${expanded.has(key)}">
+        <span class="status" style="--c:${st.c}"><i></i></span>
+        <span class="txt"><div class="t1">${esc(name)}</div><div class="t2">${esc(sub)}</div></span>
+        <span class="port">:${s.port}</span>${ICON.disclose}
+      </button>
+      ${web ? `<a class="get" href="${esc(u.go)}" target="_blank" rel="noopener">Open</a>` : ''}
+    </div>
+    <div class="details">
+      <div class="tags">${tags.join('')}</div>
+      ${web && (u.local || u.tailnet) ? `<div class="urls">${urlRow('Laptop', u.local)}${urlRow('Tailnet', u.tailnet)}</div>` : ''}
+      ${folder ? `<div class="t2" style="margin-top:8px;white-space:normal;word-break:break-all;font-family:var(--mono);letter-spacing:0">${esc(folder)}</div>` : ''}
+      ${tun && !tun.auto ? `<button class="link-btn red" data-close="${s.port}">Disconnect</button>` : ''}
+    </div>
+  </div>`
+}
+
+function group(key, title, foot, rows, collapsible) {
+  if (!rows.length) return ''
+  const shown = !collapsible || open[key]
+  return `<section class="group"><div class="group-head"><h2>${title}</h2>${rows.length > 1 ? `<span class="n">${rows.length}</span>` : ''}
+      ${collapsible ? `<button class="more" data-toggle="${key}">${shown ? 'Hide' : 'Show All'}</button>` : ''}</div>
+    ${shown ? `<div class="list">${rows.join('')}</div>${foot ? `<div class="group-foot">${foot}</div>` : ''}` : ''}</section>`
+}
+
+function widget(label, value, sub, pct, color, bar) {
+  const c = color || (pct == null ? 'var(--gray)' : pct > 85 ? 'var(--red)' : pct > 65 ? 'var(--orange)' : 'var(--green)')
+  return `<div class="widget" style="--c:${c}"><div class="w-label"><i></i>${label}</div><div class="w-value">${value}</div><div class="w-sub">${sub}</div>
+    ${bar || (pct == null ? '' : `<div class="gauge"><i style="width:${Math.min(100, Math.max(3, pct))}%"></i></div>`)}</div>`
+}
+const memWidget = h => { const used = h.memTotal - h.memAvailable; return widget('Memory', `${gb(used)}<small>GB</small>`, `of ${gb(h.memTotal)} GB`, (used / h.memTotal) * 100) }
+const diskWidget = (label, h) => { if (!h.diskTotal) return ''; const used = h.diskTotal - h.diskFree; return widget(label, `${gb(h.diskFree)}<small>GB free</small>`, `${gb(used)} of ${gb(h.diskTotal)} GB used`, (used / h.diskTotal) * 100) }
+
+function syncState(st) {
+  if (/watching/i.test(st)) return ['var(--green)', 'Up to date']
+  if (/scan|stag|reconcil|transition|connect|wait|sav/i.test(st)) return ['var(--orange)', st.replace(/ for changes$/i, '')]
+  return ['var(--red)', st || 'Unknown']
+}
+
+function tailnetGroup() {
+  const t = data.tailnet
+  if (!t?.ip) return `<div class="notice">Tailscale isn’t connected on this laptop, so these links only open here.</div>`
+  const url = HUB_CONF.url
+  const online = t.peers.filter(p => p.online).map(p => p.name)
+  return group('tailnet', 'On your tailnet', online.length ? `Online now: ${esc(online.join(', '))}` : 'No other devices are online.', [
+    ...(!url ? [] : [`<div class="row"><div class="row-line"><span class="txt"><div class="t1">Open ${esc(HUB_NAME)} anywhere</div><div class="t2" style="font-family:var(--mono);letter-spacing:0">${esc(url)}</div></span><button class="icon-btn" data-copy="${esc(url)}" aria-label="Copy">${ICON.copy}</button></div></div>`]),
+  ])
+}
+
+function serverWidgets() {
+  const h = data.server.health
+  if (!h) return ''
+  return `<div class="widgets">
+    ${widget('CPU Load', h.load[0].toFixed(1), `${h.cores} cores · 5 min ${h.load[1].toFixed(1)}`, (h.load[0] / h.cores) * 100)}
+    ${memWidget(h)}
+    ${diskWidget('Disk', h)}
+    ${widget('Uptime', dur(h.uptime), `swap ${gb(h.swapTotal - h.swapFree)} of ${gb(h.swapTotal)} GB`, null, 'var(--blue)')}
+  </div>`
+}
+
+function laptopWidgets() {
+  const h = data.laptop.health
+  if (!h) return ''
+  const syncs = data.syncs.list
+  const live = syncs.filter(s => /watching/i.test(s.status)).length
+  return `<div class="widgets">
+    ${widget('CPU', h.cpu == null ? '–' : `${h.cpu.toFixed(0)}<small>%</small>`, `${h.cores} logical cores`, h.cpu)}
+    ${memWidget(h)}
+    ${diskWidget('Disk C:', h)}
+    ${widget('Syncs', `${live}<small>of ${syncs.length}</small>`, `up to date · laptop up ${dur(h.uptime)}`, syncs.length ? (live / syncs.length) * 100 : null, live === syncs.length ? 'var(--green)' : 'var(--orange)')}
+  </div>`
+}
+
+// Same numbers as Settings > iCloud on the phone, read from iCloud for Windows' cache.
+function icloudWidgets() {
+  if (!storage) return `<div class="widgets">${['iCloud Storage', 'Available', 'Photos and Videos', 'Backups'].map(l => widget(l, '–', 'Loading…', null)).join('')}</div>`
+  if (storage.error) return `<div class="notice err">iCloud storage: ${esc(storage.error)}</div>`
+  const { total, used, available, media } = storage
+  const [u, uu] = big(used), [a, au] = big(available), [t, tu] = big(total)
+  const bar = `<div class="gauge split">${media.map(m => `<i style="width:${(m.bytes / total) * 100}%;background:${m.color}" title="${esc(m.label)} · ${size(m.bytes)}"></i>`).join('')}</div>`
+  const top = [...media].sort((x, y) => y.bytes - x.bytes).slice(0, 2)
+  const asOf = new Date(storage.at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+  return `<div class="widgets">
+    ${widget('iCloud Storage', `${u}<small>${uu}</small>`, `of ${t} ${tu} used · ${Math.round((used / total) * 100)}%`, null, 'var(--blue)', bar)}
+    ${widget('Available', `${a}<small>${au}</small>`, `free · as of ${asOf}`, (available / total) * 100, 'var(--green)')}
+    ${top.map(m => { const [v, vu] = big(m.bytes); return widget(esc(m.label), `${v}<small>${vu}</small>`, `${Math.round((m.bytes / used) * 100)}% of what you use`, (m.bytes / used) * 100, m.color) }).join('')}
+  </div>`
+}
+
+function renderServerServices() {
+  const rows = k => data.server.services.filter(s => s.kind === k).map(s => serviceRow(s, 'server'))
+  let html = serverWidgets() + tailnetGroup()
+  html += group('dev', 'Dev Servers', esc(HUB_CONF.server?.notes?.dev || 'systemd dev@ units on your server.'), rows('dev'))
+  html += group('session', 'Session Previews', 'Started by Claude sessions. Kept connected to this laptop and your tailnet.', rows('session'))
+  html += group('production', 'Production', esc(HUB_CONF.server?.notes?.production || 'Your live services. Connects when you open one.'), rows('production'), true)
+  html += group('other', 'Other', '', rows('other'), true)
+  if (!data.server.services.length && !data.server.error) html += `<div class="empty">Looking at the server…</div>`
+  return html
+}
+
+function renderLaptopServices() {
+  const syncs = data.syncs.list
+  const web = data.laptop.services.filter(s => s.kind === 'web')
+  const other = data.laptop.services.filter(s => s.kind !== 'web')
+  let html = laptopWidgets() + tailnetGroup()
+  html += web.length
+    ? group('laptop', 'Web Services', 'Servers on this laptop that answer in a browser.', web.map(s => serviceRow(s, 'laptop')))
+    : `<section class="group"><div class="group-head"><h2>Web Services</h2></div><div class="list"><div class="empty">${esc(HUB_CONF.server?.notes?.noLaptopServices || 'No web servers are running on this computer.')}</div></div></section>`
+  html += group('laptop-other', 'Other Services', 'Listening on a port without a web page.', other.map(s => serviceRow(s, 'laptop')), true)
+  html += group('syncs', 'Syncs', `Laptop folders mirrored to ${esc(data.sshHost)} by Mutagen.`, syncs.map(s => {
+    const [c, t] = syncState(s.status)
+    return `<div class="row" data-hay="${esc(s.name.toLowerCase())}"><div class="row-line" style="min-height:48px"><span class="txt"><div class="t1">${esc(s.name)}</div></span><span class="trail" style="--c:${c}"><i></i>${esc(t)}</span></div></div>`
+  }))
+  if (data.syncs.error) html += `<div class="notice err">Syncs: ${esc(data.syncs.error)}</div>`
+  return html
+}
+
+/* ---------- files ---------- */
+
+function fileRow(root, e, p, sub) {
+  const ext = e.name.includes('.') ? e.name.split('.').pop().toLowerCase() : ''
+  sub ??= e.dir ? (e.count == null ? date(e.mtime) : `${e.count} item${e.count === 1 ? '' : 's'} · ${date(e.mtime)}`) : `${size(e.size)} · ${date(e.mtime)}`
+  if (e.drive) return driveRow(root, e, p)
+  const inner = `<span class="fileicon">${e.dir ? ICON.folder : ICON.file(FILE_COLOR[ext] || (isText(e.name) ? 'var(--gray)' : 'var(--label-3)'))}</span>
+    <span class="txt"><div class="t1">${esc(e.name)}</div><div class="t2">${esc(sub)}</div></span>${e.dir ? ICON.chev : ''}`
+  const attrs = `data-menu="file" data-root="${root}" data-path="${esc(p)}" data-isdir="${e.dir ? 1 : ''}" data-name="${esc(e.name)}"`
+  const link = e.dir ? `href="#" data-nav="${esc(p)}"` : isText(e.name) ? `href="#" data-edit="${esc(p)}"` : `href="${rawUrl(root, p)}" target="_blank" rel="noopener"`
+  return `<div class="row" ${attrs}><a class="row-line tap" draggable="true" ${link}>${inner}</a></div>`
+}
+
+// "This PC": one row per drive letter with its free space; deletes only on Fixed drives.
+let drives = null
+function driveRow(root, e, p) {
+  const cloud = e.type === 'iCloud'
+  const name = cloud ? e.label : e.label ? `${e.label} (${e.name})` : e.name
+  const sub = cloud ? (storage?.total ? `${size(storage.available)} free of ${size(storage.total)} · iCloud` : 'iCloud')
+    : `${size(e.free)} free of ${size(e.size)}${e.type === 'Fixed' ? '' : ` · ${e.type}`}`
+  return `<div class="row" data-path="${esc(p)}"><a class="row-line tap" href="#" data-nav="${esc(p)}"><span class="fileicon" style="color:${cloud ? 'var(--blue)' : 'var(--gray)'}">${cloud ? ICON.cloud : ICON.drive}</span>
+    <span class="txt"><div class="t1">${esc(name)}</div><div class="t2">${esc(sub)}</div></span>${ICON.chev}</a></div>`
+}
+function drivesWidgets() {
+  if (!drives || !addonOn('drives')) return ''
+  return `<div class="widgets">${drives.filter(d => d.type !== 'iCloud').map(d => {
+    const used = d.size - d.free
+    const [v, u] = big(used)
+    return widget(d.label ? `${d.label} (${d.name})` : d.name, `${v}<small>${u}</small>`, `${size(d.free)} free of ${size(d.size)}`, (used / d.size) * 100)
+  }).join('')}</div>`
+}
+
+function renderFiles() {
+  const root = env
+  const cloud = root === 'drives' && /^iCloud(\/|$)/.test(fsPath.drives)
+  let html = cloud ? icloudWidgets() : root === 'drives' ? drivesWidgets() : root === 'laptop' ? laptopWidgets() : serverWidgets()
+  const l = listing[root]
+  if (l?.root) html += `<div class="crumbs" title="${esc(fullPath(root, fsPath[root]))}">${esc(fullPath(root, fsPath[root]))}</div>`
+  if (search && search.root === root) {
+    const rows = (search.results || []).map(e => fileRow(root, e, e.path, `${parentOf(e.path) || ROOT_TITLE[root]} · ${e.dir ? 'Folder' : size(e.size)}`))
+    const n = search.results.length
+    const where = esc(baseName(fsPath[root]) || ROOT_TITLE[root])
+    const head = search.loading ? 'Searching…' : `${n}${search.partial && n ? '+' : ''} result${n === 1 ? '' : 's'} for “${esc(search.q)}”`
+    const foot = search.error ? esc(search.error)
+      : search.partial ? `Stopped after ${n >= 200 ? 'the first 200 matches' : '4 seconds'}. Open a smaller folder to search all of it.`
+      : `Searched every folder inside ${where}.`
+    return html + `<section class="group"><div class="group-head"><h2>${head}</h2></div>
+      ${rows.length ? `<div class="list plain">${rows.join('')}</div>` : search.loading ? '' : `<div class="list"><div class="empty">${search.partial ? 'Nothing found yet.' : 'No files or folders match.'}</div></div>`}
+      <div class="group-foot">${foot} Skips node_modules and .git; start with “.” to include hidden files.</div></section>`
+  }
+  if (!l) return html + `<div class="empty">Opening ${ROOT_TITLE[root]}…</div>`
+  if (l.error) return html + `<div class="notice err">${esc(l.error)}</div>`
+  const rows = l.entries.map(e => fileRow(root, e, join(l.path, e.name)))
+  const folders = l.entries.filter(e => e.dir).length
+  const files = l.entries.length - folders
+  const note = cloud ? ' Files download from iCloud only when you open them.' : root === 'server' ? (HUB_CONF.server?.notes?.files ? ` ${HUB_CONF.server.notes.files}` : '') : root === 'drives' ? ' Moves stay within one drive; removable drives can’t delete here.' : ''
+  if (root === 'drives' && !l.path) return html + `<section class="group"><div class="list">${rows.join('')}</div><div class="group-foot">Every drive on this computer${addonOn('icloud') ? ' and iCloud Drive' : ''}, including USB drives while they’re plugged in.</div></section>`
+  return html + (rows.length
+    ? `<section class="group"><div class="list plain">${rows.join('')}</div><div class="group-foot">${folders} folder${folders === 1 ? '' : 's'}, ${files} file${files === 1 ? '' : 's'}. Right-click (or press and hold) for more.${note}</div></section>`
+    : `<section class="group"><div class="list"><div class="empty">This folder is empty.</div></div></section>`)
+}
+
+function fullPath(root, p) {
+  if (root === 'drives') return p ? p.replaceAll('/', '\\').replace(/^(\w:)$/, '$1\\') : 'This PC'
+  const base = listing[root]?.root || ''
+  if (root === 'server') return p ? `${base}/${p}` : base
+  return p ? `${base}\\${p.replaceAll('/', '\\')}` : base
+}
+
+// Only the newest listing per root lands, so a slow drive can't overwrite the folder you moved to.
+const dirSeq = {}
+async function loadDir(root, p, keep) {
+  const seq = (dirSeq[root] = (dirSeq[root] || 0) + 1)
+  let out
+  try { out = await filesApi(root, '', { path: p }) } catch (e) {
+    if (seq !== dirSeq[root]) return
+    if (p) return loadDir(root, parentOf(p), keep)
+    out = { error: e.message }
+  }
+  if (seq !== dirSeq[root]) return
+  listing[root] = out
+  if (!out.error) {
+    fsPath[root] = out.path
+    if (root === 'drives' && !p) drives = out.entries
+  }
+  saveFs()
+  if (env === root) {
+    if (!keep) { search = null; $('#q').value = '' }
+    render()
+    if (!keep) window.scrollTo({ top: 0 })
+  }
+}
+
+let searchTimer = 0
+let searchSeq = 0
+function runSearch() {
+  const q = $('#q').value.trim()
+  clearTimeout(searchTimer)
+  if (!q) { if (search) { search = null; render() } return }
+  const root = env
+  search = { root, q, results: search?.root === root ? search.results : [], loading: true }
+  render()
+  searchTimer = setTimeout(async () => {
+    const seq = ++searchSeq
+    try {
+      const out = await filesApi(root, 'search', { path: fsPath[root], q })
+      if (seq === searchSeq && search) search = { root, q, ...out }
+    } catch (e) {
+      if (seq === searchSeq && search) search = { root, q, results: [], error: e.message }
+    }
+    if (seq === searchSeq) render()
+  }, 250)
+}
+
+/* ---------- overlays: menu, alerts, sheets ---------- */
+
+let menuEl = null
+function closeMenu() { menuEl?.remove(); menuEl = null }
+function showMenu(x, y, title, items) {
+  closeMenu()
+  menuEl = document.createElement('div')
+  menuEl.className = 'menu'
+  menuEl.setAttribute('role', 'menu')
+  menuEl.innerHTML = (title ? `<div class="m-title">${esc(title)}</div>` : '') + items.map((it, i) => it === '-' ? '<hr>' : `<button role="menuitem" data-i="${i}" class="${it.danger ? 'danger' : ''}"><span>${esc(it.label)}</span>${it.icon || ''}</button>`).join('')
+  document.body.append(menuEl)
+  const r = menuEl.getBoundingClientRect()
+  menuEl.style.left = `${Math.max(8, Math.min(x, innerWidth - r.width - 8))}px`
+  menuEl.style.top = `${Math.max(8, y + r.height > innerHeight - 8 ? y - r.height : y)}px`
+  menuEl.style.transformOrigin = `${x < innerWidth - r.width ? 'left' : 'right'} top`
+  menuEl.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; closeMenu(); items[b.dataset.i].run() })
+  menuEl.querySelector('button')?.focus({ preventScroll: true })
+}
+
+function overlay(html, cls) {
+  const scrim = document.createElement('div')
+  scrim.className = 'scrim'
+  scrim.innerHTML = `<div class="${cls}" role="dialog" aria-modal="true">${html}</div>`
+  document.body.append(scrim)
+  return scrim
+}
+
+// iOS-style alert. Resolves to the text (prompt), true (confirm) or null when cancelled.
+function alertBox({ title, message = '', value, ok = 'OK', danger = false, cancel = 'Cancel' }) {
+  return new Promise(resolve => {
+    const scrim = overlay(`<div class="alert-body"><h3>${esc(title)}</h3>${message ? `<p>${esc(message)}</p>` : ''}${value !== undefined ? `<input value="${esc(value)}" spellcheck="false">` : ''}</div>
+      <div class="alert-btns">${cancel ? `<button data-a="no">${esc(cancel)}</button>` : ''}<button data-a="yes" class="${danger ? 'danger' : 'primary'}">${esc(ok)}</button></div>`, 'alert')
+    const input = scrim.querySelector('input')
+    const done = v => { scrim.remove(); document.removeEventListener('keydown', key, true); resolve(v) }
+    const yes = () => (input ? input.value.trim() && done(input.value.trim()) : done(true))
+    const key = e => { if (e.key === 'Escape') { e.stopPropagation(); done(null) } else if (e.key === 'Enter') { e.preventDefault(); yes() } }
+    document.addEventListener('keydown', key, true)
+    scrim.addEventListener('click', e => { const a = e.target.closest('[data-a]')?.dataset.a; if (a === 'yes') yes(); else if (a === 'no') done(null) })
+    if (input) {
+      input.focus()
+      const dot = input.value.lastIndexOf('.')
+      input.setSelectionRange(0, dot > 0 ? dot : input.value.length)
+    } else scrim.querySelector('[data-a=yes]').focus()
+  })
+}
+const showError = e => alertBox({ title: 'That didn’t work', message: e.message || String(e), cancel: '' })
+
+// Folder picker for "Move to…": browse the same root, then Move puts the items here.
+function pickFolder(root, names, start, moving) {
+  return new Promise(resolve => {
+    const scrim = overlay(`<div class="sheet-bar"><button class="bar-btn" data-a="cancel">Cancel</button><h3></h3><button class="bar-btn" data-a="move">Move</button></div><div class="sheet-body"></div>`, 'sheet')
+    scrim.querySelector('h3').textContent = names.length > 1 ? `Move ${names.length} items` : `Move “${names[0]}”`
+    const body = scrim.querySelector('.sheet-body')
+    let cur = start
+    const done = v => { scrim.remove(); document.removeEventListener('keydown', key, true); resolve(v) }
+    const key = e => { if (e.key === 'Escape') { e.stopPropagation(); done(null) } }
+    document.addEventListener('keydown', key, true)
+    async function show(p) {
+      cur = p
+      body.innerHTML = `<div class="empty">Loading…</div>`
+      try {
+        const l = await filesApi(root, '', { path: p })
+        const dirs = l.entries.filter(e => e.dir && !moving.includes(join(l.path, e.name)))
+        const up = p ? `<div class="row"><a class="row-line tap" href="#" data-go="${esc(parentOf(p))}"><span class="fileicon" style="color:var(--blue)">${ICON.folder}</span><span class="txt"><div class="t1" style="color:var(--blue)">‹ ${esc(baseName(parentOf(p)) || ROOT_TITLE[root])}</div></span></a></div>` : ''
+        body.innerHTML = `<div class="where">Moving into <b>${esc(baseName(p) || ROOT_TITLE[root])}</b></div>
+          <div class="list plain">${up}${dirs.map(e => `<div class="row"><a class="row-line tap" href="#" data-go="${esc(join(l.path, e.name))}"><span class="fileicon">${ICON.folder}</span><span class="txt"><div class="t1">${esc(e.name)}</div></span>${ICON.chev}</a></div>`).join('') || (up ? '' : '<div class="empty">No folders here.</div>')}</div>
+          <button class="link-btn" data-a="new" style="margin:14px 16px 0">New Folder…</button>`
+      } catch (e) { body.innerHTML = `<div class="notice err">${esc(e.message)}</div>` }
+    }
+    scrim.addEventListener('click', async e => {
+      const go = e.target.closest('[data-go]')
+      if (go) { e.preventDefault(); return show(go.dataset.go) }
+      const a = e.target.closest('[data-a]')?.dataset.a
+      if (a === 'cancel' || e.target === scrim) done(null)
+      if (a === 'move') done(cur)
+      if (a === 'new') {
+        const name = await alertBox({ title: 'New Folder', message: 'Enter a name for this folder.', value: 'untitled folder', ok: 'Create' })
+        if (name) try { const r = await filesPost(root, 'mkdir', { path: cur, name }); show(r.path) } catch (err) { showError(err) }
+      }
+    })
+    show(start)
+  })
+}
+
+// Plain-text editor for files up to 1 MB. Save refuses if the file changed underneath.
+async function editFile(root, p) {
+  let doc
+  try { doc = await filesApi(root, 'text', { path: p }) } catch (e) {
+    if (await alertBox({ title: `Can’t edit “${baseName(p)}”`, message: e.message, ok: 'Open Instead' })) window.open(rawUrl(root, p), '_blank', 'noopener')
+    return
+  }
+  const scrim = overlay(`<div class="sheet-bar"><button class="bar-btn" data-a="close">Done</button><h3></h3><button class="bar-btn" data-a="save" disabled>Save</button></div>
+    <textarea spellcheck="false" autocapitalize="off" autocomplete="off"></textarea><div class="status-line"></div>`, 'sheet editor')
+  const sheet = scrim.firstElementChild
+  sheet.style.display = 'flex'
+  sheet.style.flexDirection = 'column'
+  scrim.querySelector('h3').textContent = baseName(p)
+  const ta = scrim.querySelector('textarea')
+  const saveBtn = scrim.querySelector('[data-a=save]')
+  const line = scrim.querySelector('.status-line')
+  ta.value = doc.text
+  let saved = doc.text
+  const where = fullPath(root, p)
+  const setLine = msg => { line.textContent = msg || `${where} · ${size(new Blob([ta.value]).size)}${ta.value !== saved ? ' · edited' : ''}` }
+  const dirty = () => ta.value !== saved
+  setLine()
+  ta.focus()
+  ta.addEventListener('input', () => { saveBtn.disabled = !dirty(); setLine() })
+  ta.addEventListener('keydown', e => {
+    if (e.key === 'Tab') { e.preventDefault(); ta.setRangeText('  ', ta.selectionStart, ta.selectionEnd, 'end'); ta.dispatchEvent(new Event('input')) }
+  })
+  async function save() {
+    if (!dirty()) return
+    try {
+      const r = await filesPost(root, 'write', { path: p, text: ta.value, mtime: doc.mtime })
+      doc.mtime = r.mtime
+      saved = ta.value
+      saveBtn.disabled = true
+      setLine()
+      hud('Saved')
+      if (listing[root] && parentOf(p) === fsPath[root]) loadDir(root, fsPath[root], true)
+    } catch (e) { showError(e) }
+  }
+  async function close() {
+    if (dirty() && !(await alertBox({ title: 'Discard your changes?', message: `Your edits to “${baseName(p)}” haven’t been saved.`, ok: 'Discard', danger: true }))) return
+    scrim.remove()
+    document.removeEventListener('keydown', key, true)
+  }
+  const key = e => {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') { e.preventDefault(); save() }
+    else if (e.key === 'Escape' && !document.querySelector('.alert')) { e.stopPropagation(); close() }
+  }
+  document.addEventListener('keydown', key, true)
+  scrim.addEventListener('click', e => { const a = e.target.closest('[data-a]')?.dataset.a; if (a === 'save') save(); if (a === 'close') close() })
+}
+
+/* ---------- file actions ---------- */
+
+const reloadDir = root => loadDir(root, fsPath[root], true).then(() => search?.root === root && runSearch())
+
+async function newFolder(root, parent) {
+  const name = await alertBox({ title: 'New Folder', message: 'Enter a name for this folder.', value: 'untitled folder', ok: 'Create' })
+  if (!name) return
+  try { await filesPost(root, 'mkdir', { path: parent, name }); hud('Folder created'); reloadDir(root) } catch (e) { showError(e) }
+}
+
+async function renameItem(root, p) {
+  const name = await alertBox({ title: 'Rename', message: `Enter a new name for “${baseName(p)}”.`, value: baseName(p), ok: 'Rename' })
+  if (!name || name === baseName(p)) return
+  try { await filesPost(root, 'rename', { path: p, name }); hud('Renamed'); reloadDir(root) } catch (e) { showError(e) }
+}
+
+async function moveItems(root, paths, to) {
+  if (to == null) {
+    to = await pickFolder(root, paths.map(baseName), parentOf(paths[0]), paths)
+    if (to == null) return
+  }
+  try {
+    const r = await filesPost(root, 'move', { paths, to })
+    hud(r.moved.length ? `Moved to ${baseName(to) || ROOT_TITLE[root]}` : 'Already there')
+    reloadDir(root)
+  } catch (e) { showError(e) }
+}
+
+async function deleteItems(root, paths, isDir) {
+  const what = paths.length > 1 ? `${paths.length} items` : `“${baseName(paths[0])}”`
+  const message = root === 'server'
+    ? 'It moves to /root/.hub-trash on the server, so you can move it back.'
+    : `It goes to the Recycle Bin on the laptop${/^iCloud\//.test(paths[0] || '') ? ', and iCloud keeps it in Recently Deleted for 30 days' : ''}.`
+  if (!(await alertBox({ title: `Delete ${what}${isDir ? ' and everything in it' : ''}?`, message, ok: 'Delete', danger: true }))) return
+  try { const r = await filesPost(root, 'delete', { paths }); hud(`Moved to ${root === 'server' ? 'Server Trash' : 'Recycle Bin'}`); reloadDir(root) } catch (e) { showError(e) }
+}
+
+function fileMenu(row, x, y) {
+  const { root, path: p, name } = row.dataset
+  const dir = !!row.dataset.isdir
+  const inSearch = !!(search && search.root === root)
+  const items = [
+    { label: 'Open', icon: MI.open, run: () => dir ? loadDir(root, p) : isText(name) ? editFile(root, p) : window.open(rawUrl(root, p), '_blank', 'noopener') },
+  ]
+  if (!dir) items.push({ label: isText(name) ? 'Open in New Tab' : 'Edit as Text', icon: isText(name) ? MI.open : MI.edit, run: () => isText(name) ? window.open(rawUrl(root, p), '_blank', 'noopener') : editFile(root, p) })
+  if (!dir) items.push({ label: 'Download', icon: MI.download, run: () => { const a = document.createElement('a'); a.href = rawUrl(root, p, true); a.download = name; a.click() } })
+  if (inSearch) items.push({ label: 'Show in Enclosing Folder', icon: MI.reveal, run: () => loadDir(root, parentOf(p)) })
+  items.push('-',
+    { label: 'Rename…', icon: MI.rename, run: () => renameItem(root, p) },
+    { label: 'Move to…', icon: MI.move, run: () => moveItems(root, [p]) })
+  if (dir) items.push({ label: 'New Folder Inside…', icon: MI.folder, run: () => newFolder(root, p) })
+  items.push({ label: 'Copy Path', icon: MI.copy, run: () => copy(fullPath(root, p), 'Path copied') },
+    '-',
+    { label: TRASH_WORDS[root], icon: MI.trash, danger: true, run: () => deleteItems(root, [p], dir) })
+  showMenu(x, y, name, items)
+}
+
+function folderMenu(x, y) {
+  const root = env
+  showMenu(x, y, baseName(fsPath[root]) || ROOT_TITLE[root], [
+    { label: 'New Folder…', icon: MI.folder, run: () => newFolder(root, fsPath[root]) },
+    { label: 'Refresh', icon: MI.refresh, run: () => reloadDir(root) },
+    { label: 'Copy Path', icon: MI.copy, run: () => copy(fullPath(root, fsPath[root]), 'Path copied') },
+  ])
+}
+
+function serviceMenu(row, x, y) {
+  const { s, where } = services[row.dataset.key] || {}
+  if (!s) return
+  const items = []
+  if (isWebRow(s, where)) {
+    const u = urlsFor(s, where)
+    items.push({ label: 'Open', icon: MI.open, run: () => window.open(u.go, '_blank', 'noopener') })
+    if (u.local) items.push({ label: 'Copy Laptop Link', icon: MI.copy, run: () => copy(u.local) })
+    if (u.tailnet) items.push({ label: 'Copy Tailnet Link', icon: MI.copy, run: () => copy(u.tailnet) })
+    items.push('-')
+  }
+  items.push({ label: expanded.has(row.dataset.key) ? 'Hide Details' : 'Show Details', icon: MI.info, run: () => row.querySelector('[data-expand]').click() })
+  items.push({ label: 'Copy Port', icon: MI.copy, run: () => copy(String(s.port)) })
+  const folder = where === 'server' ? s.cwd : ''
+  if (folder?.startsWith('/root/')) items.push({ label: 'Show Folder in Files', icon: MI.reveal, run: () => { view.server = 'files'; saveFs(); loadDir('server', folder.slice(6)) } })
+  const t = where === 'server' && tunnelFor(s.port)
+  if (t && !t.auto) items.push('-', { label: 'Disconnect', icon: MI.close, danger: true, run: () => disconnect(s.port) })
+  showMenu(x, y, nameOf(s, where), items)
+}
+
+async function disconnect(port) {
+  await fetch(`/api/tunnel?port=${port}`, { method: 'DELETE', headers: { 'x-hub': '1' } })
+  hud('Disconnected')
+  load()
+}
+
+function contextFor(target, x, y) {
+  if (target.closest('input, textarea, .menu, .scrim')) return false
+  if (window.HUB?.contextMenu(target, x, y)) return true
+  const row = target.closest('[data-menu]')
+  if (row?.dataset.menu === 'file') return fileMenu(row, x, y), true
+  if (row?.dataset.menu === 'service') return serviceMenu(row, x, y), true
+  if (row && TABS[env]?.menu?.(row, x, y)) return true
+  if (TABS[env]?.contextMenu?.(target, x, y)) return true
+  if (isFiles() && target.closest('main, .page') && listing[env]?.entries && !(env === 'drives' && !fsPath.drives)) return folderMenu(x, y), true
+  return false
+}
+
+/* ---------- chrome + render ---------- */
+
+function folderTitle() {
+  const name = baseName(fsPath[env])
+  if (env === 'drives' && /^\w:$/.test(name)) return drives?.find(d => d.name === name)?.label || name
+  return name || ROOT_TITLE[env]
+}
+
+function chrome() {
+  window.HUB?.syncTabs(env)
+  const shown = [...document.querySelectorAll('#seg button')].filter(b => !b.hidden)
+  $('#seg').style.setProperty('--n', shown.length)
+  $('#seg').style.setProperty('--i', Math.max(0, shown.findIndex(b => b.dataset.env === env)))
+  document.querySelectorAll('#seg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.env === env)))
+  const sub = $('#subseg')
+  sub.hidden = !(env in view)
+  sub.style.setProperty('--i', view[env] === 'files' ? 1 : 0)
+  sub.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.view === view[env])))
+  const files = isFiles()
+  const title = TABS[env] ? TABS[env].title : files ? folderTitle() : HUB_NAME
+  $('#title').textContent = title
+  $('#nav-title').textContent = title
+  document.title = title === HUB_NAME ? title : `${title} – ${HUB_NAME}`
+  const back = $('#back')
+  back.hidden = !(files && fsPath[env])
+  $('#back-label').textContent = files && fsPath[env] ? baseName(parentOf(fsPath[env])) || ROOT_TITLE[env] : ''
+  $('#newfolder').hidden = !files || (env === 'drives' && !fsPath.drives)
+  $('#q').placeholder = TABS[env] ? TABS[env].search || `Search ${title}` : files ? `Search ${title}` : 'Search services'
+  if (data) {
+    const nLaptop = $('#n-laptop'), nServer = $('#n-server')
+    if (nLaptop) nLaptop.textContent = data.laptop.services.filter(s => s.kind === 'web').length || ''
+    if (nServer) nServer.textContent = data.server.services.length
+    $('#ago').textContent = TABS[env] ? TABS[env].ago?.() || '' : env in view ? ago(data[env]?.at) : ''
+  }
+}
+
+function render() {
+  chrome()
+  if (dragging) return
+  if (TABS[env]) {
+    const t = TABS[env]
+    // A tab with persistent: true is rendered once when it opens; after that the poll only calls refresh().
+    if (t.persistent && kept === env && $('#main').firstChild) {
+      try { t.refresh?.() } catch (e) { console.error(e) }
+      return filterServices()
+    }
+    kept = null
+    try { $('#main').innerHTML = t.render(); if (t.persistent) kept = env } catch (e) { console.error(e); $('#main').innerHTML = `<div class="empty">${esc(t.title || env)} couldn’t load.</div>` }
+    return filterServices()
+  }
+  kept = null
+  if (isFiles()) {
+    if (!FILES_ONLY.has(env) && !data) return
+    $('#main').innerHTML = renderFiles()
+    return
+  }
+  if (!data) return
+  let html = ''
+  const side = data[env]
+  if (side?.error) html += `<div class="notice err">${env === 'server' ? 'Can’t reach the server' : 'Can’t read laptop ports'}: ${esc(side.error)}</div>`
+  for (const k in services) delete services[k]
+  html += env === 'server' ? renderServerServices() : renderLaptopServices()
+  $('#main').innerHTML = html
+  filterServices()
+}
+
+function filterServices() {
+  const q = $('#q').value.trim().toLowerCase()
+  document.querySelectorAll('[data-hay]').forEach(c => { c.style.display = !q || c.dataset.hay.includes(q) ? '' : 'none' })
+}
+
+let loading = null
+async function load(force) {
+  if (loading && !force) return loading
+  const btn = $('#refresh'); if (force) btn.classList.add('spin')
+  const job = (async () => {
+    try {
+      data = await api(force ? '/api/refresh' : '/api/state', force ? {} : undefined, { read: true })
+      if (force && isFiles()) await reloadDir(env)
+      if (force && env === 'drives' && addonOn('icloud')) loadStorage()
+      if (force && TABS[env]) await loadTab(true)
+      render()
+    } catch {}
+  })()
+  if (!force) loading = job.finally(() => { loading = null })
+  await job
+  btn.classList.remove('spin')
+}
+
+async function loadStorage() {
+  try { storage = await api('/api/icloud/storage') } catch (e) { storage = { error: e.message } }
+  if (env === 'drives') render()
+}
+
+function enterFiles() {
+  if (!listing[env]) loadDir(env, fsPath[env])
+  if (env === 'drives' && !storage && addonOn('icloud')) loadStorage()
+  if (env === 'drives' && !drives) filesApi('drives', '', { path: '' }).then(l => { drives = l.entries; if (env === 'drives') render() }, () => {})
+}
+
+function setEnv(next) {
+  if (next === env) return
+  env = next
+  store.set('hub-env', env)
+  search = null
+  $('#q').value = ''
+  render()
+  document.querySelector(`#seg button[data-env="${env}"]`)?.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' })
+  if (isFiles()) enterFiles()
+  else loadTab()
+}
+
+function setView(next) {
+  if (!(env in view) || view[env] === next) return
+  view[env] = next
+  saveFs()
+  search = null
+  $('#q').value = ''
+  render()
+  if (isFiles()) enterFiles()
+}
+
+const goUp = () => loadDir(env, parentOf(fsPath[env]))
+
+/* ---------- events ---------- */
+
+document.addEventListener('pointerdown', e => { if (menuEl && !e.target.closest('.menu')) closeMenu() })
+
+document.addEventListener('click', async e => {
+  if (e.target.closest('.scrim, .menu')) return
+  if (suppressClick) { e.preventDefault(); suppressClick = false; return }
+  const nav = e.target.closest('[data-nav]')
+  if (nav) { e.preventDefault(); return loadDir(env, nav.dataset.nav) }
+  const edit = e.target.closest('[data-edit]')
+  if (edit) { e.preventDefault(); return editFile(env, edit.dataset.edit) }
+  const b = e.target.closest('button'); if (!b) return
+  if (b.dataset.env) return setEnv(b.dataset.env)
+  if (b.dataset.view) return setView(b.dataset.view)
+  if (b.id === 'refresh') return load(true)
+  if (b.id === 'back') return goUp()
+  if (b.id === 'newfolder') return newFolder(env, fsPath[env])
+  if (b.id === 'clear') { e.preventDefault(); $('#q').value = ''; return isFiles() ? runSearch() : filterServices() }
+  if (b.dataset.copy) return copy(b.dataset.copy)
+  if (b.dataset.expand) {
+    const k = b.dataset.expand
+    expanded.has(k) ? expanded.delete(k) : expanded.add(k)
+    const row = b.closest('.row'); row.classList.toggle('open', expanded.has(k)); b.setAttribute('aria-expanded', String(expanded.has(k)))
+    return
+  }
+  if (b.dataset.toggle) { open[b.dataset.toggle] = !open[b.dataset.toggle]; store.set('hub-open', JSON.stringify(open)); return render() }
+  if (b.dataset.close) return disconnect(b.dataset.close)
+})
+
+document.addEventListener('contextmenu', e => { if (contextFor(e.target, e.clientX, e.clientY)) e.preventDefault() })
+
+// Press and hold opens the same menu on the iPad and iPhone.
+let pressTimer = 0
+let suppressClick = false
+document.addEventListener('touchstart', e => {
+  const t = e.touches[0]
+  if (e.touches.length !== 1 || e.target.closest('.menu, .scrim, input')) return
+  clearTimeout(pressTimer)
+  pressTimer = setTimeout(() => { if (contextFor(e.target, t.clientX, t.clientY)) { suppressClick = true; navigator.vibrate?.(10) } }, 500)
+}, { passive: true })
+for (const ev of ['touchend', 'touchmove', 'touchcancel']) document.addEventListener(ev, () => clearTimeout(pressTimer), { passive: true })
+
+// Drag a file or folder onto a folder row (or the back button) to move it there.
+const DRAG_TYPE = 'application/x-hub-item'
+document.addEventListener('dragstart', e => {
+  const row = e.target.closest?.('[data-menu=file]')
+  if (!row) return
+  e.dataTransfer.setData(DRAG_TYPE, JSON.stringify({ root: row.dataset.root, path: row.dataset.path }))
+  e.dataTransfer.effectAllowed = 'move'
+  dragging = true
+})
+document.addEventListener('dragend', () => { dragging = false; document.querySelectorAll('.drop').forEach(x => x.classList.remove('drop')) })
+const dropTarget = e => e.dataTransfer?.types.includes(DRAG_TYPE) && (e.target.closest?.('[data-menu=file][data-isdir="1"]') || e.target.closest?.('#back:not([hidden])'))
+document.addEventListener('dragover', e => {
+  const t = dropTarget(e)
+  document.querySelectorAll('.drop').forEach(x => x !== t && x.classList.remove('drop'))
+  if (!t) return
+  e.preventDefault()
+  e.dataTransfer.dropEffect = 'move'
+  t.classList.add('drop')
+})
+document.addEventListener('drop', e => {
+  const t = dropTarget(e)
+  if (!t) return
+  e.preventDefault()
+  dragging = false
+  t.classList.remove('drop')
+  const item = JSON.parse(e.dataTransfer.getData(DRAG_TYPE))
+  const to = t.id === 'back' ? parentOf(fsPath[env]) : t.dataset.path
+  if (item.root !== env || item.path === to) return
+  moveItems(env, [item.path], to)
+})
+
+$('#q').addEventListener('input', () => (isFiles() ? runSearch() : filterServices()))
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && menuEl) return closeMenu()
+  if (document.querySelector('.scrim')) return
+  if (e.target === $('#q')) { if (e.key === 'Escape') { e.target.value = ''; isFiles() ? runSearch() : filterServices(); e.target.blur() } return }
+  // Typing in any other field (chat, calendar forms, editors) never switches tabs.
+  if (e.target.closest?.('input, textarea, select, [contenteditable]') || e.metaKey || e.ctrlKey || e.altKey) return
+  if (e.key === '/') { e.preventDefault(); $('#q').focus() }
+  else if (/^[1-9]$/.test(e.key)) { const t = (window.HUB?.visibleTabs() || ENVS)[e.key - 1]; if (t) setEnv(t) }
+  else if (e.key.toLowerCase() === 'f' && env in view) setView(view[env] === 'files' ? 'services' : 'files')
+  else if (e.key === 'Backspace' && isFiles() && fsPath[env]) goUp()
+  else if (e.key.toLowerCase() === 'r') load(true)
+})
+addEventListener('scroll', closeMenu, { passive: true })
+addEventListener('resize', closeMenu)
+// Large title collapses into the bar once it scrolls under it.
+new IntersectionObserver(([en]) => $('#nav').classList.toggle('scrolled', !en.isIntersecting), { rootMargin: '-52px 0px 0px 0px' }).observe($('#title'))
+setInterval(() => load(), 5000)
+setInterval(() => data && env in view && ($('#ago').textContent = ago(data[env]?.at)), 1000)
+render()
+document.querySelector(`#seg button[data-env="${env}"]`)?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+load()
+if (isFiles()) enterFiles()
+else loadTab()
+</script>
+</body>
+</html>
