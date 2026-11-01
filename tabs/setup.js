@@ -7,16 +7,16 @@
   const css = `
   .hs-veil { position: fixed; inset: 0; z-index: 9000; display: grid; place-items: center; padding: 16px; overflow: auto;
     background: rgba(8, 10, 16, .55); -webkit-backdrop-filter: blur(24px) saturate(1.4); backdrop-filter: blur(24px) saturate(1.4); font: 15px/1.4 Inter, system-ui, sans-serif; }
-  .hs-card { width: min(480px, 100%); max-height: calc(100dvh - 32px); overflow: auto; border-radius: 22px; padding: 26px; color: var(--text, #111);
+  .hs-card { width: min(480px, 100%); max-height: calc(100dvh - 32px); overflow: auto; border-radius: 22px; padding: 26px; color: var(--label, #111);
     background: color-mix(in srgb, var(--surface, #fff) 82%, transparent); border: 1px solid rgba(255,255,255,.25); box-shadow: 0 24px 70px rgba(0,0,0,.4); }
   .hs-card h1 { margin: 0 0 4px; font-size: 24px; font-weight: 700; letter-spacing: -.02em; }
-  .hs-card p { margin: 0 0 16px; color: var(--text-2, #6b6b72); }
+  .hs-card p { margin: 0 0 16px; color: var(--label-2, #6b6b72); }
   .hs-card label { display: block; margin: 0 0 12px; font-size: 13px; font-weight: 600; }
   .hs-card input[type=text], .hs-card input[type=password] { display: block; width: 100%; box-sizing: border-box; margin-top: 6px; padding: 10px 12px; font: 15px Inter, system-ui, sans-serif; color: inherit;
     background: var(--surface-2, #f2f2f7); border: 1px solid transparent; border-radius: 10px; outline: none; }
   .hs-card input:focus { border-color: var(--blue, #0a84ff); }
   .hs-choice { display: flex !important; gap: 10px; align-items: flex-start; padding: 12px; margin: 0 0 8px !important; border-radius: 12px; background: var(--surface-2, #f2f2f7); font-weight: 500 !important; font-size: 15px !important; cursor: pointer; }
-  .hs-choice small { display: block; color: var(--text-2, #6b6b72); font-size: 13px; font-weight: 400; }
+  .hs-choice small { display: block; color: var(--label-2, #6b6b72); font-size: 13px; font-weight: 400; }
   .hs-status { padding: 12px; border-radius: 12px; background: var(--surface-2, #f2f2f7); margin: 0 0 12px; }
   .hs-status code { font: 13px ui-monospace, Menlo, Consolas, monospace; }
   .hs-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
@@ -24,7 +24,7 @@
   .hs-btn.go { color: #fff; background: var(--blue, #0a84ff); }
   .hs-btn:disabled { opacity: .5; cursor: default; }
   .hs-err { color: var(--red, #ff3b30); font-size: 14px; margin: 8px 0 0; min-height: 1em; }
-  .hs-steps { font-size: 13px; color: var(--text-2, #6b6b72); margin-bottom: 14px; }`
+  .hs-steps { font-size: 13px; color: var(--label-2, #6b6b72); margin-bottom: 14px; }`
 
   const answers = { name: conf.name, access: 'localhost', claudeConfigDir: '', keys: {} }
   let status = { claude: {}, tailscale: {}, local: true }
@@ -37,7 +37,7 @@
   ]
   const field = (key, label, type, value, ph = '') => `<label>${esc(label)}<input data-f="${key}" type="${type}" value="${esc(value)}" placeholder="${esc(ph)}" autocomplete="off" spellcheck="false"></label>`
   const STEPS = [
-    () => `<h1>Set up your hub</h1><p>A private dashboard and assistant on this computer. This takes a minute, and you can change it all later.</p>${field('name', 'Hub name', 'text', answers.name, 'Quartzi Hub')}`,
+    () => `<h1>Set up your hub</h1><p>A private dashboard and assistant on this computer. This takes a minute, and you can change it all later.</p>${field('name', 'Hub name', 'text', answers.name, 'Local Hub')}`,
     () => `<h1>Who can reach it?</h1><p>You can widen this later.</p>
       <label class="hs-choice"><input type="radio" name="hs-access" value="localhost" ${answers.access === 'localhost' ? 'checked' : ''}><span>Only this computer<small>The safe default. The hub answers on localhost and nowhere else.</small></span></label>
       <label class="hs-choice" ${status.tailscale.installed ? '' : 'style="opacity:.55"'}><input type="radio" name="hs-access" value="tailnet" ${answers.access === 'tailnet' ? 'checked' : ''} ${status.tailscale.installed ? '' : 'disabled'}><span>My tailnet<small>${status.tailscale.installed ? 'Your own devices on Tailscale can open it too, with a passcode. Nothing on the public internet can.' : 'Needs Tailscale, which isn’t installed on this computer.'}</small></span></label>

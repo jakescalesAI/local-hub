@@ -1,4 +1,4 @@
-# Quartzi Hub
+# Local Hub
 
 Your own private dashboard and AI agent, running on your own computer. One page for your files, your
 services and a chat that can look things up, write, and work in a real browser while you watch.
@@ -10,8 +10,8 @@ Nothing leaves your computer unless you connect something, and no account is nee
 Needs [Node.js](https://nodejs.org) 20 or newer. No other dependencies.
 
 ```bash
-git clone <this repo> quartzi-hub
-cd quartzi-hub
+git clone <this repo> local-hub
+cd local-hub
 npm start
 ```
 
@@ -29,15 +29,15 @@ Windows and Linux are tested. Mac is written for but has not been run yet, so pl
 ### Start it at login
 
 - **Windows:** put a shortcut to `start-hidden.vbs` in your Startup folder (Win+R, `shell:startup`).
-- **Linux:** a user service, `~/.config/systemd/user/quartzi-hub.service`, then
-  `systemctl --user enable --now quartzi-hub`:
+- **Linux:** a user service, `~/.config/systemd/user/local-hub.service`, then
+  `systemctl --user enable --now local-hub`:
 
   ```ini
   [Unit]
-  Description=Quartzi Hub
+  Description=Local Hub
 
   [Service]
-  WorkingDirectory=%h/quartzi-hub
+  WorkingDirectory=%h/local-hub
   ExecStart=/usr/bin/env node server.mjs
   Restart=on-failure
 
@@ -45,15 +45,15 @@ Windows and Linux are tested. Mac is written for but has not been run yet, so pl
   WantedBy=default.target
   ```
 
-- **Mac:** a LaunchAgent, `~/Library/LaunchAgents/ai.quartzi.hub.plist`, then
-  `launchctl load ~/Library/LaunchAgents/ai.quartzi.hub.plist`. Use your own paths, and the full path to `node`:
+- **Mac:** a LaunchAgent, `~/Library/LaunchAgents/local.hub.plist`, then
+  `launchctl load ~/Library/LaunchAgents/local.hub.plist`. Use your own paths, and the full path to `node`:
 
   ```xml
   <?xml version="1.0" encoding="UTF-8"?>
   <plist version="1.0"><dict>
-    <key>Label</key><string>ai.quartzi.hub</string>
+    <key>Label</key><string>local.hub</string>
     <key>ProgramArguments</key><array><string>/usr/local/bin/node</string><string>server.mjs</string></array>
-    <key>WorkingDirectory</key><string>/Users/you/quartzi-hub</string>
+    <key>WorkingDirectory</key><string>/Users/you/local-hub</string>
     <key>RunAtLoad</key><true/>
     <key>KeepAlive</key><true/>
   </dict></plist>
@@ -76,8 +76,9 @@ These stay off until you set them up, and a tab that's off fetches nothing:
 ## The agent
 
 The chat is a general agent that knows your hub best. It answers anything, reads your files, searches
-the web, writes files to its own `workspace/` folder, changes the hub's look when you ask, and drives a
-real Chrome you can watch and take over at any time.
+the web, writes files to its own `workspace/` folder, moves, copies, renames and trashes files there,
+refreshes the hub's numbers, keeps your calendar, changes the hub's look when you ask, and drives a real
+Chrome you can watch and take over at any time.
 
 It runs on [Claude Code](https://claude.com/claude-code) by default, using your own login. You can also
 give it an API key or any Anthropic-compatible provider, and choose its name, instructions, models and
@@ -99,7 +100,14 @@ These are in the code and stay as they are:
 - Every request that changes something needs the `x-hub: 1` header.
 - The agent has no shell, because a shell could read a key file whatever the rules say.
 - Cloud and Stripe views only read.
-- Nothing is permanently deleted. Deletes go to the trash.
+- Nothing is permanently deleted. Deletes go to the trash, and when the agent is the one deleting, a card asks you first. Only the card counts, not a typed yes.
+- The agent can only move and delete inside `workspace/` and the folders in `assistant.writeFolders`. It can't overwrite anything, touch a key file or a folder holding one, or put files where they would run as code. Each step is logged in `data/agent-actions.log`.
+- It can't change its own limits: `writeFolders`, approvals, deny lists, keys and `laptop.probe` are yours to set.
+
+Two limits to know about:
+
+- Key-file rules go by name and folder, so a hard link or copy of a key file under an ordinary name can be read. The agent can't make one, but a person or another program can.
+- The agent reads your files and uses the web. Only the model's own judgement stops a page from steering it into sending file text somewhere, not a tool rule. `"web": false` under `assistant.tools` takes the web away.
 
 ## Who can reach it
 
@@ -108,6 +116,7 @@ Only this computer, until you change that.
 - `"access": "tailnet"` in `config/hub.json` adds your Tailscale address, for your own devices. Tailscale is optional.
 - `"listen": ["192.168.1.20"]` adds other addresses.
 - Anything beyond this computer needs a passcode: run `npm run passcode`. Without one, the hub doesn't listen on those addresses.
+- A phone pairs instead of typing the passcode. On this computer, open `/pair/new` for a code that works once, for 5 minutes. Put the hub's https address in `"url"` to get a QR code as well. Pairing opens no new address: a phone still has to reach the hub by one you already turned on. The app in `mobile/` has only run in tests so far.
 
 Don't put the hub on the open internet. It can see your files and act in your browser.
 

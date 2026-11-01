@@ -1,0 +1,32 @@
+{
+  "name": "local-hub-mobile",
+  "version": "0.1.0",
+  "private": true,
+  "description": "iPhone, iPad and Android client for your own Local Hub.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "build:dev": "node build.mjs --dev",
+    "sync": "node build.mjs && cap sync",
+    "test": "node --test test/*.test.mjs hub-changes/test/*.test.mjs",
+    "test:ui": "node test/ui/run.mjs",
+    "mock-hub": "node dev/mock-hub.mjs",
+    "licenses": "node scripts/check-licenses.mjs"
+  },
+  "dependencies": {
+    "@aparajita/capacitor-secure-storage": "8.0.1",
+    "@capacitor/android": "8.6.0",
+    "@capacitor/app": "8.1.2",
+    "@capacitor/core": "8.6.0",
+    "@capacitor/inappbrowser": "4.1.0",
+    "@capacitor/ios": "8.6.0",
+    "@capacitor/network": "8.0.1",
+    "@capacitor/preferences": "8.0.1"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.6.0",
+    "esbuild": "0.28.2",
+    "playwright-core": "1.64.1"
+  }
+}

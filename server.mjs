@@ -1,4 +1,4 @@
-// Quartzi Hub: one page for your computer, your files, your chat and browser, and any services you add.
+// Local Hub: one page for your computer, your files, your chat and browser, and any services you add.
 // Laptop listeners come from Get-NetTCPConnection; server listeners from server-probe.py
 // over ssh. Server dev and session ports are kept tunnelled to this computer (loopback and
 // the Tailscale address), so every URL also works from your tailnet devices.
@@ -7,13 +7,14 @@ import http from 'node:http'
 import os from 'node:os'
 import { spawn, execFile } from 'node:child_process'
 import { readFile, statfs } from 'node:fs/promises'
-import { existsSync } from 'node:fs'
+import { appendFile, existsSync, renameSync, statSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createFiles } from './files.mjs'
 import { HERE, PORT, configPath, hubConfig, tabOn, addonOn } from './config.mjs'
+import { createDeviceAuth } from './device-auth.mjs'
 import { IS_WIN, PYTHON, ROOT_DISK, listeners as listPorts, mutagenPath, tailscalePath } from './platform.mjs'
-import { gate, hasPasscode, passcodeNeeded } from './access.mjs'
+import { gate, hasPasscode, knownHost, passcodeNeeded } from './access.mjs'
 
 const SSH_HOST = hubConfig().server.sshAlias
 const SERVER_EVERY_MS = 20_000
@@ -43,10 +44,20 @@ function readJson(file) {
   return readFile(configPath(file), 'utf8').then(JSON.parse).catch(() => ({}))
 }
 
+// Not everything on a local port speaks HTTP, and a GET can hurt what doesn't: DaVinci Resolve's script server
+// grows by half a gigabyte for each one. These programs are never sent a request. laptop.noProbe in hub.json adds more.
+const NEVER_PROBE = ['fuscript', 'Resolve', 'FusionServer']
+const neverProbe = s => {
+  const name = String(s.process || '').replace(/\.exe$/i, '').toLowerCase()
+  return hubConfig().laptop?.probe === false || [...NEVER_PROBE, ...(hubConfig().laptop?.noProbe || [])].some(n => n.toLowerCase() === name)
+}
+// Every other listener gets one look, then keeps that answer until its process or port changes.
+const looks = new Map() // "pid:port" -> promise of the probe result
+
 async function probe(port, paths = ['/']) {
   for (const p of paths) {
     try {
-      const res = await fetch(`http://127.0.0.1:${port}${p}`, { signal: AbortSignal.timeout(1500), redirect: 'manual' })
+      const res = await fetch(`http://127.0.0.1:${port}${p}`, { signal: AbortSignal.timeout(4000), redirect: 'manual' })
       const body = res.headers.get('content-type')?.includes('html') ? await res.text() : ''
       const title = /<title[^>]*>([^<]*)<\/title>/i.exec(body)?.[1]?.trim() ?? ''
       if (res.status !== 404 || p === paths.at(-1)) return { code: res.status, path: p, title }
@@ -90,13 +101,18 @@ async function refreshLaptop() {
     s => s.port >= 1024 && s.port < 30000 && s.port !== PORT,
   )
   const tunneled = new Set([...tunnels.values()].map(t => t.local))
+  const live = new Set(rows.map(s => `${s.pid}:${s.port}`))
+  for (const key of looks.keys()) if (!live.has(key)) looks.delete(key)
   const probed = await Promise.all(
     rows
       .filter(s => !tunneled.has(s.port))
       .map(async s => {
         const cmd = s.cmd || ''
+        if (neverProbe(s)) return { ...s, cmd: cmd.slice(0, 300), code: 0, path: '/', title: '' }
         const paths = /apps[\\/]workspace|vite/i.test(cmd) ? ['/workspace/_app/', '/'] : ['/']
-        return { ...s, cmd: cmd.slice(0, 300), ...(await probe(s.port, paths)) }
+        const key = `${s.pid}:${s.port}`
+        if (!looks.has(key)) looks.set(key, probe(s.port, paths))
+        return { ...s, cmd: cmd.slice(0, 300), ...(await looks.get(key)) }
       }),
   )
   // Listeners that answer HTTP are web services; the rest are listed as other services.
@@ -263,6 +279,7 @@ function send(res, code, body, type = 'application/json') {
 
 async function readBody(req) {
   let raw = ''
+  req.setEncoding('utf8') // so a character split across two chunks stays whole
   for await (const chunk of req) raw += chunk
   return raw ? JSON.parse(raw) : {}
 }
@@ -287,12 +304,13 @@ async function icloudStorage() {
 }
 
 const filesRoute = createFiles({ run, sshHost: SSH_HOST, here: HERE })
+const deviceAuth = createDeviceAuth({ here: HERE, hubName: () => hubConfig().name, hubUrl: () => hubConfig().url })
 
 // Tab back-ends (ai.mjs, cloud.mjs): each exports create({ run, sshHost, here }) returning
 // route(url, req, res, { send, readBody }) -> true when handled. A missing or broken one only
 // disables its tab. Keys live in config/secrets.json, which only the hub reads; never send them to
 // the page. A service add-on loads when it is turned on; until then its routes don't exist.
-const BACKENDS = ['ai', 'cloud', 'calendar', 'stripe', 'hub-settings', 'hub-setup', 'hub-sites', 'home', 'chat', 'browser', 'launcher']
+const BACKENDS = ['ai', 'cloud', 'calendar', 'stripe', 'hub-settings', 'hub-setup', 'hub-sites', 'home', 'chat', 'browser', 'system', 'agent-actions', 'launcher']
 const SERVICES = new Set(['ai', 'cloud', 'calendar', 'stripe'])
 const loaded = new Map()
 async function tabRoutes() {
@@ -314,13 +332,36 @@ async function tabRoutes() {
   return routes
 }
 
+// So "did anything fetch that?" has an answer. Never a query string, because file paths travel in those.
+// The page's own polling would bury everything else, so a successful one isn't written.
+const ACCESS_FILE = path.join(HERE, 'data', 'access.log')
+const ACCESS_LIMIT = 20 * 2 ** 20
+let accessSize = -1
+function accessLine(req, res, url) {
+  if (hubConfig().accessLog === false) return
+  if (res.statusCode < 400 && req.method === 'GET' && ['/api/ping', '/api/state'].includes(url.pathname)) return
+  const forwarded = String(req.headers['x-forwarded-for'] || '').replace(/[^0-9a-fA-F.:, ]/g, '').slice(0, 80)
+  const line = [new Date().toISOString(), req.method, url.pathname.replace(/\s/g, '').slice(0, 200), res.writableFinished ? res.statusCode : `${res.statusCode}-cut`, req.socket.remoteAddress || '', forwarded].join(' ').trimEnd() + '\n'
+  try {
+    if (accessSize < 0) accessSize = existsSync(ACCESS_FILE) ? statSync(ACCESS_FILE).size : 0
+    if (accessSize > ACCESS_LIMIT) { renameSync(ACCESS_FILE, `${ACCESS_FILE}.1`); accessSize = 0 }
+    accessSize += line.length
+    appendFile(ACCESS_FILE, line, () => {})
+  } catch {}
+}
+
 async function handle(req, res) {
-  const url = new URL(req.url, `http://${req.headers.host}`)
-  if (await gate(req, res, url, send)) return
+  // A fixed base: the Host header is the sender's text, and a bad one must not stop the hub. knownHost judges it next.
+  let url
+  try { url = new URL(req.url, 'http://localhost') } catch { return send(res, 400, 'Bad request', 'text/plain; charset=utf-8') }
+  res.on('close', () => accessLine(req, res, url))
+  if (!knownHost(req)) return send(res, 403, 'This hub doesn’t answer to that name. If it’s yours, add it to "hosts" in config/hub.json.', 'text/plain; charset=utf-8')
+  if (!deviceAuth.admit(url, req, res) && await gate(req, res, url, send)) return
   // Changes need the page's x-hub header. A request from another site can't add it without a
   // CORS preflight, which the hub never approves, so other tabs can't move or delete files.
   if (req.method !== 'GET' && req.method !== 'HEAD' && req.headers['x-hub'] !== '1') return send(res, 403, { error: 'missing x-hub header' })
   try {
+    if (await deviceAuth.route(url, req, res, { send })) return
     if (url.pathname === '/' || url.pathname === '/index.html')
       return send(res, 200, await readFile(path.join(HERE, 'index.html')), 'text/html; charset=utf-8')
     if (url.pathname === '/api/ping') return send(res, 200, { ok: true })
@@ -362,7 +403,7 @@ async function handle(req, res) {
     send(res, 404, { error: 'not found' })
   } catch (e) {
     if (res.headersSent) return res.destroy()
-    send(res, [400, 403, 404, 409, 500, 502].includes(e.code) ? e.code : e.code === 'ENOENT' ? 404 : ['EPERM', 'EBUSY', 'EACCES', 'ENOTEMPTY'].includes(e.code) ? 409 : 500, { error: e.message })
+    send(res, [400, 403, 404, 409, 500, 502].includes(e.code) ? e.code : e.code === 'ENOENT' ? 404 : ['ENOTDIR', 'EISDIR'].includes(e.code) ? 400 : ['EPERM', 'EBUSY', 'EACCES', 'ENOTEMPTY'].includes(e.code) ? 409 : 500, { error: e.message })
   }
 }
 
@@ -377,7 +418,11 @@ async function bindListeners() {
   const more = localOnly || (passcodeNeeded() && !hasPasscode()) ? [] : hubConfig().listen
   for (const host of ['127.0.0.1', tailnet, ...more].filter(Boolean)) {
     if (listeners.has(host)) continue
-    const server = http.createServer(handle)
+    const server = http.createServer((req, res) => handle(req, res).catch(err => {
+      console.error(err)
+      if (!res.headersSent) res.writeHead(500)
+      res.end()
+    }))
     listeners.set(host, server)
     await new Promise(resolve => {
       server.once('error', e => (console.error(`listen ${host}:${PORT}`, e.message), listeners.delete(host), resolve()))

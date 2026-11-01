@@ -17,21 +17,26 @@ export const PORT = Number(process.env.HUB_PORT || savedPort() || 3100)
 const SECRETS_FILE = configPath('secrets.json')
 
 const NEUTRAL = {
-  name: 'Quartzi Hub',
+  name: 'Local Hub',
   owner: '',
   access: 'localhost', // or "tailnet"
   passcodeRequired: true, // other devices need the passcode (npm run passcode); this computer never does
   listen: [], // more addresses to answer on, such as a LAN address. Ignored until a passcode is set.
+  hosts: [], // more names it answers to, such as a local DNS name. Its own name and addresses always work.
   url: '', // the address you reach the hub at from other devices, if any
   addons: {},
   server: { sshAlias: '', label: 'Server', readOnly: ['/root/.ssh'], production: { units: [], paths: [] }, notes: {} },
+  // The services page sends each new local port one web request, to tell web services from the rest.
+  // noProbe lists programs never to send it to. probe: false sends none, and every port shows under other services.
+  laptop: { probe: true, noProbe: [] },
   keyDirs: [],
   keyPairs: [],
   browser: { profiles: { default: { label: 'Default', email: '' } }, current: 'default' },
   worldClock: [['New York', 'America/New_York'], ['London', 'Europe/London'], ['UTC', 'UTC']],
   siteSuggestions: [],
-  theme: 'quartzi',
+  theme: 'default',
   claudeConfigDir: '',
+  accessLog: true, // one line per request in data/access.log: time, method, path, status, address. Never a query string.
   // The assistant: every choice here is yours (see HUB-GUIDE.md, "Make it yours").
   assistant: {
     name: 'Hub Assistant',
@@ -43,7 +48,7 @@ const NEUTRAL = {
     env: {}, // extra environment for the CLI, for example {"CLAUDE_CODE_USE_BEDROCK": "1"}. No keys here: they go in secrets.json.
     models: [], // ["model-id"] or [["model-id", "Label"]]; empty offers the Claude models
     defaultModel: '',
-    tools: { web: true, files: true, browser: true, settings: true, sites: true },
+    tools: { web: true, files: true, browser: true, settings: true, sites: true, actions: true },
     readFolders: ['~'], // folders it may read, besides the hub's. Key files stay refused in all of them.
     writeFolders: [], // more folders it may write to, besides workspace/. Never inside the hub folder.
     mcpServers: {}, // your own tools: {"name": {"command": "...", "args": [], "env": {}}}
@@ -81,6 +86,31 @@ const merge = saved => ({
 export const hubConfig = cached(() => merge(readJson(HUB_FILE)))
 export const secrets = cached(() => readJson(SECRETS_FILE) || {})
 export const needsSetup = () => !fs.existsSync(HUB_FILE)
+
+// Takes known key values and key-shaped text out of anything headed for the page, the agent or a log.
+const SECRET_KEY = /key|token|secret|password|passwd/i
+const SECRET_SHAPES = /\b(?:sk-ant-[\w-]{16,}|sk-or-[\w-]{16,}|sk-[A-Za-z0-9_-]{24,}|[sr]k_(?:live|test)_[A-Za-z0-9]{12,}|AKIA[0-9A-Z]{16}|eyJ[\w-]{16,}\.[\w-]{8,}\.[\w-]{8,})/g
+let secretCache = { at: 0, values: [] }
+export function secretValues() {
+  if (Date.now() - secretCache.at < 20e3) return secretCache.values
+  const out = new Set()
+  try {
+    const walk = (v, key, cal) => {
+      if (typeof v === 'string') {
+        if (v.length >= 8 && (SECRET_KEY.test(key) || (cal && /url|ics/i.test(key)))) out.add(v)
+      } else if (Array.isArray(v)) v.forEach(x => walk(x, key, cal))
+      else if (v && typeof v === 'object') for (const [k, x] of Object.entries(v)) walk(x, k, cal || key === 'calendars')
+    }
+    walk(JSON.parse(fs.readFileSync(SECRETS_FILE, 'utf8')), '', false)
+  } catch {}
+  secretCache = { at: Date.now(), values: [...out].sort((a, b) => b.length - a.length) }
+  return secretCache.values
+}
+export const scrubSecrets = s => {
+  let t = String(s ?? '')
+  for (const v of secretValues()) if (t.includes(v)) t = t.split(v).join('[hidden]')
+  return t.replace(SECRET_SHAPES, '[hidden]')
+}
 
 function writeJson(file, value) {
   fs.mkdirSync(CONFIG_DIR, { recursive: true })
@@ -124,16 +154,16 @@ export const TAB_ORDER = ['home', 'laptop', 'server', 'drives', 'ai', 'cloud', '
 export const tabOn = id => id === 'home' || id === 'drives' || !ADDONS[id]?.tab || addonOn(id)
 export const enabledTabs = () => TAB_ORDER.filter(tabOn)
 
-// Themes: themes/quartzi.json is the default look (glass style, wallpapers, house icon), all in one place.
+// Themes: themes/default.json is the default look (glass style, wallpapers, house icon), all in one place.
 // Others are shared as files and imported into data/themes. Applying one is a settings patch (Style panel).
 const THEME_DIRS = [path.join(HERE, 'themes'), path.join(HERE, 'data', 'themes')]
-export const baseTheme = () => readJson(path.join(THEME_DIRS[0], 'quartzi.json')) || { name: 'Quartzi', style: {}, wallpaper: 'none', wallpapers: [] }
+export const baseTheme = () => readJson(path.join(THEME_DIRS[0], 'default.json')) || { name: 'Default', style: {}, wallpaper: 'none', wallpapers: [] }
 export const themeById = id => {
   if (!/^[a-z0-9-]+$/.test(id || '')) return null
   for (const dir of THEME_DIRS) { const t = readJson(path.join(dir, `${id}.json`)); if (t) return { ...t, id } }
   return null
 }
-export const activeTheme = () => themeById(hubConfig().theme) || { ...baseTheme(), id: 'quartzi' }
+export const activeTheme = () => themeById(hubConfig().theme) || { ...baseTheme(), id: 'default' }
 export function themes() {
   const ids = THEME_DIRS.flatMap(dir => { try { return fs.readdirSync(dir) } catch { return [] } }).map(f => /^([a-z0-9-]+)\.json$/.exec(f)?.[1]).filter(Boolean)
   return [...new Set(ids)].map(themeById).filter(Boolean).map(({ id, name, style, wallpaper }) => ({ id, name, style, wallpaper }))

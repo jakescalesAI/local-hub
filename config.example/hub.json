@@ -1,9 +1,10 @@
 {
-  "name": "Quartzi Hub",
+  "name": "Local Hub",
   "owner": "",
   "access": "localhost",
   "passcodeRequired": true,
   "listen": [],
+  "hosts": [],
   "url": "",
   "addons": {},
   "server": {

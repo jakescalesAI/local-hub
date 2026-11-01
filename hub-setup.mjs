@@ -36,7 +36,7 @@ function claudeStatus() {
 
 // Turns the wizard's answers into hub.json values and secrets.json fields. Throws on anything malformed.
 function readAnswers(body) {
-  const name = text(body.name, 40, 'Hub name') || 'Quartzi Hub'
+  const name = text(body.name, 40, 'Hub name') || 'Local Hub'
   if (!['localhost', 'tailnet'].includes(body.access || 'localhost')) throw bad('Who can reach it must be localhost or tailnet')
   const claudeConfigDir = text(body.claudeConfigDir, 400, 'Claude folder')
   const passcode = typeof body.passcode === 'string' ? body.passcode : ''

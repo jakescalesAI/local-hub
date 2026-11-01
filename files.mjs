@@ -11,6 +11,9 @@ import { HERE, hubConfig, addonOn, tabOn } from './config.mjs'
 import { FILE_MANAGER, ICLOUD, IS_WIN, PC_NAME, POSIX_ROOTS, TRASH_NAME, listDrives, moveToTrash } from './platform.mjs'
 
 const SKIP = new Set(['node_modules', '.git', '.next', '.turbo', '.venv', '__pycache__', '.cache'])
+// Drive roots, the operating system's own folders and each account's home folder never go to the bin.
+const SYSTEM_FOLDER = /^([a-z]:(\/(windows|program files( \(x86\))?|programdata|perflogs|recovery|\$recycle\.bin|system volume information|users(\/[^/]+)?))?|\/(applications|bin|boot|dev|etc|home(\/[^/]+)?|lib|library|proc|root|sbin|sys|system|usr|users(\/[^/]+)?|var|volumes)?)\/?$/i
+
 // Windows profile clutter: hidden system folders and legacy junctions.
 // Drive roots add the system files and folders Windows also hides.
 const HIDDEN = /^(appdata|application data|cookies|local settings|my documents|nethood|printhood|recent|sendto|start menu|templates|ntuser.*|desktop\.ini|thumbs\.db|\$recycle\.bin|\$windows\.~(bt|ws)|system volume information|documents and settings|config\.msi|pagefile\.sys|hiberfil\.sys|swapfile\.sys|dumpstack\.log(\.tmp)?)$/i
@@ -34,18 +37,31 @@ const shown = name => !name.startsWith('.') && !HIDDEN.test(name)
 // Files that hold keys or sign-ins. On every root the hub hides them from lists and search and
 // refuses to open, download, rename, move, delete or write them; the real path is checked too,
 // so a link or junction can't reach one. server-files.py keeps the same list for /root.
-const KEY_NAMES = /^(secrets\.json|\.credentials\.json|\.claude\.json(\.backup.*)?|auth\.json|\.git-credentials|\.npmrc|\.yarnrc(\.yml)?|_?\.?netrc|\.pypirc|\.pgpass|\.env(\.(?!example$|sample$|template$).+)?|\.envrc|\.dev\.vars|(?!.*[._-](example|sample|template)\.env$).+\.env|(.+[._-])?private\.key|.+\.(pem|p12|pfx|ppk|jks|keystore|kdbx)|id_(rsa|dsa|ecdsa|ed25519)(\.pub)?|\.infisical.*|login data( for account)?|cookies|web data|local state|access_tokens\.db|credentials\.db|credentials\.tfrc\.json)$/i
-const KEY_DIRS = new Set(['.ssh', '.aws', '.azure', '.gnupg', '.kube', '.infisical', 'gcloud', '.wrangler', '.vercel'])
+const KEY_NAMES = /^(secrets\.json|\.credentials\.json|\.claude\.json(\.backup.*)?|auth\.json|\.git-credentials|\.npmrc|\.yarnrc(\.yml)?|_?\.?netrc|\.pypirc|\.pgpass|\.env(\.(?!example$|sample$|template$).+)?|\.envrc|\.dev\.vars|(?!.*[._-](example|sample|template)\.env$).+\.env|(.+[._-])?private\.key|.+\.(pem|p12|pfx|ppk|jks|keystore|kdbx)|id_(rsa|dsa|ecdsa|ed25519)(\.pub)?|\.infisical.*|login data( for account)?|cookies|web data|local state|access_tokens\.db|credentials\.db|credentials\.tfrc\.json|credentials(\.toml)?|\.s3cfg|\.boto)$/i
+// appdata, .config and Library/Application Support are where programs keep sign-ins, and no list of names
+// can cover every program, so those folders are refused whole.
+const KEY_DIRS = new Set(['.ssh', '.aws', '.azure', '.gnupg', '.kube', '.infisical', 'gcloud', '.wrangler', '.vercel',
+  'appdata', '.config', '.claude-accounts', 'tailscale', '.password-store', 'keyrings', '.oci', '.terraform.d', '.doppler', '.fly', '.netlify', '.supabase'])
 // <hub folder>/data covers data/browser/<profile> (the hub browser's Chrome profiles, with your cookies);
 // <hub folder>/config holds your keys and settings. hub.json keyDirs and keyPairs add your own.
 const HUB_DIR = path.basename(HERE).toLowerCase()
-const KEY_PAIRS = [[HUB_DIR, 'data'], [HUB_DIR, 'config'], ['local-hub', 'data'], ['local-hub', 'config'], ['.docker', 'config.json'], ['gh', 'hosts.yml']]
+const KEY_PAIRS = [[HUB_DIR, 'data'], [HUB_DIR, 'config'], ['local-hub', 'data'], ['local-hub', 'config'], ['.docker', 'config.json'], ['gh', 'hosts.yml'],
+  ['.git', 'config'], ['.claude', 'projects'], ['.claude', 'history.jsonl'], ['library', 'keychains'], ['library', 'application support'], ['library', 'cookies']]
 export function holdsKeys(p) {
-  const segs = String(p || '').split(/[\\/]+/).filter(Boolean).map(s => s.toLowerCase())
+  // An NTFS stream name (secrets.json::$DATA) opens the same file, so it counts as the name before the colon.
+  const segs = String(p || '').split(/[\\/]+/).filter(Boolean).map(s => s.toLowerCase().replace(/:.*$/, ''))
   if (segs.length && KEY_NAMES.test(segs.at(-1))) return true
   const conf = hubConfig()
   if (segs.some(s => KEY_DIRS.has(s) || conf.keyDirs.includes(s))) return true
   return segs.some((s, i) => [...KEY_PAIRS, ...conf.keyPairs].some(([a, b]) => s === a && segs[i + 1] === b))
+}
+// Places where a file can run as code or change how a tool behaves. Only the assistant is kept out of these.
+export const RUN_DIRS = ['.git', '.claude', '.github', '.gitlab', '.husky', '.vscode', '.idea', '.cursor', '.devcontainer', 'startup', 'start menu', 'launchagents', 'launchdaemons', 'autostart', 'systemd', 'cron.d', 'init.d']
+export const RUN_EXTS = ['.lnk', '.url', '.scf', '.library-ms']
+export const RUN_FILES = ['claude.local.md', 'gemini.md', '.cursorrules', '.windsurfrules', '.clinerules', '.bash_aliases', '.bash_logout', '.inputrc', '.curlrc', '.wgetrc', '.hgrc', 'autoexec.bat', '.gitconfig', '.gitattributes', '.gitmodules', '.bashrc', '.bash_profile', '.bash_login', '.profile', '.zshrc', '.zprofile', '.zshenv', '.zlogin', 'config.fish', '.vimrc', '.tmux.conf', 'profile.ps1', 'microsoft.powershell_profile.ps1', 'microsoft.vscode_powershell_profile.ps1', '.mcp.json', '.pre-commit-config.yaml', 'claude.md', 'agents.md', 'autorun.inf', 'desktop.ini']
+export function runsCode(p) {
+  const segs = String(p || '').split(/[\\/]+/).filter(Boolean).map(s => s.toLowerCase())
+  return RUN_FILES.includes(segs.at(-1)) || RUN_EXTS.some(e => segs.at(-1)?.endsWith(e)) || segs.some(s => RUN_DIRS.includes(s))
 }
 const KEY_REFUSAL = 'This file holds keys, so the hub won’t open it'
 const refuseKeys = p => { if (holdsKeys(p)) throw fail(KEY_REFUSAL, 403) }
@@ -152,6 +168,7 @@ function localProvider(root, { run, label }) {
     async delete({ paths }) {
       const items = await Promise.all((paths || []).map(r => guard(item(r))))
       if (!items.length) throw fail('Nothing to delete')
+      for (const p of items) if (SYSTEM_FOLDER.test(p.replaceAll(path.sep, '/'))) throw fail(`“${path.basename(p) || p}” is a system folder, so it stays put.`)
       for (const p of items) if ((await lstat(p)).isSymbolicLink()) throw fail(`“${path.basename(p)}” is a link; remove it in ${FILE_MANAGER}`)
       const error = await moveToTrash(run, items)
       if (error) throw fail(error, 500)
