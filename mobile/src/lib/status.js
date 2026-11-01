@@ -43,6 +43,14 @@ export const STATES = {
     canOpen: false,
     canRetry: true,
   },
+  unknownName: {
+    tone: 'bad',
+    pill: 'Name refused',
+    title: 'Your Hub refused this address',
+    body: 'It only answers to its own names. Put this address in "url" or "hosts" in config/hub.json on your computer, then try again.',
+    canOpen: false,
+    canRetry: true,
+  },
   unexpected: {
     tone: 'bad',
     pill: 'Problem',
@@ -56,6 +64,7 @@ export const STATES = {
 export function classify({ online = true, status = null } = {}) {
   if (status === 200) return 'ok'
   if (status === 401) return 'removed'
+  if (status === 403) return 'unknownName'
   if (status === 404) return 'outdated'
   if (status === 502 || status === 503 || status === 504) return 'stopped'
   if (status !== null) return 'unexpected'

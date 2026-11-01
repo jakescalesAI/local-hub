@@ -124,6 +124,17 @@ test('client: a long or untidy Hub name is cut to what the screens can hold', as
   for (const name of await nameOf('\u{1F48E}'.repeat(5000))) assert.deepEqual([...name], Array(MAX_HUB_NAME).fill('\u{1F48E}'))
 })
 
+test('client: a Hub refusing the name says what to change, and a wrong code still says wrong code', async () => {
+  const opts = { name: 'n', platform: 'ios' }
+  const refused = createClient({ http: fakeHttp(() => ({ status: 403, data: 'This hub doesn\u2019t answer to that name.' })) })
+  assert.match((await refused.claim('https://h.test', 'X', opts)).error, /"hosts" in config\/hub\.json/)
+  assert.equal((await refused.check('https://h.test', 't')).status, 403)
+  assert.equal(classify({ status: 403 }), 'unknownName')
+  assert.match(STATES.unknownName.body, /"url"/)
+  const wrong = createClient({ http: fakeHttp(() => ({ status: 403, data: '{"error":"That code is not right."}' })) })
+  assert.equal((await wrong.claim('https://h.test', 'X', opts)).error, 'That code is not right.')
+})
+
 test('client: a server error that isn\'t text never reaches the screen as text', async () => {
   const opts = { name: 'n', platform: 'ios' }
   const answer = (status, error) => createClient({ http: fakeHttp(() => ({ status, data: JSON.stringify({ error }) })) })

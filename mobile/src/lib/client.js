@@ -75,6 +75,8 @@ export function createClient({ http }) {
       if (res.status === 200 && body?.token && typeof body.token === 'string' && body.deviceId && typeof body.deviceId === 'string' && hub) {
         return { ok: true, token: body.token, deviceId: body.deviceId, hub }
       }
+      // The Hub answers only to its own names, and says so in plain text before anything else runs.
+      if (res.status === 403 && !body) return { ok: false, error: 'That address answered, but refused the name. If it\'s your Hub, put this address in "url" or "hosts" in config/hub.json on your computer, then try again.' }
       if (res.status === 400 || res.status === 403 || res.status === 409) return { ok: false, error: readError(body, 'That code didn\'t work. Make a new one on your computer.') }
       // A Hub without the pairing routes answers 404, or 401 from its passcode gate.
       if (res.status === 401 || res.status === 404) return { ok: false, error: 'That address answered, but it isn\'t a Hub that knows about phones. It may need updating.' }

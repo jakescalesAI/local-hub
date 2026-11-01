@@ -1,7 +1,7 @@
-// Applies the changes to a temporary copy of a Hub checkout, boots the real server.mjs on a spare
-// port and exercises it from outside, the way `tailscale serve` would reach it. The running Hub and
-// its config are not touched. A small fake claude.exe stands in for the assistant, so no real chat
-// runs. Windows only, like the Hub.
+// Boots the real server.mjs from a temporary copy of a Hub checkout on a spare port and exercises it
+// from outside, the way `tailscale serve` would reach it. The running Hub and its config are not
+// touched. A small fake claude.exe stands in for the assistant, so no real chat runs. Windows only,
+// like the Hub.
 //
 //   node test/real-hub.mjs <path-to-hub-checkout> [git-ref]
 import { spawn, execFileSync } from 'node:child_process'
@@ -12,7 +12,7 @@ import http from 'node:http'
 import net from 'node:net'
 import os from 'node:os'
 import path from 'node:path'
-import { apply } from '../apply.mjs'
+import { createClient } from '../../src/lib/client.js'
 
 const [repo, ref = 'HEAD'] = process.argv.slice(2)
 if (!repo) {
@@ -62,6 +62,16 @@ function call(pathname, { method = 'GET', headers = {}, body, abortAfterFirstLin
   })
 }
 
+// The app's own client, reaching the Hub under the given name.
+const appOn = host => createClient({
+  http: {
+    async request({ url, method, headers, data }) {
+      const r = await call(new URL(url).pathname, { method, headers: { ...headers, host }, body: data })
+      return { status: r.status, data: r.text }
+    },
+  },
+})
+
 const steps = []
 async function step(name, fn) {
   await fn()
@@ -93,22 +103,6 @@ async function main() {
   execFileSync('tar', ['-xf', path.basename(tar), '-C', 'hub'], { cwd: tmp })
   fakeClaude()
 
-  await step('the edits apply to this Hub, and applying twice changes nothing more', async () => {
-    apply(copy)
-    const once = fs.readFileSync(path.join(copy, 'server.mjs'), 'utf8')
-    apply(copy)
-    assert.equal(fs.readFileSync(path.join(copy, 'server.mjs'), 'utf8'), once)
-  })
-  await step('a moved anchor line refuses and changes nothing', async () => {
-    const other = path.join(tmp, 'moved')
-    fs.mkdirSync(other)
-    fs.writeFileSync(path.join(other, 'server.mjs'), 'nothing to see\n')
-    fs.writeFileSync(path.join(other, 'chat.mjs'), 'nothing\n')
-    assert.throws(() => apply(other), /line not found/)
-    assert.equal(fs.readFileSync(path.join(other, 'server.mjs'), 'utf8'), 'nothing to see\n')
-    assert.ok(!fs.existsSync(path.join(other, 'device-auth.mjs')))
-  })
-
   setConfig()
   child = spawn(process.execPath, ['server.mjs'], {
     cwd: copy,
@@ -124,7 +118,7 @@ async function main() {
     await sleep(200)
   }
 
-  let token, code, deviceId, cookie
+  let token, code, deviceId, cookie, emulatorToken, emulatorCode
   await step('this computer gets in with no token, as it does today', async () => {
     assert.equal((await call('/', { headers: { host: `localhost:${PORT}` } })).status, 200)
     assert.equal((await call('/api/state', { headers: { host: `localhost:${PORT}` } })).status, 200)
@@ -166,13 +160,20 @@ async function main() {
     assert.equal((await call('/tabs/chat.js', { headers: { ...OUTSIDE, cookie } })).status, 200)
     assert.equal((await call('/api/state', { headers: { ...OUTSIDE, cookie } })).status, 200)
   })
+  await step('a name the Hub doesn\'t know gets a 403 even with a key, and the app says what to change', async () => {
+    const stranger = 'rebound.example.net'
+    const headers = { host: stranger, authorization: `Bearer ${token}` }
+    for (const route of ['/', '/pair', '/api/state', '/api/pair/me']) assert.equal((await call(route, { headers })).status, 403, route)
+    assert.equal((await appOn(stranger).check('https://hub.test', token)).status, 403)
+    assert.match((await appOn(stranger).claim('https://hub.test', 'WRONG000', { name: 'n', platform: 'android' })).error, /"hosts" in config\/hub\.json/)
+  })
   await step(`a detached share answers at once, and the reply still finishes after ${REPLY_MS / 1000}s`, async () => {
     const started = Date.now()
     const r = await call('/api/chat/send', { method: 'POST', headers: { ...OUTSIDE, authorization: `Bearer ${token}` }, body: { text: 'shared from the test', detached: true } })
     assert.equal(r.status, 200, r.text)
     assert.ok(Date.now() - started < REPLY_MS - 1000, `took ${Date.now() - started} ms`)
     assert.match(r.text, /"type":"session"/)
-    await sleep(REPLY_MS + 1500)
+    for (let i = 0; i < 150 && !fs.existsSync(marker); i++) await sleep(200) // a busy computer can run late
     assert.ok(fs.existsSync(marker), 'the reply was killed when the phone went away')
     fs.rmSync(marker)
   })
@@ -203,13 +204,39 @@ async function main() {
     assert.equal((await call('/api/pair/me', { headers: { ...OUTSIDE, authorization: `Bearer ${token}` } })).status, 401)
     assert.equal((await call('/api/state', { headers: { ...OUTSIDE, cookie } })).status, 401)
   })
-  await step('the token and the code never reach the Hub log', async () => {
-    assert.ok(!log.includes(token), 'token in log')
-    assert.ok(!log.includes(code), 'code in log')
+  await step('the Android emulator\'s address works once it is in hosts, and never counts as this computer', async () => {
+    const host = `10.0.2.2:${PORT}`
+    const address = `http://${host}`
+    assert.equal((await appOn(host).check(address, 'none')).status, 403)
+    setConfig({ hosts: ['10.0.2.2'] })
+    await sleep(2200) // hubConfig caches for two seconds
+    assert.equal((await appOn(host).check(address, 'none')).status, 401)
+    assert.equal((await call('/api/pair/start', { method: 'POST', headers: { host } })).status, 401)
+    assert.equal((await call('/pair/new', { headers: { host } })).status, 401)
+    emulatorCode = JSON.parse((await call('/api/pair/start', { method: 'POST', headers: { host: `localhost:${PORT}` } })).text).code
+    const paired = await appOn(host).claim(address, emulatorCode, { name: 'Emulator', platform: 'android' })
+    assert.ok(paired.ok, paired.error)
+    emulatorToken = paired.token
+    assert.equal((await appOn(host).check(address, emulatorToken)).status, 200)
+    const page = await call('/', { headers: { host, authorization: `Bearer ${emulatorToken}` } })
+    assert.equal(page.status, 200)
+    assert.doesNotMatch(page.headers['set-cookie'][0], /Secure/)
   })
-  await step('the token is not on disk, only its hash', async () => {
+  await step('without url, the phone\'s HTTPS name is refused too, and the code page has no QR', async () => {
+    setConfig({ url: '' })
+    await sleep(2200)
+    assert.equal((await call('/api/pair/me', { headers: OUTSIDE })).status, 403)
+    const started = JSON.parse((await call('/api/pair/start', { method: 'POST', headers: { host: `localhost:${PORT}` } })).text)
+    assert.ok(started.code)
+    assert.ok(!started.qrSvg)
+  })
+  await step('the tokens and the codes never reach the Hub log', async () => {
+    for (const secret of [token, code, emulatorToken, emulatorCode]) assert.ok(!log.includes(secret), 'secret in log')
+  })
+  await step('the tokens are not on disk, only their hashes', async () => {
     const disk = fs.readFileSync(path.join(copy, 'data', 'devices.json'), 'utf8')
     assert.ok(!disk.includes(token))
+    assert.ok(!disk.includes(emulatorToken))
   })
   await step('with passcodeRequired off, the Hub is open as the owner chose, and pairing stays closed', async () => {
     setConfig({ passcodeRequired: false })

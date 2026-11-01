@@ -184,7 +184,8 @@ tailscale serve --bg http://127.0.0.1:3100
 
 The phone reaches the computer's Tailscale HTTPS name over WireGuard with a valid certificate, and
 nothing is public. Serve is not Funnel: **Funnel is public, and the docs must say never to use it for
-the Hub.** Any private route with a trusted HTTPS certificate also works.
+the Hub.** Any private route with a trusted HTTPS certificate also works. Then put that address in
+`url` in `config/hub.json`, or the Hub refuses the name.
 
 Why not today's `http://<tailscale-ip>:3100`? Cleartext would need an App Transport Security exception on iOS
 and a cleartext allowance on Android, both of which get scrutiny and neither of which is needed. Release builds refuse
@@ -225,10 +226,9 @@ on how I expect `tailscale serve` to behave with no backend, and is **not yet me
 ### What the Hub needs
 
 The Hub's passcode gate closes it to every other device, and it has no way to recognise a phone. A
-paired device has to become a second way past that gate. It is written and tested in
-[`hub-changes/`](hub-changes/README.md), with the exact lines for `server.mjs` and `chat.mjs`, for the
-Hub's owner to apply. Nothing in the Hub itself has been changed. It was tested against the real
-`server.mjs` at commit `a2b7c0f`, and refuses to apply to a Hub without the gate.
+paired device is a second way past that gate, on the Hub since commit `5b731df` and described in
+[`hub-changes/`](hub-changes/README.md). It is tested against the real `server.mjs` at `8f73f9c`. Since
+`cd411d1` the Hub also answers only to its own names, so the address phones use has to be in `url`.
 
 | Route | Who | What |
 | --- | --- | --- |
@@ -267,12 +267,12 @@ Simulator builds need no signing and no account. Anything on a real iPhone needs
 [Apple asks that apps be tested on a device before submitting](https://developer.apple.com/app-store/review/guidelines/),
 so at least one TestFlight round on a real phone is needed.
 
-### Results at `4361acf` (2026-11-01, GitHub Actions)
+### Results at `e298ecf` (2026-11-01, GitHub Actions)
 
 | Build | Result | Run time | What it shows |
 | --- | --- | --- | --- |
-| Android debug, Ubuntu, JDK 21 | Success, 12.6 MB APK | 4 min 29 s | It compiles and the manifest merges, and the web UI test passes in headless Edge. Never opened |
-| iOS simulator, unsigned, Xcode 26.6 | Success, no errors | 3 min 24 s | It compiles, the share extension and its privacy manifest are inside the app, and the app opened to its welcome screen once |
+| Android debug, Ubuntu, JDK 21 | Success, 12.6 MB APK | 3 min 57 s | It compiles and the manifest merges, and the web UI test passes in headless Edge. Never opened |
+| iOS simulator, unsigned, Xcode 26.6 | Success, no errors | 2 min 58 s | It compiles, the share extension and its privacy manifest are inside the app, and the app opened to its welcome screen once |
 
 A build that compiles doesn't show the app works. Nothing was tapped in either build, and neither ran
 on a real device. The first APK also showed that a plugin adds microphone and location permissions.
@@ -280,7 +280,7 @@ The app uses neither, so the manifest removes them and the workflow fails if the
 APK lists only internet, network state, camera and Android's own receiver permission.
 
 These runs used `.github/workflows/mobile.yml`, the one file outside `mobile/`, and need no signing or
-secrets. Whether it goes into `main` is the Hub owner's call at merge time. The Android job also runs
+secrets. The Android job also runs
 the UI test in headless Edge. `hub-changes/test/real-hub.mjs` stays out of CI because it only runs on
 Windows, so run it by hand when the Hub moves.
 
@@ -298,5 +298,4 @@ Nothing here is done or started.
 | Privacy policy page | | A plain page in the public repo works |
 | Store listings, screenshots, age rating, Data safety and App Privacy answers | | |
 | 12 testers for 14 days on Google Play | | Only for a personal account |
-| Apply the Hub changes | | The Hub's owner, not this branch |
-| turn on HTTPS for the Tailscale network and run `tailscale serve` | | Each person who uses the app does this for their own Hub |
+| turn on HTTPS for the Tailscale network, run `tailscale serve` and put its address in `url` | | Each person who uses the app does this for their own Hub |

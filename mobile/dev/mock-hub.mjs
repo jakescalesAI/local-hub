@@ -14,7 +14,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { createDeviceAuth, isLocal } from '../hub-changes/device-auth.mjs'
+import { createDeviceAuth, isLocal } from '../../device-auth.mjs'
 
 export async function startMockHub(port = 3155, { name = 'Mock Hub', url = '' } = {}) {
   const here = fs.mkdtempSync(path.join(os.tmpdir(), 'mock-hub-'))
