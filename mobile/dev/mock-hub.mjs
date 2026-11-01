@@ -14,11 +14,11 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { createDeviceAuth } from '../hub-changes/device-auth.mjs'
+import { createDeviceAuth, isLocal } from '../hub-changes/device-auth.mjs'
 
 export async function startMockHub(port = 3155, { name = 'Mock Hub', url = '' } = {}) {
   const here = fs.mkdtempSync(path.join(os.tmpdir(), 'mock-hub-'))
-  const auth = createDeviceAuth({ here, enabled: () => true, hubName: () => name, hubUrl: () => url })
+  const auth = createDeviceAuth({ here, hubName: () => name, hubUrl: () => url })
   const mock = { answer: null, down: false, dropSends: false }
   const sends = []
 
@@ -46,8 +46,9 @@ export async function startMockHub(port = 3155, { name = 'Mock Hub', url = '' } 
       if (mock.down) return req.socket.destroy()
       if (mock.answer) return send(res, mock.answer, { error: 'mock' })
       if (req.method !== 'GET' && req.headers['x-hub'] !== '1') return send(res, 403, { error: 'missing x-hub header' })
-      if (auth.gate(url, req, res, { send })) return
-      if (await auth.route(url, req, res, { send, readBody })) return
+      // Closed like the Hub's own gate with no passcode set.
+      if (!auth.admit(url, req, res) && !isLocal(req)) return url.pathname === '/' ? send(res, 403, '<!doctype html><title>Closed</title>', 'text/html; charset=utf-8') : send(res, 401, { error: 'This hub needs its passcode' })
+      if (await auth.route(url, req, res, { send })) return
       if (url.pathname === '/api/chat/send' && req.method === 'POST') {
         const body = await readBody(req)
         if (mock.dropSends) return req.socket.destroy()

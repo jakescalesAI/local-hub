@@ -1,10 +1,10 @@
 # Hub changes the app needs
 
-The Hub has no login today. These changes add one, for the Hub's owner to apply. **Nothing in the
-Hub has been changed by this branch.** They were written against commit `6403274`.
+The Hub's passcode gate (`access.mjs`) closes it to every other device. These changes add a second way
+past that gate, a paired device, for the Hub's owner to apply. **Nothing in the Hub has been changed
+by this branch.** They were written against commit `7a0c889`.
 
-Everything is off until you set `"deviceAuth": true` in `config/hub.json`, so applying them breaks
-nothing for browsers already on the Tailscale network.
+Browsers that sign in with the passcode work as they did. There is no setting to turn on.
 
 ## Apply
 
@@ -30,14 +30,19 @@ import { createDeviceAuth } from './device-auth.mjs'
 after `const filesRoute = createFiles({ run, sshHost: SSH_HOST, here: HERE })`:
 
 ```js
-const deviceAuth = createDeviceAuth({ here: HERE, enabled: () => hubConfig().deviceAuth === true, hubName: () => hubConfig().name, hubUrl: () => hubConfig().url })
+const deviceAuth = createDeviceAuth({ here: HERE, hubName: () => hubConfig().name, hubUrl: () => hubConfig().url })
 ```
 
-in `handle`, before `if (url.pathname === '/' || url.pathname === '/index.html')`:
+in `handle`, replace `if (await gate(req, res, url, send)) return` with:
 
 ```js
-    if (deviceAuth.gate(url, req, res, { send })) return
-    if (await deviceAuth.route(url, req, res, { send, readBody })) return
+  if (!deviceAuth.admit(url, req, res) && await gate(req, res, url, send)) return
+```
+
+and before `if (url.pathname === '/' || url.pathname === '/index.html')`:
+
+```js
+    if (await deviceAuth.route(url, req, res, { send })) return
 ```
 
 **`chat.mjs`**, after `emit({ type: 'session', sessionId: conv.id, title: conv.title })`:
@@ -52,11 +57,8 @@ and on the `res.on('close', ...)` line, add the `!body.detached &&` check:
     res.on('close', () => { if (!body.detached && running.get(conv.id) === entry && !entry.finished) { entry.killed = entry.killed || 'disconnect'; killTree(entry.proc) } })
 ```
 
-**`config/hub.json`**, two settings:
-
-- `"url"`: the HTTPS address phones use, such as `https://hub.example.com`. Without it the
-  pairing page still gives a code, but no QR.
-- `"deviceAuth": true`: turn this on once your phone is paired.
+**`config/hub.json`**, one setting: `"url"`, the HTTPS address phones use, such as
+`https://hub.example.com`. Without it the pairing page still gives a code, but no QR.
 
 `data/devices.json` is created on first use. `data/` is already git-ignored.
 
@@ -72,9 +74,9 @@ and on the `res.on('close', ...)` line, add the `!body.detached &&` check:
 | `POST /api/pair/devices/<id>/remove` | This computer or a paired device | Ends that device's access at once |
 | `GET /pair` | Anyone | Code page, so a browser on the private network can sign in |
 
-While the gate is on, only `/pair`, `/api/pair/claim`, `/api/pair/me`, `/api/ping` and `/icons/*` are
-open without a token. Other page loads go to `/pair`, and other API calls get 401. POSTs still need
-the Hub's existing `x-hub: 1` header.
+`GET /pair` and `POST /api/pair/claim` are the only routes these changes open without a key or the
+passcode. Everything else answers as the passcode gate decides, so from outside it's a 401, or the
+login page at `/`. POSTs still need the Hub's existing `x-hub: 1` header.
 
 ## Behaviour worth checking in review
 
@@ -82,6 +84,13 @@ the Hub's existing `x-hub: 1` header.
   `127.0.0.1`. A request is local only when the source is loopback, the `Host` is `localhost`,
   `127.0.0.1` or `[::1]`, and no forwarding or `Tailscale-*` header is present. The `Host` check also
   stops a website that rebinds its own name to `127.0.0.1`.
+- **A paired phone skips the passcode, and works on a Hub with no passcode set.** A code can only come
+  from this computer or an already paired device, so holding one proves as much as the passcode does.
+  Changing the passcode signs browsers out but leaves phones paired. Remove a phone to end its access.
+- **A browser signed in with the passcode can't make codes,** so `/pair/new` stays on this computer.
+- **With `"passcodeRequired": false`,** the Hub is open as the owner chose, and pairing routes stay
+  limited to this computer and paired devices.
+- **The claim route reads at most 4 KB,** because it's open to anyone who can reach the Hub.
 - **Codes:** 8 characters, 5 minutes, one use, one live at a time. Five wrong guesses burn the code, so
   guessing from many addresses does not help. Codes are held in memory and never logged.
 - **Tokens:** 32 random bytes. Only the SHA-256 hash is stored, written by temp file and rename, and
@@ -94,7 +103,7 @@ the Hub's existing `x-hub: 1` header.
 ## Not covered
 
 - **`/go/<port>` and tunnels.** These redirect to `http://<tailscale-ip>:<port>`: plain HTTP on other ports,
-  outside this gate. The release app refuses plain HTTP, so those links won't load in it. They stay as
+  outside the gate. The release app refuses plain HTTP, so those links won't load in it. They stay as
   reachable from the Tailscale network as they are today.
 - **`X-Forwarded-Proto` from `tailscale serve`** has not been measured. If Serve doesn't send it, the cookie
   isn't marked `Secure`. It still travels only over the tunnel and still isn't readable by scripts.
@@ -106,7 +115,7 @@ the Hub's existing `x-hub: 1` header.
 ```bash
 cd mobile/hub-changes
 node --test test/device-auth.test.mjs
-node test/real-hub.mjs <path-to-hub-checkout> 6403274
+node test/real-hub.mjs <path-to-hub-checkout> 7a0c889
 ```
 
 The first runs the module behind a test server and a stand-in for `tailscale serve`. The second copies the

@@ -11,8 +11,8 @@
 // The token is 32 random bytes. The hub keeps only its SHA-256 hash, in data/devices.json. The
 // phone sends it as a Bearer header, or as an HttpOnly cookie once the hub page is open.
 //
-// The gate only blocks when `enabled()` says so (hub.json "deviceAuth": true). Off, the hub behaves
-// as it does today, but pairing still works so a phone can be set up before the gate goes on.
+// The Hub's passcode gate (access.mjs) still decides who may open the hub. A paired device is a
+// second way past it, and /pair and /api/pair/claim stay open so a phone can get its first key.
 import crypto from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -26,11 +26,11 @@ const COOKIE = 'hub_device'
 const COOKIE_DAYS = 365
 const SEEN_FLUSH_MS = 60e3
 const MAX_DEVICES = 50
+const MAX_CLAIM_BYTES = 4096
 
 const LOOPBACK = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1'])
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]'])
 const FORWARD_HEADERS = ['x-forwarded-for', 'x-forwarded-host', 'x-forwarded-proto', 'forwarded', 'x-real-ip']
-const PUBLIC_PATHS = new Set(['/pair', '/api/pair/claim', '/api/pair/me', '/api/ping'])
 
 const sha256 = s => crypto.createHash('sha256').update(s).digest('hex')
 const sameHash = (a, b) => a.length === b.length && crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b))
@@ -67,7 +67,17 @@ function cookieHeader(req, token) {
   return `${COOKIE}=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${COOKIE_DAYS * 86400}${secure ? '; Secure' : ''}`
 }
 
-export function createDeviceAuth({ here, enabled = () => false, hubName = () => 'Hub', hubUrl = () => '' }) {
+// The claim route is open to anyone who can reach the hub, so it reads only a small body.
+async function readClaim(req) {
+  let raw = ''
+  for await (const chunk of req) {
+    raw += chunk
+    if (raw.length > MAX_CLAIM_BYTES) return {}
+  }
+  try { return JSON.parse(raw) } catch { return {} }
+}
+
+export function createDeviceAuth({ here, hubName = () => 'Hub', hubUrl = () => '' }) {
   const file = path.join(here, 'data', 'devices.json')
   let store = null
   let pending = null // { code, expires, guesses }; only one at a time, and only in memory
@@ -163,24 +173,18 @@ export function createDeviceAuth({ here, enabled = () => false, hubName = () => 
   const hubInfo = () => ({ id: load().hubId, name: hubName() })
   const publicDevice = ({ id, name, platform, created, lastSeen }) => ({ id, name, platform, created, lastSeen })
 
-  // Runs before every route. True means it answered. A valid Bearer on the page load is swapped
-  // for a cookie, so the hub page's own requests work without the token ever reaching its scripts.
-  function gate(url, req, res, { send }) {
+  // Runs before the passcode gate. True means this request doesn't need the passcode. A valid Bearer
+  // on the page load is swapped for a cookie, so the page's own requests work without the token ever
+  // reaching its scripts.
+  function admit(url, req, res) {
     const { device, viaBearer, token } = authenticate(req)
     req.hubDevice = device
     if (viaBearer && req.method === 'GET' && (url.pathname === '/' || url.pathname === '/index.html')) res.setHeader('set-cookie', cookieHeader(req, token))
-    if (device || !enabled() || isLocal(req)) return false
-    if (PUBLIC_PATHS.has(url.pathname) || url.pathname.startsWith('/icons/')) return false
-    if (req.method === 'GET' && !url.pathname.startsWith('/api/')) {
-      res.writeHead(302, { location: '/pair', 'cache-control': 'no-store' })
-      res.end()
-      return true
-    }
-    send(res, 401, { error: 'Pair this device first.' })
-    return true
+    if (device) return true
+    return (url.pathname === '/pair' && req.method === 'GET') || (url.pathname === '/api/pair/claim' && req.method === 'POST')
   }
 
-  async function route(url, req, res, { send, readBody }) {
+  async function route(url, req, res, { send }) {
     const p = url.pathname
     if (p !== '/pair' && p !== '/pair/new' && !p.startsWith('/api/pair/')) return false
     const trusted = isLocal(req) || !!req.hubDevice
@@ -191,7 +195,7 @@ export function createDeviceAuth({ here, enabled = () => false, hubName = () => 
       return send(res, 200, newCodePage(hubName()), 'text/html; charset=utf-8'), true
     }
     if (p === '/api/pair/claim' && req.method === 'POST') {
-      const r = claim(await readBody(req))
+      const r = claim(await readClaim(req))
       if (r.token && req.headers['x-hub-browser'] === '1') res.setHeader('set-cookie', cookieHeader(req, r.token))
       return send(res, r.status, r.body), true
     }
@@ -214,7 +218,7 @@ export function createDeviceAuth({ here, enabled = () => false, hubName = () => 
     return send(res, 404, { error: 'not found' }), true
   }
 
-  return { gate, route }
+  return { admit, route }
 }
 
 const PAGE_CSS = `:root{color-scheme:light dark;--bg:#f2f2f7;--surface:#fff;--label:#000;--label-2:rgba(60,60,67,.6);--blue:#007aff;--red:#ff3b30;--sep:rgba(60,60,67,.18)}

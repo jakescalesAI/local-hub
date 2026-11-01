@@ -15,14 +15,15 @@ export const EDITS = {
     },
     {
       after: `const filesRoute = createFiles({ run, sshHost: SSH_HOST, here: HERE })`,
-      add: [`const deviceAuth = createDeviceAuth({ here: HERE, enabled: () => hubConfig().deviceAuth === true, hubName: () => hubConfig().name, hubUrl: () => hubConfig().url })`],
+      add: [`const deviceAuth = createDeviceAuth({ here: HERE, hubName: () => hubConfig().name, hubUrl: () => hubConfig().url })`],
+    },
+    {
+      replace: `  if (await gate(req, res, url, send)) return`,
+      with: `  if (!deviceAuth.admit(url, req, res) && await gate(req, res, url, send)) return`,
     },
     {
       before: `    if (url.pathname === '/' || url.pathname === '/index.html')`,
-      add: [
-        `    if (deviceAuth.gate(url, req, res, { send })) return`,
-        `    if (await deviceAuth.route(url, req, res, { send, readBody })) return`,
-      ],
+      add: [`    if (await deviceAuth.route(url, req, res, { send })) return`],
     },
   ],
   'chat.mjs': [
@@ -77,7 +78,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   }
   try {
     apply(path.resolve(hub))
-    console.log('Done. Set "deviceAuth": true in config/hub.json when you are ready to require pairing.')
+    console.log('Done. Restart the hub, then make a code at /pair/new on this computer.')
   } catch (e) {
     console.error(`Nothing was changed. ${e.message}`)
     process.exit(1)

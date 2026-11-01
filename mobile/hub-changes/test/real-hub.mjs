@@ -7,6 +7,7 @@
 import { spawn, execFileSync } from 'node:child_process'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
+import crypto from 'node:crypto'
 import http from 'node:http'
 import os from 'node:os'
 import path from 'node:path'
@@ -98,7 +99,7 @@ async function main() {
     assert.ok(!fs.existsSync(path.join(other, 'device-auth.mjs')))
   })
 
-  setConfig({ deviceAuth: true })
+  setConfig()
   child = spawn(process.execPath, ['server.mjs'], {
     cwd: copy,
     env: { ...process.env, HUB_PORT: String(PORT), USERPROFILE: home, HOME: home, LOCALAPPDATA: path.join(home, 'none') },
@@ -118,17 +119,17 @@ async function main() {
     assert.equal((await call('/', { headers: { host: `localhost:${PORT}` } })).status, 200)
     assert.equal((await call('/api/state', { headers: { host: `localhost:${PORT}` } })).status, 200)
   })
-  await step('from outside, the page, its scripts and the APIs are closed', async () => {
-    const page = await call('/', { headers: OUTSIDE })
-    assert.equal(page.status, 302)
-    assert.equal(page.headers.location, '/pair')
-    assert.equal((await call('/tabs/chat.js', { headers: OUTSIDE })).status, 302)
+  await step('from outside, with no passcode set, only the two pairing routes are open', async () => {
+    assert.equal((await call('/', { headers: OUTSIDE })).status, 403)
+    assert.equal((await call('/tabs/chat.js', { headers: OUTSIDE })).status, 401)
     assert.equal((await call('/api/state', { headers: OUTSIDE })).status, 401)
     assert.equal((await call('/api/refresh', { method: 'POST', headers: OUTSIDE })).status, 401)
     assert.equal((await call('/api/chat/send', { method: 'POST', headers: OUTSIDE, body: { text: 'hi', detached: true } })).status, 401)
     assert.equal((await call('/api/pair/start', { method: 'POST', headers: OUTSIDE })).status, 401)
+    assert.equal((await call('/pair/new', { headers: OUTSIDE })).status, 401)
+    assert.equal((await call('/api/pair/me', { headers: OUTSIDE })).status, 401)
     assert.equal((await call('/pair', { headers: OUTSIDE })).status, 200)
-    assert.equal((await call('/api/ping', { headers: OUTSIDE })).status, 200)
+    assert.equal((await call('/api/pair/claim', { method: 'POST', headers: OUTSIDE, body: { code: 'WRONG000' } })).status, 400)
   })
   await step('the pairing page works on this computer and shows a QR code', async () => {
     assert.equal((await call('/pair/new', { headers: { host: `localhost:${PORT}` } })).status, 200)
@@ -170,6 +171,23 @@ async function main() {
     await sleep(REPLY_MS + 1500)
     assert.ok(!fs.existsSync(marker), 'the reply kept running after the page went away')
   })
+  await step('with a passcode set, a browser signs in with it, and the phone needs no passcode', async () => {
+    const salt = crypto.randomBytes(16)
+    const hubPasscode = `scrypt$${salt.toString('hex')}$${crypto.scryptSync('test passcode', salt, 32).toString('hex')}`
+    fs.writeFileSync(path.join(copy, 'config', 'secrets.json'), JSON.stringify({ hubPasscode }))
+    await sleep(2200) // secrets are cached for two seconds
+    const login = await call('/', { headers: OUTSIDE })
+    assert.equal(login.status, 200)
+    assert.match(login.text, /passcode/i)
+    assert.equal((await call('/api/state', { headers: OUTSIDE })).status, 401)
+    const signedIn = await call('/api/hub/login', { method: 'POST', headers: OUTSIDE, body: { passcode: 'test passcode' } })
+    assert.equal(signedIn.status, 200, signedIn.text)
+    const session = signedIn.headers['set-cookie'][0].split(';')[0]
+    assert.equal((await call('/api/state', { headers: { ...OUTSIDE, cookie: session } })).status, 200)
+    assert.equal((await call('/api/pair/start', { method: 'POST', headers: { ...OUTSIDE, cookie: session } })).status, 401, 'making codes stays with this computer and paired devices')
+    assert.equal((await call('/api/state', { headers: { ...OUTSIDE, authorization: `Bearer ${token}` } })).status, 200)
+    assert.equal((await call('/api/state', { headers: { ...OUTSIDE, authorization: 'Bearer nope' } })).status, 401)
+  })
   await step('removing the phone ends its access at once, by token and by cookie', async () => {
     assert.equal((await call(`/api/pair/devices/${deviceId}/remove`, { method: 'POST', headers: { host: `localhost:${PORT}` } })).status, 200)
     assert.equal((await call('/api/pair/me', { headers: { ...OUTSIDE, authorization: `Bearer ${token}` } })).status, 401)
@@ -183,8 +201,8 @@ async function main() {
     const disk = fs.readFileSync(path.join(copy, 'data', 'devices.json'), 'utf8')
     assert.ok(!disk.includes(token))
   })
-  await step('with the gate off, the Tailscale network reaches the Hub as it does today', async () => {
-    setConfig({ deviceAuth: false })
+  await step('with passcodeRequired off, the Hub is open as the owner chose, and pairing stays closed', async () => {
+    setConfig({ passcodeRequired: false })
     await sleep(2200) // hubConfig caches for two seconds
     assert.equal((await call('/api/state', { headers: OUTSIDE })).status, 200)
     assert.equal((await call('/api/pair/start', { method: 'POST', headers: OUTSIDE })).status, 401)

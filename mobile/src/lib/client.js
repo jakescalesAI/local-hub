@@ -56,7 +56,8 @@ export function createClient({ http }) {
         return { ok: true, token: body.token, deviceId: body.deviceId, hub: body.hub }
       }
       if (res.status === 400 || res.status === 403 || res.status === 409) return { ok: false, error: body?.error || 'That code didn\'t work. Make a new one on your computer.' }
-      if (res.status === 404) return { ok: false, error: 'That address answered, but it isn\'t a Hub that knows about phones. It may need updating.' }
+      // A Hub without the pairing routes answers 404, or 401 from its passcode gate.
+      if (res.status === 401 || res.status === 404) return { ok: false, error: 'That address answered, but it isn\'t a Hub that knows about phones. It may need updating.' }
       if (res.status === 502 || res.status === 503 || res.status === 504) return { ok: false, error: 'Your computer answered, but the Hub isn\'t running.' }
       return { ok: false, error: 'That address answered, but not the way a Hub should.' }
     },

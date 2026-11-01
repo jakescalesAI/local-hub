@@ -188,9 +188,11 @@ on how I expect `tailscale serve` to behave with no backend, and is **not yet me
 
 ### What the Hub needs
 
-The Hub has no login today: Tailscale access is the only gate. The app needs one. It is written and
-tested in [`hub-changes/`](hub-changes/README.md), with the exact lines for `server.mjs` and
-`chat.mjs`, for the Hub's owner to apply. Nothing in the Hub itself has been changed.
+The Hub's passcode gate closes it to every other device, and it has no way to recognise a phone. A
+paired device has to become a second way past that gate. It is written and tested in
+[`hub-changes/`](hub-changes/README.md), with the exact lines for `server.mjs` and `chat.mjs`, for the
+Hub's owner to apply. Nothing in the Hub itself has been changed. It was tested against the real
+`server.mjs` at commit `7a0c889`, and refuses to apply to a Hub without the gate.
 
 | Route | Who | What |
 | --- | --- | --- |
@@ -205,8 +207,8 @@ The trap: **behind `tailscale serve`, every request arrives from `127.0.0.1`.** 
 loopback would let the whole Tailscale network in. The gate treats a request as local only when the source is
 loopback, the `Host` is `localhost` or `127.0.0.1`, and no forwarding or `Tailscale-User-*` header is present.
 
-The gate is off until `hub.json` sets `"deviceAuth": true`, so applying the change breaks nothing
-for browsers already on the Tailscale network.
+A phone holding a key skips the passcode. Only `GET /pair` and `POST /api/pair/claim` open without
+either one, and browsers that use the passcode work as before.
 
 Share into chat needs one more change. `chat.mjs` kills the reply when the connection closes, and a
 phone goes away straight after sharing. A `detached` flag lets that one send finish on its own.

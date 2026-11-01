@@ -86,6 +86,7 @@ test('client: claim outcomes', async () => {
   const wrong = await createClient({ http: fakeHttp(() => ({ status: 403, data: '{"error":"That code is not right."}' })) }).claim('https://h.test', 'X', opts)
   assert.deepEqual(wrong, { ok: false, error: 'That code is not right.' })
   assert.match((await createClient({ http: fakeHttp(() => ({ status: 404, data: 'nope' })) }).claim('https://h.test', 'X', opts)).error, /updating/)
+  assert.match((await createClient({ http: fakeHttp(() => ({ status: 401, data: '{"error":"This hub needs its passcode"}' })) }).claim('https://h.test', 'X', opts)).error, /updating/)
   assert.match((await createClient({ http: fakeHttp(() => { throw new Error('x') }) }).claim('https://h.test', 'X', opts)).error, /Couldn't reach/)
   assert.equal((await createClient({ http: fakeHttp(() => ({ status: 200, data: '<html>' })) }).claim('https://h.test', 'X', opts)).ok, false)
 })

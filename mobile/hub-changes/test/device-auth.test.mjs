@@ -19,22 +19,25 @@ function send(res, code, body, type = 'application/json') {
   res.writeHead(code, { 'content-type': type, 'cache-control': 'no-store' })
   res.end(type === 'application/json' ? JSON.stringify(body) : body)
 }
-async function readBody(req) {
-  let raw = ''
-  for await (const chunk of req) raw += chunk
-  return raw ? JSON.parse(raw) : {}
-}
 const listen = server => new Promise(r => { servers.push(server); server.listen(0, '127.0.0.1', () => r(server.address().port)) })
+
+// Stands in for the Hub's gate with no passcode set. real-hub.mjs runs the real one.
+function passcodeGate(on, u, req, res) {
+  if (!on || isLocal(req)) return false
+  if (u.pathname === '/') send(res, 403, '<h1>closed</h1>', 'text/html')
+  else send(res, 401, { error: 'This hub needs its passcode' })
+  return true
+}
 
 async function hub({ on = true, url = 'https://hub.example.test' } = {}) {
   const here = fs.mkdtempSync(path.join(os.tmpdir(), 'hub-pair-'))
   dirs.push(here)
-  const auth = createDeviceAuth({ here, enabled: () => on, hubName: () => 'Test Hub', hubUrl: () => url })
+  const auth = createDeviceAuth({ here, hubName: () => 'Test Hub', hubUrl: () => url })
   const port = await listen(http.createServer(async (req, res) => {
     const u = new URL(req.url, `http://${req.headers.host}`)
+    if (!auth.admit(u, req, res) && passcodeGate(on, u, req, res)) return
     if (req.method !== 'GET' && req.headers['x-hub'] !== '1') return send(res, 403, { error: 'missing x-hub header' })
-    if (auth.gate(u, req, res, { send })) return
-    if (await auth.route(u, req, res, { send, readBody })) return
+    if (await auth.route(u, req, res, { send })) return
     if (u.pathname === '/') return send(res, 200, '<h1>hub page</h1>', 'text/html')
     if (u.pathname === '/api/state') return send(res, 200, { secret: 'state' })
     if (u.pathname === '/api/ping') return send(res, 200, { ok: true })
@@ -149,24 +152,24 @@ test('a code of the wrong length is a wrong guess, not a crash', async () => {
   }
 })
 
-test('gate on: from outside, nothing is reachable without a token', async () => {
+test('from outside, only the two pairing routes pass the passcode gate without a token', async () => {
   const h = await hub()
   const out = await proxyTo(h.port, SERVE)
   assert.equal((await fetch(`${out}/api/state`)).status, 401)
-  const page = await fetch(`${out}/`, { redirect: 'manual' })
-  assert.equal(page.status, 302)
-  assert.equal(page.headers.get('location'), '/pair')
+  assert.equal((await fetch(`${out}/`)).status, 403)
   assert.equal((await fetch(`${out}/api/refresh`, POST())).status, 401)
+  assert.equal((await fetch(`${out}/api/pair/me`)).status, 401)
+  assert.equal((await fetch(`${out}/api/pair/start`, POST())).status, 401)
   assert.equal((await fetch(`${out}/pair`)).status, 200)
-  assert.equal((await fetch(`${out}/api/ping`)).status, 200)
+  assert.equal((await fetch(`${out}/api/pair/claim`, POST({ code: 'WRONG000' }))).status, 400, 'no live code yet')
 })
 
 test('the failure this gate exists for: a proxied request from 127.0.0.1 is not local', async () => {
   const h = await hub()
-  assert.equal((await fetch(`${h.base}/api/state`)).status, 200, 'this computer still gets in')
+  assert.equal((await fetch(`${h.base}/api/pair/start`, POST())).status, 200, 'this computer still gets in')
   for (const extra of [SERVE, { host: 'hub.example.com' }, { 'x-forwarded-for': '192.0.2.1' }, { 'tailscale-user-login': 'x@example.test' }, { forwarded: 'for=192.0.2.1' }]) {
     const out = await proxyTo(h.port, extra)
-    assert.equal((await fetch(`${out}/api/state`)).status, 401, JSON.stringify(extra))
+    assert.equal((await fetch(`${out}/api/pair/start`, POST())).status, 401, JSON.stringify(extra))
   }
 })
 
@@ -184,10 +187,10 @@ test('from outside, nobody can make a code or list devices', async () => {
   const out = await proxyTo(h.port, SERVE)
   assert.equal((await fetch(`${out}/api/pair/start`, POST())).status, 401)
   assert.equal((await fetch(`${out}/api/pair/devices`)).status, 401)
-  assert.equal((await fetch(`${out}/pair/new`, { redirect: 'manual' })).status, 302, 'gated to the sign-in page')
+  assert.equal((await fetch(`${out}/pair/new`)).status, 401)
 })
 
-test('gate off: same refusals for pairing, hub open as it is today', async () => {
+test('passcodeRequired off: same refusals for pairing, hub open as the owner chose', async () => {
   const h = await hub({ on: false })
   const out = await proxyTo(h.port, SERVE)
   assert.equal((await fetch(`${out}/api/state`)).status, 200)
@@ -247,11 +250,11 @@ test('a bad token is refused, and removal ends access at once', async () => {
 test('devices survive a hub restart', async () => {
   const h = await hub()
   const p = await pair(h)
-  const again = createDeviceAuth({ here: h.here, enabled: () => true, hubName: () => 'Test Hub' })
+  const again = createDeviceAuth({ here: h.here, hubName: () => 'Test Hub' })
   const port = await listen(http.createServer(async (req, res) => {
     const u = new URL(req.url, `http://${req.headers.host}`)
-    if (again.gate(u, req, res, { send })) return
-    if (await again.route(u, req, res, { send, readBody })) return
+    again.admit(u, req, res)
+    if (await again.route(u, req, res, { send })) return
     send(res, 404, { error: 'not found' })
   }))
   assert.equal((await fetch(`http://127.0.0.1:${port}/api/pair/me`, AS(p.token))).status, 200)
@@ -269,8 +272,17 @@ test('a malformed claim body is an error from the caller, not a hang', async () 
   const h = await hub()
   await code(h)
   const r = await Promise.race([
-    fetch(`${h.base}/api/pair/claim`, POST({})).then(x => x.status),
+    fetch(`${h.base}/api/pair/claim`, { method: 'POST', headers: { 'x-hub': '1' }, body: '{not json' }).then(x => x.status),
     new Promise(resolve => setTimeout(() => resolve('hung'), 3000)),
   ])
   assert.equal(r, 403)
+})
+
+test('an oversized claim body is cut off, and the hub keeps answering', async () => {
+  const h = await hub()
+  await code(h)
+  const out = await proxyTo(h.port, SERVE)
+  const r = await fetch(`${h.base}/api/pair/claim`, { method: 'POST', headers: { 'x-hub': '1' }, body: 'x'.repeat(1024 * 1024) }).then(x => x.status, () => 'dropped')
+  assert.notEqual(r, 200)
+  assert.equal((await fetch(`${out}/pair`)).status, 200)
 })
