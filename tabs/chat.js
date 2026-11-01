@@ -6,7 +6,7 @@
 // (also Ctrl+/): whole conversation, history, new chat. Under each reply a hover (tap on touch)
 // row shows sent time, duration and tokens, then Reply (quotes it above the input as context) and
 // Copy. Talks to /api/chat/*
-// (chat.mjs), which runs the local Claude Code CLI scoped to this hub only.
+// (chat.mjs), which runs the local Claude Code CLI: a general agent that knows this hub best.
 //
 // Self-contained: it injects its own bar, card and overlay inside a Shadow DOM (so the hub's
 // generic CSS, click handlers and shortcuts cannot touch it), plus two small global rules that
@@ -31,6 +31,7 @@
   /* ---------- helpers ---------- */
 
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+  const AGENT = window.HUB_CONF?.assistant?.name || 'Hub Assistant'
   const store = {
     get(k, d = '') { try { const v = localStorage.getItem(k); return v == null ? d : v } catch { return d } },
     set(k, v) { try { localStorage.setItem(k, v) } catch {} },
@@ -514,9 +515,9 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
   const shadow = host.attachShadow({ mode: 'open' })
   shadow.innerHTML = `<style>${CSS}</style>
 <div class="root">
-  <section class="card" role="region" aria-label="Hub Assistant answer" inert>
+  <section class="card" role="region" aria-label="${esc(AGENT)} answer" inert>
     <header class="ghead chead">
-      <div class="ttl"><b>Hub Assistant</b><span class="ctx"></span></div>
+      <div class="ttl"><b>${esc(AGENT)}</b><span class="ctx"></span></div>
       <button type="button" class="sb" aria-label="Stop" hidden>${IC.stop}<span>Stop</span></button>
       <button type="button" class="ib cnew" aria-label="New chat" title="New chat">${IC.plus}</button>
       <button type="button" class="ib chist" aria-label="Chat history" title="Chat history">${IC.history}</button>
@@ -532,15 +533,15 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
     <div class="atts" aria-label="Attached files"></div>
     <div class="pill glass">
       <button type="button" class="ib plus bplus" aria-label="Attach, model, dictate, full screen" aria-haspopup="menu" aria-expanded="false" title="Attach, model, dictate, full screen">${IC.plus22}</button>
-      <textarea class="bta" rows="1" placeholder="Ask the hub" aria-label="Ask the hub" enterkeyhint="send" autocomplete="off" autocapitalize="sentences"></textarea>
+      <textarea class="bta" rows="1" placeholder="Ask anything" aria-label="Message" enterkeyhint="send" autocomplete="off" autocapitalize="sentences"></textarea>
       <button type="button" class="send bsend" aria-label="Send" disabled>${IC.up}</button>
     </div>
   </div>
   <div class="full" inert>
     <div class="scrim"></div>
-    <section class="fp" role="dialog" aria-label="Hub Assistant chat">
+    <section class="fp" role="dialog" aria-label="${esc(AGENT)} chat">
       <header class="ghead fhead">
-        <div class="ttl"><b>Hub Assistant</b><span class="ctx"></span></div>
+        <div class="ttl"><b>${esc(AGENT)}</b><span class="ctx"></span></div>
         <button type="button" class="ib fnew" aria-label="New chat" title="New chat">${IC.plus}</button>
         <button type="button" class="ib fhist" aria-label="Chat history" aria-pressed="false" title="Chat history">${IC.history}</button>
         <button type="button" class="ib fx" aria-label="Back to the bar" title="Back to the bar (Esc)">${IC.collapse}</button>
@@ -556,7 +557,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
         <div class="atts" aria-label="Attached files"></div>
         <div class="pill">
           <button type="button" class="ib plus fplus" aria-label="Attach, model, dictate, full screen" aria-haspopup="menu" aria-expanded="false" title="Attach, model, dictate, full screen">${IC.plus22}</button>
-          <textarea class="fta" rows="1" placeholder="Ask about the hub" aria-label="Message" enterkeyhint="send" autocomplete="off" autocapitalize="sentences"></textarea>
+          <textarea class="fta" rows="1" placeholder="Ask anything" aria-label="Message" enterkeyhint="send" autocomplete="off" autocapitalize="sentences"></textarea>
           <button type="button" class="send fsend" aria-label="Send" disabled>${IC.up}</button>
         </div>
       </footer>
@@ -944,7 +945,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
       const list = SUGGEST[curEnv()] || SUGGEST.home
       const box = document.createElement('div'); box.className = 'empty'
       box.dataset.tabk = curEnv()
-      box.innerHTML = `<div class="logo">${IC.chat}</div><h3>Hub Assistant</h3><p>Ask about anything in this hub: usage, servers, storage, the calendar, or how to use it. I can look things up, change the hub's look and layout, and open your sites.</p><div class="chips">${list.map(t => `<button type="button" class="chip">${esc(t)}</button>`).join('')}</div>`
+      box.innerHTML = `<div class="logo">${IC.chat}</div><h3>${esc(AGENT)}</h3><p>Ask me anything. I can research the web, write, use the browser, and I know this hub best: usage, servers, storage, the calendar, and its look and layout.</p><div class="chips">${list.map(t => `<button type="button" class="chip">${esc(t)}</button>`).join('')}</div>`
       log.append(box)
     }
     log.addEventListener('click', e => {
@@ -1081,7 +1082,6 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
   for (const t of ['keydown', 'keyup', 'keypress']) rootEl.addEventListener(t, e => e.stopPropagation())
   rootEl.addEventListener('keydown', e => {
     if (e.key !== 'Escape') return
-    if (!menu.hidden) { e.preventDefault(); closeMenu(true); return }
     if (S.rec) { e.preventDefault(); stopDictate(); return }
     if (S.full) { e.preventDefault(); if (S.hist) toggleHist(false); else setFull(false) }
     else if (S.cardOn) { e.preventDefault(); S.cardOn = false; syncCard() }
@@ -1137,7 +1137,8 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
     menu.hidden = false
     for (const b of [bPlus, fPlus]) b.setAttribute('aria-expanded', String(b === btn))
     placeMenu()
-    if (!S.info) loadInfo().then(() => { if (!menu.hidden) { renderMenu(); placeMenu() } })
+    // Filling the rows replaces them, so focus goes back on the first one (Esc and the arrows need it).
+    if (!S.info) loadInfo().then(() => { if (!menu.hidden) { renderMenu(); placeMenu(); menu.querySelector('.mi')?.focus({ preventScroll: true }) } })
     requestAnimationFrame(() => menu.querySelector('.mi')?.focus({ preventScroll: true }))
   }
   function closeMenu(refocus = false) {
@@ -1167,6 +1168,12 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
     const i = rows.indexOf(shadow.activeElement)
     rows[(i + (e.key === 'ArrowDown' ? 1 : -1) + rows.length) % rows.length]?.focus()
   })
+  // Esc closes it wherever the focus is, before anything else on the page sees the key.
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape' || menu.hidden) return
+    e.preventDefault(); e.stopPropagation()
+    closeMenu(true)
+  }, true)
   // A press anywhere outside the menu and its + button closes it.
   document.addEventListener('pointerdown', e => {
     if (menu.hidden) return
@@ -1176,6 +1183,8 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
   window.addEventListener('resize', () => placeMenu())
 
   const activeTa = () => (S.full ? fta : bta)
+  // Test runs set sessionStorage hub-chat-test to "1": their chats stay out of the real history.
+  const isTest = () => { try { return sessionStorage.getItem('hub-chat-test') === '1' } catch { return false } }
 
   // A short message above the composer (dictation unavailable, a file too big, ...).
   function flash(text, ms = 6000) {
@@ -1268,7 +1277,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
     syncRec()
   }
   function syncRec() {
-    for (const [b, t, ph] of [[bPlus, bta, 'Ask the hub'], [fPlus, fta, 'Ask about the hub']]) {
+    for (const [b, t, ph] of [[bPlus, bta, 'Ask anything'], [fPlus, fta, 'Ask anything']]) {
       b.classList.toggle('rec', !!S.rec)
       b.innerHTML = S.rec ? IC.mic22 : IC.plus22
       b.setAttribute('aria-label', S.rec ? 'Stop dictation' : 'Attach, model, dictate, full screen')
@@ -1346,7 +1355,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
       const res = await fetch('/api/chat/send', {
         method: 'POST',
         headers: { 'content-type': 'application/json', 'x-hub': '1' },
-        body: JSON.stringify({ text, files: files.length ? files : undefined, sessionId: S.conv || undefined, tab: curEnv(), tabTitle: curTitle(), narrow: PHONE.matches, model: S.model || undefined, reply: reply || undefined }),
+        body: JSON.stringify({ text, test: isTest() || undefined, files: files.length ? files : undefined, sessionId: S.conv || undefined, tab: curEnv(), tabTitle: curTitle(), narrow: PHONE.matches, model: S.model || undefined, reply: reply || undefined }),
         signal: ctrl.signal,
       })
       if (!res.ok || !res.body) {
@@ -1511,7 +1520,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
   async function loadHist() {
     hist.innerHTML = '<div class="none">Loading…</div>'
     let list = []
-    try { list = (await (await hubFetch('/api/chat/sessions')).json()).sessions || [] } catch { hist.innerHTML = '<div class="none">Could not load your chats.</div>'; return }
+    try { list = (await (await hubFetch(`/api/chat/sessions${isTest() ? '?test=1' : ''}`)).json()).sessions || [] } catch { hist.innerHTML = '<div class="none">Could not load your chats.</div>'; return }
     if (!S.hist) return
     if (!list.length) { hist.innerHTML = '<div class="none">No chats yet. Ask something and it will show up here.</div>'; return }
     list.sort((a, b) => (b.updated || 0) - (a.updated || 0))

@@ -28,6 +28,28 @@ const NEUTRAL = {
   siteSuggestions: [],
   theme: 'quartzi',
   claudeConfigDir: '',
+  // The assistant: every choice here is yours (see HUB-GUIDE.md, "Make it yours").
+  assistant: {
+    name: 'Hub Assistant',
+    instructions: '', // added to its instructions; config/instructions.md replaces the shipped ones
+    command: '', // path to a Claude Code compatible CLI; blank finds `claude`
+    // login: the CLI's own login. key: secrets.json assistantKey as an Anthropic key.
+    // custom: assistantKey against baseUrl (any Anthropic-compatible provider). env: whatever the environment and `env` below set.
+    provider: { type: 'login', baseUrl: '' },
+    env: {}, // extra environment for the CLI, for example {"CLAUDE_CODE_USE_BEDROCK": "1"}. No keys here: they go in secrets.json.
+    models: [], // ["model-id"] or [["model-id", "Label"]]; empty offers the Claude models
+    defaultModel: '',
+    tools: { web: true, files: true, browser: true, settings: true, sites: true },
+    readFolders: ['~'], // folders it may read, besides the hub's. Key files stay refused in all of them.
+    writeFolders: [], // more folders it may write to, besides workspace/. Never inside the hub folder.
+    mcpServers: {}, // your own tools: {"name": {"command": "...", "args": [], "env": {}}}
+    maxChats: 1000, // chats listed in History; older ones stay on disk
+    // Approval rules. These are the shipped defaults; a change here is owner-only and gets a warning in the log.
+    // secrets: "never" | "allow"   typing passwords, cards and 2FA codes in the browser
+    // actions: "ask" | "warn" | "go"   sending, posting, buying, deleting, accepting terms. ask: waits for a yes. warn: says so, then does it.
+    // socialPosts: "never" | "ask"   the final Post or Share click on social sites
+    approvals: { secrets: 'never', actions: 'ask', socialPosts: 'never' },
+  },
 }
 
 const readJson = file => { try { return JSON.parse(fs.readFileSync(file, 'utf8')) } catch { return null } }
@@ -44,6 +66,13 @@ const merge = saved => ({
   ...saved,
   server: { ...NEUTRAL.server, ...saved?.server },
   browser: saved?.browser?.profiles && Object.keys(saved.browser.profiles).length ? saved.browser : NEUTRAL.browser,
+  assistant: {
+    ...NEUTRAL.assistant,
+    ...saved?.assistant,
+    provider: { ...NEUTRAL.assistant.provider, ...saved?.assistant?.provider },
+    tools: { ...NEUTRAL.assistant.tools, ...saved?.assistant?.tools },
+    approvals: { ...NEUTRAL.assistant.approvals, ...saved?.assistant?.approvals },
+  },
 })
 export const hubConfig = cached(() => merge(readJson(HUB_FILE)))
 export const secrets = cached(() => readJson(SECRETS_FILE) || {})
@@ -121,10 +150,15 @@ export function pageConfig() {
     theme: { ...activeTheme(), wallpapers: baseTheme().wallpapers },
     browser: c.browser,
     worldClock: c.worldClock,
+    assistant: { name: c.assistant.name },
   }
 }
 
 // The assistant's extra notes for this hub (config/notes.md), if any.
 export function ownerNotes() {
   try { return fs.readFileSync(configPath('notes.md'), 'utf8') } catch { return '' }
+}
+// config/instructions.md, if you wrote your own in place of the shipped ones.
+export function ownerInstructions() {
+  try { return fs.readFileSync(configPath('instructions.md'), 'utf8') } catch { return '' }
 }

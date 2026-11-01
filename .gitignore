@@ -1,6 +1,7 @@
 # Your own hub: never commit any of this.
 config/
 data/
+workspace/
 secrets.json
 clients.json
 servers.json
