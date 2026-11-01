@@ -101,6 +101,11 @@ These are in the code and stay as they are:
 - Cloud and Stripe views only read.
 - Nothing is permanently deleted. Deletes go to the trash.
 
+Two limits to know about:
+
+- Key-file rules go by name and folder, so a hard link or copy of a key file under an ordinary name can be read. The agent can't make one, but a person or another program can.
+- The agent reads your files and uses the web. Only the model's own judgement stops a page from steering it into sending file text somewhere, not a tool rule. `"web": false` under `assistant.tools` takes the web away.
+
 ## Who can reach it
 
 Only this computer, until you change that.
