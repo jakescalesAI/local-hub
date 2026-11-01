@@ -227,7 +227,7 @@ on how I expect `tailscale serve` to behave with no backend, and is **not yet me
 
 The Hub's passcode gate closes it to every other device, and it has no way to recognise a phone. A
 paired device is a second way past that gate, on the Hub since commit `5b731df` and described in
-[`hub-changes/`](hub-changes/README.md). It is tested against the real `server.mjs` at `8f73f9c`. Since
+[`hub-changes/`](hub-changes/README.md). It is tested against the real `server.mjs` at `14199ff`. Since
 `cd411d1` the Hub also answers only to its own names, so the address phones use has to be in `url`.
 
 | Route | Who | What |
@@ -267,12 +267,12 @@ Simulator builds need no signing and no account. Anything on a real iPhone needs
 [Apple asks that apps be tested on a device before submitting](https://developer.apple.com/app-store/review/guidelines/),
 so at least one TestFlight round on a real phone is needed.
 
-### Results at `e298ecf` (2026-11-01, GitHub Actions)
+### Results at `0e25336` (2026-11-01, GitHub Actions)
 
 | Build | Result | Run time | What it shows |
 | --- | --- | --- | --- |
-| Android debug, Ubuntu, JDK 21 | Success, 12.6 MB APK | 3 min 57 s | It compiles and the manifest merges, and the web UI test passes in headless Edge. Never opened |
-| iOS simulator, unsigned, Xcode 26.6 | Success, no errors | 2 min 58 s | It compiles, the share extension and its privacy manifest are inside the app, and the app opened to its welcome screen once |
+| Android debug, Ubuntu, JDK 21 | Success, 12.6 MB APK | 4 min 16 s | It compiles and the manifest merges, and the web UI test passes in headless Edge. Never opened |
+| iOS simulator, unsigned, Xcode 26.6 | Success, no errors | 2 min 27 s | It compiles, the share extension and its privacy manifest are inside the app, and the app opened to its welcome screen once |
 
 A build that compiles doesn't show the app works. Nothing was tapped in either build, and neither ran
 on a real device. The first APK also showed that a plugin adds microphone and location permissions.

@@ -38,7 +38,9 @@ login page at `/`. POSTs still need the Hub's existing `x-hub: 1` header.
 ## Behaviour worth checking in review
 
 - **The name comes first.** A `Host` the Hub doesn't know gets a 403 before pairing or the passcode gate
-  run, even with a valid key. The app tells the person which setting to change.
+  run, even with a valid key. The app recognises that plain-text sentence and tells the person which
+  setting to change. Any other 403 could be a proxy, so it doesn't name a cause. If the sentence changes,
+  update `HUB_NAME_REFUSAL` in `src/lib/client.js`. `real-hub.mjs` fails until both match.
 - **"This computer" is not just the source address.** Behind `tailscale serve`, everything arrives from
   `127.0.0.1`. A request is local only when the source is loopback, the `Host` is `localhost`,
   `127.0.0.1` or `[::1]`, and no forwarding or `Tailscale-*` header is present. The `Host` check also
@@ -80,7 +82,7 @@ login page at `/`. POSTs still need the Hub's existing `x-hub: 1` header.
 ```bash
 cd mobile/hub-changes
 node --test test/device-auth.test.mjs
-node test/real-hub.mjs <path-to-hub-checkout> 8f73f9c
+node test/real-hub.mjs <path-to-hub-checkout> 14199ff
 ```
 
 The first runs the module behind a test server and a stand-in for `tailscale serve`. The second copies the

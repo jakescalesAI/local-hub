@@ -12,7 +12,8 @@ import http from 'node:http'
 import net from 'node:net'
 import os from 'node:os'
 import path from 'node:path'
-import { createClient } from '../../src/lib/client.js'
+import { createClient, HUB_NAME_REFUSAL } from '../../src/lib/client.js'
+import { classify } from '../../src/lib/status.js'
 
 const [repo, ref = 'HEAD'] = process.argv.slice(2)
 if (!repo) {
@@ -164,8 +165,13 @@ async function main() {
     const stranger = 'rebound.example.net'
     const headers = { host: stranger, authorization: `Bearer ${token}` }
     for (const route of ['/', '/pair', '/api/state', '/api/pair/me']) assert.equal((await call(route, { headers })).status, 403, route)
-    assert.equal((await appOn(stranger).check('https://hub.test', token)).status, 403)
-    assert.match((await appOn(stranger).claim('https://hub.test', 'WRONG000', { name: 'n', platform: 'android' })).error, /"hosts" in config\/hub\.json/)
+    const refusal = (await call('/api/pair/me', { headers })).text
+    assert.ok(refusal.startsWith(HUB_NAME_REFUSAL), `the app no longer recognises the Hub's sentence: ${refusal}`)
+    assert.equal(classify(await appOn(stranger).check('https://hub.test', token)), 'unknownName')
+    assert.match((await appOn(stranger).claim('https://hub.test', 'WRONG000', { name: 'n', platform: 'android' })).error, /^That address answered, but refused the name/)
+    const noHeader = await call('/api/state', { method: 'POST', headers: { ...OUTSIDE, authorization: `Bearer ${token}`, 'x-hub': '0' } })
+    assert.equal(noHeader.status, 403)
+    assert.ok(!noHeader.text.startsWith(HUB_NAME_REFUSAL), 'the Hub\'s other 403 reads the same')
   })
   await step(`a detached share answers at once, and the reply still finishes after ${REPLY_MS / 1000}s`, async () => {
     const started = Date.now()

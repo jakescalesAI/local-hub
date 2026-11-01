@@ -61,10 +61,10 @@ export const STATES = {
   },
 }
 
-export function classify({ online = true, status = null } = {}) {
+export function classify({ online = true, status = null, nameRefused = false } = {}) {
+  if (nameRefused) return 'unknownName'
   if (status === 200) return 'ok'
   if (status === 401) return 'removed'
-  if (status === 403) return 'unknownName'
   if (status === 404) return 'outdated'
   if (status === 502 || status === 503 || status === 504) return 'stopped'
   if (status !== null) return 'unexpected'
