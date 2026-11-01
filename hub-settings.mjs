@@ -16,7 +16,7 @@ import crypto from 'node:crypto'
 import { hubConfig, enabledTabs, addonOn, activeTheme, baseTheme } from './config.mjs'
 
 export const BUILTIN_TABS = ['home', 'laptop', 'server', 'drives', 'ai', 'cloud', 'calendar', 'stripe']
-const NOT_TABS = new Set(['home', 'chat', 'custom', 'setup']) // files in tabs/ that are not plug-in tabs
+const NOT_TABS = new Set(['home', 'chat', 'custom', 'setup', 'launcher']) // files in tabs/ that are not plug-in tabs
 export const SIZES = ['s', 'm', 'l']
 const MAX_ITEMS = 60
 const MAX_BODY = 256 * 1024
