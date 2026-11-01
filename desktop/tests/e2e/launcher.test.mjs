@@ -375,6 +375,32 @@ describe('settings', () => {
     t.diagnostic(`main window now ${main.url}`)
   })
 
+  test('a save that is refused changes nothing, whichever half is wrong', async t => {
+    const port = await freePort()
+    const userData = makeUserData({ port })
+    cleanup(t, () => removeUserData(userData))
+    const external = await startExternalStub(port)
+    cleanup(t, () => stopExternalStub(external))
+    const handle = await launch({ userData, args: ['--hidden'] })
+    cleanup(t, () => quit(handle).catch(() => {}))
+    await waitForUrl(handle, 0, isHub(port), 'the Hub')
+    await settingsPage(handle)
+    const saved = () => readSettings(userData)
+    const before = saved()
+
+    const badPort = await evalIn(handle, 2, `window.hubDesktop.saveSettings({ hotkey: ${JSON.stringify(TEST_HOTKEY_2)}, port: 99999 })`)
+    t.diagnostic(`good hotkey, bad port: ${JSON.stringify(badPort)}`)
+    assert.equal(badPort.ok, false)
+    assert.match(badPort.error, /port/i)
+    const badHotkey = await evalIn(handle, 2, `window.hubDesktop.saveSettings({ hotkey: 'Not+A+Key', port: ${port + 1} })`)
+    t.diagnostic(`bad hotkey, good port: ${JSON.stringify(badHotkey)}`)
+    assert.equal(badHotkey.ok, false)
+
+    assert.deepEqual(saved(), before, 'nothing written')
+    assert.deepEqual(await evalIn(handle, 2, `window.hubDesktop.getSettings()`), { port, hotkey: TEST_HOTKEY }, 'nothing applied')
+    await pressUntil(TEST_HOTKEY_KEYS, () => launcherVisible(handle), 'the hotkey still working')
+  })
+
   // Quitting can't prove the tree is stopped: Windows also ends a process's children when it exits.
   // Here the app keeps running, so only the app's own stop can have ended them.
   test('changing the port stops the bundled server and its children while the app keeps running', async t => {

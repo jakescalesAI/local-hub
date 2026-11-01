@@ -161,6 +161,76 @@ describe('only the Hub origin loads inside the app', () => {
   })
 })
 
+// The network block and the navigation guards each have to hold without the other. These take one
+// away in the running app, and the last test takes both, to show the checks can fail at all.
+const dropNetworkBlock = handle => handle.app.evaluate(({ session }) => {
+  session.fromPartition('persist:hub').webRequest.onBeforeRequest(null)
+})
+const dropGuards = handle => handle.app.evaluate(({ webContents }) => {
+  for (const contents of webContents.getAllWebContents()) {
+    for (const name of ['will-navigate', 'will-redirect', 'will-frame-navigate']) contents.removeAllListeners(name)
+  }
+})
+
+const addFrame = (handle, src) => evalIn(handle, 0, `(() => {
+  const frame = document.createElement('iframe')
+  frame.src = ${JSON.stringify(src)}
+  document.body.append(frame)
+  return true
+})()`)
+
+describe('each navigation layer on its own', () => {
+  // A cancelled load leaves Chromium's error page in the window, so each attempt starts from the Hub.
+  const backToHub = async (handle, port) => {
+    await handle.app.evaluate(({ BrowserWindow }, url) => {
+      BrowserWindow.getAllWindows().sort((a, b) => a.id - b.id)[0].webContents.loadURL(url).catch(() => {})
+    }, `http://localhost:${port}/`)
+    await waitForUrl(handle, 0, url => url.startsWith(`http://localhost:${port}/`), 'the Hub page')
+  }
+
+  async function tryToLeave(t, handle, foreign, port) {
+    assert.equal((await fetch(`${foreign.origin}/control`)).status, 200, 'the foreign server is up, so silence below means blocked')
+    foreign.hits.length = 0
+    for (const attempt of [
+      () => evalIn(handle, 0, `document.getElementById('link').click()`),
+      () => evalIn(handle, 0, `document.getElementById('redirect').click()`),
+      () => addFrame(handle, `${foreign.origin}/framed`),
+    ]) {
+      await backToHub(handle, port)
+      await attempt()
+      await sleep(800)
+      assert.deepEqual(foreign.hits, [], 'the foreign server was never asked')
+    }
+    t.diagnostic(`foreign requests ${JSON.stringify(foreign.hits)}, external ${JSON.stringify(await externals(handle))}`)
+  }
+
+  test('with the network block gone, the guards alone stop a link, a redirect and a frame', async t => {
+    const { handle, foreign, port } = await withApp(t)
+    await dropNetworkBlock(handle)
+    await tryToLeave(t, handle, foreign, port)
+    assert.ok((await windows(handle))[0].url.startsWith(`http://localhost:${port}/`), 'the window stays on the Hub')
+    const seen = await externals(handle)
+    assert.ok(seen.includes(`${foreign.origin}/from-link`), 'the link went to the browser')
+    assert.ok(seen.includes(`${foreign.origin}/from-redirect`), 'the redirect went to the browser')
+  })
+
+  test('with the guards gone, the network block alone stops a link, a redirect and a frame', async t => {
+    const { handle, foreign, port } = await withApp(t)
+    await dropGuards(handle)
+    await tryToLeave(t, handle, foreign, port)
+    assert.deepEqual(await externals(handle), [], 'the guards are what send links to the browser, and they are gone')
+  })
+
+  test('with both gone, a link does load in the app, so the two tests above can fail', async t => {
+    const { handle, foreign } = await withApp(t)
+    await dropNetworkBlock(handle)
+    await dropGuards(handle)
+    await evalIn(handle, 0, `document.getElementById('link').click()`)
+    await waitFor(() => foreign.hits.some(hit => hit.includes('from-link')), 'the foreign server to be asked', 4000)
+    t.diagnostic(`foreign requests ${JSON.stringify(foreign.hits)}`)
+  })
+})
+
 describe('the Hub\'s own protections', () => {
   test('its x-hub check still refuses a write without the header, and passes with it', async t => {
     const { handle } = await withApp(t)

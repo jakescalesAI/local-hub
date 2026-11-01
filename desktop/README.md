@@ -48,7 +48,10 @@ The app's name is `productName` in `package.json`, and nowhere else.
 | --- | --- |
 | A Hub answering | Attaches, and never stops that Hub, including on quit |
 | Nothing answering | Starts its built-in Hub on that port, restarts it if it crashes, and stops it and its child processes on quit |
-| Another program on the port | Shows a page saying so, and starts nothing |
+| Another program on the port | Shows a page saying so, starts nothing, and starts its Hub once the port is free |
+
+If its built-in Hub stops answering for 45 seconds, whether it never got the port or has hung, the app
+stops it and starts a new one, backing off from 1 second to 30 if that keeps failing.
 
 When the app starts at login it waits 10 seconds before starting its own Hub, in case one started some
 other way is about to answer.
@@ -71,8 +74,9 @@ never touch `config/` or `data/`.
 ## Security
 
 - `contextIsolation` on, `nodeIntegration` off and the sandbox on in every window, with no `<webview>`.
-- Pages from the Hub get no preload at all. The small bridge in `src/preload.cjs` exists only on the
-  app's own pages, and its handlers check the sender.
+- Pages from the Hub get no bridge. The main and launcher windows can show either kind of page, so
+  `src/preload.cjs` loads in them, but it exposes nothing except on the app's own `file:` pages, and its
+  handlers check the sender. A Hub popup window gets no preload at all.
 - Only the Hub's own origin loads inside the app, as a page or a frame. Other `http`, `https` and
   `mailto` links open in the default browser, and other schemes are dropped.
 - Images, fonts and scripts a Hub page requests from elsewhere aren't blocked: the rule covers
@@ -81,6 +85,10 @@ never touch `config/` or `data/`.
   exactly as they do in a browser. Only the Hub it started listens on anything, on the Hub's own port.
 - Permissions are refused except clipboard writes and fullscreen for the Hub's origin.
 - No telemetry and no auto-update.
+
+**If the app crashes.** The built-in Hub stops with it. A browser the Hub started keeps running, since
+the Hub starts it detached so it survives a Hub restart. The next Hub reuses it. A normal quit doesn't
+stop a browser it inherited this way, so it stays until the Hub's idle timer or a restart closes it.
 
 ## For whoever builds the `/launcher` page
 
@@ -121,8 +129,12 @@ them, and the hotkey is pressed for real on an unusual binding. Tests that need 
 such as a build, a running Hub or a second monitor, report as skipped rather than passing.
 
 Not covered by the suite, because it would take over the desktop: real focus changes, how windows look
-on real monitors, the real login-item write, the default `Ctrl+Alt+Space` binding, and running the
-installer.
+on real monitors, the real login-item write, the default `Ctrl+Alt+Space` binding, a real Save As dialog
+and running the installer.
+
+To press the test hotkey from your own script, import `pressKeys` and `TEST_HOTKEY_KEYS` from
+`tests/helpers.mjs`. The script goes to PowerShell on stdin, so its script policy doesn't apply and
+nothing needs changing.
 
 ## Dependencies
 

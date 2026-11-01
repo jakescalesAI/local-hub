@@ -6,7 +6,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 export const PAGES_DIR = fileURLToPath(new URL('../pages/', import.meta.url))
 export const PRELOAD = fileURLToPath(new URL('./preload.cjs', import.meta.url))
 
-const pagesPrefix = pathToFileURL(PAGES_DIR).href
+const pagesUrl = pathToFileURL(PAGES_DIR)
 const EXTERNAL_SCHEMES = new Set(['http:', 'https:', 'mailto:'])
 const HUB_PERMISSIONS = new Set(['clipboard-sanitized-write', 'fullscreen'])
 
@@ -14,8 +14,10 @@ const parse = url => { try { return new URL(url) } catch { return null } }
 
 export const isLocalPage = url => {
   const parsed = parse(url)
-  if (parsed?.protocol !== 'file:') return false
-  return `${parsed.origin === 'null' ? 'file://' : parsed.origin}${parsed.pathname}`.toLowerCase().startsWith(pagesPrefix.toLowerCase())
+  if (parsed?.protocol !== 'file:' || parsed.host !== pagesUrl.host) return false
+  // URL parsing leaves an encoded slash or backslash alone, and a file layer may still decode it.
+  if (/%(2e|2f|5c)/i.test(parsed.pathname)) return false
+  return parsed.pathname.toLowerCase().startsWith(pagesUrl.pathname.toLowerCase())
 }
 
 export const isHubUrl = (url, origin) => parse(url)?.origin === origin

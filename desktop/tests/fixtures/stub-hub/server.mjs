@@ -10,7 +10,9 @@ const HERE = path.dirname(fileURLToPath(import.meta.url))
 const PORT = Number(process.env.HUB_PORT || 3100)
 
 const grandchild = process.env.STUB_GRANDCHILD === '1'
-  ? spawn(process.execPath, [path.join(HERE, 'keep-alive.mjs')], { stdio: 'ignore', windowsHide: true })
+  // Detached like the real Hub's browser: Windows won't end it just because its parent exits, so only
+  // a real tree stop can.
+  ? spawn(process.execPath, [path.join(HERE, 'keep-alive.mjs')], { stdio: 'ignore', windowsHide: true, detached: true })
   : null
 
 const page = `<!doctype html><html><head><title>Stub Hub</title></head><body>

@@ -14,8 +14,9 @@ export async function probeHub(port, timeoutMs = 1500) {
     // Read the body: another program on this port can also answer 200.
     const body = res.status === 200 ? await res.json().catch(() => null) : null
     return body?.ok === true ? 'hub' : 'other'
-  } catch {
-    return 'none'
+  } catch (error) {
+    // Connection refused is an empty port. A timeout means something took the connection and said nothing.
+    return error?.name === 'TimeoutError' ? 'silent' : 'none'
   }
 }
 
@@ -25,6 +26,7 @@ const STABLE_AFTER_MS = 60_000
 export class HubConnection extends EventEmitter {
   #child = null
   #childStartedAt = 0
+  #childQuietSince = null
   #backoffMs = 1000
   #nextSpawnAt = 0
   #timer = null
@@ -106,8 +108,12 @@ export class HubConnection extends EventEmitter {
     const seen = await this.probe(port)
     if (!this.#running || port !== this.port) return
     if (seen === 'hub') this.#onHub()
-    else if (seen === 'other') this.#set({ status: 'conflict', reason: 'port-conflict' })
-    else this.#onNothing()
+    else {
+      this.#stopChildIfQuiet()
+      if (seen === 'other') this.#set({ status: 'conflict', reason: 'port-conflict' })
+      else if (seen === 'silent' && !this.#child && this.state.mode !== 'attached') this.#set({ status: 'conflict', reason: 'port-silent' })
+      else this.#onNothing()
+    }
     this.emit('checked', this.state)
     clearTimeout(this.#timer)
     this.#timer = setTimeout(() => this.#tick(), this.state.status === 'online' ? this.pollMs : this.offlinePollMs)
@@ -116,7 +122,21 @@ export class HubConnection extends EventEmitter {
   #onHub() {
     // Our child died but something answers: another Hub took the port, and that one isn't ours.
     const mode = this.#child ? 'bundled' : 'attached'
+    this.#childQuietSince = null
     this.#set({ status: 'online', mode, reason: null })
+  }
+
+  // A child that lost the port stays alive without listening (the real Hub logs EADDRINUSE and carries
+  // on), and it never tries again. Neither will a hung one, so it's stopped, and the exit handler in
+  // #spawn starts a new one with the usual backoff. Timed from the first check it missed, so waking
+  // from sleep doesn't count as a long silence.
+  #stopChildIfQuiet() {
+    if (!this.#child) return
+    const now = Date.now()
+    this.#childQuietSince ??= now
+    if (now - this.#childQuietSince <= this.startTimeoutMs) return
+    this.#childQuietSince = now
+    this.stopTree(this.#child.pid)
   }
 
   #onNothing() {
@@ -136,6 +156,7 @@ export class HubConnection extends EventEmitter {
     if (!child) return this.#set({ status: 'offline', mode: null, reason: 'no-server' })
     this.#child = child
     this.#childStartedAt = Date.now()
+    this.#childQuietSince = this.#childStartedAt
     this.#set({ status: 'offline', mode: 'bundled', reason: 'starting' })
     child.once('error', error => this.emit('child-error', error))
     child.once('exit', () => {

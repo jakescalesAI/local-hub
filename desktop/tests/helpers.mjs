@@ -181,8 +181,15 @@ export const recorded = handle => handle.app.evaluate(() => ({
 }))
 
 export function pressKeys(keys) {
-  const script = path.join(HERE, 'fixtures', 'press-hotkey.ps1')
-  const result = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', script, '-Keys', keys.join(',')], { windowsHide: true, encoding: 'utf8' })
+  // Sent on stdin: with no script file, PowerShell's script policy doesn't apply.
+  const script = [
+    `$ErrorActionPreference = 'Stop'`,
+    `Add-Type -Namespace LocalHubTest -Name Keys -MemberDefinition '[DllImport("user32.dll")] public static extern void keybd_event(byte vk, byte scan, uint flags, System.UIntPtr extra);'`,
+    ...keys.map(key => `[LocalHubTest.Keys]::keybd_event(${key}, 0, 0, [UIntPtr]::Zero)`),
+    ...keys.toReversed().map(key => `[LocalHubTest.Keys]::keybd_event(${key}, 0, 2, [UIntPtr]::Zero)`),
+    '',
+  ].join('\n')
+  const result = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', '-'], { input: script, windowsHide: true, encoding: 'utf8' })
   if (result.status !== 0) throw new Error(`press-hotkey failed: ${result.stderr}`)
 }
 

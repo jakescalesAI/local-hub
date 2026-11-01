@@ -35,6 +35,16 @@ test('only files in the pages folder count as local pages', () => {
   assert.equal(isLocalPage('http://localhost:3100/offline.html'), false)
 })
 
+test('a local page has no host and no encoded way out of the pages folder', () => {
+  const pages = pathToFileURL(PAGES_DIR)
+  assert.equal(isLocalPage(`file://attacker.example${pages.pathname}x.html`), false)
+  assert.equal(isLocalPage(`file://localhost.example${pages.pathname}x.html`), false)
+  for (const way of ['..%2fsrc/app.js', '..%2Fsrc/app.js', '..%5csrc/app.js', '%2e%2e/src/app.js', '.%2e/src/app.js', 'a%2f..%2f..%2fsrc/app.js']) {
+    assert.equal(isLocalPage(`${pages.href}${way}`), false, way)
+  }
+  assert.equal(isLocalPage(`${pages.href}settings.html?a=%2f#%2e`), true, 'a query or fragment is not part of the path')
+})
+
 test('only web and mail links may open in the default browser', () => {
   for (const url of ['https://example.com/', 'http://example.com/', 'mailto:someone@example.com']) assert.equal(canOpenExternally(url), true, url)
   for (const url of ['file:///C:/Windows/notepad.exe', 'javascript:alert(1)', 'ms-settings:', 'smb://host/share', 'calculator:', '']) assert.equal(canOpenExternally(url), false, url)

@@ -115,19 +115,20 @@ function start() {
   handle('start-bundled', () => connection.useBundled())
   handle('get-settings', () => ({ port: connection.port, hotkey: hotkey.current ?? settings.values.hotkey }))
   handle('save-settings', async patch => {
-    const result = { ok: true }
+    const changesPort = patch?.port !== undefined && patch.port !== connection.port
+    // Checked first, so a refused save changes nothing.
+    if (changesPort && !validPort(patch.port)) return { ok: false, error: 'The port must be a number from 1 to 65535.' }
     if (patch?.hotkey !== undefined) {
       const applied = typeof patch.hotkey === 'string' ? hotkey.set(patch.hotkey.trim()) : { ok: false, error: 'No hotkey given.' }
       if (!applied.ok) return { ok: false, error: applied.error }
       settings.update({ hotkey: applied.hotkey })
     }
-    if (patch?.port !== undefined && patch.port !== connection.port) {
-      if (!validPort(patch.port)) return { ok: false, error: 'The port must be a number from 1 to 65535.' }
+    if (changesPort) {
       settings.update({ port: patch.port })
       await connection.setPort(patch.port)
     }
     trayControls.refresh()
-    return result
+    return { ok: true }
   })
 
   const hotkeyResult = hotkey.set(settings.values.hotkey)
