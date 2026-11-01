@@ -351,7 +351,9 @@ function accessLine(req, res, url) {
 }
 
 async function handle(req, res) {
-  const url = new URL(req.url, `http://${req.headers.host}`)
+  // A fixed base: the Host header is the sender's text, and a bad one must not stop the hub. knownHost judges it next.
+  let url
+  try { url = new URL(req.url, 'http://localhost') } catch { return send(res, 400, 'Bad request', 'text/plain; charset=utf-8') }
   res.on('close', () => accessLine(req, res, url))
   if (!knownHost(req)) return send(res, 403, 'This hub doesn’t answer to that name. If it’s yours, add it to "hosts" in config/hub.json.', 'text/plain; charset=utf-8')
   if (!deviceAuth.admit(url, req, res) && await gate(req, res, url, send)) return
@@ -416,7 +418,11 @@ async function bindListeners() {
   const more = localOnly || (passcodeNeeded() && !hasPasscode()) ? [] : hubConfig().listen
   for (const host of ['127.0.0.1', tailnet, ...more].filter(Boolean)) {
     if (listeners.has(host)) continue
-    const server = http.createServer(handle)
+    const server = http.createServer((req, res) => handle(req, res).catch(err => {
+      console.error(err)
+      if (!res.headersSent) res.writeHead(500)
+      res.end()
+    }))
     listeners.set(host, server)
     await new Promise(resolve => {
       server.once('error', e => (console.error(`listen ${host}:${PORT}`, e.message), listeners.delete(host), resolve()))
