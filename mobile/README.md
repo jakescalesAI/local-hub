@@ -58,11 +58,16 @@ xcodebuild -project ios/App/App.xcodeproj -scheme App -sdk iphonesimulator -dest
 
 ## What is not proven
 
+Both platforms compile in `.github/workflows/mobile.yml`, and the iOS build opened to its welcome
+screen once in a simulator. A build that compiles doesn't show the app works. Nothing has been
+tapped, and the Android build has never been opened.
+
 Everything here needs a real device or a real Hub, and has not been run:
 
 - The native code: the QR scanner, the share sheet and share extension, Keychain and Keystore storage.
-- The content security policy with Capacitor's bridge on a device.
+- Android's content security policy with Capacitor's bridge.
 - The Hub page inside the in-app web view, including file picking and how the shell behaves behind it.
+- The Hub chat's voice input, which uses `SpeechRecognition`, inside that web view.
 - Pairing and requests through `tailscale serve`, including its error pages for a sleeping computer.
 
 The shell's logic and copy are tested in headless Edge against the mock Hub. That says nothing about

@@ -229,6 +229,21 @@ Simulator builds need no signing and no account. Anything on a real iPhone needs
 [Apple asks that apps be tested on a device before submitting](https://developer.apple.com/app-store/review/guidelines/),
 so at least one TestFlight round on a real phone is needed.
 
+### First results (2026-11-01, GitHub Actions)
+
+| Build | Result | Run time | What it shows |
+| --- | --- | --- | --- |
+| Android debug, Ubuntu, JDK 21 | Success, 12.6 MB APK | 3 min 36 s | It compiles and the manifest merges. Never opened |
+| iOS simulator, unsigned, Xcode 26.6 | Success, no errors | 3 min 43 s | It compiles, the share extension is inside the app, and the app opened to its welcome screen once |
+
+A build that compiles doesn't show the app works. Nothing was tapped in either build, and neither ran
+on a real device. The first APK also showed that a plugin adds microphone and location permissions.
+The app uses neither, so the manifest removes them and the workflow fails if they return. That fix has
+not been through a build yet.
+
+These runs used `.github/workflows/mobile.yml`, the one file outside `mobile/`, and need no signing or
+secrets. Whether it goes into `main` is the Hub owner's call at merge time.
+
 ## 5. What the owner has to do
 
 Nothing here is done or started.
