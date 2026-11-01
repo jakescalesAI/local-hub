@@ -1,0 +1,104 @@
+{
+  "id": "discord",
+  "name": "Discord",
+  "category": "Chat",
+  "auth": {
+    "type": "token",
+    "header": "Authorization",
+    "prefix": "Bot ",
+    "fields": [
+      {
+        "name": "token",
+        "label": "Bot token",
+        "secret": true,
+        "placeholder": "Paste your bot token"
+      }
+    ],
+    "basic": null,
+    "keyUrl": "https://discord.com/developers/applications",
+    "keyHelp": "Open your application, go to Bot, press Reset Token and copy it; invite the bot to your server with only View Channels and Read Message History for read-only use.",
+    "signIn": null
+  },
+  "baseUrl": "https://discord.com/api/v10",
+  "headers": {
+    "User-Agent": "DiscordBot (https://example.invalid, 1.0)",
+    "Content-Type": "application/json"
+  },
+  "test": {
+    "method": "GET",
+    "path": "/applications/@me",
+    "expect": 200,
+    "who": "name"
+  },
+  "read": [
+    {
+      "id": "get_application",
+      "label": "Get this bot's application",
+      "method": "GET",
+      "path": "/applications/@me"
+    },
+    {
+      "id": "get_guild",
+      "label": "Get a server",
+      "method": "GET",
+      "path": "/guilds/{guild_id}",
+      "query": [
+        "with_counts"
+      ]
+    },
+    {
+      "id": "list_channels",
+      "label": "List a server's channels",
+      "method": "GET",
+      "path": "/guilds/{guild_id}/channels"
+    },
+    {
+      "id": "list_messages",
+      "label": "Read a channel's recent messages",
+      "method": "GET",
+      "path": "/channels/{channel_id}/messages",
+      "query": [
+        "limit",
+        "before",
+        "after",
+        "around"
+      ]
+    },
+    {
+      "id": "list_members",
+      "label": "List a server's members",
+      "method": "GET",
+      "path": "/guilds/{guild_id}/members",
+      "query": [
+        "limit",
+        "after"
+      ]
+    }
+  ],
+  "write": [
+    {
+      "id": "send_message",
+      "label": "Send a message to a channel",
+      "method": "POST",
+      "path": "/channels/{channel_id}/messages",
+      "body": [
+        "content",
+        "embeds",
+        "message_reference"
+      ]
+    }
+  ],
+  "mcp": null,
+  "docs": [
+    "https://docs.discord.com/developers/reference",
+    "https://docs.discord.com/developers/quick-start/getting-started",
+    "https://docs.discord.com/developers/resources/application",
+    "https://docs.discord.com/developers/resources/user",
+    "https://docs.discord.com/developers/resources/guild",
+    "https://docs.discord.com/developers/resources/channel",
+    "https://docs.discord.com/developers/resources/message"
+  ],
+  "checked": "2026-11-01",
+  "tested": "mock; real service refused a fake key",
+  "notes": "Docs moved from discord.com/developers/docs to docs.discord.com/developers (301). Base is https://discord.com/api/v10 (v10 and v9 available; v8 and older deprecated or discontinued; pin the version because the unversioned default is not stated). The bot header is 'Authorization: Bot <token>'. Discord requires a User-Agent of the form 'DiscordBot ($url, $versionNumber)' and may block requests without one with a Cloudflare error; the value here is a placeholder the host must replace with its own URL and version. GET /applications/@me returns the application tied to the bot (id, name, description, owner). GET /users/@me is documented only for OAuth2 (identify scope); the page does not say bot tokens may call it, so it is not used for the test. GET /users/@me/guilds is documented with the guilds OAuth scope and its bot access was not confirmed, so it is left out. GET /guilds/{id}/channels: from 2026-11-16 it will omit channels the bot cannot view. GET /guilds/{id}/members needs the privileged GUILD_MEMBERS intent. Reading message text needs the privileged MESSAGE_CONTENT intent (without it content, embeds, attachments and components come back empty) plus VIEW_CHANNEL and READ_MESSAGE_HISTORY. Send message needs SEND_MESSAGES; content is limited to 2000 characters. Bot permissions are chosen when the bot is invited, so a read-only bot is possible. No official Discord-published MCP server was found (search returned only community projects), so mcp is null."
+}

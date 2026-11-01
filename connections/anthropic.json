@@ -1,0 +1,102 @@
+{
+  "id": "anthropic",
+  "name": "Anthropic (Claude API)",
+  "category": "AI",
+  "auth": {
+    "type": "apiKey",
+    "header": "x-api-key",
+    "prefix": "",
+    "fields": [
+      {
+        "name": "api_key",
+        "label": "Anthropic API key",
+        "secret": true,
+        "placeholder": "sk-ant-..."
+      },
+      {
+        "name": "workspace_id",
+        "label": "Workspace ID (only if the key is not scoped to one workspace)",
+        "secret": false,
+        "placeholder": "wrkspc_...",
+        "optional": true
+      }
+    ],
+    "basic": null,
+    "keyUrl": "https://platform.claude.com/settings/keys",
+    "keyHelp": "Click Create key, choose a personal key and pick a single workspace so no workspace header is needed; the key is shown only once.",
+    "signIn": null
+  },
+  "baseUrl": "https://api.anthropic.com",
+  "headers": {
+    "anthropic-version": "2026-10-21",
+    "content-type": "application/json"
+  },
+  "test": {
+    "method": "GET",
+    "path": "/v1/models?limit=1",
+    "expect": 200,
+    "who": null
+  },
+  "read": [
+    {
+      "id": "list_models",
+      "label": "List available models",
+      "method": "GET",
+      "path": "/v1/models",
+      "query": [
+        "limit",
+        "after_id",
+        "before_id",
+        "lifecycle"
+      ]
+    },
+    {
+      "id": "count_tokens",
+      "label": "Count tokens in a message before sending",
+      "method": "POST",
+      "path": "/v1/messages/count_tokens",
+      "body": [
+        "model",
+        "messages"
+      ]
+    },
+    {
+      "id": "list_files",
+      "label": "List uploaded files",
+      "method": "GET",
+      "path": "/v1/files",
+      "query": []
+    }
+  ],
+  "write": [
+    {
+      "id": "create_message",
+      "label": "Send a message to Claude (billed per token)",
+      "method": "POST",
+      "path": "/v1/messages",
+      "body": [
+        "model",
+        "max_tokens",
+        "messages"
+      ]
+    }
+  ],
+  "mcp": {
+    "url": "https://platform.claude.com/docs/mcp",
+    "official": true,
+    "auth": "none",
+    "docs": "https://platform.claude.com/docs/llms.txt"
+  },
+  "docs": [
+    "https://platform.claude.com/docs/en/api/getting-started",
+    "https://platform.claude.com/docs/en/api/versioning",
+    "https://platform.claude.com/docs/en/api/models-list",
+    "https://platform.claude.com/docs/en/api/messages",
+    "https://platform.claude.com/docs/en/get-api-key",
+    "https://platform.claude.com/docs/en/manage-claude/authentication",
+    "https://platform.claude.com/docs/llms.txt"
+  ],
+  "checked": "2026-11-01",
+  "tested": "mock; real service refused a fake key",
+  "notes": "AUTH CHANGED: the Authentication page now says the API key is sent as 'Authorization: Bearer <key>' and that 'x-api-key' is a legacy fallback that is still supported; the API overview table repeats this (Authorization required, x-api-key optional legacy). This manifest uses x-api-key with no prefix because it is the documented fallback and is simplest to store; switch to header Authorization / prefix 'Bearer ' to follow the current recommendation. VERSION: the Versions page says every request must send anthropic-version and gives 2026-10-21 as the latest (recommended); the Authentication page's own example still shows anthropic-version: 2023-06-01 and the cURL snippet there still uses x-api-key. Which older versions are still accepted was not confirmed; 2026-10-21 is pinned here, with a migration guide linked from the Versions page (not read). WORKSPACE: a key not scoped to a workspace MUST also send anthropic-workspace-id on every request or the API returns 400; keys scoped to one workspace omit it. Key types: personal, service account, and legacy workspace key; keys start with sk-ant-; shown only once; expiration chosen at creation (3 hours to Never; a 401 after expiry). TEST: GET /v1/models only lists models; the Models page does not state cost, and the call changes nothing. It does not name the account, so who is null. count_tokens: listed in the API overview as POST /v1/messages/count_tokens; its body fields and 'free' status were NOT read, so they are an expectation (the overview describes it as a way to manage costs). The Messages page excerpt showed model, max_tokens and messages as the required body fields. GET /v1/files appears in the API overview; query params were not read. Model ids in docs examples include claude-opus-5-5 and claude-sonnet-4-6. MCP: platform.claude.com/docs/llms.txt has an 'MCP server' section: connect an MCP client to https://platform.claude.com/docs/mcp (Streamable HTTP) to search and read the Claude API docs; a server card is at https://platform.claude.com/docs/mcp/server-card. Auth is not mentioned on that page (assumed none, unconfirmed). It is a documentation server hosted by Anthropic, not an MCP server that calls the API for the user. No separate Anthropic-run API-control MCP server was found."
+}

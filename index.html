@@ -88,7 +88,7 @@ html.offline .reconnect { opacity: 1; transform: translate(-50%, 0); }
 .strip-mark { height: 1px; margin-bottom: -1px; visibility: hidden; }
 /* Segmented control with a sliding thumb. */
 .seg { position: relative; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; padding: 2px; background: var(--fill); border-radius: 9px; min-width: 620px; }
-.seg-scroll { flex: 0 1 auto; min-width: 0; overflow-x: auto; scrollbar-width: none; border-radius: 9px; }
+.seg-scroll { flex: 0 1 auto; min-width: 0; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; border-radius: 9px; }
 .seg-scroll::-webkit-scrollbar { display: none; }
 .seg-scroll > .seg { width: max-content; min-width: min(620px, 100%); grid-auto-columns: minmax(78px, 1fr); }
 .seg-scroll > .seg button { padding: 0 8px; white-space: nowrap; }

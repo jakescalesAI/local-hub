@@ -1,0 +1,140 @@
+{
+  "id": "aws",
+  "name": "Amazon Web Services",
+  "category": "Cloud",
+  "auth": {
+    "type": "awsSigV4",
+    "header": "Authorization",
+    "prefix": "AWS4-HMAC-SHA256 ",
+    "fields": [
+      {
+        "name": "accessKeyId",
+        "label": "Access key ID",
+        "secret": false,
+        "placeholder": "AKIA..."
+      },
+      {
+        "name": "secretAccessKey",
+        "label": "Secret access key",
+        "secret": true,
+        "placeholder": "paste the secret shown once at creation"
+      },
+      {
+        "name": "region",
+        "label": "Default region",
+        "secret": false,
+        "placeholder": "us-east-1",
+        "default": "us-east-1",
+        "optional": true
+      }
+    ],
+    "basic": null,
+    "keyUrl": "https://console.aws.amazon.com/iam",
+    "keyHelp": "In IAM open the read-only user, choose Security credentials, then Create access key and pick Other; the secret is shown only once.",
+    "signIn": null
+  },
+  "baseUrl": "https://sts.{region}.amazonaws.com",
+  "headers": {},
+  "test": {
+    "method": "POST",
+    "path": "/",
+    "expect": 200,
+    "who": "Arn",
+    "host": "sts.{region}.amazonaws.com",
+    "service": "sts",
+    "contentType": "application/x-www-form-urlencoded",
+    "body": "Action=GetCallerIdentity&Version=2011-06-15"
+  },
+  "read": [
+    {
+      "id": "describe_instances",
+      "label": "List EC2 instances in the region",
+      "method": "POST",
+      "path": "/",
+      "host": "ec2.{region}.amazonaws.com",
+      "service": "ec2",
+      "protocol": "query",
+      "contentType": "application/x-www-form-urlencoded",
+      "fixed": {
+        "Action": "DescribeInstances",
+        "Version": "2016-11-15"
+      },
+      "query": [
+        "MaxResults",
+        "NextToken",
+        "Filter.1.Name",
+        "Filter.1.Value.1",
+        "InstanceId.1"
+      ]
+    },
+    {
+      "id": "get_cost_and_usage",
+      "label": "Get cost and usage by service for a date range",
+      "method": "POST",
+      "path": "/",
+      "host": "ce.us-east-1.amazonaws.com",
+      "signingRegion": "us-east-1",
+      "service": "ce",
+      "protocol": "json",
+      "contentType": "application/x-amz-json-1.1",
+      "headers": {
+        "X-Amz-Target": "AWSInsightsIndexService.GetCostAndUsage"
+      },
+      "body": [
+        "TimePeriod",
+        "Granularity",
+        "Metrics",
+        "GroupBy",
+        "Filter",
+        "NextPageToken"
+      ]
+    },
+    {
+      "id": "get_caller_identity",
+      "label": "Show which AWS identity the key belongs to",
+      "method": "POST",
+      "path": "/",
+      "host": "sts.{region}.amazonaws.com",
+      "service": "sts",
+      "protocol": "query",
+      "contentType": "application/x-www-form-urlencoded",
+      "fixed": {
+        "Action": "GetCallerIdentity",
+        "Version": "2011-06-15"
+      }
+    }
+  ],
+  "write": [],
+  "mcp": {
+    "url": "https://aws-mcp.us-east-1.api.aws/mcp",
+    "official": true,
+    "auth": "oauth",
+    "docs": "https://docs.aws.amazon.com/aws-mcp/latest/userguide/getting-started-aws-mcp-server.html"
+  },
+  "docs": [
+    "https://docs.aws.amazon.com/STS/latest/APIReference/API_GetCallerIdentity.html",
+    "https://docs.aws.amazon.com/general/latest/gr/sts.html",
+    "https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeInstances.html",
+    "https://docs.aws.amazon.com/AWSEC2/latest/APIReference/Query-Requests.html",
+    "https://docs.aws.amazon.com/aws-cost-management/latest/APIReference/API_GetCostAndUsage.html",
+    "https://docs.aws.amazon.com/aws-cost-management/latest/APIReference/Welcome.html",
+    "https://docs.aws.amazon.com/aws-managed-policy/latest/reference/ReadOnlyAccess.html",
+    "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html",
+    "https://docs.aws.amazon.com/IAM/latest/UserGuide/access-key-self-managed.html",
+    "https://docs.aws.amazon.com/aws-mcp/latest/userguide/getting-started-aws-mcp-server.html"
+  ],
+  "checked": "2026-11-01",
+  "tested": "mock; real service refused a fake key",
+  "notes": "AWS has no bearer token: every request must be signed with Signature Version 4 from the access key ID, secret and region (the Authorization header value is computed per request, not pasted). The format has no multi-host concept, so each action here carries its own host, signing service name and protocol. Test call: STS GetCallerIdentity, a form POST to / with body Action=GetCallerIdentity&Version=2011-06-15, which needs no IAM permission and returns Arn, UserId and Account (the XML Arn is the 'who'). STS docs recommend the regional endpoint sts.<region>.amazonaws.com over the legacy global sts.amazonaws.com. EC2 DescribeInstances is a Query API call: Action=DescribeInstances, Version=2016-11-15 against ec2.<region>.amazonaws.com, per-region, XML response, paginate with MaxResults and NextToken (MaxResults cannot be combined with InstanceId.N). Cost Explorer is a JSON 1.1 call to the single endpoint https://ce.us-east-1.amazonaws.com with header X-Amz-Target: AWSInsightsIndexService.GetCostAndUsage and body TimePeriod {Start,End as YYYY-MM-DD, end exclusive}, Granularity (DAILY, MONTHLY or HOURLY), Metrics (e.g. UnblendedCost), optional GroupBy such as {Type DIMENSION, Key SERVICE}. The signing service name for Cost Explorer ('ce') is not printed on the pages I read; it is the same short name the API uses in its SDK id (ce-2017-10-25), so verify before relying on it. The user must have Cost Explorer enabled, and the docs only say AWS charges apply (see AWS Cost Management Pricing). How to make a read-only IAM user: in the IAM console choose Users > Create user, no console access needed, then Set permissions > Attach policies directly and pick the AWS managed policy ReadOnlyAccess (arn:aws:iam::aws:policy/ReadOnlyAccess). Its JSON includes ec2:Describe* and ec2:Get*, and lists individual Cost Explorer reads such as ce:GetCostAndUsage and ce:GetCostForecast, so one policy covers all three calls here. Then open the user's Security credentials tab > Create access key > Other and copy the secret, which is shown once. Do not attach any write policy; no write actions are listed for this reason. IAM best practice in the docs prefers federation or roles over long-term user keys; an IAM user key is the only form this connection uses. Official MCP server: AWS MCP Server, managed remote, https://aws-mcp.us-east-1.api.aws/mcp (also us-west-2, ap-southeast-1, ap-southeast-2, ap-northeast-1, eu-central-1, eu-west-1, eu-west-2), authenticates by OAuth (attach AWSMCPSignInOAuthAccessPolicy) or by SigV4 through the MCP Proxy for AWS; SigV4 mode also allows a read-only mode that hides write tools.",
+  "store": {
+    "key": "aws",
+    "fields": {
+      "accessKeyId": "accessKeyId",
+      "secretAccessKey": "secretAccessKey",
+      "region": "region"
+    },
+    "alsoList": {
+      "region": "regions"
+    }
+  }
+}

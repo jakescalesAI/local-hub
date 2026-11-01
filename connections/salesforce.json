@@ -1,0 +1,133 @@
+{
+  "id": "salesforce",
+  "name": "Salesforce",
+  "category": "Sales",
+  "auth": {
+    "type": "oauth",
+    "header": "Authorization",
+    "prefix": "Bearer ",
+    "fields": [
+      {
+        "name": "site",
+        "label": "My Domain address",
+        "secret": false,
+        "placeholder": "https://yourcompany.my.salesforce.com"
+      },
+      {
+        "name": "clientId",
+        "label": "Consumer key of your External Client App",
+        "secret": false,
+        "placeholder": "3MVG9..."
+      }
+    ],
+    "basic": null,
+    "keyUrl": "https://developer.salesforce.com/docs/platform/hosted-mcp-servers/guide/create-external-client-app.html",
+    "keyHelp": "In your org open Setup, External Client App Manager, create an app with OAuth enabled, your Hub's callback URL and scopes api and refresh_token, then copy its Consumer Key.",
+    "signIn": {
+      "kind": "oauth",
+      "authorizeUrl": "{site}/services/oauth2/authorize",
+      "tokenUrl": "{site}/services/oauth2/token",
+      "deviceUrl": null,
+      "scopes": [
+        "api",
+        "refresh_token"
+      ],
+      "clientHelp": "Each user makes their own External Client App in their Salesforce org (Setup, External Client App Manager); creating new Connected Apps is restricted as of Spring 2026. Leave 'Require Secret for Web Server Flow' off so no client secret is needed; PKCE is then used.",
+      "pkce": true
+    }
+  },
+  "baseUrl": "{site}",
+  "headers": {
+    "Accept": "application/json"
+  },
+  "test": {
+    "method": "GET",
+    "path": "/services/oauth2/userinfo",
+    "expect": 200,
+    "who": "name"
+  },
+  "read": [
+    {
+      "id": "query",
+      "label": "Run a SOQL query",
+      "method": "GET",
+      "path": "/services/data/latest/query",
+      "query": [
+        "q"
+      ]
+    },
+    {
+      "id": "search",
+      "label": "Search across objects",
+      "method": "GET",
+      "path": "/services/data/latest/parameterizedSearch",
+      "query": [
+        "q",
+        "sobject",
+        "fields"
+      ]
+    },
+    {
+      "id": "get_record",
+      "label": "Get one record",
+      "method": "GET",
+      "path": "/services/data/latest/sobjects/{sobject}/{id}",
+      "query": [
+        "fields"
+      ]
+    },
+    {
+      "id": "describe_object",
+      "label": "Describe an object's fields",
+      "method": "GET",
+      "path": "/services/data/latest/sobjects/{sobject}/describe"
+    },
+    {
+      "id": "list_objects",
+      "label": "List available objects",
+      "method": "GET",
+      "path": "/services/data/latest/sobjects"
+    },
+    {
+      "id": "org_limits",
+      "label": "Show org API limits",
+      "method": "GET",
+      "path": "/services/data/latest/limits"
+    }
+  ],
+  "write": [
+    {
+      "id": "create_record",
+      "label": "Create a record",
+      "method": "POST",
+      "path": "/services/data/latest/sobjects/{sobject}",
+      "body": [
+        "fields"
+      ]
+    }
+  ],
+  "mcp": {
+    "url": "https://api.salesforce.com/platform/mcp/v1/<SERVER-NAME>",
+    "official": true,
+    "auth": "oauth",
+    "docs": "https://developer.salesforce.com/docs/platform/hosted-mcp-servers/guide/claude.html"
+  },
+  "docs": [
+    "https://developer.salesforce.com/docs/platform/api-rest/guide/intro-rest.html",
+    "https://developer.salesforce.com/docs/platform/api-rest/guide/quickstart.html",
+    "https://developer.salesforce.com/docs/platform/api-rest/guide/intro-oauth-and-connected-apps.html",
+    "https://developer.salesforce.com/docs/platform/api-rest/guide/intro-rest-resources.html",
+    "https://developer.salesforce.com/docs/platform/api-rest/guide/resources-list.html",
+    "https://help.salesforce.com/s/articleView?id=xcloud.remoteaccess_oauth_endpoints.htm&type=5",
+    "https://help.salesforce.com/s/articleView?id=xcloud.remoteaccess_oauth_device_flow.htm&type=5",
+    "https://help.salesforce.com/s/articleView?id=xcloud.remoteaccess_oauth_web_server_flow.htm&type=5",
+    "https://help.salesforce.com/s/articleView?id=xcloud.remoteaccess_oauth_tokens_scopes.htm&type=5",
+    "https://help.salesforce.com/s/articleView?id=xcloud.remoteaccess_using_userinfo_endpoint.htm&type=5",
+    "https://developer.salesforce.com/docs/platform/hosted-mcp-servers/guide/hosted-mcp-servers-overview.html",
+    "https://developer.salesforce.com/docs/platform/hosted-mcp-servers/guide/create-external-client-app.html",
+    "https://developer.salesforce.com/docs/platform/hosted-mcp-servers/guide/claude.html"
+  ],
+  "checked": "2026-11-01",
+  "tested": "mock only",
+  "notes": "No pasted API key exists: Salesforce has no personal access token, only OAuth 2.0 through an External Client App (creating new Connected Apps is restricted as of Spring 2026 (contact Salesforce Support)), and a self-hosted app has no shared client of its own, so each user must create their own External Client App in their org (Setup, External Client App Manager) and give the Hub the consumer key and their My Domain address. There is no fixed keyUrl because the page lives in the user's org; the docs page describing the steps is used instead. The web server flow uses PKCE (code_challenge / code_verifier); client_secret is required unless 'Require Secret for Web Server Flow' is off on the app, so a secret-less setup depends on that setting (not tested). The device flow (response_type=device_code posted to /services/oauth2/token with client_id and scope=api) is documented for External Client Apps but deviceUrl is left null because whether it works for a secret-less app was not confirmed. Hosts: login.salesforce.com, a My Domain URL, an Experience Cloud URL or a custom URL; sandboxes use test.salesforce.com or the sandbox My Domain. Endpoints: /services/oauth2/authorize, /services/oauth2/token, /services/oauth2/userinfo (returns name, email, user_id, organization_id). REST resources are under {site}/services/data/vXX.X/..., and the docs say /services/data/latest/ resolves to the newest API version (v68.0 appears in their examples). OAuth scopes: api (Manage user data via APIs), refresh_token / offline_access, openid, id/profile/email, web, mcp_api. There is no read-only OAuth scope; read-only has to be enforced with a read-only profile or permission set for the signed-in user. Instance URL comes back in the token response as instance_url. The update (PATCH) and delete paths were not read closely, so only record creation is listed as a write. Official hosted MCP servers: URL https://api.salesforce.com/platform/mcp/v1/<SERVER-NAME> (sandbox and scratch orgs use https://api.salesforce.com/platform/mcp/v1/sandbox/<SERVER-NAME>; example server name platform/sobject-all); requires an External Client App with scopes mcp_api and refresh_token, JWT-based access tokens, and can take up to 30 minutes to become active; the docs say Connected Apps are not supported there. The doc pages were only readable through the browser pane because plain fetches returned 403."
+}

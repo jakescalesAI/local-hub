@@ -1,0 +1,100 @@
+{
+  "id": "notion",
+  "name": "Notion",
+  "category": "Docs",
+  "auth": {
+    "type": "token",
+    "header": "Authorization",
+    "prefix": "Bearer ",
+    "fields": [
+      {
+        "name": "token",
+        "label": "Integration token",
+        "secret": true,
+        "placeholder": "Paste your connection token"
+      }
+    ],
+    "basic": null,
+    "keyUrl": "https://app.notion.com/developers/connections",
+    "keyHelp": "Create an internal connection (workspace owner), copy its token, then share each page or database with it from the page's menu under Connections.",
+    "signIn": null
+  },
+  "baseUrl": "https://api.notion.com",
+  "headers": {
+    "Notion-Version": "2026-03-11",
+    "Content-Type": "application/json"
+  },
+  "test": {
+    "method": "GET",
+    "path": "/v1/users/me",
+    "expect": 200,
+    "who": "name"
+  },
+  "read": [
+    {
+      "id": "search",
+      "label": "Search pages and data sources",
+      "method": "POST",
+      "path": "/v1/search",
+      "body": [
+        "query",
+        "filter",
+        "sort",
+        "page_size",
+        "start_cursor"
+      ]
+    },
+    {
+      "id": "query_data_source",
+      "label": "Query a database (data source)",
+      "method": "POST",
+      "path": "/v1/data_sources/{data_source_id}/query",
+      "body": [
+        "filter",
+        "sorts",
+        "page_size",
+        "start_cursor"
+      ]
+    },
+    {
+      "id": "get_page",
+      "label": "Get a page",
+      "method": "GET",
+      "path": "/v1/pages/{page_id}"
+    }
+  ],
+  "write": [
+    {
+      "id": "create_page",
+      "label": "Create a page",
+      "method": "POST",
+      "path": "/v1/pages",
+      "body": [
+        "parent",
+        "properties",
+        "children"
+      ]
+    }
+  ],
+  "mcp": {
+    "url": "https://mcp.notion.com/mcp",
+    "official": true,
+    "auth": "oauth",
+    "docs": "https://developers.notion.com/guides/mcp/get-started-with-mcp.md"
+  },
+  "docs": [
+    "https://developers.notion.com/reference/intro",
+    "https://developers.notion.com/reference/versioning",
+    "https://developers.notion.com/reference/authentication",
+    "https://developers.notion.com/guides/get-started/authorization",
+    "https://developers.notion.com/reference/get-self",
+    "https://developers.notion.com/reference/post-search",
+    "https://developers.notion.com/reference/query-a-data-source",
+    "https://developers.notion.com/reference/post-page",
+    "https://developers.notion.com/docs/mcp",
+    "https://developers.notion.com/guides/mcp/get-started-with-mcp.md"
+  ],
+  "checked": "2026-11-01",
+  "tested": "mock; real service refused a fake key",
+  "notes": "Notion-Version 2026-03-11 is what the current reference pages list (the versioning page's 'latest' placeholder was unfilled; 2025-09-03 and 2026-03-11 have upgrade guides). Databases are queried through data sources (POST /v1/data_sources/{id}/query); the search filter value is 'page' or 'data_source'. Pages must be shared with an internal connection or calls fail. The authentication page lists three token kinds: internal connections (bot identity), personal access tokens (act as the creating user, created in the Developer portal), and public OAuth connections. NOT confirmed: the token prefix, and whether a connection can be made read-only (capabilities exist, but the pages read do not spell out a read-only setting). The body details of GET /v1/pages/{page_id} were truncated in the page read; the path is the standard pattern. POST /v1/pages with an internal connection needs a page or data-source parent. Official MCP server https://mcp.notion.com/mcp is OAuth-interactive; Business/Enterprise workspace owners can create MCP tokens in the Developer portal for use as a bearer token; integration tokens are not documented as accepted by the hosted server."
+}

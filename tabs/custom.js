@@ -274,6 +274,8 @@ html[data-wall] .hw-bar .hw-btn:not(.solid) { background: color-mix(in srgb, var
 
 /* The style panel sits beside the page (no dimming) so changes show live behind it. */
 .hc-panel { position: fixed; z-index: 74; top: calc(env(safe-area-inset-top) + 12px); right: 12px; bottom: 12px; width: 372px; display: flex; flex-direction: column; border-radius: 22px; background: var(--menu-bg); -webkit-backdrop-filter: saturate(180%) blur(30px); backdrop-filter: saturate(180%) blur(30px); color: var(--label); box-shadow: 0 0 0 .5px var(--sep), 0 24px 70px rgba(0, 0, 0, .3); overflow: hidden; animation: hc-in .38s var(--ease); }
+.hc-panel, .hc-panel * { scrollbar-width: none; }
+.hc-panel ::-webkit-scrollbar, .hc-panel::-webkit-scrollbar { display: none; }
 .hc-panel .hc-group { background: var(--surface); }
 @keyframes hc-in { from { transform: translateX(24px); opacity: 0; } }
 @media (max-width: 700px) {

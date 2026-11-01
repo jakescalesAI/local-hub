@@ -1,0 +1,111 @@
+{
+  "id": "airtable",
+  "name": "Airtable",
+  "category": "Data",
+  "auth": {
+    "type": "token",
+    "header": "Authorization",
+    "prefix": "Bearer ",
+    "fields": [
+      {
+        "name": "token",
+        "label": "Personal access token",
+        "secret": true,
+        "placeholder": "pat..."
+      }
+    ],
+    "basic": null,
+    "keyUrl": "https://airtable.com/create/tokens",
+    "keyHelp": "Pick the scopes data.records:read and schema.bases:read, then choose which bases the token may see.",
+    "signIn": null
+  },
+  "baseUrl": "https://api.airtable.com/v0",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "test": {
+    "method": "GET",
+    "path": "/meta/whoami",
+    "expect": 200,
+    "who": "id"
+  },
+  "read": [
+    {
+      "id": "whoami",
+      "label": "Who owns this token",
+      "method": "GET",
+      "path": "/meta/whoami"
+    },
+    {
+      "id": "list_bases",
+      "label": "List bases",
+      "method": "GET",
+      "path": "/meta/bases",
+      "query": [
+        "offset"
+      ]
+    },
+    {
+      "id": "list_records",
+      "label": "List records in a table",
+      "method": "GET",
+      "path": "/{baseId}/{tableIdOrName}",
+      "query": [
+        "pageSize",
+        "maxRecords",
+        "offset",
+        "view",
+        "filterByFormula",
+        "sort",
+        "fields"
+      ]
+    },
+    {
+      "id": "search_records",
+      "label": "List records (long filters)",
+      "method": "POST",
+      "path": "/{baseId}/{tableIdOrName}/listRecords",
+      "body": [
+        "pageSize",
+        "maxRecords",
+        "offset",
+        "view",
+        "filterByFormula",
+        "sort",
+        "fields"
+      ]
+    }
+  ],
+  "write": [
+    {
+      "id": "create_records",
+      "label": "Create records",
+      "method": "POST",
+      "path": "/{baseId}/{tableIdOrName}",
+      "body": [
+        "records",
+        "typecast"
+      ]
+    }
+  ],
+  "mcp": {
+    "url": "https://mcp.airtable.com/mcp",
+    "official": true,
+    "auth": "oauth",
+    "docs": "https://airtable.com/developers/agents/mcp/getting-started"
+  },
+  "docs": [
+    "https://airtable.com/developers/web/api/introduction",
+    "https://airtable.com/developers/web/api/authentication",
+    "https://airtable.com/developers/web/api/scopes",
+    "https://airtable.com/developers/web/api/list-bases",
+    "https://airtable.com/developers/web/api/list-records",
+    "https://airtable.com/developers/web/api/get-user-id-scopes",
+    "https://airtable.com/developers/web/api/create-records",
+    "https://airtable.com/developers/web/api/rate-limits",
+    "https://airtable.com/developers/agents/mcp/getting-started"
+  ],
+  "checked": "2026-11-01",
+  "tested": "mock; real service refused a fake key",
+  "notes": "Personal access tokens only: the old api_key URL parameter was shut off on 2024-02-01. Bearer header confirmed on the authentication page. GET /meta/whoami needs no scope and returns id (and email only with the user.email:read scope), so 'who' is the user id. List records needs scope data.records:read plus base read-only role; create needs data.records:write plus Base editor role; list bases needs schema.bases:read (up to 1000 per page, paged by offset). A read-only token is possible by granting only read scopes. The base URL https://api.airtable.com/v0 comes from the full endpoint URLs on the list-records and create-records pages; the introduction page does not state it. Rate limit: 5 requests per second per base and 50 per second per token. The create-records page does not state a per-request record cap (the commonly quoted limit of 10 was NOT found in the pages read). The base schema endpoint (tables and fields) is covered by schema.bases:read but its path was not confirmed here, so it is not listed. Official MCP server https://mcp.airtable.com/mcp supports OAuth (recommended, Dynamic Client Registration) and personal access tokens (scopes data.records:read/write, schema.bases:read/write, data.recordComments:read/write, workspacesAndBases:read); the exact header format for passing a PAT to the MCP server is not given on the page."
+}

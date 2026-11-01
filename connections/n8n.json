@@ -1,0 +1,131 @@
+{
+  "id": "n8n",
+  "name": "n8n",
+  "category": "Automation",
+  "auth": {
+    "type": "apiKey",
+    "header": "X-N8N-API-KEY",
+    "prefix": "",
+    "fields": [
+      {
+        "name": "site",
+        "label": "Your n8n address",
+        "secret": false,
+        "placeholder": "https://n8n.example.com"
+      },
+      {
+        "name": "token",
+        "label": "API key",
+        "secret": true,
+        "placeholder": "paste the key shown once"
+      }
+    ],
+    "basic": null,
+    "keyUrl": "{site}",
+    "keyHelp": "In n8n open Settings > n8n API, choose Create an API key, set a label and expiry (on Enterprise pick only the list and read scopes), and copy the key.",
+    "signIn": null
+  },
+  "baseUrl": "{site}/api/v1",
+  "headers": {
+    "accept": "application/json"
+  },
+  "test": {
+    "method": "GET",
+    "path": "/workflows",
+    "expect": 200,
+    "who": null,
+    "query": {
+      "limit": "1"
+    }
+  },
+  "read": [
+    {
+      "id": "list_workflows",
+      "label": "List workflows",
+      "method": "GET",
+      "path": "/workflows",
+      "query": [
+        "active",
+        "name",
+        "tags",
+        "projectId",
+        "limit",
+        "cursor"
+      ]
+    },
+    {
+      "id": "get_workflow",
+      "label": "Get one workflow",
+      "method": "GET",
+      "path": "/workflows/{workflowId}"
+    },
+    {
+      "id": "list_executions",
+      "label": "List executions",
+      "method": "GET",
+      "path": "/executions",
+      "query": [
+        "status",
+        "workflowId",
+        "projectId",
+        "includeData",
+        "limit",
+        "cursor"
+      ]
+    },
+    {
+      "id": "get_execution",
+      "label": "Get one execution",
+      "method": "GET",
+      "path": "/executions/{executionId}",
+      "query": [
+        "includeData"
+      ]
+    },
+    {
+      "id": "list_tags",
+      "label": "List tags",
+      "method": "GET",
+      "path": "/tags"
+    }
+  ],
+  "write": [
+    {
+      "id": "activate_workflow",
+      "label": "Activate a workflow",
+      "method": "POST",
+      "path": "/workflows/{workflowId}/activate"
+    },
+    {
+      "id": "deactivate_workflow",
+      "label": "Deactivate a workflow",
+      "method": "POST",
+      "path": "/workflows/{workflowId}/deactivate"
+    },
+    {
+      "id": "retry_execution",
+      "label": "Retry a failed execution",
+      "method": "POST",
+      "path": "/executions/{executionId}/retry"
+    }
+  ],
+  "mcp": {
+    "url": "{site}/mcp-server/http",
+    "official": true,
+    "auth": "oauth",
+    "docs": "https://docs.n8n.io/connect/connect-to-n8n-mcp-server.md"
+  },
+  "docs": [
+    "https://docs.n8n.io/api/",
+    "https://docs.n8n.io/connect/n8n-api/authentication.md",
+    "https://docs.n8n.io/connect/n8n-api/pagination.md",
+    "https://docs.n8n.io/connect/n8n-api/workflow.md",
+    "https://docs.n8n.io/connect/n8n-api/executions.md",
+    "https://docs.n8n.io/connect/n8n-api/tags.md",
+    "https://docs.n8n.io/connect/connect-to-n8n-mcp-server.md",
+    "https://docs.n8n.io/build/ways-of-building-workflows/connect-to-n8n-mcp-server.md"
+  ],
+  "checked": "2026-11-01",
+  "tested": "mock only",
+  "notes": "Runs on the user own host or on n8n Cloud, so URLs use {site}. Base URL: self-hosted is <host>:<port>/<N8N_PATH>/api/v1 (a custom path prefix is possible; put it in the site address), Cloud is https://<name>.app.n8n.cloud/api/v1. The key goes in the X-N8N-API-KEY header with no prefix. The API is not available during the free trial; it is on Cloud Starter, Pro and Enterprise and all self-hosted editions. Create the key at Settings > n8n API > Create an API key; the docs give no URL path for that page, so keyUrl is just {site}. NO READ-ONLY KEY unless Enterprise: only Enterprise instances can limit a key with scopes (for example workflow:list, workflow:read, execution:list, execution:read, tag:list, tag:read); on any other plan the key has full access to the account, so treat it as full access. The docs describe no read-only toggle; picking only list and read scopes approximates one. Scope names read from the authentication page: workflow:list, workflow:read, workflow:activate (covers activate and deactivate), execution:list, execution:read, execution:retry, tag:list. The test call is GET /workflows?limit=1 (needs workflow:list on a scoped key) and the API names no whoami endpoint, so who is null; the user endpoints (GET /users) are restricted to the instance owner and so are not used. Pagination: default page size 100, maximum 250 through limit, and a nextCursor value in the response is passed back as cursor. POST calls accept an Idempotency-Key header. Endpoints read from the OpenAPI embedded in the docs: GET /workflows, GET /workflows/{workflowId}, POST /workflows/{workflowId}/activate and /deactivate (also publish and unpublish), GET /executions (filters status, workflowId, projectId, includeData, startedAfter, startedBefore), GET /executions/{executionId}, POST /executions/{executionId}/retry and /stop, and GET /tags. The API playground is only on self-hosted n8n. Official MCP: n8n has a built-in instance-level MCP server on every instance (and Cloud). Enable it as an owner or admin at Settings > Instance-level MCP; the Server URL is copied from the Connect a client dialog and ends in /mcp-server/http, so {site}/mcp-server/http is my reading of that and the exact prefix is not printed. Two auth methods: OAuth (recommended) or an API key tab where n8n generates a separate personal access token for MCP, sent as Authorization: Bearer; that MCP token is not the same as the REST API key. Per-client setup steps need n8n 2.33.0 or newer. It exposes only workflows the user individually enabled for MCP (search_workflows can see every workflow the user may view, preview only), and from 2.13.0 it can build and edit workflows and data tables. A separate MCP Server Trigger node makes a single workflow its own MCP server, which is a different thing."
+}

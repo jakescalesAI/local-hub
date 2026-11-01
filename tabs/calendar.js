@@ -443,19 +443,7 @@
         <span class="cal-prov" style="--c:${PROV[p].color}"></span>
         <span class="txt"><div class="t1">${PROV[p].label}</div><div class="t2"${bad ? ' style="color:var(--red)"' : mine.length ? ' style="color:var(--green)"' : ''}>${esc(sub)}</div></span>${ICON.chev}</button></div>`
     })
-    return group('cal-connect', 'Connect Calendars', 'Keys and addresses stay in config\\secrets.json. The hub reads them and never shows them.', rows)
-  }
-
-  function connectSheet(p) {
-    const v = PROV[p]
-    const body = `<div class="cal-connect"><ol>${v.steps.map(s => `<li>${s}</li>`).join('')}<li>Put it in <b>config\\secrets.json</b> at <code>${esc(v.field)}</code>, then press refresh.</li></ol>
-      <div class="cal-snip"><code>${esc(v.snip)}</code><button class="icon-btn" data-copy="${esc(v.snip)}" aria-label="Copy">${ICON.copy}</button></div></div>`
-    const { scrim, close } = sheet(`<span></span><h3>${v.label}</h3><button class="bar-btn" data-a="close">Done</button>`, body, { closeOnScrim: true })
-    scrim.addEventListener('click', e => {
-      if (e.target.closest('[data-a=close]')) close()
-      const c = e.target.closest('[data-copy]')
-      if (c) copy(c.dataset.copy)
-    })
+    return group('cal-connect', 'Connect Calendars', 'Keys and addresses stay on this computer. The hub reads them and never shows them.', rows)
   }
 
   /* ---------- sheets ---------- */
@@ -703,7 +691,7 @@
       const hours = Math.floor(((e.clientY - r.top) / r.height) * 48) / 2
       const d = parseYmd(el.dataset.day)
       editor({ start: new Date(d.getFullYear(), d.getMonth(), d.getDate(), Math.floor(hours), (hours % 1) * 60) })
-    } else if (a === 'connect') connectSheet(el.dataset.p)
+    } else if (a === 'connect') window.HUB_CONNECT?.(el.dataset.p === 'calcom' ? 'calcom' : 'calendar-feed')
     else if (a === 'toggle') {
       const id = el.dataset.id
       K.hidden.has(id) ? K.hidden.delete(id) : K.hidden.add(id)

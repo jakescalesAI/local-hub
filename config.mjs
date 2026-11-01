@@ -48,7 +48,7 @@ const NEUTRAL = {
     env: {}, // extra environment for the CLI, for example {"CLAUDE_CODE_USE_BEDROCK": "1"}. No keys here: they go in secrets.json.
     models: [], // ["model-id"] or [["model-id", "Label"]]; empty offers the Claude models
     defaultModel: '',
-    tools: { web: true, files: true, browser: true, settings: true, sites: true, actions: true },
+    tools: { web: true, files: true, browser: true, settings: true, sites: true, actions: true, connections: true },
     readFolders: ['~'], // folders it may read, besides the hub's. Key files stay refused in all of them.
     writeFolders: [], // more folders it may write to, besides workspace/. Never inside the hub folder.
     mcpServers: {}, // your own tools: {"name": {"command": "...", "args": [], "env": {}}}
@@ -136,9 +136,9 @@ export const ADDONS = {
   laptop: { label: 'This Computer', tab: true, what: 'Running services, health and files of this computer' },
   server: { label: 'Server', tab: true, what: 'Services and files of a server you reach over ssh', how: 'Set server.sshAlias in config/hub.json', auto: () => !!hubConfig().server.sshAlias },
   ai: { label: 'AI', tab: true, what: 'Claude usage and AI provider balances', auto: s => filled(s.claudeAccounts) || filled(s.openrouter) || filled(s.deepseek) },
-  cloud: { label: 'Cloud', tab: true, what: 'Read-only view of your hosting: Coolify, Cloudflare, AWS, Azure', how: 'Add a key to config/secrets.json', auto: s => filled(s.coolify) || filled(s.cloudflare) || filled(s.aws) || filled(s.azure) || filled(s.euronodes) },
-  calendar: { label: 'Calendar', tab: true, what: 'Read-only calendar feeds and bookings', how: 'Add a calendar link to config/secrets.json', auto: s => filled(s.calendars) || filled(s.calcom) || filled(hubConfig().calendar?.sources) },
-  stripe: { label: 'Stripe', tab: true, what: 'Read-only balance, revenue and payouts', how: 'Add a restricted key to config/secrets.json', auto: s => filled(s.stripe) },
+  cloud: { label: 'Cloud', tab: true, what: 'Read-only view of your hosting: Coolify, Cloudflare, AWS, Azure', how: 'Connect a service in the hub', auto: s => filled(s.coolify) || filled(s.cloudflare) || filled(s.aws) || filled(s.azure) || filled(s.euronodes) },
+  calendar: { label: 'Calendar', tab: true, what: 'Read-only calendar feeds and bookings', how: 'Add a calendar in the hub', auto: s => filled(s.calendars) || filled(s.calcom) || filled(hubConfig().calendar?.sources) },
+  stripe: { label: 'Stripe', tab: true, what: 'Read-only balance, revenue and payouts', how: 'Add a read-only key in the hub', auto: s => filled(s.stripe) },
   drives: { label: 'Drives', what: 'Disk space for each drive on the Files tab' },
   icloud: { label: 'iCloud', what: 'iCloud Drive and its storage on the Files tab', available: () => fs.existsSync(ICLOUD) },
 }

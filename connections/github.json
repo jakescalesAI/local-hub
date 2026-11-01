@@ -1,0 +1,127 @@
+{
+  "id": "github",
+  "name": "GitHub",
+  "category": "Code",
+  "auth": {
+    "type": "token",
+    "header": "Authorization",
+    "prefix": "Bearer ",
+    "fields": [
+      {
+        "name": "token",
+        "label": "Fine-grained personal access token",
+        "secret": true,
+        "placeholder": "github_pat_..."
+      }
+    ],
+    "basic": null,
+    "keyUrl": "https://github.com/settings/personal-access-tokens/new",
+    "keyHelp": "Pick the repositories to share, then grant read-only Metadata, Issues and Pull requests (add write on Issues only if the assistant should open issues).",
+    "signIn": null
+  },
+  "baseUrl": "https://api.github.com",
+  "headers": {
+    "Accept": "application/vnd.github+json",
+    "X-GitHub-Api-Version": "2026-03-10"
+  },
+  "test": {
+    "method": "GET",
+    "path": "/user",
+    "expect": 200,
+    "who": "login"
+  },
+  "read": [
+    {
+      "id": "list_repos",
+      "label": "List my repositories",
+      "method": "GET",
+      "path": "/user/repos",
+      "query": [
+        "visibility",
+        "affiliation",
+        "sort",
+        "direction",
+        "per_page",
+        "page"
+      ]
+    },
+    {
+      "id": "list_assigned_issues",
+      "label": "List issues assigned to me",
+      "method": "GET",
+      "path": "/issues",
+      "query": [
+        "filter",
+        "state",
+        "per_page",
+        "page"
+      ]
+    },
+    {
+      "id": "list_repo_issues",
+      "label": "List a repository's issues",
+      "method": "GET",
+      "path": "/repos/{owner}/{repo}/issues",
+      "query": [
+        "state",
+        "per_page",
+        "page"
+      ]
+    },
+    {
+      "id": "get_issue",
+      "label": "Get one issue",
+      "method": "GET",
+      "path": "/repos/{owner}/{repo}/issues/{issue_number}"
+    },
+    {
+      "id": "list_pulls",
+      "label": "List a repository's pull requests",
+      "method": "GET",
+      "path": "/repos/{owner}/{repo}/pulls",
+      "query": [
+        "state",
+        "head",
+        "base",
+        "sort",
+        "direction",
+        "per_page",
+        "page"
+      ]
+    }
+  ],
+  "write": [
+    {
+      "id": "create_issue",
+      "label": "Create an issue",
+      "method": "POST",
+      "path": "/repos/{owner}/{repo}/issues",
+      "body": [
+        "title",
+        "body",
+        "labels",
+        "assignees"
+      ]
+    }
+  ],
+  "mcp": {
+    "url": "https://api.githubcopilot.com/mcp/",
+    "official": true,
+    "auth": "oauth",
+    "docs": "https://docs.github.com/en/copilot/how-tos/provide-context/use-mcp/set-up-the-github-mcp-server"
+  },
+  "docs": [
+    "https://docs.github.com/en/rest/authentication/authenticating-to-the-rest-api",
+    "https://docs.github.com/en/rest/about-the-rest-api/api-versions",
+    "https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens",
+    "https://docs.github.com/en/rest/authentication/permissions-required-for-fine-grained-personal-access-tokens",
+    "https://docs.github.com/en/rest/users/users",
+    "https://docs.github.com/en/rest/repos/repos",
+    "https://docs.github.com/en/rest/issues/issues",
+    "https://docs.github.com/en/rest/pulls/pulls",
+    "https://docs.github.com/en/copilot/how-tos/provide-context/use-mcp/set-up-the-github-mcp-server"
+  ],
+  "checked": "2026-11-01",
+  "tested": "mock; real service refused a fake key",
+  "notes": "Version header pinned to 2026-03-10 (the newest listed); 2022-11-28 is also still supported and is the default when no header is sent. Docs say both 'Authorization: Bearer' and 'Authorization: token' work; Bearer is required for JWTs. A fine-grained token can be fully read-only, so a read-only key is possible. Fine-grained permission names: GET /user/repos needs Metadata read, repo issues need Issues read/write, pulls need Pull requests read. NOT confirmed: which fine-grained permission (if any) GET /user needs; the users page only describes classic scopes and says an unscoped call returns the public user. Token prefix github_pat_ is the placeholder only; fine-grained tokens always include read access to public repos. The GitHub MCP server also accepts a PAT as 'Authorization: Bearer <PAT>' (OAuth is the default); PAT use may be disabled by an Enterprise Managed Users owner."
+}

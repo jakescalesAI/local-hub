@@ -410,7 +410,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
 .hw-ftitle { display: block; width: 100%; margin: 0 0 18px; padding: 6px 12px; border: 0; border-radius: 12px; background: transparent; color: var(--label); font: inherit; font-size: 26px; font-weight: 700; letter-spacing: -0.022em; text-align: center; outline: none; transition: background .15s; }
 .hw-ftitle:hover, .hw-ftitle:focus { background: var(--fill); }
 .hw-fgrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px 6px; }
-.hw-fgrid .hw-app .hw-del { left: calc(50% - 36px); }
+.hw-fscrim { --tile: 58px; }
 .hw-fedit .hw-app:not(.drag) .hw-app-b { animation: hw-wiggle .27s ease-in-out infinite alternate; }
 .hw-fedit .hw-app-b { cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .hw-fedit .hw-app:nth-child(even) .hw-app-b { animation-direction: alternate-reverse; animation-duration: .31s; }
@@ -500,6 +500,13 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
 .hw-applist .hw-row { font-size: 15px; }
 .hw-applist .hw-row .s { flex: 1; min-width: 0; max-width: none; color: var(--label-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hw-applist .hw-row .t { flex: none; max-width: 45%; }
+@media (max-width: 720px) {
+  .hw-applist .hw-row:not(.hw-hrow):has(> .s:not(:empty)) { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-auto-columns: auto; column-gap: 9px; row-gap: 1px; }
+  .hw-applist .hw-row:not(.hw-hrow):has(> .s:not(:empty)) > :first-child { grid-row: 1 / 3; }
+  .hw-applist .hw-row:not(.hw-hrow):has(> .s:not(:empty)) > .t { grid-column: 2; grid-row: 1; max-width: none; }
+  .hw-applist .hw-row:not(.hw-hrow):has(> .s:not(:empty)) > .s { grid-column: 2; grid-row: 2; }
+  .hw-applist .hw-row:not(.hw-hrow):has(> .s:not(:empty)) > :nth-child(n+4) { grid-row: 1 / 3; }
+}
 .hw-applist .hw-ib { flex: none; width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; color: var(--label-2); }
 .hw-applist .hw-ib:active { opacity: .45; }
 .hw-applist .hw-ib:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
@@ -1026,10 +1033,13 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
   // What a drag's numbers are measured in. In a device they are the device's own pixels, so a move stays arithmetic.
   function view() {
     const el = S.framed && S.root?.querySelector('.hw-frame')
-    if (!el) return { el: null, k: 1, left: 0, top: 0, h: innerHeight, edge: 90, x: () => scrollX, y: () => scrollY, by: dy => scrollBy(0, dy) }
+    if (!el) return { el: null, k: 1, left: 0, top: 0, h: innerHeight, edge: 90, x: () => scrollX, y: () => scrollY, by: dy => scrollBy(0, dy), max: () => document.documentElement.scrollHeight - innerHeight }
     const r = el.getBoundingClientRect()
-    return { el, k: S.frameK, left: r.left, top: r.top, h: el.clientHeight, edge: 56, x: () => el.scrollLeft, y: () => el.scrollTop, by: dy => { el.scrollTop += dy } }
+    return { el, k: S.frameK, left: r.left, top: r.top, h: el.clientHeight, edge: 56, x: () => el.scrollLeft, y: () => el.scrollTop, by: dy => { el.scrollTop += dy }, max: () => el.scrollHeight - el.clientHeight }
   }
+  // The held card is moved with a transform, which stretches what can be scrolled, so the limit comes from the laid-out grid:
+  // it's the room below the grid at the start of the drag, and it follows the grid if a move adds a row.
+  const gridEnd = (d, box) => (box.getBoundingClientRect().bottom - d.v.top) / d.v.k + d.v.y()
 
   function paintPages(root) {
     const box = root.querySelector('[data-hw-pages]'), html = S.pages.length ? [{ id: 'main', name: 'Home' }, ...S.pages].map(p => `<button type="button" role="tab" class="hw-page" data-hw-page="${esc(p.id)}" aria-selected="${p.id === S.page}">${esc(p.name)}</button>`).join('') : ''
@@ -2491,6 +2501,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
   }
 
   const inside = (r, x, y) => x >= r.left && x <= r.right && y >= r.top && y <= r.bottom
+  const near = (r, x, y, s) => x >= r.left - s && x <= r.right + s && y >= r.top - s && y <= r.bottom + s
 
   // What a drag needs from layout, read when it begins and after each swap. In between a move is
   // arithmetic and one style write, with no layout read. Rects are in page coordinates, so scrolling
@@ -2583,6 +2594,8 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     d.scale = 1
     d.tx = d.ty = 0
     dragMeasure(d)
+    d.below = d.v.max() - gridEnd(d, d.cell.parentElement)
+    d.slack = (parseFloat(getComputedStyle(d.cell.parentElement).columnGap) || 0) / 2 + 1
     d.ox = vx(d) + d.px - d.nat.left
     d.oy = vy(d) + d.py - d.nat.top
     d.order = [...d.cell.parentElement.querySelectorAll('.hw-cell')]
@@ -2603,14 +2616,15 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     let dy = 0
     const v = d.v, py = vy(d)
     if (py < v.edge) dy = -Math.min(24, Math.ceil((v.edge - py) / 5))
-    else if (py > v.h - v.edge) dy = Math.min(24, Math.ceil((py - (v.h - v.edge)) / 5))
+    else if (py > v.h - v.edge) dy = Math.min(24, Math.ceil((py - (v.h - v.edge)) / 5), Math.max(0, Math.ceil(gridEnd(d, d.cell.parentElement) + d.below - v.y())))
     if (dy) {
       v.by(dy)
       d.py = v.y()
       dragPlace(d)
     }
     const c = d.cell, x = vx(d) + d.px, y = py + d.py, now = performance.now()
-    const hit = inside(d.nat, x, y) ? null : d.rects.find(o => inside(o, x, y)) || null
+    // Each cell owns half the gap beside it, so a pointer in a gap still means the nearest cell.
+    const hit = inside(d.nat, x, y) ? null : d.rects.find(o => inside(o, x, y)) || (near(d.nat, x, y, d.slack) ? null : d.rects.find(o => near(o, x, y, d.slack))) || null
     const target = hit?.el || null
     if (target !== d.hover?.el) { setMerge(d, null); d.hover = target ? { el: target, at: now, mid: 0, stack: canStack(c, target) } : null }
     if (!target) return
@@ -2976,6 +2990,8 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     const from = S.root?.querySelector(`[data-hw-app="${CSS.escape(id)}"] .hc-app`)?.getBoundingClientRect()
     const el = document.createElement('div')
     el.className = 'scrim hw-scrim hw-fscrim'
+    const tile = S.root && getComputedStyle(S.root).getPropertyValue('--tile')
+    if (tile) el.style.setProperty('--tile', tile)
     el.innerHTML = `<div class="hw-fold${S.editing ? ' hw-fedit' : ''}" role="dialog" aria-modal="true" aria-label="${esc(g0.name)}"><input class="hw-ftitle" value="${esc(g0.name)}" maxlength="40" aria-label="Group name" autocomplete="off" spellcheck="false" enterkeyhint="done"><div class="hw-fgrid" role="list" data-hw-fgrid="${esc(id)}"></div></div>`
     const fold = el.querySelector('.hw-fold'), title = el.querySelector('.hw-ftitle'), grid = el.querySelector('.hw-fgrid')
     const fill = () => {

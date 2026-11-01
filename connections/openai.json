@@ -1,0 +1,88 @@
+{
+  "id": "openai",
+  "name": "OpenAI",
+  "category": "AI",
+  "auth": {
+    "type": "apiKey",
+    "header": "Authorization",
+    "prefix": "Bearer ",
+    "fields": [
+      {
+        "name": "api_key",
+        "label": "OpenAI API key",
+        "secret": true,
+        "placeholder": "sk-..."
+      }
+    ],
+    "basic": null,
+    "keyUrl": "https://platform.openai.com/settings/organization/api-keys",
+    "keyHelp": "Create a new secret key; a project key limited to the Models and read endpoints is enough for a connection test (key permission options were not read).",
+    "signIn": null
+  },
+  "baseUrl": "https://api.openai.com/v1",
+  "headers": {},
+  "test": {
+    "method": "GET",
+    "path": "/models",
+    "expect": 200,
+    "who": null
+  },
+  "read": [
+    {
+      "id": "list_models",
+      "label": "List models the key can use",
+      "method": "GET",
+      "path": "/models",
+      "query": []
+    },
+    {
+      "id": "get_model",
+      "label": "Get one model",
+      "method": "GET",
+      "path": "/models/{model}",
+      "query": []
+    },
+    {
+      "id": "list_files",
+      "label": "List uploaded files",
+      "method": "GET",
+      "path": "/files",
+      "query": [
+        "purpose",
+        "limit",
+        "order",
+        "after"
+      ]
+    }
+  ],
+  "write": [
+    {
+      "id": "create_response",
+      "label": "Ask a model something (billed per token)",
+      "method": "POST",
+      "path": "/responses",
+      "body": [
+        "input"
+      ]
+    }
+  ],
+  "mcp": {
+    "url": "https://developers.openai.com/mcp",
+    "official": true,
+    "auth": "none",
+    "docs": "https://developers.openai.com/learn/docs-mcp"
+  },
+  "docs": [
+    "https://developers.openai.com/api/reference/overview",
+    "https://developers.openai.com/api/docs/quickstart",
+    "https://developers.openai.com/api/reference/resources/models/methods/list",
+    "https://developers.openai.com/api/reference/resources/models/methods/retrieve",
+    "https://developers.openai.com/api/reference/resources/files/methods/list",
+    "https://developers.openai.com/api/reference/resources/responses/methods/create",
+    "https://developers.openai.com/api/docs/mcp",
+    "https://developers.openai.com/learn/docs-mcp"
+  ],
+  "checked": "2026-11-01",
+  "tested": "mock; real service refused a fake key",
+  "notes": "Base URL https://api.openai.com/v1 and the Authorization: Bearer header come from the API reference overview and the models.list page. platform.openai.com/docs/* pages returned 403 or 301 to developers.openai.com, so developers.openai.com is the source. TEST: GET /models only lists models, changes nothing and is not described as billed; the page does not say it is free, so 'no spend' is the expectation, not a quoted guarantee. It does not name the account, so who is null. KEY PAGE: the overview page names https://platform.openai.com/settings/organization/api-keys for standard keys and .../admin-keys for Administration keys; the quickstart only says 'Create an API Key' in the dashboard. Keys can be project or user keys; multi-organization or legacy user keys should also send the OpenAI-Organization and OpenAI-Project headers (optional, not set here because they are the person's own IDs; IDs live at https://platform.openai.com/settings/organization/general). The overview says the bearer token can also be a short-lived workload identity federation token. Key permission levels (read-only / restricted) were NOT read, so keyHelp does not promise a read-only key. responses.create: the page excerpt was truncated and did not mark a required body field, so only input is listed; model is certainly needed in practice but was not confirmed on the part read. The quickstart example endpoints are /responses and /files. Billing for POST /responses was not stated on the page read. MCP: OpenAI hosts a public, read-only Docs MCP server at https://developers.openai.com/mcp (Streamable HTTP, no auth in the setup examples) covering developers.openai.com, platform.openai.com and learn.chatgpt.com; it is documentation only and does not call the API for the user. The separate 'MCP tool' in the Responses API is a client-side way to point the API at someone else's server and is not an OpenAI-run MCP server."
+}

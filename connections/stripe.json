@@ -1,0 +1,116 @@
+{
+  "id": "stripe",
+  "name": "Stripe",
+  "category": "Payments",
+  "auth": {
+    "type": "token",
+    "header": "Authorization",
+    "prefix": "Bearer ",
+    "fields": [
+      {
+        "name": "token",
+        "label": "Restricted API key",
+        "secret": true,
+        "placeholder": "rk_live_..."
+      }
+    ],
+    "basic": null,
+    "keyUrl": "https://dashboard.stripe.com/apikeys",
+    "keyHelp": "Click Create restricted key, set every resource to None except the ones you want read (Balance, Charges, Customers, Subscriptions, Invoices), and leave Write off.",
+    "signIn": null
+  },
+  "baseUrl": "https://api.stripe.com",
+  "headers": {
+    "Stripe-Version": "2026-10-28.endive"
+  },
+  "test": {
+    "method": "GET",
+    "path": "/v1/balance",
+    "expect": 200,
+    "who": null
+  },
+  "read": [
+    {
+      "id": "retrieve_balance",
+      "label": "Retrieve the account balance",
+      "method": "GET",
+      "path": "/v1/balance"
+    },
+    {
+      "id": "list_charges",
+      "label": "List charges",
+      "method": "GET",
+      "path": "/v1/charges",
+      "query": [
+        "limit",
+        "customer",
+        "created",
+        "starting_after"
+      ]
+    },
+    {
+      "id": "list_customers",
+      "label": "List customers",
+      "method": "GET",
+      "path": "/v1/customers",
+      "query": [
+        "limit",
+        "starting_after"
+      ]
+    },
+    {
+      "id": "list_subscriptions",
+      "label": "List subscriptions",
+      "method": "GET",
+      "path": "/v1/subscriptions",
+      "query": [
+        "limit",
+        "status",
+        "customer",
+        "starting_after"
+      ]
+    },
+    {
+      "id": "list_invoices",
+      "label": "List invoices",
+      "method": "GET",
+      "path": "/v1/invoices",
+      "query": [
+        "limit",
+        "status",
+        "customer",
+        "subscription",
+        "starting_after"
+      ]
+    }
+  ],
+  "write": [],
+  "mcp": {
+    "url": "https://mcp.stripe.com",
+    "official": true,
+    "auth": "oauth",
+    "docs": "https://docs.stripe.com/mcp"
+  },
+  "docs": [
+    "https://docs.stripe.com/keys",
+    "https://docs.stripe.com/keys/restricted-api-keys",
+    "https://docs.stripe.com/api/authentication",
+    "https://docs.stripe.com/api/versioning",
+    "https://docs.stripe.com/api/balance/balance_retrieve",
+    "https://docs.stripe.com/api/charges/list",
+    "https://docs.stripe.com/api/subscriptions/list",
+    "https://docs.stripe.com/api/invoices/list",
+    "https://docs.stripe.com/api/refunds/create",
+    "https://docs.stripe.com/mcp"
+  ],
+  "checked": "2026-11-01",
+  "tested": "mock; real service refused a fake key",
+  "notes": "Stripe authenticates with HTTP Basic (key as username, empty password) and also accepts Authorization: Bearer <key> (the auth page documents both). A restricted key (rk_live_ / rk_test_) can be read-only: each resource is set to None, Read or Write, and Write implies Read, so give it Read only and the write action will fail with a permission error. There is no deeper issuing URL than the API keys page; the docs say to click Create restricted key there (live and sandbox keys are separate; the page toggles between them). The key is shown once and a live restricted key you create yourself cannot be revealed again. The docs name no specific permission for GET /v1/balance, so the Read permission on the Balance resource is assumed from the 'GET = read' rule and was not read verbatim. Stripe-Version is pinned to 2026-10-28.endive, the current version on the versioning page today; without the header requests use the account's default version. Official MCP server: https://mcp.stripe.com, OAuth, or an agent-tagged API key as a bearer token. The MCP docs say that from December 2026 the MCP server stops accepting full-access secret keys and restricted keys that are not agent-tagged. That change is stated only for the MCP server, not the REST API. Agent-tagged restricted keys are an option on key creation and are subject to Stripe approval rules for sensitive actions.",
+  "store": {
+    "key": "stripe",
+    "fields": {
+      "token": "apiKey"
+    },
+    "listKey": "accounts"
+  }
+}

@@ -109,14 +109,12 @@
   const accName = a => a.label || a.account?.name || 'Stripe'
 
   function connectCard(a) {
-    const field = a.field || 'stripe.apiKey'
     return `<div class="st-connect">
       <h3>Connect ${esc(a.label && a.label !== 'Stripe' ? a.label : 'Stripe')}</h3>
-      <p>Create a restricted key in Stripe → Developers → API keys with Read access to Balance, Charges, Payouts, Subscriptions, Customers and Invoices, then add it to local-hub\\secrets.json as <code>${esc(field)}</code>.</p>
+      <p>Add a restricted key with Read access to Balance, Charges, Payouts, Subscriptions, Customers and Invoices. It stays on this computer.</p>
       <div class="st-actions">
+        <button type="button" class="get" data-connect="stripe">Connect Stripe</button>
         <a class="get" href="https://dashboard.stripe.com/apikeys" target="_blank" rel="noopener">Open API Keys</a>
-        <button class="get" data-copy="${esc(field)}">Copy Field Name</button>
-        ${S.data?.secretsPath ? `<button class="get" data-copy="${esc(S.data.secretsPath)}">Copy File Path</button>` : ''}
       </div>
     </div>`
   }
@@ -231,7 +229,7 @@
     if (!d) return S.err ? `<div class="notice err">Can’t load Stripe: ${esc(S.err)}</div>` : '<div class="empty">Loading…</div>'
     let html = S.err ? `<div class="notice err">Couldn’t refresh: ${esc(S.err)}</div>` : ''
     const a = selected(d)
-    if (!a) return html + '<div class="notice">No Stripe accounts found in secrets.json.</div>'
+    if (!a) return html + '<div class="notice">No Stripe account yet. <button type="button" class="get" data-connect="stripe">Connect Stripe</button></div>'
     if (d.accounts.length > 1) {
       const i = Math.max(0, d.accounts.indexOf(a))
       html += `<div class="st-controls"><div class="seg st-seg" role="group" style="--n:${d.accounts.length};--i:${i}"><span class="seg-thumb"></span>${d.accounts.map(x => `<button data-st-acc="${esc(x.id)}" aria-pressed="${x.id === a.id}"><span>${esc(accName(x))}</span></button>`).join('')}</div></div>`

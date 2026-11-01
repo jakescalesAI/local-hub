@@ -1,0 +1,170 @@
+{
+  "id": "microsoft-365",
+  "name": "Microsoft 365 (Outlook, Calendar, OneDrive)",
+  "category": "Microsoft",
+  "auth": {
+    "type": "deviceCode",
+    "header": "Authorization",
+    "prefix": "Bearer ",
+    "fields": [
+      {
+        "name": "client_id",
+        "label": "Application (client) ID of your Entra app registration",
+        "secret": false,
+        "placeholder": "00000000-0000-0000-0000-000000000000"
+      },
+      {
+        "name": "tenant",
+        "label": "Tenant: organizations, or your Directory (tenant) ID",
+        "secret": false,
+        "placeholder": "organizations",
+        "default": "organizations",
+        "optional": true
+      }
+    ],
+    "basic": null,
+    "keyUrl": "https://entra.microsoft.com",
+    "keyHelp": "In Entra ID > App registrations > New registration, then Authentication > Allow public client flows = Yes; no client secret is needed. Add delegated Microsoft Graph permissions User.Read, Mail.Read, Calendars.Read, Files.Read.",
+    "signIn": {
+      "kind": "deviceCode",
+      "authorizeUrl": "https://login.microsoftonline.com/{tenant}/oauth2/v2.0/authorize",
+      "tokenUrl": "https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token",
+      "deviceUrl": "https://login.microsoftonline.com/{tenant}/oauth2/v2.0/devicecode",
+      "scopes": [
+        "User.Read",
+        "Mail.Read",
+        "Calendars.Read",
+        "Files.Read",
+        "offline_access"
+      ],
+      "pkce": false,
+      "clientHelp": "1) Sign in at https://entra.microsoft.com as at least Application Developer. 2) Entra ID > App registrations > New registration; name it; Supported account types: 'Any Entra ID Tenant + Personal Microsoft accounts' if you also want a personal Outlook.com account, otherwise 'Single tenant only'. Register, then copy Application (client) ID and Directory (tenant) ID from Overview. 3) Manage > Authentication > Advanced settings > Allow public client flows = Yes > Save. No secret, no redirect URI needed for device code. 4) Manage > API permissions > Add a permission > Microsoft Graph > Delegated: User.Read, Mail.Read, Calendars.Read, Files.Read. 5) In the app, paste the client ID and tenant; it shows a short code and the page to open (verification_uri); open it on any device and sign in."
+    }
+  },
+  "baseUrl": "https://graph.microsoft.com/v1.0",
+  "headers": {},
+  "test": {
+    "method": "GET",
+    "path": "/me",
+    "expect": 200,
+    "who": "userPrincipalName"
+  },
+  "read": [
+    {
+      "id": "get_me",
+      "label": "Show who is signed in",
+      "method": "GET",
+      "path": "/me",
+      "query": [
+        "$select"
+      ]
+    },
+    {
+      "id": "list_messages",
+      "label": "List recent mail",
+      "method": "GET",
+      "path": "/me/messages",
+      "query": [
+        "$select",
+        "$filter",
+        "$orderby",
+        "$top"
+      ]
+    },
+    {
+      "id": "list_calendar_view",
+      "label": "List events between two times",
+      "method": "GET",
+      "path": "/me/calendar/calendarView",
+      "query": [
+        "startDateTime",
+        "endDateTime",
+        "$select",
+        "$top"
+      ]
+    },
+    {
+      "id": "list_drive_root",
+      "label": "List files in the top of OneDrive",
+      "method": "GET",
+      "path": "/me/drive/root/children",
+      "query": [
+        "$select",
+        "$top",
+        "$orderby"
+      ]
+    },
+    {
+      "id": "list_folder",
+      "label": "List files in a OneDrive folder",
+      "method": "GET",
+      "path": "/me/drive/items/{item-id}/children",
+      "query": [
+        "$select",
+        "$top"
+      ]
+    },
+    {
+      "id": "search_files",
+      "label": "Search OneDrive",
+      "method": "GET",
+      "path": "/me/drive/root/search(q='{search-text}')",
+      "query": [
+        "$select",
+        "$top"
+      ]
+    }
+  ],
+  "write": [
+    {
+      "id": "send_mail",
+      "label": "Send an email",
+      "method": "POST",
+      "path": "/me/sendMail",
+      "body": [
+        "message"
+      ]
+    },
+    {
+      "id": "create_event",
+      "label": "Create a calendar event",
+      "method": "POST",
+      "path": "/me/events",
+      "body": [
+        "subject",
+        "start",
+        "end"
+      ]
+    }
+  ],
+  "mcp": {
+    "url": "https://workiq.svc.cloud.microsoft/mcp",
+    "official": true,
+    "auth": "oauth",
+    "docs": "https://learn.microsoft.com/en-us/microsoft-365/copilot/extensibility/work-iq/mcp/overview"
+  },
+  "docs": [
+    "https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-device-code",
+    "https://learn.microsoft.com/en-us/entra/identity-platform/quickstart-register-app",
+    "https://learn.microsoft.com/en-us/entra/identity-platform/scenario-desktop-app-registration",
+    "https://learn.microsoft.com/en-us/entra/identity-platform/scenario-desktop-acquire-token-device-code-flow",
+    "https://learn.microsoft.com/en-us/entra/identity-platform/v2-protocols",
+    "https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-auth-code-flow",
+    "https://learn.microsoft.com/en-us/entra/identity-platform/refresh-tokens",
+    "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-block-authentication-flows",
+    "https://learn.microsoft.com/en-us/graph/permissions-reference",
+    "https://learn.microsoft.com/en-us/graph/api/user-get?view=graph-rest-1.0",
+    "https://learn.microsoft.com/en-us/graph/api/user-list-messages?view=graph-rest-1.0",
+    "https://learn.microsoft.com/en-us/graph/api/calendar-list-calendarview?view=graph-rest-1.0",
+    "https://learn.microsoft.com/en-us/graph/api/driveitem-list-children?view=graph-rest-1.0",
+    "https://learn.microsoft.com/en-us/graph/api/driveitem-search?view=graph-rest-1.0",
+    "https://learn.microsoft.com/en-us/graph/api/user-sendmail?view=graph-rest-1.0",
+    "https://learn.microsoft.com/en-us/graph/api/user-post-events?view=graph-rest-1.0",
+    "https://learn.microsoft.com/en-us/microsoft-agent-365/tooling-servers-overview",
+    "https://learn.microsoft.com/en-us/microsoft-365/copilot/extensibility/work-iq/mcp/overview",
+    "https://learn.microsoft.com/en-us/microsoft-365/copilot/extensibility/work-iq/mcp/quickstart/github-copilot-cli"
+  ],
+  "checked": "2026-11-01",
+  "tested": "mock only",
+  "notes": "DEVICE CODE: Microsoft supports it with a public client (Authentication > Allow public client flows = Yes) and no client secret; request POST https://login.microsoftonline.com/{tenant}/oauth2/v2.0/devicecode with client_id and scope, then poll POST .../oauth2/v2.0/token with grant_type=urn:ietf:params:oauth:grant-type:device_code. The user has 15 minutes by default. verification_uri_complete is not supported, so the person types the user_code. Poll no faster than the interval; errors to expect: authorization_pending, authorization_declined, bad_verification_code, expired_token. A refresh_token is returned only if offline_access is requested; default refresh token lifetime is 90 days (24 hours for SPA redirects). TENANT CONFLICT (unresolved): the device-code protocol page says tenant 'can be /common, /consumers, or /organizations' (or a tenant ID) and even describes the personal-account re-sign-in under /common or /consumers; but the MSAL desktop device-code page's sample comment says 'AADSTS90133: Device Code flow is not supported under /common or /consumers endpoint'. Safest, consistent with both pages: use 'organizations' or the Directory (tenant) ID for work/school accounts. For a personal Microsoft account the right tenant value is NOT confirmed (the protocol page implies consumers works; the MSAL page says it does not); test it before promising it. CONDITIONAL ACCESS: Microsoft recommends organizations block device code flow where it is not needed (Conditional Access > Authentication flows > Device code flow > Block). A managed work tenant may therefore refuse this sign-in; nothing the app can do, an admin must allow it. CONSENT: the permissions reference shows Calendars.Read and Files.Read as delegated with AdminConsentRequired = No and available to personal Microsoft accounts; Mail.Read and User.Read were checked in the same reference earlier in this run and also need no admin consent for delegated use, but the Mail.Read table row was not re-read for this manifest. The Graph pages list Mail.ReadBasic and Calendars.ReadBasic as the LEAST privileged permissions for messages/calendarView; what fields they omit (likely bodies) was not read, so Mail.Read and Calendars.Read are used for full content. Higher write scopes are NOT in signIn.scopes: send_mail needs Mail.Send, create_event needs Calendars.ReadWrite; add them only if writes are wanted. App registration: Entra requires at least Application Developer; registration page does not give a deep link to App registrations, hence keyUrl is the admin center home. Account types on the registration page: single tenant, multiple Entra tenants, any Entra tenant + personal Microsoft accounts, personal only. Graph base https://graph.microsoft.com/v1.0 appears in the example URLs on the Graph pages. $top is a standard OData option; the messages and calendarView pages say they support the OData query parameters, but $top was not named individually. MCP: Microsoft's official Work IQ MCP server is remote at https://workiq.svc.cloud.microsoft/mcp, authenticated with Microsoft Entra ID (clients discover config via /.well-known/oauth-protected-resource), tools like fetch /me/messages. Its overview page is dated 2026-10-05; a Work IQ licence or Copilot requirement was NOT confirmed on the pages read, and availability can vary by tenant, region and admin policy per the Agent 365 page, so a plain personal account may not get it. Older workload MCP servers (Mail, Calendar, OneDrive, SharePoint) are called a legacy experience for testing and backward compatibility. No call was made."
+}

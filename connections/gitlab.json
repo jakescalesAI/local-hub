@@ -1,0 +1,136 @@
+{
+  "id": "gitlab",
+  "name": "GitLab",
+  "category": "Code",
+  "auth": {
+    "type": "token",
+    "header": "PRIVATE-TOKEN",
+    "prefix": "",
+    "fields": [
+      {
+        "name": "site",
+        "label": "GitLab address",
+        "secret": false,
+        "placeholder": "https://gitlab.com"
+      },
+      {
+        "name": "token",
+        "label": "Personal access token",
+        "secret": true,
+        "placeholder": "glpat-..."
+      }
+    ],
+    "basic": null,
+    "keyUrl": "{site}/-/user_settings/personal_access_tokens?scopes=read_api",
+    "keyHelp": "Pick the read_api scope for read-only use (add api only if the assistant should create issues).",
+    "signIn": null
+  },
+  "baseUrl": "{site}/api/v4",
+  "headers": {},
+  "test": {
+    "method": "GET",
+    "path": "/user",
+    "expect": 200,
+    "who": "username"
+  },
+  "read": [
+    {
+      "id": "list_projects",
+      "label": "List my projects",
+      "method": "GET",
+      "path": "/projects",
+      "query": [
+        "membership",
+        "owned",
+        "simple",
+        "order_by",
+        "sort",
+        "per_page",
+        "page"
+      ]
+    },
+    {
+      "id": "list_my_issues",
+      "label": "List issues assigned to me",
+      "method": "GET",
+      "path": "/issues",
+      "query": [
+        "scope",
+        "state",
+        "per_page",
+        "page"
+      ]
+    },
+    {
+      "id": "list_project_issues",
+      "label": "List a project's issues",
+      "method": "GET",
+      "path": "/projects/{id}/issues",
+      "query": [
+        "state",
+        "scope",
+        "assignee_username",
+        "per_page",
+        "page"
+      ]
+    },
+    {
+      "id": "list_my_merge_requests",
+      "label": "List merge requests for me",
+      "method": "GET",
+      "path": "/merge_requests",
+      "query": [
+        "scope",
+        "state",
+        "per_page",
+        "page"
+      ]
+    },
+    {
+      "id": "list_project_merge_requests",
+      "label": "List a project's merge requests",
+      "method": "GET",
+      "path": "/projects/{id}/merge_requests",
+      "query": [
+        "state",
+        "scope",
+        "per_page",
+        "page"
+      ]
+    }
+  ],
+  "write": [
+    {
+      "id": "create_issue",
+      "label": "Create an issue",
+      "method": "POST",
+      "path": "/projects/{id}/issues",
+      "body": [
+        "title",
+        "description",
+        "labels",
+        "due_date"
+      ]
+    }
+  ],
+  "mcp": {
+    "url": "{site}/api/v4/mcp",
+    "official": true,
+    "auth": "oauth",
+    "docs": "https://docs.gitlab.com/user/model_context_protocol/mcp_server/"
+  },
+  "docs": [
+    "https://docs.gitlab.com/api/rest/",
+    "https://docs.gitlab.com/api/rest/authentication/",
+    "https://docs.gitlab.com/user/profile/personal_access_tokens/",
+    "https://docs.gitlab.com/security/tokens/access_token_scopes/",
+    "https://docs.gitlab.com/api/users/",
+    "https://docs.gitlab.com/api/projects/",
+    "https://docs.gitlab.com/api/issues/",
+    "https://docs.gitlab.com/api/merge_requests/",
+    "https://docs.gitlab.com/user/model_context_protocol/mcp_server/"
+  ],
+  "checked": "2026-11-01",
+  "tested": "mock only",
+  "notes": "Self-managed supported: baseUrl, keyUrl and the MCP url all use the {site} field (default https://gitlab.com). Docs show both 'PRIVATE-TOKEN: <token>' and 'Authorization: Bearer <token>' for personal access tokens. read_api is the documented read-only API scope; read_user covers only /user and /users. NOT confirmed: the GET /user page does not state which scope it needs, so read_api is assumed to cover it. The keyUrl prefill (name, description, scopes query parameters) is documented on the PAT page and depends on the user's own host. {id} can be a numeric project ID or the URL-encoded path (namespace%2Fproject). Official MCP server: documented as generally available since GitLab 19.5 (HTTP transport since 18.6) on GitLab.com, Self-Managed and Dedicated; an admin or group Owner must allow it. It accepts only an OAuth token with the mcp scope or a FINE-GRAINED personal access token with the MCP execute permission; legacy PATs, project and group tokens are rejected with 403 insufficient_scope, so the legacy PAT used for REST here will not work against the MCP server."
+}

@@ -1,0 +1,112 @@
+{
+  "id": "tailscale",
+  "name": "Tailscale",
+  "category": "Network",
+  "auth": {
+    "type": "token",
+    "header": "Authorization",
+    "prefix": "Bearer ",
+    "fields": [
+      {
+        "name": "token",
+        "label": "API access token",
+        "secret": true,
+        "placeholder": "tskey-api-..."
+      },
+      {
+        "name": "tailnet",
+        "label": "Tailnet (use a dash for the default)",
+        "secret": false,
+        "placeholder": "-",
+        "default": "-",
+        "optional": true
+      }
+    ],
+    "basic": null,
+    "keyUrl": "https://login.tailscale.com/admin/settings/keys",
+    "keyHelp": "Generate an access token (1 to 90 days); it can do everything its owner can, so for read-only use create an OAuth client with the all:read scope under Trust credentials instead.",
+    "signIn": null,
+    "altAuth": {
+      "label": "Read-only OAuth client (recommended)",
+      "createUrl": "https://console.tailscale.com/admin/settings/trust-credentials",
+      "tokenUrl": "https://api.tailscale.com/api/v2/oauth/token",
+      "fields": [
+        "clientId",
+        "clientSecret"
+      ],
+      "scopes": [
+        "all:read"
+      ],
+      "tokenLifetimeSeconds": 3600
+    }
+  },
+  "baseUrl": "https://api.tailscale.com/api/v2",
+  "headers": {},
+  "test": {
+    "method": "GET",
+    "path": "/tailnet/{tailnet}/devices",
+    "expect": 200,
+    "who": null
+  },
+  "read": [
+    {
+      "id": "list_devices",
+      "label": "List devices in the tailnet",
+      "method": "GET",
+      "path": "/tailnet/{tailnet}/devices",
+      "query": [
+        "fields"
+      ]
+    },
+    {
+      "id": "get_device",
+      "label": "Get one device",
+      "method": "GET",
+      "path": "/device/{deviceId}",
+      "query": [
+        "fields"
+      ]
+    },
+    {
+      "id": "list_users",
+      "label": "List users of the tailnet",
+      "method": "GET",
+      "path": "/tailnet/{tailnet}/users",
+      "query": [
+        "type",
+        "role"
+      ]
+    },
+    {
+      "id": "get_tailnet_settings",
+      "label": "Get tailnet settings",
+      "method": "GET",
+      "path": "/tailnet/{tailnet}/settings"
+    },
+    {
+      "id": "get_dns_configuration",
+      "label": "Get the full DNS configuration",
+      "method": "GET",
+      "path": "/tailnet/{tailnet}/dns/configuration"
+    },
+    {
+      "id": "list_device_routes",
+      "label": "List a device's subnet routes",
+      "method": "GET",
+      "path": "/device/{deviceId}/routes"
+    }
+  ],
+  "write": [],
+  "mcp": null,
+  "docs": [
+    "https://tailscale.com/api",
+    "https://api.tailscale.com/api/v2?outputOpenapiSchema=true",
+    "https://tailscale.com/kb/1101/api",
+    "https://tailscale.com/kb/1215/oauth-clients",
+    "https://tailscale.com/kb/1623/trust-credentials",
+    "https://tailscale.com/docs/develop-with-ai"
+  ],
+  "checked": "2026-11-01",
+  "tested": "mock; real service refused a fake key",
+  "notes": "Read from the API's own published OpenAPI schema (the file behind tailscale.com/api, which says its spec is unstable and may change) plus the OAuth and trust credential pages. Base URL https://api.tailscale.com/api/v2. Auth: an API access token goes either as Authorization: Bearer <token> or as the username of HTTP Basic with a blank password; tokens carry the prefix tskey-api-. The {tailnet} path value can be a dash, which means the default tailnet of the token; otherwise the Tailnet ID from General Settings (older legacy tailnet names still work for tailnets made before Oct 2025). The API does not paginate. Test call: GET /tailnet/-/devices; the schema names no whoami endpoint, so who is null. NO READ-ONLY API ACCESS TOKEN EXISTS: the docs say access tokens have the same permissions as the user who owns them and can be set to expire in 1 to 90 days, so a key from the Keys page is full access. The way to get read-only is a trust credential: an OAuth client created at https://console.tailscale.com/admin/settings/trust-credentials (Owner, Admin, Network admin or IT admin only; pick Read or Write per area, copy the client secret at once because it cannot be shown again) with scope all:read, which the trust credentials page says grants read access to the whole tailnet including future APIs. Exchange it at POST https://api.tailscale.com/api/v2/oauth/token with form fields client_id and client_secret (the page example omits grant_type; it calls the flow OAuth 2.0 client credentials); the response has access_token, token_type Bearer, expires_in 3600 and scope, and the lifetime cannot be changed, so a new token is needed about hourly. The auth.altAuth block is an extra beyond FORMAT.md for this path, because signIn cannot describe a client credentials exchange. Finer read scopes exist: devices:core:read, devices:routes:read, users:read, dns:read, policy_file:read, account_settings:read and others. The schema lists devices:core:read for list/get device, users:read for list users, devices:routes:read for routes, devices:core for authorize and expire (the write actions need a write token or scope, so a read-only credential will refuse them). The schema printed no OAuth scope line for the DNS endpoints that I could match, and it shows policy_file:read for the tailnet settings call, which looks odd, so use all:read rather than trying to pick scopes one by one. Official MCP: Tailscale publishes a remote MCP server at https://tailscale.mcp.kapa.ai/ (OAuth sign-in in the browser), but its docs say it only searches Tailscale documentation and does not manage a tailnet, so mcp is null here; it is not an account connection. I found no official Tailscale MCP server that reads or changes a tailnet; the ones that came up in search were third-party. Authorizing a device and expiring a device key are left out on purpose: the Hub offers no change action on this service for now."
+}

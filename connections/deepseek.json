@@ -1,0 +1,78 @@
+{
+  "id": "deepseek",
+  "name": "DeepSeek",
+  "category": "AI",
+  "auth": {
+    "type": "apiKey",
+    "header": "Authorization",
+    "prefix": "Bearer ",
+    "fields": [
+      {
+        "name": "api_key",
+        "label": "DeepSeek API key",
+        "secret": true,
+        "placeholder": "sk-..."
+      }
+    ],
+    "basic": null,
+    "keyUrl": "https://platform.deepseek.com/api_keys",
+    "keyHelp": "Create an API key on the platform; only the balance and model list are needed for a read-only check (key scoping options were not read).",
+    "signIn": null
+  },
+  "baseUrl": "https://api.deepseek.com",
+  "headers": {},
+  "test": {
+    "method": "GET",
+    "path": "/user/balance",
+    "expect": 200,
+    "who": null
+  },
+  "read": [
+    {
+      "id": "get_balance",
+      "label": "Show remaining balance",
+      "method": "GET",
+      "path": "/user/balance",
+      "query": []
+    },
+    {
+      "id": "list_models",
+      "label": "List models",
+      "method": "GET",
+      "path": "/models",
+      "query": []
+    }
+  ],
+  "write": [
+    {
+      "id": "create_chat_completion",
+      "label": "Send a chat message to a model (billed per token)",
+      "method": "POST",
+      "path": "/chat/completions",
+      "body": [
+        "model",
+        "messages",
+        "max_tokens",
+        "stream"
+      ]
+    }
+  ],
+  "mcp": null,
+  "docs": [
+    "https://api-docs.deepseek.com/",
+    "https://api-docs.deepseek.com/api/get-user-balance",
+    "https://api-docs.deepseek.com/api/list-models",
+    "https://api-docs.deepseek.com/api/create-chat-completion",
+    "https://api-docs.deepseek.com/api/deepseek-api",
+    "https://api-docs.deepseek.com/quick_start/pricing"
+  ],
+  "checked": "2026-11-01",
+  "tested": "mock; real service refused a fake key",
+  "notes": "Base URL https://api.deepseek.com (OpenAI format) and https://api.deepseek.com/anthropic (Anthropic format), Bearer auth, and the key page https://platform.deepseek.com/api_keys are all from the docs home page. The balance, models and chat pages themselves show only paths and no base URL or auth, so the full URLs are the base URL from the home page plus those paths (an inference joined across two pages): GET /user/balance returns is_available (bool) and balance_infos[] with currency (CNY or USD), total_balance, granted_balance and topped_up_balance as strings. GET /models returns object 'list' and data[] with id, owned_by, name, context_window, max_output_tokens, input/output_modalities, effort and api_capabilities. POST /chat/completions requires model ('deepseek-flash' or 'deepseek-v4-pro' per the page) and messages; optional max_tokens (1 to 393216), stream, thinking, reasoning_effort, response_format, tools, temperature etc. Legacy names deepseek-v4-flash and deepseek-v4-flash-vision-exp are accepted but retired and routed to Flash. The home page says the flash alias is currently served by DeepSeek-V4.1-Flash-1017. A '/beta' base URL is mentioned on the chat page for beta features. The balance test needs no model call and spends nothing, but the page does not state that explicitly; it only does not describe any charge. The balance response does not name the account, so who is null. The top-up page location was not confirmed. DeepSeek publishes no official MCP server on any page read; the home page does not mention MCP, so mcp is null. The docs also say the Anthropic SDKs work against the /anthropic base URL; only the OpenAI-format base is used here.",
+  "store": {
+    "key": "deepseek",
+    "fields": {
+      "api_key": "apiKey"
+    }
+  }
+}

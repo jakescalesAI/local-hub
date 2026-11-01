@@ -1,0 +1,135 @@
+{
+  "id": "google-calendar",
+  "name": "Google Calendar",
+  "category": "Google",
+  "auth": {
+    "type": "oauth",
+    "header": "Authorization",
+    "prefix": "Bearer ",
+    "fields": [
+      {
+        "name": "client_id",
+        "label": "OAuth client ID (Desktop app)",
+        "secret": false,
+        "placeholder": "123456789-abc.apps.googleusercontent.com"
+      },
+      {
+        "name": "client_secret",
+        "label": "OAuth client secret",
+        "secret": true,
+        "placeholder": "GOCSPX-..."
+      }
+    ],
+    "basic": null,
+    "keyUrl": "https://console.developers.google.com/auth/clients",
+    "keyHelp": "Create an OAuth client of type Desktop app on your own Google Cloud project, enable the Google Calendar API, and add calendar.calendarlist.readonly and calendar.events.readonly under Data Access.",
+    "signIn": {
+      "kind": "oauth",
+      "authorizeUrl": "https://accounts.google.com/o/oauth2/v2/auth",
+      "tokenUrl": "https://oauth2.googleapis.com/token",
+      "deviceUrl": null,
+      "scopes": [
+        "https://www.googleapis.com/auth/calendar.calendarlist.readonly",
+        "https://www.googleapis.com/auth/calendar.events.readonly",
+        "https://www.googleapis.com/auth/calendar.events.freebusy"
+      ],
+      "pkce": true,
+      "clientHelp": "1) Create a project: https://console.cloud.google.com/projectcreate . 2) Enable the Google Calendar API: https://console.cloud.google.com/apis/enableflow;apiid=calendar-json.googleapis.com . 3) Branding, then Audience (External), then add your own Google address under Test users: https://console.developers.google.com/auth/branding and https://console.developers.google.com/auth/audience . 4) Data Access, Add or Remove Scopes, pick the three calendar scopes: https://console.developers.google.com/auth/scopes . 5) Clients, Create Client, Application type Desktop app: https://console.developers.google.com/auth/clients . Redirect: loopback http://127.0.0.1:PORT (the app picks the port). Device flow cannot be used for Calendar scopes."
+    }
+  },
+  "baseUrl": "https://www.googleapis.com/calendar/v3",
+  "headers": {},
+  "test": {
+    "method": "GET",
+    "path": "/users/me/calendarList?maxResults=1",
+    "expect": 200,
+    "who": null
+  },
+  "read": [
+    {
+      "id": "list_calendars",
+      "label": "List my calendars",
+      "method": "GET",
+      "path": "/users/me/calendarList",
+      "query": [
+        "maxResults",
+        "minAccessRole",
+        "pageToken",
+        "showHidden"
+      ]
+    },
+    {
+      "id": "list_events",
+      "label": "List events in a calendar (use primary for the main one)",
+      "method": "GET",
+      "path": "/calendars/{calendarId}/events",
+      "query": [
+        "timeMin",
+        "timeMax",
+        "singleEvents",
+        "orderBy",
+        "maxResults",
+        "q",
+        "pageToken"
+      ]
+    },
+    {
+      "id": "query_freebusy",
+      "label": "Check when calendars are busy",
+      "method": "POST",
+      "path": "/freeBusy",
+      "body": [
+        "timeMin",
+        "timeMax",
+        "timeZone",
+        "items"
+      ]
+    }
+  ],
+  "write": [
+    {
+      "id": "create_event",
+      "label": "Create an event",
+      "method": "POST",
+      "path": "/calendars/{calendarId}/events",
+      "body": [
+        "start",
+        "end"
+      ],
+      "query": [
+        "sendUpdates",
+        "conferenceDataVersion"
+      ]
+    }
+  ],
+  "mcp": {
+    "url": "https://calendarmcp.googleapis.com/mcp/v1",
+    "official": true,
+    "auth": "oauth",
+    "docs": "https://developers.google.com/workspace/guides/configure-mcp-servers"
+  },
+  "docs": [
+    "https://developers.google.com/identity/protocols/oauth2/limited-input-device",
+    "https://developers.google.com/identity/protocols/oauth2/native-app",
+    "https://developers.google.com/workspace/guides/create-project",
+    "https://developers.google.com/workspace/guides/enable-apis",
+    "https://developers.google.com/workspace/guides/configure-oauth-consent",
+    "https://developers.google.com/workspace/guides/create-credentials",
+    "https://developers.google.com/workspace/calendar/api/auth",
+    "https://developers.google.com/workspace/calendar/api/v3/reference/calendarList/list",
+    "https://developers.google.com/workspace/calendar/api/v3/reference/events/list",
+    "https://developers.google.com/workspace/calendar/api/v3/reference/events/insert",
+    "https://developers.google.com/workspace/calendar/api/v3/reference/freebusy/query",
+    "https://developers.google.com/workspace/calendar/api/v3/reference/calendars/get",
+    "https://developers.google.com/workspace/guides/configure-mcp-servers",
+    "https://developers.google.com/workspace/guides/configure-mcp-security",
+    "https://support.google.com/cloud/answer/15549257",
+    "https://support.google.com/cloud/answer/15549945",
+    "https://support.google.com/cloud/answer/15549135",
+    "https://support.google.com/cloud/answer/13463073",
+    "https://support.google.com/cloud/answer/7454865"
+  ],
+  "checked": "2026-11-01",
+  "tested": "mock only",
+  "notes": "DEVICE FLOW: not usable. Google's allowed-scope list for the limited-input device flow is exhaustive (email, openid, profile, drive.appdata, drive.file, youtube, youtube.readonly) and contains no Calendar scope. Sign-in is authorization code + PKCE with a Desktop app client and a loopback redirect (http://127.0.0.1:port or http://[::1]:port; localhost also allowed but may hit firewalls). Private-network IP redirects are not mentioned on the native-app page; treating them as unsupported is an inference. If the person's browser is on another machine than the app, the app has to let them paste the final redirect URL or code back (inference, not documented on the pages read). SCOPES: narrowest read-only choices are calendar.calendarlist.readonly (accepted by calendarList.list), calendar.events.readonly (accepted by events.list) and calendar.events.freebusy (accepted by freebusy.query). These three are also the Calendar scopes Google lists for its own Calendar MCP server. calendar.readonly is a single broader read-only scope that covers all of these plus calendars.get. Which of these Calendar scopes are Sensitive vs Non-sensitive was NOT confirmed: the Calendar auth page does not classify them and only says public apps that use scopes permitting access to certain user data must complete verification. Check the Data Access page in the person's own console, which labels each scope when it is added. create_event needs calendar.events (not read-only) or calendar.events.owned; it is NOT in signIn.scopes, add it only if the person wants writes. events.insert requires start and end; other body fields (summary, attendees) were not listed on the page read. events.list maxResults default 250, max 2500; calendarList maxResults default 100, max 250. The test call uses calendarList because it works with the narrowest scope; calendars.get on 'primary' needs calendar.readonly and the page did not say what id it returns, so who is null. TESTING MODE: test-user authorizations expire seven days after consent (Audience page), so the person re-signs-in weekly; up to 100 test users. Production without verification: unverified-app screen and a 100 new-user cap; a personal single-owner click-through path was not confirmed on any page read. MCP: Google's official Calendar MCP server is Developer Preview, Streamable HTTP, needs the person's own Web application OAuth client with 'Use this client for an AI-powered agent'; the only redirect URIs named are for Antigravity and claude.ai (a self-hosted redirect is unconfirmed). Enable API id for the console link is calendar-json.googleapis.com. No call was made."
+}

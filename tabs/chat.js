@@ -953,6 +953,19 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
       if (answered) settleConfirm(c.id, 'Answered')
       v.scrollEnd(true)
     }
+    // Connecting happens in the hub's own sheet, so the key never passes through the chat. tabs/connections.js handles data-connect.
+    v.addConnect = c => {
+      v.clearEmpty()
+      const el = document.createElement('div'); el.className = 'confirm'
+      const h = document.createElement('div'); h.className = 'confirm-what'; h.textContent = `Connect ${c.name || 'this service'}?`
+      const d = document.createElement('div'); d.className = 'confirm-on'; d.textContent = 'You enter the key in the hub. It stays on this computer.'
+      const row = document.createElement('div'); row.className = 'confirm-row'
+      const yes = document.createElement('button'); yes.type = 'button'; yes.className = 'yes'; yes.textContent = 'Connect'; yes.dataset.connect = c.id
+      row.append(yes)
+      el.append(h, d, row)
+      log.append(el)
+      v.scrollEnd(true)
+    }
     v.addError = text => {
       v.clearEmpty()
       const el = document.createElement('div'); el.className = 'err'; el.setAttribute('role', 'alert'); el.textContent = text
@@ -1346,7 +1359,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
     for (const el of confirmCards(id)) el.querySelectorAll('button').forEach(b => { b.disabled = true })
     let out = {}
     try {
-      const r = await hubFetch(`/api/${c.via === 'agent' ? 'agent' : 'browser'}/confirm/${id}`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: JSON.stringify({ allow }) })
+      const r = await hubFetch(`/api/${['agent', 'connections'].includes(c.via) ? c.via : 'browser'}/confirm/${id}`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: JSON.stringify({ allow }) })
       if (!r.ok) return settleConfirm(id, 'This ask has run out. Ask again if you still want it.')
       out = await r.json().catch(() => ({}))
     } catch { return settleConfirm(id, 'Couldn’t reach the hub, so nothing happened. Ask again.') }
@@ -1479,6 +1492,9 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
       case 'confirm':
         eachView(v => { v.hidePending(); v.finishCur(); v.addConfirm(ev); v.showPending() })
         break
+      case 'connect':
+        eachView(v => { v.hidePending(); v.finishCur(); v.addConnect(ev); v.showPending() })
+        break
       case 'settings':
         window.HUB?.refresh?.() // show the change now instead of at the next 15 s poll
         break
@@ -1541,6 +1557,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
       fullView.clear()
       for (const [n, it] of (c.items || []).entries()) {
         if (it.kind === 'confirm') fullView.addConfirm(it, c.items.slice(n + 1).some(x => x.kind === 'user'))
+        else if (it.kind === 'connect') fullView.addConnect(it)
         else if (it.kind === 'user') fullView.addUser(it.text || '', it.files, it.reply)
         else if (it.kind === 'assistant') fullView.addAssistant(it.text || '', true, it.meta || (it.at ? { at: it.at } : null))
         else if (it.kind === 'tool') fullView.addTool(it)

@@ -1,0 +1,133 @@
+{
+  "id": "google-drive",
+  "name": "Google Drive",
+  "category": "Google",
+  "auth": {
+    "type": "oauth",
+    "header": "Authorization",
+    "prefix": "Bearer ",
+    "fields": [
+      {
+        "name": "client_id",
+        "label": "OAuth client ID (Desktop app)",
+        "secret": false,
+        "placeholder": "123456789-abc.apps.googleusercontent.com"
+      },
+      {
+        "name": "client_secret",
+        "label": "OAuth client secret",
+        "secret": true,
+        "placeholder": "GOCSPX-..."
+      }
+    ],
+    "basic": null,
+    "keyUrl": "https://console.developers.google.com/auth/clients",
+    "keyHelp": "Create an OAuth client of type Desktop app on your own Google Cloud project, enable the Google Drive API, and add drive.readonly under Data Access.",
+    "signIn": {
+      "kind": "oauth",
+      "authorizeUrl": "https://accounts.google.com/o/oauth2/v2/auth",
+      "tokenUrl": "https://oauth2.googleapis.com/token",
+      "deviceUrl": null,
+      "scopes": [
+        "https://www.googleapis.com/auth/drive.readonly"
+      ],
+      "pkce": true,
+      "clientHelp": "1) Create a project: https://console.cloud.google.com/projectcreate . 2) Enable the Google Drive API: https://console.cloud.google.com/apis/enableflow;apiid=drive.googleapis.com . 3) Branding, then Audience (External), then add your own Google address under Test users: https://console.developers.google.com/auth/branding and https://console.developers.google.com/auth/audience . 4) Data Access, Add or Remove Scopes, pick drive.readonly (or drive.metadata.readonly to list files only): https://console.developers.google.com/auth/scopes . 5) Clients, Create Client, Application type Desktop app: https://console.developers.google.com/auth/clients . Redirect: loopback http://127.0.0.1:PORT (the app picks the port). Device flow only allows drive.file and drive.appdata, which cannot read the person's existing files."
+    }
+  },
+  "baseUrl": "https://www.googleapis.com/drive/v3",
+  "headers": {},
+  "test": {
+    "method": "GET",
+    "path": "/about?fields=user",
+    "expect": 200,
+    "who": "user.emailAddress"
+  },
+  "read": [
+    {
+      "id": "about",
+      "label": "Show who is signed in (fields is required)",
+      "method": "GET",
+      "path": "/about",
+      "query": [
+        "fields"
+      ]
+    },
+    {
+      "id": "list_files",
+      "label": "List or search files",
+      "method": "GET",
+      "path": "/files",
+      "query": [
+        "q",
+        "pageSize",
+        "pageToken",
+        "orderBy",
+        "corpora",
+        "includeItemsFromAllDrives",
+        "supportsAllDrives"
+      ]
+    },
+    {
+      "id": "get_file",
+      "label": "Get a file's details, or its content with alt=media",
+      "method": "GET",
+      "path": "/files/{fileId}",
+      "query": [
+        "alt",
+        "supportsAllDrives"
+      ]
+    },
+    {
+      "id": "export_file",
+      "label": "Export a Google Doc, Sheet or Slide to another format (10 MB max)",
+      "method": "GET",
+      "path": "/files/{fileId}/export",
+      "query": [
+        "mimeType"
+      ]
+    }
+  ],
+  "write": [
+    {
+      "id": "create_file",
+      "label": "Create a file or folder (metadata only)",
+      "method": "POST",
+      "path": "/files",
+      "body": [
+        "name",
+        "mimeType"
+      ]
+    }
+  ],
+  "mcp": {
+    "url": "https://drivemcp.googleapis.com/mcp/v1",
+    "official": true,
+    "auth": "oauth",
+    "docs": "https://developers.google.com/workspace/guides/configure-mcp-servers"
+  },
+  "docs": [
+    "https://developers.google.com/identity/protocols/oauth2/limited-input-device",
+    "https://developers.google.com/identity/protocols/oauth2/native-app",
+    "https://developers.google.com/workspace/guides/create-project",
+    "https://developers.google.com/workspace/guides/enable-apis",
+    "https://developers.google.com/workspace/guides/configure-oauth-consent",
+    "https://developers.google.com/workspace/guides/create-credentials",
+    "https://developers.google.com/workspace/drive/api/guides/api-specific-auth",
+    "https://developers.google.com/workspace/drive/api/reference/rest/v3/about/get",
+    "https://developers.google.com/workspace/drive/api/reference/rest/v3/files/list",
+    "https://developers.google.com/workspace/drive/api/reference/rest/v3/files/get",
+    "https://developers.google.com/workspace/drive/api/reference/rest/v3/files/export",
+    "https://developers.google.com/workspace/drive/api/reference/rest/v3/files/create",
+    "https://developers.google.com/workspace/guides/configure-mcp-servers",
+    "https://developers.google.com/workspace/guides/configure-mcp-security",
+    "https://support.google.com/cloud/answer/15549257",
+    "https://support.google.com/cloud/answer/15549945",
+    "https://support.google.com/cloud/answer/15549135",
+    "https://support.google.com/cloud/answer/13463073",
+    "https://support.google.com/cloud/answer/7454865"
+  ],
+  "checked": "2026-11-01",
+  "tested": "mock only",
+  "notes": "DEVICE FLOW: only partly possible and not useful for reading. The device-flow allowed-scope list includes drive.file and drive.appdata, but drive.file only reaches files the app created or the person opened with the app (Drive scope page), so it cannot browse the person's existing Drive; and the device flow needs a client of type 'TVs and Limited Input devices' with a required client_secret. For reading existing files use authorization code + PKCE with a Desktop app client and a loopback redirect (127.0.0.1 or [::1]; localhost allowed but may hit firewalls). Private-network IP redirects are not addressed on the native-app page; treating them as unsupported is an inference. A browser on another machine than the app needs a paste-back step (inference). SCOPES (Drive scope page): drive.file, drive.appdata/appfolder and drive.install are Non-sensitive; drive.apps.readonly is Sensitive; drive, drive.readonly, drive.metadata, drive.metadata.readonly, drive.activity(.readonly), drive.meet.readonly and drive.scripts are Restricted. There is NO read-only scope for existing files that is not Restricted. Narrowest read-only: drive.metadata.readonly lists/reads metadata only (accepted by about.get, files.list, files.get, NOT by files.export); drive.readonly is needed for content download (alt=media) and export, so signIn.scopes uses drive.readonly. Restricted scopes need Google verification and a security assessment before general distribution (the files.get and files.export pages say so). create_file works with drive.file (Non-sensitive) and is NOT covered by drive.readonly; add drive.file if writes are wanted. TESTING MODE: test-user authorizations expire seven days after consent (Audience page); up to 100 test users. Production without verification: unverified-app screen and 100 new-user cap; whether a single owner can click through it was NOT confirmed on any page read. About.get: the fields parameter is required, but the About resource field names (user.emailAddress, storageQuota) were NOT listed on the page read, so test.who 'user.emailAddress' is unconfirmed; verify against the About resource page before relying on it. files.get: the page lists acknowledgeAbuse, supportsAllDrives, includePermissionsForView, includeLabels and alt=media for download; it did not document a fields parameter, so none is listed. files.list pageSize max 1000; the fields parameter was not listed on that page either. create_file body fields come from the files.create page only for name and mimeType (shortcuts); parents was not confirmed. MCP: Google's official Drive MCP server is Developer Preview, Streamable HTTP, needs the person's own Web application OAuth client with 'Use this client for an AI-powered agent'; its scopes are drive.readonly and drive.file; the only redirect URIs named are for Antigravity and claude.ai (a self-hosted redirect is unconfirmed). No call was made."
+}
