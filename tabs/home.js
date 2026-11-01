@@ -1,4 +1,4 @@
-// Home tab: a homescreen of widgets drawn from everything in the hub, built on the Quartzi
+// Home tab: a homescreen of widgets drawn from everything in the hub, built on one
 // widget system (three sizes, 20px cards, fit rule, detail view, lift on hover).
 //   * Desktop layout: cells at least 202px, 22px gaps, as many columns as fit the shared page
 //     width, stretched so the grid lines up with every other tab.
@@ -15,6 +15,8 @@
   const EASE = 'cubic-bezier(.32,.72,0,1)'
   const mq = q => (window.matchMedia ? window.matchMedia(q) : { matches: false, addEventListener() {} })
   const PHONE = mq('(max-width: 720px)')
+  const TABLET = mq('(pointer: coarse) and (hover: none) and (min-width: 721px)')
+  const VIEWS = ['desktop', 'ipad', 'mobile']
   const REDUCED = mq('(prefers-reduced-motion: reduce)')
   const pref = (k, d, ok) => { try { const v = localStorage.getItem(k); return ok.includes(v) ? v : d } catch { return d } }
   const save = (k, v) => { try { localStorage.setItem(k, v) } catch {} }
@@ -105,31 +107,59 @@
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --hw-lift: 0 18px 34px -14px rgba(0, 0, 0, .85); --hw-sheet-shadow: 0 24px 70px rgba(0, 0, 0, .7); } }
 :root[data-theme="dark"] { --hw-lift: 0 18px 34px -14px rgba(0, 0, 0, .85); --hw-sheet-shadow: 0 24px 70px rgba(0, 0, 0, .7); }
 
-.hw-root { --u: 202px; --uh: 202px; --gap: 22px; min-width: 0; }
-.hw-root[data-view="mobile"] { --uh: 198px; --gap: 14px; }
+.hw-root { --u: 202px; --uh: 190px; --gap: 22px; --tile: 58px; min-width: 0; }
+.hw-root[data-view="mobile"] { --uh: 198px; --gap: 14px; --tile: 54px; }
 
-.hw-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 12px; margin: 0 0 20px; }
-.seg.hw-seg { min-width: 0; width: 210px; margin: 0; flex: none; }
+.hw-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 12px; margin: 0 0 20px; min-height: 32px; }
+:root[data-density="compact"] .hw-root { --gap: 14px; --tile: 52px; }
+:root[data-density="roomy"] .hw-root { --gap: 30px; --tile: 64px; }
+:root[data-density="compact"] .hw-root[data-view="mobile"] { --gap: 10px; --tile: 50px; }
+:root[data-density="roomy"] .hw-root[data-view="mobile"] { --gap: 20px; --tile: 60px; }
+.scrim:has(> .alert) { z-index: 90; }
+.hw-dlist + .hw-wide { margin-top: 12px; }
+.hw-pages { display: flex; gap: 6px; margin: -8px 0 16px; overflow-x: auto; scrollbar-width: none; }
+.hw-pages::-webkit-scrollbar { display: none; }
+.hw-pages[hidden] { display: none; }
+.hw-page { flex: none; height: 32px; padding: 0 14px; border: 0; border-radius: 999px; background: var(--fill); color: var(--label); font: 500 14px var(--font); cursor: pointer; }
+.hw-page[aria-selected="true"] { background: var(--blue); color: #fff; }
+.hw-file { display: block; flex: 1; width: 100%; height: 100%; min-height: 0; border: 0; border-radius: 10px; background: transparent; }
+.hw-prev .hw-file, .hw-drag-on .hw-file { pointer-events: none; }
+.seg.hw-seg { min-width: 0; width: 246px; margin: 0; flex: none; }
 .hw-root[data-phone="1"] .hw-seg { display: none; }
 .hw-hint { flex: 1 1 180px; min-width: 0; color: var(--label-2); font-size: 13px; letter-spacing: -0.006em; }
+.hw-hint:empty { display: none; }
 .hw-hint.err { color: var(--red); }
-.hw-bar-r { margin-left: auto; display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.hw-bar-r { margin-left: auto; display: flex; gap: 8px; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.hw-bar-r::-webkit-scrollbar { display: none; }
+.hw-bar-r > .hw-btn { flex: none; }
+@media (max-width: 900px) {
+  .hw-btn.hw-iconly { width: 32px; padding: 0; justify-content: center; }
+  .hw-btn.hw-iconly .hw-btn-t { display: none; }
+}
 .hw-btn { height: 32px; padding: 0 14px; border-radius: 99px; background: var(--fill); color: var(--blue); font-size: 15px; font-weight: 600; letter-spacing: -0.016em; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; transition: opacity .15s, transform .15s; }
 .hw-btn:active { opacity: .45; transform: scale(.96); }
 .hw-btn[hidden] { display: none; }
 .hw-btn.solid { background: var(--blue); color: #fff; }
 .hw-btn.tint { background: color-mix(in srgb, var(--blue) 14%, transparent); }
 .hw-btn.red { color: var(--red); }
-.hw-pill { height: 30px; padding: 0 14px; border-radius: 99px; background: var(--fill); color: var(--blue); font-size: 14px; font-weight: 600; letter-spacing: -0.016em; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; transition: opacity .15s, transform .15s; }
+.hw-pill { height: 30px; padding: 0 14px; border-radius: 99px; background: var(--fill); color: var(--blue); font-size: 15px; font-weight: 600; letter-spacing: -0.016em; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; transition: opacity .15s, transform .15s; }
 .hw-pill:active { opacity: .45; transform: scale(.96); }
 .hw-btn:focus-visible, .hw-pill:focus-visible, .hw-x:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 
 .hw-stage { display: flex; justify-content: center; }
-.hw-frame { width: 100%; min-width: 0; }
-.hw-root[data-view="mobile"][data-phone="0"] .hw-frame { width: 390px; max-width: 100%; min-height: 720px; padding: 18px 20px 30px; margin: 11px 0 0; border-radius: 48px; background: var(--bg); box-shadow: 0 0 0 1px var(--sep), 0 0 0 11px var(--fill-2), 0 0 0 11.5px var(--sep); }
-.hw-root[data-view="mobile"][data-phone="0"] .hw-frame::before { content: ""; display: block; width: 92px; height: 24px; border-radius: 99px; background: var(--label); opacity: .88; margin: 0 auto 20px; }
+/* The space below clears the chat bar, so nothing rests under it at the end of the page. */
+.hw-frame { width: 100%; min-width: 0; padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
+.hw-device { display: contents; }
+/* iPad and Mobile on a bigger screen: a device drawn at scale, whose content scrolls inside it. */
+.hw-root[data-framed="1"] .hw-stage { display: block; position: relative; height: calc((var(--fh) + 2 * var(--fb)) * var(--fk)); }
+.hw-root[data-framed="1"] .hw-device { display: block; position: absolute; left: 50%; top: calc(var(--fb) * var(--fk)); width: var(--fw); height: var(--fh); margin-left: calc(var(--fw) / -2); transform: scale(var(--fk)); transform-origin: top center; border-radius: var(--fr); overflow: hidden; box-shadow: 0 0 0 1px rgba(255, 255, 255, .14), 0 0 0 var(--fb) #101012, 0 0 0 calc(var(--fb) + 1px) rgba(255, 255, 255, .16), 0 18px 60px rgba(0, 0, 0, .4); }
+.hw-root[data-framed="1"] .hw-frame { width: 100%; height: 100%; padding: var(--fpt) var(--fpx) 30px; overflow: hidden auto; overscroll-behavior: contain; scrollbar-width: none; }
+.hw-root[data-framed="1"] .hw-frame::-webkit-scrollbar { display: none; }
+.hw-root[data-framed="1"][data-view="mobile"] .hw-device::before { content: ""; position: absolute; z-index: 3; top: 11px; left: 50%; width: 112px; height: 32px; margin-left: -56px; border-radius: 99px; background: #101012; pointer-events: none; }
+.hw-root[data-framed="1"] .hw-device::after { content: ""; position: absolute; z-index: 3; bottom: 8px; left: 50%; width: 134px; height: 5px; margin-left: -67px; border-radius: 99px; background: var(--label); opacity: .35; pointer-events: none; }
+.hw-root[data-framed="1"][data-view="ipad"] .hw-device::after { width: 220px; margin-left: -110px; }
 /* One grid for apps and widgets, like an iPhone: an app takes one slot, a small widget 2 by 2, medium 4 by 2, large 4 by 4. */
-.hw-grid { display: grid; grid-template-columns: repeat(var(--cols, 8), minmax(0, 1fr)); grid-auto-rows: calc((var(--uh) - var(--gap)) / 2); grid-auto-flow: row dense; gap: var(--gap); }
+.hw-grid { display: grid; grid-template-columns: repeat(var(--cols, 8), minmax(0, 1fr)); grid-auto-rows: calc((var(--uh) - var(--gap)) / 2); gap: var(--gap); }
 .hw-root[data-view="mobile"] .hw-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); justify-content: stretch; }
 .hw-cell { position: relative; min-width: 0; min-height: 0; }
 .hw-cell.s { grid-column: span 2; grid-row: span 2; }
@@ -140,12 +170,13 @@
 .hw-empty { grid-column: 1 / -1; text-align: center; color: var(--label-2); padding: 56px 16px; font-size: 15px; }
 
 /* The widget card */
-.hw-card { position: relative; width: 100%; height: 100%; overflow: hidden; border-radius: 20px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; min-width: 0; background: var(--surface); color: var(--label); box-shadow: 0 0 0 .5px var(--sep); text-align: left; }
-.hw-card[data-dev="mobile"][data-size="s"] { padding: 14px; }
-.hw-card[data-dev="mobile"][data-size="s"] .hw-label { font-size: 12px; }
+.hw-card { position: relative; width: 100%; height: 100%; overflow: hidden; border-radius: var(--hub-radius, 20px); padding: 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0; background: var(--surface); color: var(--label); box-shadow: 0 0 0 .5px var(--sep); text-align: left; }
 .hw-label { display: flex; align-items: center; gap: 8px; align-self: flex-start; max-width: 100%; flex: none; font-size: 13px; font-weight: 600; color: var(--label-2); letter-spacing: -0.006em; }
 .hw-tile { width: 20px; height: 20px; border-radius: 6px; background: color-mix(in srgb, var(--t, var(--blue)) 16%, transparent); color: var(--t, var(--blue)); display: grid; place-items: center; flex: none; }
-.hw-body { flex: 1; min-height: 0; min-width: 0; display: flex; flex-direction: column; justify-content: space-evenly; gap: 10px; }
+.hw-body { flex: 1; min-height: 0; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 10px; }
+.hw-body:has(> .hw-list) { justify-content: flex-start; }
+.hw-card[data-size="l"] .hw-list { gap: 14px; }
+.hw-cell { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 .hw-body > * { flex: none; }
 .hw-body > .hw-grow { flex: 1 1 0; min-height: 64px; }
 .hw-body.hw-inline { display: block; height: auto; }
@@ -160,14 +191,14 @@
 /* Parts */
 .hw-fig { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .hw-fig .v { display: flex; align-items: baseline; gap: 6px; font: 700 32px/1.05 var(--rounded); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.hw-fig .v small { font-size: 16px; font-weight: 600; color: var(--label-2); letter-spacing: -0.01em; }
+.hw-fig .v small { font-size: 15px; font-weight: 600; color: var(--label-2); letter-spacing: -0.01em; }
 .hw-fig.sm .v { font-size: 26px; }
-.hw-card[data-dev="mobile"][data-size="s"] .hw-fig .v { font-size: 28px; }
+.hw-card[data-dev="mobile"][data-size="s"] .hw-fig .v { font-size: 26px; }
 .hw-sub { font-size: 13px; color: var(--label-2); letter-spacing: -0.006em; min-width: 0; }
 .hw-sub.c { text-align: center; }
 .hw-sub b { color: var(--label); font-weight: 600; }
 .hw-meter { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
-.hw-meter .ml { display: flex; gap: 8px; font-size: 12.5px; letter-spacing: -0.006em; }
+.hw-meter .ml { display: flex; gap: 8px; font-size: 13px; letter-spacing: -0.006em; }
 .hw-meter .ml em { flex: 1; font-style: normal; color: var(--label-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .hw-meter .ml b { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .hw-track { display: block; height: 6px; border-radius: 3px; background: var(--fill-2); overflow: hidden; }
@@ -176,23 +207,23 @@
 .hw-fill.bad { background: var(--red); }
 .hw-fill.blue { background: var(--blue); }
 .hw-list { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
-.hw-row { display: flex; align-items: center; gap: 9px; min-width: 0; font-size: 14px; letter-spacing: -0.016em; line-height: 1.25; }
+.hw-row { display: flex; align-items: center; gap: 9px; min-width: 0; font-size: 15px; letter-spacing: -0.016em; line-height: 1.25; }
 .hw-row .t { flex: 1 1 auto; min-width: 0; }
-.hw-row .s { flex: 0 1 auto; max-width: 45%; color: var(--label-2); font-size: 12.5px; letter-spacing: -0.006em; }
-.hw-row .r { flex: none; font-weight: 600; font-size: 13.5px; font-variant-numeric: tabular-nums; }
-.hw-row .tm { flex: none; width: 62px; color: var(--label-2); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.hw-row .s { flex: 0 1 auto; max-width: 45%; color: var(--label-2); font-size: 13px; letter-spacing: -0.006em; }
+.hw-row .r { flex: none; font-weight: 600; font-size: 13px; font-variant-numeric: tabular-nums; }
+.hw-row .tm { flex: none; width: 62px; color: var(--label-2); font-size: 13px; font-variant-numeric: tabular-nums; }
 .hw-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--c, var(--gray)); }
 .hw-dayh { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--label-2); padding-top: 2px; }
 .hw-cols { display: grid; grid-template-columns: repeat(var(--n, 2), minmax(0, 1fr)); gap: 14px; min-width: 0; }
 .hw-col { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
-.hw-col h4 { margin: 0; font-size: 14px; font-weight: 600; letter-spacing: -0.016em; }
+.hw-col h4 { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -0.016em; }
 .hw-col .hw-sub { margin-top: -4px; }
 .hw-ringwrap { display: grid; place-items: center; }
 .hw-ring { position: relative; flex: none; }
 .hw-ring svg { display: block; }
 .hw-ring span { position: absolute; inset: 0; display: grid; place-items: center; font: 700 var(--rs, 20px) var(--rounded); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 .hw-rings { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; justify-items: center; }
-.hw-rings > div { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12.5px; color: var(--label-2); }
+.hw-rings > div { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 13px; color: var(--label-2); }
 .hw-split { display: flex; gap: 1.5px; height: 10px; border-radius: 5px; overflow: hidden; background: var(--fill-2); }
 .hw-split i { display: block; height: 100%; }
 .hw-spark { display: block; width: 100%; height: 44px; }
@@ -205,13 +236,13 @@
 .hw-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--label-2); }
 .hw-legend span { display: inline-flex; align-items: center; gap: 6px; }
 .hw-legend i { display: inline-block; width: 10px; height: 3px; border-radius: 2px; }
-.hw-clock .v { display: flex; align-items: baseline; gap: 5px; font: 700 38px/1 var(--rounded); letter-spacing: -0.03em; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.hw-clock .v small { font-size: 16px; font-weight: 600; color: var(--label-2); letter-spacing: -0.01em; }
+.hw-clock .v { display: flex; align-items: baseline; gap: 5px; font: 700 40px/1 var(--rounded); letter-spacing: -0.03em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.hw-clock .v small { font-size: 15px; font-weight: 600; color: var(--label-2); letter-spacing: -0.01em; }
 .hw-card[data-dev="mobile"][data-size="s"] .hw-clock .v { font-size: 32px; }
 .hw-clock .d { margin-top: 6px; font-size: 15px; font-weight: 500; letter-spacing: -0.016em; }
 .hw-split2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; min-width: 0; }
 .hw-evt .t { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 17px; font-weight: 600; letter-spacing: -0.022em; line-height: 1.22; }
-.hw-note { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; color: var(--label-2); font-size: 13.5px; letter-spacing: -0.006em; }
+.hw-note { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; color: var(--label-2); font-size: 13px; letter-spacing: -0.006em; }
 .hw-skel { display: flex; flex-direction: column; justify-content: center; gap: 10px; }
 .hw-skel i { display: block; border-radius: 8px; background: var(--fill); animation: hw-pulse 1.4s ease-in-out infinite; }
 @keyframes hw-pulse { 50% { opacity: .45; } }
@@ -220,13 +251,13 @@
 .hw-donutwrap { display: flex; align-items: center; gap: 16px; min-width: 0; }
 .hw-donutwrap .hw-list { flex: 1; min-width: 0; }
 .hw-links { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
-.hw-link { height: 40px; border-radius: 12px; background: var(--fill); color: var(--label); font-size: 14px; font-weight: 600; letter-spacing: -0.016em; display: flex; align-items: center; justify-content: center; gap: 7px; min-width: 0; padding: 0 8px; transition: opacity .15s, transform .15s; }
+.hw-link { height: 40px; border-radius: 12px; background: var(--fill); color: var(--label); font-size: 15px; font-weight: 600; letter-spacing: -0.016em; display: flex; align-items: center; justify-content: center; gap: 7px; min-width: 0; padding: 0 8px; transition: opacity .15s, transform .15s; }
 .hw-link:active { opacity: .5; transform: scale(.97); }
 .hw-link svg { color: var(--blue); flex: none; }
 .hw-month { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 1px 0; text-align: center; font-size: 13px; font-variant-numeric: tabular-nums; }
 .hw-mhead { display: flex; align-items: baseline; justify-content: space-between; font-size: 15px; font-weight: 600; letter-spacing: -0.016em; margin-bottom: 6px; }
 .hw-mhead span { color: var(--label-2); font-size: 12px; font-weight: 500; }
-.hw-month .wd { color: var(--label-2); font-size: 11px; font-weight: 600; padding-bottom: 2px; }
+.hw-month .wd { color: var(--label-2); font-size: 12px; font-weight: 600; padding-bottom: 2px; }
 .hw-month .dn { position: relative; height: 31px; display: grid; place-items: center; }
 .hw-month .dn b { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-weight: 500; }
 .hw-month .dn.td b { background: var(--red); color: #fff; font-weight: 700; }
@@ -236,11 +267,11 @@
 .hw-bigdate .n { font: 700 56px/1 var(--rounded); letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
 .hw-bigdate .w { font-size: 15px; font-weight: 600; color: var(--red); text-transform: uppercase; letter-spacing: .04em; }
 .hw-bigdate .m { font-size: 15px; color: var(--label-2); letter-spacing: -0.016em; }
-.hw-gsearch { margin: 0 20px 6px; flex: none; position: relative; }
-.hw-gsearch input { width: 100%; height: 36px; border-radius: 10px; background: var(--fill); padding: 0 12px 0 34px; font-size: 16px; color: var(--label); letter-spacing: -0.016em; }
+.hw-gsearch { margin: 0 20px 12px; flex: none; position: relative; }
+.hw-gsearch input { width: 100%; height: 36px; border: 0; outline: 0; -webkit-appearance: none; appearance: none; border-radius: 10px; background: var(--fill); padding: 0 12px 0 34px; font-size: 16px; color: var(--label); letter-spacing: -0.016em; transition: box-shadow .2s var(--ease); }
+.hw-gsearch input:focus { box-shadow: 0 0 0 3.5px color-mix(in srgb, var(--blue) 30%, transparent); }
 .hw-gsearch svg { position: absolute; left: 11px; top: 10px; color: var(--label-2); pointer-events: none; }
 .hw-gnone { text-align: center; color: var(--label-2); padding: 30px 0; font-size: 15px; }
-.hw-gcount { color: var(--label-3); font-weight: 400; margin-left: 6px; }
 
 /* Edit mode */
 .hw-edit .hw-cell { cursor: grab; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: pan-y; }
@@ -250,9 +281,9 @@
 @keyframes hw-wiggle { from { transform: rotate(-.5deg); } to { transform: rotate(.5deg); } }
 @media (prefers-reduced-motion: reduce) { .hw-edit .hw-card { animation: none; } }
 .hw-ctl { position: absolute; z-index: 4; }
-.hw-del { top: -9px; left: -9px; width: 28px; height: 28px; border-radius: 50%; background: var(--gray); color: #fff; display: grid; place-items: center; box-shadow: 0 0 0 2px var(--bg); }
+.hw-del { top: -7px; left: -7px; width: 22px; height: 22px; border-radius: 50%; background: var(--gray); color: #fff; display: grid; place-items: center; box-shadow: 0 1px 3px rgba(0, 0, 0, .3); }
 .hw-del::after, .hw-size::after { content: ""; position: absolute; inset: -8px; }
-.hw-size { right: 10px; bottom: 10px; height: 28px; padding: 0 12px; border-radius: 99px; background: var(--menu-bg); -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px); color: var(--blue); font-size: 13px; font-weight: 600; box-shadow: 0 0 0 .5px var(--sep); }
+.hw-size { right: 10px; top: 10px; height: 24px; padding: 0 10px; border-radius: 99px; background: var(--menu-bg); -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px); color: var(--blue); font-size: 13px; font-weight: 600; box-shadow: 0 0 0 .5px var(--sep); }
 .hw-ctl:active { opacity: .5; }
 .hw-cell.hw-dragging { z-index: 20; cursor: grabbing; will-change: transform; }
 .hw-cell.hw-dragging .hw-card { animation: none; box-shadow: 0 26px 50px -14px rgba(0, 0, 0, .45), 0 0 0 .5px var(--sep); }
@@ -265,25 +296,28 @@ html[data-effect="grain"] body::after { transition: opacity .2s ease; }
 html.hw-drag-on[data-effect="grain"] body::after { opacity: 0; }
 
 /* Detail view + gallery: a centered popup on desktop, a slide-up sheet at phone width */
-.scrim.hw-scrim { display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(0, 0, 0, 0); animation: none; transition: background .22s ease; z-index: 75; }
+/* One sheet for everything: Add to Home, Edit Tabs, details and options. One inset (20), one rhythm (20), one type scale. */
+.scrim.hw-scrim { display: flex; align-items: center; justify-content: center; padding: 24px 16px 96px; background: rgba(0, 0, 0, 0); animation: none; transition: background .22s ease; z-index: 75; }
 .scrim.hw-scrim.on { background: rgba(0, 0, 0, .34); }
-.hw-sheet { position: relative; width: min(560px, 100%); max-height: min(86vh, 780px); display: flex; flex-direction: column; background: var(--bg); color: var(--label); border-radius: 24px; box-shadow: var(--hw-sheet-shadow); opacity: 0; transform: translateY(14px) scale(.98); transition: opacity .2s ease, transform .3s var(--ease); overflow: hidden; }
-.hw-sheet.wide { width: min(820px, 100%); }
+.hw-sheet { position: relative; width: min(560px, 100%); max-height: min(calc(100dvh - 120px), 720px); display: flex; flex-direction: column; background: var(--menu-bg); -webkit-backdrop-filter: saturate(180%) blur(30px); backdrop-filter: saturate(180%) blur(30px); color: var(--label); border-radius: 22px; box-shadow: 0 0 0 .5px var(--sep), var(--hw-sheet-shadow); opacity: 0; transform: translateY(14px) scale(.98); transition: opacity .2s ease, transform .3s var(--ease); overflow: hidden; }
+.hw-sheet:focus { outline: 0; }
 .hw-scrim.on .hw-sheet { opacity: 1; transform: none; }
 .hw-sh-top { flex: none; touch-action: none; }
 .hw-grab { display: none; width: 40px; height: 5px; border-radius: 3px; background: var(--label-3); margin: 8px auto 0; }
-.hw-sh-head { display: flex; align-items: center; gap: 10px; padding: 18px 20px 10px; }
+.hw-sh-head { display: flex; align-items: center; gap: 10px; padding: 18px 20px 12px; }
 .hw-sh-head h2 { flex: 1; min-width: 0; margin: 0; font: 600 17px var(--display); letter-spacing: -0.022em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hw-sh-head .hw-tile { width: 26px; height: 26px; border-radius: 8px; }
 .hw-x { width: 32px; height: 32px; border-radius: 50%; background: var(--fill-2); color: var(--label-2); display: grid; place-items: center; flex: none; }
-.hw-done { color: var(--blue); font-weight: 600; font-size: 17px; padding: 4px 6px; }
-.hw-sh-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 22px; padding: 6px 20px 22px; }
+.hw-done { color: var(--blue); font-weight: 600; font-size: 17px; padding: 4px 0 4px 6px; }
+.hw-sh-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; display: flex; flex-direction: column; gap: 20px; padding: 8px 20px 24px; -webkit-mask-image: linear-gradient(transparent, #000 8px, #000 calc(100% - 20px), transparent); mask-image: linear-gradient(transparent, #000 8px, #000 calc(100% - 20px), transparent); }
+.hw-sh-body::-webkit-scrollbar { display: none; }
 .hw-sh-body > * { flex: none; }
-.hw-sh-foot { flex: none; display: flex; flex-wrap: wrap; gap: 10px; padding: 14px 20px calc(16px + env(safe-area-inset-bottom)); border-top: .5px solid var(--sep); background: var(--material); -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px); }
-.hw-sh-foot .hw-btn { height: 40px; padding: 0 20px; font-size: 16px; flex: 1 1 140px; justify-content: center; }
+.hw-sh-foot { flex: none; display: flex; flex-wrap: wrap; gap: 10px; padding: 12px 20px calc(16px + env(safe-area-inset-bottom)); border-top: .5px solid var(--sep); }
+.hw-sh-foot[hidden] { display: none; }
+.hw-sh-foot .hw-btn { height: 40px; padding: 0 20px; font-size: 15px; flex: 1 1 140px; justify-content: center; }
 @media (max-width: 700px) {
   .scrim.hw-scrim { align-items: flex-end; padding: 0; }
-  .hw-sheet, .hw-sheet.wide { width: 100%; max-height: 90vh; border-radius: 24px 24px 0 0; transform: translateY(100%); opacity: 1; }
+  .hw-sheet { width: 100%; max-height: calc(100dvh - 44px - env(safe-area-inset-top)); border-radius: 22px 22px 0 0; transform: translateY(100%); opacity: 1; padding-bottom: env(safe-area-inset-bottom); }
   .hw-scrim.on .hw-sheet { transform: none; }
   .hw-grab { display: block; }
   .hw-sh-top { cursor: grab; }
@@ -292,8 +326,8 @@ html.hw-drag-on[data-effect="grain"] body::after { opacity: 0; }
 @media (prefers-reduced-motion: reduce) { .scrim.hw-scrim, .hw-sheet { transition: none; } .hw-sheet { transform: none; } }
 @media (max-width: 700px) and (prefers-reduced-motion: reduce) { .hw-sheet { transform: none; } .hw-scrim:not(.on) .hw-sheet { opacity: 0; } }
 
-.hw-dsec h3 { margin: 0 0 8px; padding: 0 4px; font-size: 13px; font-weight: 400; text-transform: uppercase; letter-spacing: -0.006em; color: var(--label-2); }
-.hw-dlist { background: var(--surface); border-radius: 12px; overflow: hidden; }
+.hw-dsec h3 { margin: 0 0 8px; padding: 0; font-size: 13px; font-weight: 400; text-transform: uppercase; letter-spacing: -0.006em; color: var(--label-2); }
+.hw-dlist { background: var(--fill); border-radius: 12px; overflow: hidden; }
 .hw-dlist > * { padding: 11px 14px; min-height: 44px; display: flex; align-items: center; gap: 12px; font-size: 15px; letter-spacing: -0.016em; }
 .hw-dlist > * + * { border-top: .5px solid var(--sep); }
 .hw-dlist .hw-row { font-size: 15px; }
@@ -303,18 +337,21 @@ html.hw-drag-on[data-effect="grain"] body::after { opacity: 0; }
 .hw-dkv > b { font-weight: 500; color: var(--label-2); font-variant-numeric: tabular-nums; text-align: right; }
 .hw-dhero .v { font: 700 40px/1.05 var(--rounded); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 .hw-dhero .v small { font-size: 18px; font-weight: 600; color: var(--label-2); margin-left: 4px; }
-.hw-dhero .hw-sub { font-size: 14px; margin-top: 4px; }
+.hw-dhero .hw-sub { font-size: 15px; margin-top: 4px; }
 .hw-dchart { height: 120px; }
-.hw-dnote { color: var(--label-2); font-size: 14px; padding: 0 4px; }
+.hw-dnote { color: var(--label-2); font-size: 15px; }
 
-.hw-gsec h3 { margin: 0 0 10px; padding: 0 4px; font-size: 13px; font-weight: 400; text-transform: uppercase; letter-spacing: -0.006em; color: var(--label-2); }
-.hw-gitem { padding: 12px 0 18px; display: flex; flex-direction: column; gap: 12px; }
-.hw-gitem + .hw-gitem { border-top: .5px solid var(--sep); }
-.hw-ghead { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 10px; padding: 0 4px; }
-.hw-ghead b { font-size: 16px; font-weight: 600; letter-spacing: -0.016em; }
-.hw-ghead span { color: var(--label-2); font-size: 13px; }
-.hw-gprevs { display: flex; flex-wrap: wrap; gap: 16px 18px; align-items: flex-end; padding: 0 4px; }
-.hw-gp { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.hw-gsec { display: flex; flex-direction: column; gap: 20px; }
+.hw-gsec + .hw-gsec { margin-top: 8px; }
+.hw-gsec h3 { margin: 0 0 -8px; font: 600 17px var(--display); letter-spacing: -0.022em; color: var(--label); }
+.hw-gitem { display: flex; flex-direction: column; gap: 10px; }
+.hw-ghead { display: flex; flex-direction: column; gap: 2px; }
+.hw-ghead b { font-size: 15px; font-weight: 600; letter-spacing: -0.016em; }
+.hw-ghead span { color: var(--label-2); font-size: 13px; letter-spacing: -0.006em; }
+.hw-gstage { display: flex; align-items: center; justify-content: center; height: calc(var(--ph) * var(--k) + 24px); border-radius: 16px; background: var(--fill); overflow: hidden; transition: height .25s var(--ease); }
+.hw-gfoot { display: flex; align-items: center; gap: 12px; }
+.seg.hw-seg.hw-gsize { flex: 0 1 240px; width: auto; min-width: 0; }
+.hw-gfoot .hw-btn { margin-left: auto; flex: none; }
 .hw-prev { position: relative; width: calc(var(--pw) * var(--k)); height: calc(var(--ph) * var(--k)); flex: none; }
 .hw-prev > .hw-card { position: absolute; left: 0; top: 0; width: var(--pw); height: var(--ph); transform: scale(var(--k)); transform-origin: 0 0; pointer-events: none; }
 
@@ -332,12 +369,13 @@ html.hw-drag-on[data-effect="grain"] body::after { opacity: 0; }
 .hw-app-b:active { transform: scale(.92); opacity: .7; }
 .hw-app-b:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 .hw-app-b .hc-app { box-shadow: inset 0 0 0 .5px rgba(255, 255, 255, .25), 0 6px 14px -6px rgba(0, 0, 0, .35); }
-.hw-app-l { max-width: 100%; font-size: 12.5px; font-weight: 500; letter-spacing: -0.006em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hw-app-l { max-width: 100%; font-size: 13px; font-weight: 500; letter-spacing: -0.006em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hw-app-b > .hc-app { width: var(--tile) !important; height: var(--tile) !important; }
 html[data-wall] .hw-app-l { text-shadow: 0 1px 3px color-mix(in srgb, var(--bg) 70%, transparent); }
 .hw-edit .hw-app:not(.add) .hw-app-b { animation: hw-wiggle .27s ease-in-out infinite alternate; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .hw-edit .hw-cell:nth-child(even) > .hw-app .hw-app-b { animation-direction: alternate-reverse; animation-duration: .31s; }
 @media (prefers-reduced-motion: reduce) { .hw-edit .hw-app .hw-app-b { animation: none; } }
-.hw-app .hw-del { top: -6px; left: calc(50% - 38px); width: 24px; height: 24px; }
+.hw-app .hw-del { top: -5px; left: calc(50% - var(--tile) / 2 - 7px); }
 .hw-app.drag { z-index: 30; }
 .hw-app.drag .hw-app-b { animation: none; transform: scale(1.12); opacity: .94; }
 .hw-app.drag .hw-app-b > .hc-app { box-shadow: inset 0 0 0 .5px rgba(255, 255, 255, .25), 0 18px 30px -10px rgba(0, 0, 0, .5); }
@@ -351,13 +389,17 @@ html[data-wall] .hw-app-l { text-shadow: 0 1px 3px color-mix(in srgb, var(--bg) 
 .hw-cell.a.hw-merge .hw-app-b > .hc-app { box-shadow: 0 0 0 6px rgba(120, 120, 128, .38), 0 10px 22px -8px rgba(0, 0, 0, .4); }
 
 /* App icons follow Edit Style like the widgets do: corners, depth, Solid / Glass / Outline and Glow. */
-.hw-app-b > .hc-app { border-radius: calc(var(--hub-radius, 20px) * .75) !important; }
+.hw-app-b > .hc-app { border-radius: min(calc(var(--hub-radius, 20px) * .75), 26%) !important; }
 html[data-shadow] .hw-app-b > .hc-app { box-shadow: inset 0 0 0 .5px rgba(255, 255, 255, .25), var(--hub-shadow); }
 html[data-look="glass"] .hw-app-b > .hc-app:not(.hc-folder) { color: color-mix(in srgb, var(--a1) 55%, var(--a2)); background: linear-gradient(160deg, color-mix(in srgb, var(--a1) 30%, transparent), color-mix(in srgb, var(--a2) 16%, transparent)), color-mix(in srgb, var(--surface) var(--hub-alpha), transparent); -webkit-backdrop-filter: saturate(180%) blur(var(--hub-blur)); backdrop-filter: saturate(180%) blur(var(--hub-blur)); box-shadow: inset 0 0 0 .5px rgba(255, 255, 255, .4), var(--hub-shadow); }
 html[data-look="outline"] .hw-app-b > .hc-app:not(.hc-folder) { color: color-mix(in srgb, var(--a1) 55%, var(--a2)); background: color-mix(in srgb, var(--surface) 20%, transparent); box-shadow: inset 0 0 0 1.5px var(--sep); }
 html[data-look="outline"] .hw-app-b > .hc-folder { background: color-mix(in srgb, var(--surface) 20%, transparent); box-shadow: inset 0 0 0 1.5px var(--sep); }
 html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 0 0 .5px color-mix(in srgb, var(--blue) 45%, transparent), 0 10px 28px -12px color-mix(in srgb, var(--blue) 60%, transparent); }
-.hw-addseg { margin: 2px 16px 10px; }
+.seg.hw-seg.hw-addseg { margin: 0 20px 12px; width: auto; }
+.hw-addon small { display: block; font-size: 13px; color: var(--label-2); letter-spacing: -0.006em; margin-top: 2px; }
+.hw-hrow .hw-rename { flex: 1; min-width: 0; height: 30px; border: 0; outline: 0; border-radius: 8px; background: var(--fill); padding: 0 8px; font-size: 15px; color: var(--label); letter-spacing: -0.016em; }
+.hw-hrow .hw-rename:focus { box-shadow: 0 0 0 3px color-mix(in srgb, var(--blue) 30%, transparent); }
+.hw-applist .hw-row.hw-hrow .t { flex: 1; max-width: none; }
 
 /* Groups: a frosted folder that grows out of its icon */
 .scrim.hw-fscrim { -webkit-backdrop-filter: blur(0); backdrop-filter: blur(0); transition: background .22s ease, backdrop-filter .3s ease, -webkit-backdrop-filter .3s ease; }
@@ -375,7 +417,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
 @media (prefers-reduced-motion: reduce) { .hw-fedit .hw-app .hw-app-b { animation: none; } }
 
 /* Stacks: same-size widgets in one cell, swiped through like an iPhone Smart Stack */
-.hw-sk { position: absolute; inset: 0; overflow-x: hidden; overflow-y: auto; scroll-snap-type: y mandatory; border-radius: 20px; scrollbar-width: none; }
+.hw-sk { position: absolute; inset: 0; overflow-x: hidden; overflow-y: auto; scroll-snap-type: y mandatory; border-radius: var(--hub-radius, 20px); scrollbar-width: none; }
 .hw-sk::-webkit-scrollbar { display: none; }
 .hw-sk-pg { height: 100%; scroll-snap-align: start; scroll-snap-stop: always; }
 .hw-sk-dots { position: absolute; z-index: 3; right: 6px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 4px; pointer-events: none; }
@@ -393,10 +435,12 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
 .hw-dual svg { display: block; overflow: visible; }
 .hw-acc { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .hw-acc > div { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.hw-acc h4 { margin: 0; font-size: 14px; font-weight: 600; letter-spacing: -0.016em; }
-.hw-acc .k { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--label-2); font-variant-numeric: tabular-nums; }
+.hw-acc h4 { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -0.016em; }
+.hw-acc .k { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--label-2); font-variant-numeric: tabular-nums; }
 .hw-acc .k b { color: var(--label); font-weight: 600; }
 .hw-acc .k i { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.hw-card[data-dev="mobile"] .hw-acc { gap: 8px; }
+.hw-card[data-dev="mobile"][data-size="s"] .hw-wc, .hw-card[data-dev="mobile"][data-size="s"] .hw-wc .r { font-size: 13px !important; }
 .hw-ringrow { display: flex; align-items: center; gap: 14px; min-width: 0; }
 .hw-ringrow > div:last-child { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 4px; }
 .hw-bars { display: flex; align-items: stretch; gap: 7px; min-height: 70px; }
@@ -404,7 +448,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
 .hw-bars .b > span { flex: 1; width: 100%; display: flex; align-items: flex-end; }
 .hw-bars .b i { display: block; width: 100%; min-height: 3px; border-radius: 5px; background: linear-gradient(180deg, color-mix(in srgb, var(--t) 60%, #fff), var(--t)); opacity: .45; }
 .hw-bars .b.on i { opacity: 1; }
-.hw-bars .b em { font-style: normal; font-size: 11px; font-weight: 600; color: var(--label-2); }
+.hw-bars .b em { font-style: normal; font-size: 12px; font-weight: 600; color: var(--label-2); }
 .hw-bars .b.on em { color: var(--label); }
 .hw-analog { display: grid; place-items: center; }
 .hw-analog svg { display: block; }
@@ -415,16 +459,16 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
 .hw-clockm { display: flex; align-items: center; gap: 18px; min-width: 0; }
 .hw-clockm .hw-clock { min-width: 0; }
 .hw-clock .v .sec { font-size: .5em; color: var(--label-2); font-weight: 600; margin-left: 2px; }
-.hw-clock.big .v { font-size: 46px; }
-.hw-card[data-dev="mobile"][data-size="s"] .hw-clock.big .v { font-size: 36px; }
+.hw-clock.big .v { font-size: 56px; }
+.hw-card[data-dev="mobile"][data-size="s"] .hw-clock.big .v { font-size: 40px; }
 .hw-evt2 { display: flex; gap: 12px; min-width: 0; }
 .hw-evt2 .rail { flex: none; width: 4px; border-radius: 2px; background: linear-gradient(180deg, var(--t), color-mix(in srgb, var(--t) 40%, transparent)); }
 .hw-evt2 > div { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
-.hw-evt2 .cd { font: 700 24px/1.05 var(--rounded); letter-spacing: -0.02em; color: var(--t); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.hw-evt2 .t { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 15.5px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.22; }
+.hw-evt2 .cd { font: 700 26px/1.05 var(--rounded); letter-spacing: -0.02em; color: var(--t); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.hw-evt2 .t { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 15px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.22; }
 .hw-tl { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
-.hw-tlrow { display: flex; align-items: stretch; gap: 10px; min-width: 0; font-size: 14px; letter-spacing: -0.016em; }
-.hw-tlrow .tm { flex: none; width: 64px; color: var(--label-2); font-size: 12.5px; font-variant-numeric: tabular-nums; padding-top: 1px; }
+.hw-tlrow { display: flex; align-items: stretch; gap: 10px; min-width: 0; font-size: 15px; letter-spacing: -0.016em; }
+.hw-tlrow .tm { flex: none; width: 64px; color: var(--label-2); font-size: 13px; font-variant-numeric: tabular-nums; padding-top: 1px; }
 .hw-tlrow .bar { flex: none; width: 3px; border-radius: 2px; background: var(--t); }
 .hw-tlrow .t { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .hw-tlrow .t b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -434,24 +478,24 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
 .hw-stack { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 .hw-stk { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .hw-stk .ic { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; color: #fff; flex: none; background: linear-gradient(160deg, color-mix(in srgb, var(--c) 70%, #fff), var(--c)); }
-.hw-stk .l { flex: 1; min-width: 0; font-size: 14px; color: var(--label-2); letter-spacing: -0.016em; }
+.hw-stk .l { flex: 1; min-width: 0; font-size: 15px; color: var(--label-2); letter-spacing: -0.016em; }
 .hw-stk .n { font: 700 26px/1 var(--rounded); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 .hw-connect { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 8px; min-height: 0; }
 .hw-connect .ic { width: 44px; height: 44px; border-radius: 13px; display: grid; place-items: center; color: #fff; background: linear-gradient(160deg, color-mix(in srgb, var(--t) 70%, #fff), var(--t)); box-shadow: 0 8px 18px -8px var(--t); }
 .hw-connect b { font-size: 15px; font-weight: 600; letter-spacing: -0.02em; }
-.hw-connect span { font-size: 12.5px; color: var(--label-2); line-height: 1.3; max-width: 300px; }
+.hw-connect span { font-size: 13px; color: var(--label-2); line-height: 1.3; max-width: 300px; }
 .hw-card[data-size="s"] .hw-connect > span:not(.ic) { display: none; }
 
 /* Widget options sheet */
 .hw-opt { display: flex; flex-direction: column; gap: 10px; }
-.hw-opt h3 { margin: 0; padding: 0 4px; font-size: 13px; font-weight: 400; text-transform: uppercase; color: var(--label-2); letter-spacing: -0.006em; }
+.hw-opt h3 { margin: 0; padding: 0; font-size: 13px; font-weight: 400; text-transform: uppercase; color: var(--label-2); letter-spacing: -0.006em; }
 .hw-swatches { display: flex; flex-wrap: wrap; gap: 10px; padding: 0 2px; }
 .hw-sw { width: 34px; height: 34px; border-radius: 50%; background: var(--c); display: grid; place-items: center; color: #fff; box-shadow: inset 0 0 0 .5px rgba(0, 0, 0, .15); transition: transform .15s; }
 .hw-sw.def { background: conic-gradient(from 90deg, #ff3b30, #ff9500, #ffcc00, #34c759, #0a84ff, #7a5af8, #ff3b30); }
 .hw-sw[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--c, var(--blue)); }
 .hw-sw:active { transform: scale(.9); }
 .hw-segopt { display: flex; gap: 4px; padding: 3px; border-radius: 10px; background: var(--fill); }
-.hw-segopt button { flex: 1; height: 32px; border-radius: 8px; font-size: 14px; font-weight: 600; color: var(--label); letter-spacing: -0.016em; }
+.hw-segopt button { flex: 1; height: 32px; border-radius: 8px; font-size: 15px; font-weight: 600; color: var(--label); letter-spacing: -0.016em; }
 .hw-segopt button[aria-pressed="true"] { background: var(--thumb); box-shadow: var(--thumb-shadow); }
 .hw-applist .hw-row { font-size: 15px; }
 .hw-applist .hw-row .s { flex: 1; min-width: 0; max-width: none; color: var(--label-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -532,7 +576,9 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     return `<div class="hw-bars ${cls}" data-fit>${vals.map((v, i) => `<div class="b${i === vals.length - 1 ? ' on' : ''}" title="${esc(labels[i])}: ${compact(v)}"><span><i style="height:${Math.max(3, (v / max) * 100).toFixed(1)}%"></i></span><em>${esc(labels[i])}</em></div>`).join('')}</div>`
   }
   // An empty state that asks to connect something, with a button to the tab that does it.
-  const connect = (title, sub, tab, ic = 'card') => `<div class="hw-connect" data-fit><span class="ic">${icon(ic, 22)}</span><b>${esc(title)}</b>${sub ? `<span>${esc(sub)}</span>` : ''}${tab ? openBtn(tab, `Open ${tabName(tab)}`) : ''}</div>`
+  // Where a key or sign-in is what's missing, the button opens that service's sheet right here.
+  const connectBtn = (service, tab) => (service && window.HUB_CONNECT ? `<button type="button" class="hw-pill" data-connect="${esc(service)}">Connect</button>` : tab ? openBtn(tab, `Open ${tabName(tab)}`) : '')
+  const connect = (title, sub, tab, ic = 'card', service) => `<div class="hw-connect" data-fit><span class="ic">${icon(ic, 22)}</span><b>${esc(title)}</b>${sub ? `<span>${esc(sub)}</span>` : ''}${connectBtn(service, tab)}</div>`
 
   const H = { esc, clamp, pct, compact, bytes, until, tone, money, moneyMajor, toDate, dot, fig, meter, row, list, note, openBtn, cols, split, ring, spark, usageChart, dsec, dlist, dkv, dhero, empty, icon, SKELETON, TONE, dualRing, bars, connect }
   window.HOME_UI = Object.assign(window.HOME_UI || {}, H)
@@ -575,8 +621,9 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
   const widgetMap = (withItems = false) => {
     const m = new Map()
     for (const w of Object.values(window.HOME_WIDGETS || {})) if (w && w.id && typeof w.render === 'function' && widgetOn(normWidget(w))) m.set(w.id, tidy(normWidget(w)))
+    for (const f of window.HUB?.files?.() || []) m.set(f.id, tidy(normWidget({ id: f.id, label: f.name, cat: 'Your Files', blurb: 'Your own file, shown sandboxed', sizes: f.sizes, defaultSize: f.sizes?.[0], sources: [], render: () => `<iframe class="hw-file" src="/api/hub/custom/${esc(f.id)}" title="${esc(f.name)}" sandbox="allow-scripts" loading="lazy" referrerpolicy="no-referrer"></iframe>` })))
     const used = new Set()
-    for (const vk of ['desktop', 'mobile']) for (const it of S.layout?.[vk] || []) used.add(it.id)
+    for (const vk of VIEWS) for (const it of S.layout?.[vk] || []) used.add(it.id)
     for (const f of FAMILIES) {
       if (addonOff(SOURCE_ADDON[f.source]) || (f.source === 'state' && tabOff(f.tab))) continue
       const live = new Map()
@@ -608,11 +655,14 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
   }
   const isNet = e => e instanceof TypeError || /failed to fetch|networkerror|load failed|network request failed|aborted/i.test(e?.message || '')
   const sourceDefs = () => ({ ...SOURCES, ...(window.HOME_SOURCES || {}) })
+  const savedPage = () => { try { return localStorage.getItem('hub-home-page') || 'main' } catch { return 'main' } }
   const S = {
-    root: null, layout: null, layoutErr: '', mode: pref('hub-home-mode', 'desktop', ['desktop', 'mobile']), editing: false,
-    dirty: { desktop: false, mobile: false }, timers: {}, saving: {}, lastLoad: 0, src: {}, sig: '', drag: null, overlay: null,
+    page: savedPage(), pages: [], layouts: null,
+    root: null, layout: null, layoutErr: '', mode: pref('hub-home-mode', 'desktop', VIEWS), editing: false,
+    framed: false, frameK: 1, dirty: { desktop: false, ipad: false, mobile: false }, timers: {}, saving: {}, lastLoad: 0, src: {}, sig: '', drag: null, overlay: null,
     pending: false, started: false, hubSig: '', raf: 0,
   }
+  const onMain = () => S.page === 'main'
   const rec = id => (S.src[id] ||= { data: null, err: '', missing: false, at: 0, p: null })
 
   function srcStatus(id) {
@@ -673,11 +723,14 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     mobile: [['clock', 's'], ['date', 's'], ['world-clock', 'm']],
   }
   const startLayout = name => {
+    if (name === 'ipad') name = 'desktop'
     const on = DEFAULTS[name].filter(([id]) => { const w = Object.values(window.HOME_WIDGETS || {}).find(x => x?.id === id); return w && widgetOn(normWidget(w)) })
     return on.length >= 4 ? on : PLAIN[name]
   }
   const seedLayout = name => startLayout(name).map(([id, size], i) => ({ key: `${name[0]}${i + 1}-${id}`.slice(0, 40), id, size }))
-  const viewKey = () => (PHONE.matches ? 'mobile' : S.mode)
+  // A real phone or iPad always shows its own layout, full screen. On a bigger screen the toggle picks one.
+  const realDevice = () => PHONE.matches || TABLET.matches
+  const viewKey = () => (PHONE.matches ? 'mobile' : TABLET.matches ? 'ipad' : S.mode)
   const layoutItems = vk => (S.layout ? S.layout[vk] || [] : [])
   // A layout holds widgets and app places ({ id: 'app', app }); in memory an app place has the key app:<id>.
   const isAppItem = it => it?.id === 'app'
@@ -687,6 +740,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
   // (new, or a group that took another app's spot) goes next to its neighbour in the app order; with no
   // placed app at all, apps go first, so older layouts keep their apps on top.
   function homeItems(vk) {
+    if (!onMain()) return [...layoutItems(vk)]
     const on = appList(), seen = new Set(), out = []
     for (const it of layoutItems(vk)) {
       if (!isAppItem(it)) { out.push(it); continue }
@@ -712,16 +766,34 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     return j
   }
 
-  async function loadLayout() {
+  // Home and each extra page have their own three layouts; S.layout is always the one on screen.
+  function takeLayout(pid, src, force) {
+    const l = (S.layouts[pid] ||= { desktop: [], mobile: [] }), live = pid === S.page
+    for (const k of VIEWS) if ((force || !live || (!S.dirty[k] && !S.editing)) && Array.isArray(src[k])) l[k] = withKeys(src[k])
+    l.ipad ||= l.desktop.map(it => ({ ...it }))
+  }
+  function takePages(list, force) {
+    S.pages = list
+    for (const p of list) takeLayout(p.id, p.widgets || {}, force)
+    for (const id of Object.keys(S.layouts)) if (id !== 'main' && !list.some(p => p.id === id)) delete S.layouts[id]
+    if (!S.layouts[S.page]) S.page = 'main'
+    S.layout = S.layouts[S.page]
+  }
+  async function loadLayout(force) {
     try {
       const j = await fetchJson('/api/home/layout')
       S.layoutErr = ''
       S.layoutAt = Number(j.at) || S.layoutAt
-      S.layout ||= { desktop: [], mobile: [] }
-      for (const k of ['desktop', 'mobile']) if (!S.dirty[k] && !S.editing && Array.isArray(j[k])) S.layout[k] = withKeys(j[k])
+      S.layouts ||= {}
+      takeLayout('main', j, force)
+      takePages(j.pages || [], force)
     } catch (e) {
       S.layoutErr = isNet(e) ? 'reconnecting' : e.message || 'unreachable'
-      S.layout ||= { desktop: seedLayout('desktop'), mobile: seedLayout('mobile') }
+      if (!S.layout) {
+        S.page = 'main'
+        S.layouts = { main: { desktop: seedLayout('desktop'), ipad: seedLayout('ipad'), mobile: seedLayout('mobile') } }
+        S.layout = S.layouts.main
+      }
       clearTimeout(S.layoutRetry)
       S.layoutRetry = setTimeout(async () => { await loadLayout(); scheduleRepaint() }, 2500)
     }
@@ -732,16 +804,18 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     clearTimeout(S.timers[vk])
     S.timers[vk] = setTimeout(() => flush(vk), now ? 0 : 700)
   }
+  const layoutBody = vk => (onMain() ? { [vk]: S.layout[vk] } : { page: S.page, [vk]: S.layout[vk] })
   async function flush(vk) {
     if (!S.dirty[vk] || S.saving[vk]) return
+    const page = S.page
     S.dirty[vk] = false
     S.saving[vk] = true
     try {
-      const out = await api('/api/home/layout', { [vk]: S.layout[vk] })
+      const out = await api('/api/home/layout', layoutBody(vk))
       S.layoutAt = Number(out?.at) || S.layoutAt
       S.layoutErr = ''
     } catch (e) {
-      S.dirty[vk] = true
+      if (page === S.page) S.dirty[vk] = true
       const net = isNet(e) || /502|503|504/.test(e?.message || '')
       S.layoutErr = net ? 'reconnecting' : e.message || 'unreachable'
       if (!net) hud('Couldn’t save the layout')
@@ -752,12 +826,48 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     updateBar()
   }
   addEventListener('pagehide', () => {
-    for (const vk of ['desktop', 'mobile']) if (S.dirty[vk]) try { fetch('/api/home/layout', { method: 'POST', keepalive: true, headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: JSON.stringify({ [vk]: S.layout[vk] }) }) } catch {}
+    for (const vk of VIEWS) if (S.dirty[vk]) try { fetch('/api/home/layout', { method: 'POST', keepalive: true, headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: JSON.stringify(layoutBody(vk)) }) } catch {}
   })
+
+  // Show another Home page. What is unsaved on this one goes out first.
+  async function openPage(id) {
+    if (!S.layouts) { S.page = id; return }
+    if (id !== 'main' && !S.layouts[id]) {
+      if (!window.HUB?.pageOf?.(id)) return
+      S.layouts[id] = { desktop: [], ipad: [], mobile: [] }
+    }
+    if (id === S.page) return
+    for (const k of VIEWS) if (S.dirty[k]) { clearTimeout(S.timers[k]); flush(k) }
+    for (let i = 0; i < 40 && VIEWS.some(k => S.saving[k]); i++) await new Promise(r => setTimeout(r, 50))
+    S.page = id
+    S.layout = S.layouts[id]
+    try { localStorage.setItem('hub-home-page', id) } catch {}
+    S.apps = null
+    S.sig = ''
+    if (S.root?.isConnected && showing()) {
+      paint()
+      frameFit()
+      if (!REDUCED.matches) S.root.querySelector('[data-hw-grid]')?.animate?.([{ opacity: 0 }, { opacity: 1 }], { duration: 160, easing: 'ease-out' })
+    }
+    loadSources(neededSources())
+    if (typeof chrome === 'function') { try { chrome() } catch {} }
+  }
+  window.HUB_OPEN_PAGE = openPage
+  window.HUB_PAGE = () => S.page
+  // After an undo or an import: everything comes from the hub again, even in edit mode.
+  window.HUB_HOME_RELOAD = async () => {
+    for (const k of VIEWS) { clearTimeout(S.timers[k]); S.dirty[k] = false }
+    await loadLayout(true)
+    S.apps = null
+    S.sig = ''
+    if (S.root?.isConnected && showing()) { paint(); frameFit() }
+    loadSources(neededSources())
+    if (typeof chrome === 'function') { try { chrome() } catch {} }
+  }
 
   /* ---------- widget card html ---------- */
 
-  const DIMS = { desktop: { s: [202, 202], m: [424, 202], l: [424, 426] }, mobile: { s: [168, 198], m: [350, 198], l: [350, 410] } }
+  const DIMS = { desktop: { s: [234, 190], m: [490, 190], l: [490, 402] }, ipad: { s: [234, 190], m: [490, 190], l: [490, 402] }, mobile: { s: [164, 198], m: [343, 198], l: [343, 410] } }
   const SIZE_NAME = { s: 'Small', m: 'Medium', l: 'Large' }
 
   const stateBody = (w, ids = w.sources) => {
@@ -780,14 +890,14 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
   function cardHtml(w, size, dev, body, live, opts) {
     const lab = (w.labels && w.labels[size]) || w.label
     const a11y = live ? `tabindex="0" role="button" aria-haspopup="dialog" aria-label="${esc(w.label)}, opens details"` : `aria-label="${esc(w.label)}"`
-    return `<section class="hw-card${live ? ' live' : ''}" data-size="${size}" data-dev="${dev}" ${a11y} style="--t:${esc(tintOf(w, opts))}"><div class="hw-label"><span class="hw-tile">${icon(w.icon)}</span><span class="ell">${esc(lab)}</span></div><div class="hw-body">${body}</div></section>`
+    return `<section class="hw-card${live ? ' live' : ''}" data-size="${size}" data-dev="${dev}" ${a11y} style="--t:${esc(tintOf(w, opts))}"><div class="hw-label"><span class="ell">${esc(lab)}</span></div><div class="hw-body">${body}</div></section>`
   }
 
   function appCellHtml(id) {
     const HUB = window.HUB
     if (!HUB) return ''
     const m = HUB.appMeta(id), sz = viewKey() === 'mobile' ? 54 : 58
-    return `<div class="hw-cell a" role="listitem" data-hw-key="app:${esc(id)}" data-hay="${esc(`${m.label} ${id} app`.toLowerCase())}"><div class="hw-app" data-hw-app="${esc(id)}"><button type="button" class="hw-app-b" data-hw-appopen="${esc(id)}" aria-label="${S.editing ? `${esc(m.label)}. Drag or use the arrow keys to move` : id === 'chat' ? 'Open Chat' : `Open ${esc(m.label)}`}">${HUB.tile(id, sz, Math.round(sz * 0.26), Math.round(sz * 0.45))}<span class="hw-app-l">${esc(m.label)}</span></button>${S.editing ? `<button type="button" class="hw-ctl hw-del" data-hw-appdel="${esc(id)}" aria-label="Remove ${esc(m.label)} from Home">${icon('close', 12)}</button>` : ''}</div></div>`
+    return `<div class="hw-cell a" role="listitem" data-hw-key="app:${esc(id)}" data-hay="${esc(`${m.label} ${id} app`.toLowerCase())}"><div class="hw-app" data-hw-app="${esc(id)}"><button type="button" class="hw-app-b" data-hw-appopen="${esc(id)}" aria-label="${S.editing ? `${esc(m.label)}. Drag or use the arrow keys to move` : id === 'chat' ? 'Open Chat' : `Open ${esc(m.label)}`}">${HUB.tile(id, sz, Math.round(sz * 0.26), Math.round(sz * 0.45))}<span class="hw-app-l">${esc(m.label)}</span></button>${S.editing ? `<button type="button" class="hw-ctl hw-del" data-hw-appdel="${esc(id)}" aria-label="Remove ${esc(m.label)} from Home">${icon('close', 11)}</button>` : ''}</div></div>`
   }
 
   function cellHtml(it, wm, vk) {
@@ -802,7 +912,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
   const appSig = id => { const H = window.HUB; return H ? `${H.appMeta(id).label}:${H.groupOf?.(id)?.apps?.join('+') || ''}:${H.siteOf?.(id)?.icon || ''}` : '' }
   const sigOne = (i, wm) => (isAppItem(i) ? `${i.key}:${appSig(i.app)}` : `${i.key}:${i.size}:${wm.get(i.id)?.label || ''}:${JSON.stringify(i.opts || {})}`)
   const sigOf = (vk, items, wm) => `${vk}|${S.editing}|${items.map(i => (isStack(i) ? `${i.key}:${i.size}[${i.stack.map(x => sigOne(x, wm)).join('+')}]` : sigOne(i, wm))).join(',')}`
-  const ctlHtml = (it, w, size) => `<button type="button" class="hw-ctl hw-del" data-hw-del aria-label="Remove ${esc(w?.label || it.id)}">${icon('close', 14)}</button>${w && w.sizes.length > 1 ? `<button type="button" class="hw-ctl hw-size" data-hw-size aria-label="Change size, now ${SIZE_NAME[size]}">${SIZE_NAME[size]}</button>` : ''}`
+  const ctlHtml = (it, w, size) => `<button type="button" class="hw-ctl hw-del" data-hw-del aria-label="Remove ${esc(w?.label || it.id)}">${icon('close', 11)}</button>${w && w.sizes.length > 1 ? `<button type="button" class="hw-ctl hw-size" data-hw-size aria-label="Change size, now ${SIZE_NAME[size]}">${SIZE_NAME[size]}</button>` : ''}`
 
   /* ---------- stacks: same-size widgets sharing one cell, swiped through ---------- */
 
@@ -852,6 +962,11 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
 
   function fit(body) {
     if (!body.isConnected) return
+    // A big figure that's too wide for its card shrinks to fit, so it's never cut mid-character.
+    body.querySelectorAll('.hw-fig .v, .hw-clock .v').forEach(v => {
+      v.style.fontSize = ''
+      if (v.scrollWidth > v.clientWidth + 0.5 && v.clientWidth) v.style.fontSize = `${Math.max(15, Math.floor(parseFloat(getComputedStyle(v).fontSize) * v.clientWidth / v.scrollWidth))}px`
+    })
     const rows = [...body.querySelectorAll('[data-fit]')]
     const lists = [...body.querySelectorAll('[data-fit-list]')].flatMap(l => [...l.children].filter(e => !e.querySelector('[data-fit]')))
     const base = rows.concat(lists)
@@ -881,33 +996,68 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     const root = document.createElement('div')
     root.className = 'hw-root'
     root.innerHTML = `<div class="hw-bar">
-      <div class="seg hw-seg" role="tablist" aria-label="Layout" style="--n:2;--i:0"><span class="seg-thumb"></span><button type="button" role="tab" data-hw-mode="desktop">Desktop</button><button type="button" role="tab" data-hw-mode="mobile">Mobile</button></div>
+      <div class="seg hw-seg" role="tablist" aria-label="Layout" style="--n:3;--i:0"><span class="seg-thumb"></span><button type="button" role="tab" data-hw-mode="desktop">Desktop</button><button type="button" role="tab" data-hw-mode="ipad">iPad</button><button type="button" role="tab" data-hw-mode="mobile">Mobile</button></div>
       <div class="hw-hint" data-hw-hint></div>
-      <div class="hw-bar-r"><button type="button" class="hw-btn red" data-hw-act="reset" hidden>Reset</button><button type="button" class="hw-btn tint" data-hw-act="tabs" hidden>${hic('tabs', 15)}Edit Tabs</button><button type="button" class="hw-btn tint" data-hw-act="style" hidden>${hic('palette', 15)}Edit Style</button><button type="button" class="hw-btn tint" data-hw-act="add" hidden>${icon('plus', 15)}Add</button><button type="button" class="hw-btn tint" data-hw-act="edit">Edit</button></div>
+      <div class="hw-bar-r"><button type="button" class="hw-btn red" data-hw-act="reset" hidden>Reset</button><button type="button" class="hw-btn tint hw-iconly" data-hw-act="tabs" aria-label="Edit Tabs" hidden>${hic('tabs', 15)}<span class="hw-btn-t">Edit Tabs</span></button><button type="button" class="hw-btn tint hw-iconly" data-hw-act="style" aria-label="Edit Style" hidden>${hic('palette', 15)}<span class="hw-btn-t">Edit Style</span></button><button type="button" class="hw-btn tint hw-iconly" data-hw-act="pages" aria-label="Home Pages" hidden>${icon('layers', 15)}<span class="hw-btn-t">Pages</span></button><button type="button" class="hw-btn tint" data-hw-act="add" hidden>${icon('plus', 15)}Add</button><button type="button" class="hw-btn tint" data-hw-act="edit">Edit</button></div>
     </div>
-    <div class="hw-stage"><div class="hw-frame"><div class="hw-grid" data-hw-grid role="list" aria-label="Home"></div></div></div>`
+    <div class="hw-pages" data-hw-pages role="tablist" aria-label="Home Pages" hidden></div>
+    <div class="hw-stage"><div class="hw-device"><div class="hw-frame"><div class="hw-grid" data-hw-grid role="list" aria-label="Home"></div></div></div></div>`
     return root
   }
 
+  // Logical size of each device, its bezel, corners, and the insets of its screen.
+  const FRAME = { ipad: { w: 1024, h: 768, b: 13, r: 26, pt: 26, px: 26 }, mobile: { w: 390, h: 844, b: 11, r: 48, pt: 58, px: 20 } }
+  // Fits the device between the toggle and the chat bar, so the page itself doesn't scroll.
+  function frameFit() {
+    const root = S.root, vk = viewKey(), f = !realDevice() && FRAME[vk]
+    if (!root || S.drag?.on) return
+    S.framed = !!f
+    root.dataset.framed = f ? '1' : '0'
+    const stage = root.querySelector('.hw-stage')
+    root.style.marginBottom = ''
+    if (!f) { S.frameK = 1; root.querySelector('.hw-frame').scrollTop = 0; return }
+    const top = stage.getBoundingClientRect().top + scrollY, room = innerHeight - top - 84
+    S.frameK = Math.max(0.42, Math.min(1, root.clientWidth / (f.w + 2 * f.b), room / (f.h + 2 * f.b)))
+    for (const [k, v] of [['--fw', f.w], ['--fh', f.h], ['--fb', f.b], ['--fr', f.r], ['--fpt', f.pt], ['--fpx', f.px]]) stage.style.setProperty(k, `${v}px`)
+    stage.style.setProperty('--fk', S.frameK.toFixed(4))
+    // The page keeps room under Home for the chat bar; the device already clears it, so that room would only make the page scroll.
+    root.style.marginBottom = `${-Math.max(0, document.body.getBoundingClientRect().bottom - root.getBoundingClientRect().bottom)}px`
+  }
+  // What a drag's numbers are measured in. In a device they are the device's own pixels, so a move stays arithmetic.
+  function view() {
+    const el = S.framed && S.root?.querySelector('.hw-frame')
+    if (!el) return { el: null, k: 1, left: 0, top: 0, h: innerHeight, edge: 90, x: () => scrollX, y: () => scrollY, by: dy => scrollBy(0, dy) }
+    const r = el.getBoundingClientRect()
+    return { el, k: S.frameK, left: r.left, top: r.top, h: el.clientHeight, edge: 56, x: () => el.scrollLeft, y: () => el.scrollTop, by: dy => { el.scrollTop += dy } }
+  }
+
+  function paintPages(root) {
+    const box = root.querySelector('[data-hw-pages]'), html = S.pages.length ? [{ id: 'main', name: 'Home' }, ...S.pages].map(p => `<button type="button" role="tab" class="hw-page" data-hw-page="${esc(p.id)}" aria-selected="${p.id === S.page}">${esc(p.name)}</button>`).join('') : ''
+    box.hidden = !html
+    if (box._h !== html) { box._h = html; box.innerHTML = html }
+  }
   function updateBar() {
     const root = S.root
     if (!root) return
     const vk = viewKey()
     root.dataset.view = vk
-    root.dataset.phone = PHONE.matches ? '1' : '0'
+    root.dataset.phone = realDevice() ? '1' : '0'
+    frameFit()
     root.classList.toggle('hw-edit', S.editing)
+    if (S.stripEditing !== S.editing) { S.stripEditing = S.editing; window.HUB?.setTabsEditing?.(S.editing) }
     const seg = root.querySelector('.hw-seg')
-    seg.style.setProperty('--i', vk === 'mobile' ? 1 : 0)
+    seg.style.setProperty('--i', VIEWS.indexOf(vk))
     seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.hwMode === vk)))
     const edit = root.querySelector('[data-hw-act=edit]')
     edit.textContent = S.editing ? 'Done' : 'Edit'
     edit.classList.toggle('solid', S.editing)
     edit.classList.toggle('tint', !S.editing)
-    for (const a of ['add', 'reset', 'style', 'tabs']) root.querySelector(`[data-hw-act=${a}]`).hidden = !S.editing || (a !== 'add' && a !== 'reset' && !window.HUB)
+    paintPages(root)
+    for (const a of ['add', 'reset', 'style', 'tabs', 'pages']) root.querySelector(`[data-hw-act=${a}]`).hidden = !S.editing || (a !== 'add' && a !== 'reset' && !window.HUB)
     const hint = root.querySelector('[data-hw-hint]')
     const bad = S.layoutErr
     hint.classList.toggle('err', !!bad)
-    hint.textContent = bad ? (bad === 'reconnecting' ? 'Reconnecting to the hub. Changes save as soon as it’s back.' : `The layout couldn’t be saved (${bad}). Trying again.`) :S.editing ? `Editing the ${vk === 'mobile' ? 'phone' : 'desktop'} layout. Drag apps and widgets to rearrange, hold one on another to group or stack them, tap the size to change it, ${matchMedia('(hover: none)').matches ? 'touch and hold' : 'right-click'} for more.` : ''
+    hint.textContent = bad ? (bad === 'reconnecting' ? 'Reconnecting to the hub. Changes save as soon as it’s back.' : `The layout couldn’t be saved (${bad}). Trying again.`) : ''
   }
 
   function rectMap(grid) {
@@ -922,7 +1072,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
       const a = before.get(c.dataset.hwKey)
       if (!a) { c.animate([{ opacity: 0, transform: 'scale(.9)' }, { opacity: 1, transform: 'none' }], { duration: 240, easing: EASE }); return }
       const b = c.getBoundingClientRect()
-      const dx = a.left - b.left, dy = a.top - b.top
+      const dx = (a.left - b.left) / S.frameK, dy = (a.top - b.top) / S.frameK
       if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return
       c.animate([{ transform: `translate(${dx}px,${dy}px)` }, { transform: 'none' }], { duration: 260, easing: EASE })
     })
@@ -960,13 +1110,40 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     if (before) playFlip(grid, before)
   }
 
-  // Widget columns as before (202 px each); the grid has two app slots per widget column.
+  // Widget columns of at least 202 px; the grid has two app slots per widget column, and a small widget is square.
   function setCols(grid) {
     if (!grid || viewKey() === 'mobile') return
     const gap = parseFloat(getComputedStyle(grid).columnGap) || 22, w = grid.clientWidth
     if (!w) return
-    const n = Math.max(2, Math.floor((w + gap) / (202 + gap)))
-    if (grid.style.getPropertyValue('--cols') !== String(n * 2)) grid.style.setProperty('--cols', String(n * 2))
+    const n = Math.max(2, Math.floor((w + gap) / (202 + gap))), cols = n * 2
+    if (grid.style.getPropertyValue('--cols') !== String(cols)) { grid.style.setProperty('--cols', String(cols)); place(grid) }
+  }
+
+  // Where each cell goes. Items stay in the order they were put, and each fills the current shelf: a band of
+  // rows as tall as the tallest thing on it. A widget snaps to even columns, so widgets line up across the
+  // page, and it never stretches a row of apps, which would leave an empty band under them.
+  const CELL_SPAN = { a: [1, 1], s: [2, 2], m: [4, 2], l: [4, 4] }
+  function place(grid, cells = [...grid.querySelectorAll('.hw-cell')]) {
+    const cols = viewKey() === 'mobile' ? 4 : Number(grid.style.getPropertyValue('--cols')) || 8
+    const used = new Set(), key = (r, c) => r * 64 + c
+    const free = (r, c, w, h) => { for (let y = r; y < r + h; y++) for (let x = c; x < c + w; x++) if (used.has(key(y, x))) return false; return true }
+    let top = 0, height = 1, apps = false
+    for (const el of cells) {
+      if (el.style.display === 'none') continue
+      const [w, h] = CELL_SPAN[['a', 's', 'm', 'l'].find(k => el.classList.contains(k))] || CELL_SPAN.s
+      let spot = null
+      for (let r = top; r < top + height && !spot; r++) {
+        if (r + h > top + height && (r !== top || apps)) continue
+        for (let c = 0; c + w <= cols && !spot; c += w > 1 ? 2 : 1) if (free(r, c, w, h)) spot = [r, c]
+      }
+      if (!spot) { top += height; height = 1; apps = false; spot = [top, 0] }
+      height = Math.max(height, spot[0] + h - top)
+      if (h === 1) apps = true
+      for (let y = spot[0]; y < spot[0] + h; y++) for (let x = spot[1]; x < spot[1] + w; x++) used.add(key(y, x))
+      // Only a cell that really moved gets a new style, so a swap restyles two or three cells, not all of them.
+      const area = `${spot[0] + 1} / ${spot[1] + 1} / span ${h} / span ${w}`
+      if (el.hwArea !== area) { el.hwArea = area; el.style.gridArea = area }
+    }
   }
 
   function scheduleRepaint() {
@@ -983,6 +1160,8 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
   function applyFilter() {
     const q = (document.getElementById('q')?.value || '').trim().toLowerCase()
     S.root?.querySelectorAll('[data-hay]').forEach(c => { c.style.display = !q || c.dataset.hay.includes(q) ? '' : 'none' })
+    const grid = S.root?.querySelector('[data-hw-grid]')
+    if (grid) place(grid)
   }
 
   function tickClock() {
@@ -1020,6 +1199,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
   // A colour for a usage ring: the widget's own until it gets high, then orange or red.
   const ringTone = (p, base) => (p >= 65 ? TONE[tone(p)] : base)
   function accountRing(a, size = 64) {
+    if (viewKey() === 'mobile') size = Math.min(size, 48)
     const u = a.usage
     if (!u) return `<div class="hw-acc" data-fit><div><h4 class="ell">${esc(shortName(a))}</h4><span class="hw-sub ell">${esc(a.message || 'Not signed in')}</span></div></div>`
     const f = u.fiveHour?.pct ?? 0, s = u.sevenDay?.pct ?? 0, c5 = ringTone(f, 'var(--t)'), c7 = ringTone(s, 'var(--teal, #30b0c7)')
@@ -1030,7 +1210,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     sizes: ['s', 'm', 'l'], defaultSize: 's', sources: ['ai'], blurb: 'Plan usage per Claude account: the 5-hour and 7-day limits.',
     render(d, size, ui, o = {}) {
       const accs = accountsOf(d)
-      if (!accs.length) return connect('Add a Claude account', 'Usage for each account shows here.', 'ai', 'gauge')
+      if (!accs.length) return connect('Add a Claude account', 'Usage for each account shows here.', 'ai', 'gauge', 'claude-account')
       const main = mainAccount(accs), rings = o.style !== 'bars'
       if (size === 's') {
         if (!main) return note('Sign in to a Claude account to see its usage.', openBtn('ai', 'Open AI'))
@@ -1074,7 +1254,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     sizes: ['s'], defaultSize: 's', sources: ['ai'], blurb: 'Credits left on your OpenRouter key.',
     render(d) {
       const p = provider(d, 'openrouter')
-      if (!p || !p.connected) return connect('Connect OpenRouter', 'Credits left show here.', 'ai', 'coin')
+      if (!p || !p.connected) return connect('Connect OpenRouter', 'Credits left show here.', 'ai', 'coin', 'openrouter')
       if (p.error) return note(esc(p.error), openBtn('ai', 'Open AI'))
       const left = clamp(pct(p.balance, p.credits)), t = left < 10 ? 'bad' : left < 25 ? 'warn' : 'var(--t)'
       return `<div class="hw-ringwrap" data-fit>${ring(left, t, `${Math.round(left)}%`, 80, 9, 18)}</div><div class="hw-sub c ell" data-fit><b>${moneyMajor(p.balance, 'USD')}</b> of ${moneyMajor(p.credits, 'USD', true)}</div>`
@@ -1090,7 +1270,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     sizes: ['s'], defaultSize: 's', sources: ['ai'], blurb: 'Your DeepSeek account balance.',
     render(d) {
       const p = provider(d, 'deepseek')
-      if (!p || !p.connected) return note('Add a DeepSeek key to see your balance.', openBtn('ai', 'Open AI'))
+      if (!p || !p.connected) return note('Add a DeepSeek key to see your balance.', connectBtn('deepseek', 'ai'))
       if (p.error) return note(esc(p.error), openBtn('ai', 'Open AI'))
       const b = (p.balances || [])[0]
       if (!b) return note('No balance reported.')
@@ -1157,7 +1337,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     sizes: ['s', 'm'], defaultSize: 's', sources: ['cloud'], blurb: 'How many of your Coolify apps are up, and which ones are down.',
     render(d, size, ui, o = {}) {
       const c = coolify(d)
-      if (c.status && c.status !== 'ok') return connect('Connect Coolify', 'App status shows here.', 'cloud', 'cloud')
+      if (c.status && c.status !== 'ok') return connect('Connect Coolify', 'App status shows here.', 'cloud', 'cloud', 'coolify')
       const apps = c.apps || [], up = apps.filter(appUp).length, down = apps.filter(a => !appUp(a))
       if (o.view !== 'bar') {
         const p = pct(up, apps.length), t = down.length ? (p < 60 ? 'bad' : 'warn') : 'var(--t)'
@@ -1206,6 +1386,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
 
   // --- Drives and iCloud
   const driveList = d => (d.drives?.entries || d.drives || []).filter(x => x && x.drive && x.type !== 'iCloud' && x.size)
+  const backupDrive = d => driveList(d).slice(1).sort((a, b) => b.size - a.size)[0]
   const driveName = x => `${x.name}${x.label ? ` ${x.label}` : ''}`
   reg({
     id: 'drives', label: 'Drives', cat: 'Storage', icon: 'drive', tint: 'var(--gray)', tab: 'drives',
@@ -1224,18 +1405,18 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     },
   })
   reg({
-    id: 'backup-drive', label: 'Backup drive F:', labels: { s: 'Backup F:' }, cat: 'Storage', icon: 'drive', tint: 'var(--green)', tab: 'drives',
-    sizes: ['s'], defaultSize: 's', sources: ['drives'], blurb: 'Free space on the F: backup drive, and whether it’s plugged in.',
+    id: 'backup-drive', label: 'Backup drive', labels: { s: 'Backup' }, cat: 'Storage', icon: 'drive', tint: 'var(--green)', tab: 'drives',
+    sizes: ['s'], defaultSize: 's', sources: ['drives'], blurb: 'Free space on your largest drive besides the system one, and whether it’s plugged in.',
     render(d) {
-      const x = driveList(d).find(e => e.name === 'F:')
-      if (!x) return fig('Not found', 'Plug in the F: drive', { sm: true })
+      const x = backupDrive(d)
+      if (!x) return fig('Not found', 'Plug in a backup drive', { sm: true })
       const p = pct(x.size - x.free, x.size)
-      return fig(bytes(x.free), `free of ${bytes(x.size)}`) + meter(x.label || 'F:', `${Math.round(p)}%`, p, tone(p))
+      return fig(bytes(x.free), `free of ${bytes(x.size)}`) + meter(x.label || x.name, `${Math.round(p)}%`, p, tone(p))
     },
     detail(d) {
-      const x = driveList(d).find(e => e.name === 'F:')
-      if (!x) return empty('The F: drive isn’t plugged in.')
-      return dhero(bytes(x.free), 'free') + dsec(x.label || 'F:', dlist([dkv('Size', bytes(x.size)), dkv('Used', bytes(x.size - x.free)), dkv('Type', esc(x.type || '–'))]))
+      const x = backupDrive(d)
+      if (!x) return empty('No drive besides the system one is plugged in.')
+      return dhero(bytes(x.free), 'free') + dsec(x.label || x.name, dlist([dkv('Size', bytes(x.size)), dkv('Used', bytes(x.size - x.free)), dkv('Type', esc(x.type || '–'))]))
     },
   })
   reg({
@@ -1350,7 +1531,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
 
   // --- Calendar
   const eventsOf = d => (d.calendar?.events || []).map(ev => { const from = toDate(ev.start), to = toDate(ev.end) || toDate(ev.start); return { ...ev, from, to } }).filter(ev => ev.from).sort((a, b) => a.from - b.from)
-  const calGate = d => (d.calendar && d.calendar.connected === false ? note('Connect a calendar to see your events.', openBtn('calendar', 'Open Calendar')) : '')
+  const calGate = d => (d.calendar && d.calendar.connected === false ? note('Connect a calendar to see your events.', connectBtn('calendar-feed', 'calendar')) : '')
   const whenOf = ev => (ev.allDay ? 'All day' : fmtTime(ev.from))
   const dayName = day => { const t = startOfDay(new Date()), k = Math.round((startOfDay(day) - t) / 86400000); return k === 0 ? 'Today' : k === 1 ? 'Tomorrow' : fmtDay(day) }
   const overlaps = (ev, a, b) => ev.from < b && (ev.to > a || (ev.to <= ev.from && ev.from >= a))
@@ -1435,7 +1616,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     if (stripeLive(d).length) return ''
     const err = stripeAccts(d).find(a => a.error)
     if (err) return note(esc(`Stripe: ${err.error}`), openBtn('stripe', 'Open Stripe'))
-    return connect('Connect Stripe', 'Balance, sales and MRR show here.', 'stripe', 'card')
+    return connect('Connect Stripe', 'Balance, sales and MRR show here.', 'stripe', 'card', 'stripe')
   }
   const modeNote = d => (stripeLive(d).every(a => a.mode === 'test') ? 'Test mode' : '')
   const stripeDaily = d => {
@@ -1515,7 +1696,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     }).join('') : ''
     return `<div class="hw-ring" style="width:${size}px;height:${size}px;--rs:${size > 110 ? 20 : 16}px"><svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" aria-hidden="true"><circle cx="${m}" cy="${m}" r="${r}" fill="none" stroke="var(--fill-2)" stroke-width="${sw}"/>${segs}</svg><span>${center}</span></div>`
   }
-  const unavailable = (what, tab) => note(esc(what), tab ? openBtn(tab, `Open ${tabName(tab)}`) : '')
+  const unavailable = (what, tab, service) => note(esc(what), connectBtn(service, tab))
 
   /* --- AI --- */
   const acctSlug = a => slug(shortName(a))
@@ -1561,7 +1742,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     sizes: ['s', 'm'], defaultSize: 's', sources: ['ai'], blurb: 'Countdown to the next 5-hour and 7-day Claude limit resets.',
     render(d, size) {
       const accs = accountsOf(d).filter(a => a.usage)
-      if (!accs.length) return unavailable('Sign in to a Claude account to see resets.', 'ai')
+      if (!accs.length) return unavailable('Sign in to a Claude account to see resets.', 'ai', 'claude-account')
       const t = x => (x ? until(x - Date.now()) : '–')
       if (size === 's') { const a = mainAccount(accs); return fig(t(a.usage.fiveHour?.resetsAt), '5 hour window resets') + `<div class="hw-sub ell" data-fit>${esc(shortName(a))} · ${Math.round(a.usage.fiveHour?.pct ?? 0)}% used</div>` }
       return list(accs.flatMap(a => [row({ t: `${shortName(a)} · 5 hour`, r: t(a.usage.fiveHour?.resetsAt) }), row({ t: `${shortName(a)} · 7 day`, r: t(a.usage.sevenDay?.resetsAt) })]))
@@ -1583,7 +1764,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
       const one = a => { const p = paceOf(a), [txt, col] = PACE[p.state]; return { p, txt, col } }
       if (size === 's') {
         const a = mainAccount(accs), { p, txt, col } = one(a)
-        return `<div class="hw-fig"><div class="v" style="color:${col};font-size:25px">${txt}</div><div class="hw-sub ell">${Math.round(p.used)}% used · ${Math.round(p.el)}% of week</div></div>` + meter('Used', `${Math.round(p.used)}%`, p.used, tone(p.used)) + meter('Week gone', `${Math.round(p.el)}%`, p.el, 'blue')
+        return `<div class="hw-fig"><div class="v" style="color:${col};font-size:26px">${txt}</div><div class="hw-sub ell">${Math.round(p.used)}% used · ${Math.round(p.el)}% of week</div></div>` + meter('Used', `${Math.round(p.used)}%`, p.used, tone(p.used)) + meter('Week gone', `${Math.round(p.el)}%`, p.el, 'blue')
       }
       return cols(Math.min(accs.length, 2), accs.slice(0, 2).map(a => {
         const { p, txt, col } = one(a)
@@ -1596,7 +1777,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     sizes: ['m', 'l'], defaultSize: 'm', sources: ['ai'], blurb: 'Fable and other per-model limits, credits and where usage goes, per account.',
     render(d, size) {
       const accs = accountsOf(d).filter(a => a.usage)
-      if (!accs.length) return unavailable('Sign in to a Claude account to see limits.', 'ai')
+      if (!accs.length) return unavailable('Sign in to a Claude account to see limits.', 'ai', 'claude-account')
       return cols(Math.min(accs.length, size === 'l' ? 2 : 2), accs.slice(0, 2).map(a => `<div class="hw-col"><h4 class="ell">${esc(shortName(a))}</h4>${limitRows(a).join('') || '<div class="hw-sub" data-fit>No extra limits.</div>'}</div>`))
     },
     detail: d => accountsOf(d).map(acctDetail).join('') || empty('No Claude accounts.'),
@@ -1669,7 +1850,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     sizes: ['s', 'm'], defaultSize: 's', sources: ['ai'], blurb: 'What your OpenRouter key spent today, this week and this month.',
     render(d, size) {
       const p = provider(d, 'openrouter')
-      if (!p || !p.connected) return unavailable('Add an OpenRouter key to see spend.', 'ai')
+      if (!p || !p.connected) return unavailable('Add an OpenRouter key to see spend.', 'ai', 'openrouter')
       if (size === 's') return fig(moneyMajor(p.monthly, 'USD'), 'this month') + `<div class="hw-sub ell" data-fit>${moneyMajor(p.weekly, 'USD')} this week</div>`
       return `<div class="hw-cols" style="--n:3" data-fit>${[['Today', p.daily], ['Week', p.weekly], ['Month', p.monthly]].map(([n, v]) => fig(moneyMajor(v, 'USD'), n, { sm: true })).join('')}</div>` + (p.keyLimit != null ? meter('Key limit', `${moneyMajor(p.keyRemaining, 'USD')} left`, pct(p.keyLimit - p.keyRemaining, p.keyLimit), tone(pct(p.keyLimit - p.keyRemaining, p.keyLimit))) : '')
     },
@@ -1677,7 +1858,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
 
   /* --- Cloud --- */
   const appsOf = d => d.cloud?.coolify?.apps || []
-  const coolGate = d => { const c = d.cloud?.coolify; return c && c.status && c.status !== 'ok' ? unavailable('Coolify isn’t connected.', 'cloud') : '' }
+  const coolGate = d => { const c = d.cloud?.coolify; return c && c.status && c.status !== 'ok' ? unavailable('Coolify isn’t connected.', 'cloud', 'coolify') : '' }
   reg({
     id: 'coolify-apps', label: 'All Coolify apps', labels: { m: 'Coolify apps' }, cat: 'Cloud', icon: 'cloud', tint: 'var(--blue)', tab: 'cloud',
     sizes: ['m', 'l'], defaultSize: 'l', sources: ['cloud'], blurb: 'Every Coolify app with its status, down ones first.',
@@ -1685,6 +1866,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
       const g = coolGate(d)
       if (g) return g
       const apps = appsOf(d).slice().sort((a, b) => appUp(a) - appUp(b) || a.name.localeCompare(b.name))
+      if (!apps.length) return fig('No apps', 'Coolify has no apps yet', { sm: true })
       return list(apps.map(a => row({ dot: upDot(appUp(a)), t: a.name, s: `${a.project || ''}${a.project ? ' · ' : ''}${appNote(a)}` })))
     },
   })
@@ -1747,7 +1929,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     sizes: ['s', 'm', 'l'], defaultSize: 's', sources: ['cloud'], blurb: 'Zones, workers, pages, R2, D1 and KV on your Cloudflare account.',
     render(d, size) {
       const c = d.cloud?.cloudflare
-      if (!c || c.status === 'connect') return unavailable('Connect Cloudflare to see zones and workers.', 'cloud')
+      if (!c || c.status === 'connect') return unavailable('Connect Cloudflare to see zones and workers.', 'cloud', 'cloudflare')
       if (c.status !== 'ok') return unavailable(c.error || 'Cloudflare isn’t answering.', 'cloud')
       const n = k => (c[k]?.items || []).length
       const kinds = [['Zones', 'zones'], ['Workers', 'workers'], ['Pages', 'pages'], ['R2 buckets', 'r2'], ['D1', 'd1'], ['KV', 'kv']]
@@ -1926,7 +2108,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     sizes: ['l'], defaultSize: 'l', sources: ['calendar-month'], blurb: 'A month grid with a dot on days that have events.',
     render(d) {
       const cal = d['calendar-month']
-      if (cal && cal.connected === false) return unavailable('Connect a calendar to see your month.', 'calendar')
+      if (cal && cal.connected === false) return unavailable('Connect a calendar to see your month.', 'calendar', 'calendar-feed')
       const now = new Date(), first = new Date(now.getFullYear(), now.getMonth(), 1), lead = first.getDay(), dim = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
       const evs = eventsOf({ calendar: cal })
       const cells = []
@@ -2014,7 +2196,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     sizes: ['s', 'm'], defaultSize: 's', sources: [], blurb: 'Your world clocks side by side.',
     render(d, size) {
       const zs = size === 's' ? ZONES.slice(0, 2) : ZONES
-      return `<div class="hw-list" data-fit-list>${zs.map(([n, tz]) => `<div class="hw-row" style="font-size:${size === 's' ? 15 : 16}px"><span class="t ell">${esc(n)}</span><span class="r" style="font-size:${size === 's' ? 17 : 19}px" data-hw-tz="${esc(tz)}">${esc(zoneTime(tz))}</span></div>`).join('')}</div>`
+      return `<div class="hw-list" data-fit-list>${zs.map(([n, tz]) => `<div class="hw-row hw-wc" style="font-size:${size === 's' ? 15 : 17}px"><span class="t ell">${esc(n)}</span><span class="r" style="font-size:${size === 's' ? 17 : 19}px" data-hw-tz="${esc(tz)}">${esc(zoneTime(tz))}</span></div>`).join('')}</div>`
     },
   })
   const LINKS = [['laptop', 'Laptop', 'laptop'], ['server', 'Server', 'server'], ['drives', 'Drives', 'drive'], ['ai', 'AI', 'gauge'], ['cloud', 'Cloud', 'cloud'], ['calendar', 'Calendar', 'calendar'], ['stripe', 'Stripe', 'card']]
@@ -2051,7 +2233,10 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     document.documentElement.style.overflow = 'hidden'
     void el.offsetWidth
     el.classList.add('on')
-    setTimeout(() => el.querySelector('.hw-x, .hw-done')?.focus({ preventScroll: true }), REDUCED.matches ? 0 : 30)
+    // Focus lands on the sheet itself, so nothing lights up until the keyboard is used.
+    const sh = sheetOf(el)
+    sh?.setAttribute('tabindex', '-1')
+    setTimeout(() => (sh || el.querySelector('.hw-x, .hw-done'))?.focus({ preventScroll: true }), REDUCED.matches ? 0 : 30)
     wireSheetDrag(el)
   }
   function closeOverlay(immediate) {
@@ -2094,7 +2279,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     top.addEventListener('pointermove', e => { if (drag) drag.dy = move(e.clientY - drag.y) })
     top.addEventListener('pointerup', end)
     top.addEventListener('pointercancel', end)
-    body.addEventListener('touchstart', e => { drag = PHONE.matches && body.scrollTop <= 0 ? { y: e.touches[0].clientY, dy: 0, t: performance.now(), body: true, on: false } : null }, { passive: true })
+    body.addEventListener('touchstart', e => { drag = PHONE.matches && body.scrollTop <= 0 && !e.target.closest('.hc-grip') ? { y: e.touches[0].clientY, dy: 0, t: performance.now(), body: true, on: false } : null }, { passive: true })
     body.addEventListener('touchmove', e => {
       if (!drag?.body) return
       const dy = e.touches[0].clientY - drag.y
@@ -2142,18 +2327,24 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
 
   const CAT_ORDER = ['AI', 'Cloud', 'Coolify Apps', 'Laptop & Server', 'Storage', 'Calendar', 'Stripe', 'Utility']
   function openGallery() {
-    const vk = viewKey(), el = document.createElement('div')
+    const vk = viewKey(), el = document.createElement('div'), chosen = new Map()
     el.className = 'scrim hw-scrim'
-    el.innerHTML = `<div class="hw-sheet wide" role="dialog" aria-modal="true" aria-label="Add to Home"><div class="hw-sh-top"><div class="hw-grab"></div><div class="hw-sh-head"><h2>Add to Home</h2><button type="button" class="hw-done" data-hw-close>Done</button></div><div class="seg hw-seg hw-addseg" role="tablist" aria-label="Add to Home" style="--n:2;--i:0"><span class="seg-thumb"></span><button type="button" role="tab" data-hw-addtab="widgets" aria-pressed="true">Widgets</button><button type="button" role="tab" data-hw-addtab="apps" aria-pressed="false">Apps</button></div></div><div class="hw-gsearch">${icon('search', 15)}<input type="search" placeholder="Search widgets" aria-label="Search widgets" autocomplete="off" enterkeyhint="search"></div><div class="hw-sh-body"></div></div>`
+    el.innerHTML = `<div class="hw-sheet" role="dialog" aria-modal="true" aria-label="Add to Home"><div class="hw-sh-top"><div class="hw-grab"></div><div class="hw-sh-head"><h2>Add to Home</h2><button type="button" class="hw-done" data-hw-close>Done</button></div><div class="seg hw-seg hw-addseg" role="tablist" aria-label="Add to Home" style="--n:2;--i:0"><span class="seg-thumb"></span><button type="button" role="tab" data-hw-addtab="widgets" aria-pressed="true">Widgets</button><button type="button" role="tab" data-hw-addtab="apps" aria-pressed="false">Apps</button></div></div><div class="hw-gsearch">${icon('search', 15)}<input type="search" placeholder="Search widgets" aria-label="Search widgets" autocomplete="off" enterkeyhint="search"></div><div class="hw-sh-body"></div></div>`
     const body = el.querySelector('.hw-sh-body'), input = el.querySelector('input')
+    // One preview per widget, centred on its stage; the size picker swaps it, as on an iPhone. The scale is fixed, so sizes compare truthfully.
+    const sizeOfItem = w => chosen.get(w.id) || w.defaultSize || w.sizes[0]
+    const scale = () => Math.min(0.8, Math.max(120, sheetOf(el).clientWidth - 64) / DIMS[vk].m[0]).toFixed(3)
+    const preview = (w, size) => { const [pw, ph] = DIMS[vk][size]; return `<div class="hw-prev" style="--pw:${pw}px;--ph:${ph}px;--k:${scale()}">${cardHtml(w, size, vk, bodyFor(w, size), false)}</div>` }
+    const item = w => {
+      const size = sizeOfItem(w), seg = w.sizes.length < 2 ? '' : `<div class="seg hw-seg hw-gsize" role="group" aria-label="${esc(w.label)} size" style="--n:${w.sizes.length};--i:${w.sizes.indexOf(size)}"><span class="seg-thumb"></span>${w.sizes.map(sz => `<button type="button" data-hw-gsize="${sz}" aria-pressed="${sz === size}">${SIZE_NAME[sz]}</button>`).join('')}</div>`
+      return `<div class="hw-gitem" data-hw-wid="${esc(w.id)}" data-hay="${esc(`${w.label} ${w.blurb || ''} ${w.cat || 'Other'} ${w.id}`.toLowerCase())}"><div class="hw-ghead"><b>${esc(w.label)}</b>${w.blurb ? `<span>${esc(w.blurb)}</span>` : ''}</div><div class="hw-gstage" style="--ph:${DIMS[vk][size][1]}px;--k:${scale()}">${preview(w, size)}</div><div class="hw-gfoot">${seg}<button type="button" class="hw-btn solid" data-hw-add="${esc(w.id)}">${icon('plus', 14)}Add</button></div></div>`
+    }
     const build = () => {
-      const wm = widgetMap(true), dims = DIMS[vk], avail = Math.max(120, (sheetOf(el).clientWidth || 340) - 48)
-      const k = Math.min(0.62, avail / dims.m[0])
-      const all = [...wm.values()]
+      const all = [...widgetMap(true).values()]
       const cats = [...new Set(all.map(w => w.cat || 'Other'))].sort((a, b) => (CAT_ORDER.indexOf(a) + 1 || 99) - (CAT_ORDER.indexOf(b) + 1 || 99))
       return cats.map(cat => {
         const items = all.filter(w => (w.cat || 'Other') === cat)
-        return `<section class="hw-gsec" data-cat="${esc(cat)}"><h3>${esc(cat)}<span class="hw-gcount">${items.length}</span></h3>${items.map(w => `<div class="hw-gitem" data-hay="${esc(`${w.label} ${w.blurb || ''} ${cat} ${w.id}`.toLowerCase())}"><div class="hw-ghead"><b>${esc(w.label)}</b><span>${esc(w.blurb || '')}</span></div><div class="hw-gprevs">${w.sizes.map(sz => `<div class="hw-gp"><div class="hw-prev" style="--pw:${dims[sz][0]}px;--ph:${dims[sz][1]}px;--k:${k.toFixed(3)}">${cardHtml(w, sz, vk, bodyFor(w, sz), false)}</div><button type="button" class="hw-pill" data-hw-add="${esc(w.id)}" data-size="${sz}">${icon('plus', 14)}${SIZE_NAME[sz]}</button></div>`).join('')}</div></div>`).join('')}</section>`
+        return `<section class="hw-gsec" data-cat="${esc(cat)}"><h3>${esc(cat)}</h3>${items.map(item).join('')}</section>`
       }).join('') + '<div class="hw-gnone" hidden>No widgets match that.</div>'
     }
     const filter = () => {
@@ -2181,11 +2372,24 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     el.addEventListener('click', e => {
       if (e.target === el || e.target.closest('[data-hw-close]')) return closeOverlay()
       if (e.target.closest('[data-hw-addtab="apps"]')) return switchAdd(openAppPicker)
+      const pick = e.target.closest('[data-hw-gsize]')
+      if (pick) {
+        const it = pick.closest('.hw-gitem'), w = widgetMap(true).get(it.dataset.hwWid), size = pick.dataset.hwGsize, seg = pick.closest('.seg'), stage = it.querySelector('.hw-gstage')
+        if (!w) return
+        chosen.set(w.id, size)
+        seg.style.setProperty('--i', w.sizes.indexOf(size))
+        seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b === pick)))
+        stage.style.setProperty('--ph', `${DIMS[vk][size][1]}px`)
+        stage.innerHTML = preview(w, size)
+        return fitAll(stage)
+      }
       const add = e.target.closest('[data-hw-add]')
       if (!add) return
-      addWidget(add.dataset.hwAdd, add.dataset.size)
-      add.innerHTML = `${icon('plus', 14)}Added`
-      setTimeout(() => { if (add.isConnected) add.innerHTML = `${icon('plus', 14)}${SIZE_NAME[add.dataset.size]}` }, 1400)
+      const w = widgetMap(true).get(add.dataset.hwAdd)
+      if (!w) return
+      addWidget(w.id, sizeOfItem(w))
+      add.innerHTML = `${icon('check', 14)}Added`
+      setTimeout(() => { if (add.isConnected) add.innerHTML = `${icon('plus', 14)}Add` }, 1400)
     })
   }
 
@@ -2292,10 +2496,10 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
   // arithmetic and one style write, with no layout read. Rects are in page coordinates, so scrolling
   // only changes d.px and d.py. offsetLeft ignores transforms, so cells still sliding count where they land.
   function dragMeasure(d) {
-    const c = d.cell, r = c.getBoundingClientRect(), w = r.width / d.scale, h = r.height / d.scale
-    d.px = scrollX
-    d.py = scrollY
-    const left = (r.left + r.right - w) / 2 - d.tx + d.px, top = (r.top + r.bottom - h) / 2 - d.ty + d.py
+    const v = (d.v = view()), c = d.cell, r = c.getBoundingClientRect(), w = r.width / v.k / d.scale, h = r.height / v.k / d.scale
+    d.px = v.x()
+    d.py = v.y()
+    const left = ((r.left + r.right) / 2 - v.left) / v.k - w / 2 - d.tx + d.px, top = ((r.top + r.bottom) / 2 - v.top) / v.k - h / 2 - d.ty + d.py
     d.nat = { left, top, right: left + w, bottom: top + h }
     const ox = left - c.offsetLeft, oy = top - c.offsetTop
     d.rects = [...c.parentElement.querySelectorAll('.hw-cell')].filter(o => o !== c && o.offsetWidth).map(el => {
@@ -2303,16 +2507,63 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
       const icon = d.isApp && el.classList.contains('a') && el.querySelector('.hc-app')
       if (icon) {
         const a = icon.getBoundingClientRect(), b = el.getBoundingClientRect()
-        o.ic = { left: l + a.left - b.left, right: l + a.right - b.left, top: t + a.top - b.top, bottom: t + a.bottom - b.top }
+        o.ic = { left: l + (a.left - b.left) / v.k, right: l + (a.right - b.left) / v.k, top: t + (a.top - b.top) / v.k, bottom: t + (a.bottom - b.top) / v.k }
       }
       return o
     })
   }
+  const vx = d => (d.x - d.v.left) / d.v.k, vy = d => (d.y - d.v.top) / d.v.k
   function dragPlace(d) {
-    d.tx = d.x + d.px - d.ox - d.nat.left
-    d.ty = d.y + d.py - d.oy - d.nat.top
+    d.tx = vx(d) + d.px - d.ox - d.nat.left
+    d.ty = vy(d) + d.py - d.oy - d.nat.top
     d.cell.style.transform = `translate(${d.tx.toFixed(1)}px, ${d.ty.toFixed(1)}px)${d.scale === 1 ? '' : ` scale(${d.scale})`}`
   }
+
+  // Press and hold anything on Home to start editing with it in hand, as on an iPhone. Moving or scrolling
+  // cancels the hold, and a short press still opens. The finger's own element keeps the page from scrolling,
+  // because edit mode rebuilds the cells while the finger is still down.
+  let hold = null
+  const HOLD_MS = 450
+  function holdCancel() {
+    if (!hold) return
+    clearTimeout(hold.t)
+    hold = null
+  }
+  function holdStart(e) {
+    if (S.editing || S.drag || S.overlay || hold || (e.pointerType === 'mouse' && e.button !== 0)) return
+    const cell = e.target.closest('.hw-cell')
+    if (!cell || e.target.closest('input, a[href]')) return
+    hold = { x: e.clientX, y: e.clientY, pid: e.pointerId, touch: e.pointerType !== 'mouse', key: cell.dataset.hwKey, t: setTimeout(holdFire, HOLD_MS) }
+    if (hold.touch) pinTouch(e.target)
+  }
+  function pinTouch(el) {
+    const stop = ev => { if ((S.drag?.on || appDrag?.on) && ev.cancelable) ev.preventDefault() }
+    const off = () => { el.removeEventListener('touchmove', stop); document.removeEventListener('pointerup', off); document.removeEventListener('pointercancel', off) }
+    el.addEventListener('touchmove', stop, { passive: false })
+    document.addEventListener('pointerup', off)
+    document.addEventListener('pointercancel', off)
+  }
+  function holdFire() {
+    const h = hold
+    hold = null
+    if (!h || S.editing) return
+    const at = h.key && S.root?.querySelector(`.hw-cell[data-hw-key="${CSS.escape(h.key)}"]`)?.getBoundingClientRect().top
+    toggleEdit()
+    // Letting go opens nothing: the click that ends this press is not a tap.
+    const eat = c => { c.stopPropagation(); c.preventDefault() }
+    document.addEventListener('pointerup', () => {
+      document.addEventListener('click', eat, { capture: true, once: true })
+      setTimeout(() => document.removeEventListener('click', eat, true), 60)
+    }, { once: true, capture: true })
+    const cell = h.key && S.root?.querySelector(`.hw-cell[data-hw-key="${CSS.escape(h.key)}"]`)
+    if (!cell) return
+    if (at != null) { const v = view(); v.by((cell.getBoundingClientRect().top - at) / v.k) }
+    S.drag = { cell, pid: h.pid, sx: h.x, sy: h.y, x: h.x, y: h.y, on: false, touch: h.touch, raf: 0, swapAt: 0, t: 0, ox: 0, oy: 0 }
+    dragBegin()
+  }
+  document.addEventListener('pointermove', e => { if (hold && e.pointerId === hold.pid && Math.hypot(e.clientX - hold.x, e.clientY - hold.y) > 8) holdCancel() }, { passive: true })
+  for (const t of ['pointerup', 'pointercancel']) document.addEventListener(t, holdCancel)
+  window.addEventListener('scroll', holdCancel, { passive: true, capture: true })
 
   function dragStart(e) {
     if (!S.editing || S.drag || S.overlay) return
@@ -2332,10 +2583,9 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     d.scale = 1
     d.tx = d.ty = 0
     dragMeasure(d)
-    d.ox = d.x + d.px - d.nat.left
-    d.oy = d.y + d.py - d.nat.top
+    d.ox = vx(d) + d.px - d.nat.left
+    d.oy = vy(d) + d.py - d.nat.top
     d.order = [...d.cell.parentElement.querySelectorAll('.hw-cell')]
-    d.order.forEach((el, i) => { el.style.order = i })
     d.cell.classList.add('hw-dragging')
     d.app = d.isApp ? d.cell.querySelector(':scope > .hw-app') : null
     d.app?.classList.add('drag')
@@ -2351,14 +2601,15 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
   }
   function dragFrame(d) {
     let dy = 0
-    if (d.y < 90) dy = -Math.min(24, Math.ceil((90 - d.y) / 5))
-    else if (d.y > innerHeight - 90) dy = Math.min(24, Math.ceil((d.y - (innerHeight - 90)) / 5))
+    const v = d.v, py = vy(d)
+    if (py < v.edge) dy = -Math.min(24, Math.ceil((v.edge - py) / 5))
+    else if (py > v.h - v.edge) dy = Math.min(24, Math.ceil((py - (v.h - v.edge)) / 5))
     if (dy) {
-      scrollBy(0, dy)
-      d.py = scrollY
+      v.by(dy)
+      d.py = v.y()
       dragPlace(d)
     }
-    const c = d.cell, x = d.x + d.px, y = d.y + d.py, now = performance.now()
+    const c = d.cell, x = vx(d) + d.px, y = py + d.py, now = performance.now()
     const hit = inside(d.nat, x, y) ? null : d.rects.find(o => inside(o, x, y)) || null
     const target = hit?.el || null
     if (target !== d.hover?.el) { setMerge(d, null); d.hover = target ? { el: target, at: now, mid: 0, stack: canStack(c, target) } : null }
@@ -2393,10 +2644,10 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     d.hover = null
     const grid = c.parentElement, before = rectMap(grid), o = d.order
     const fi = o.indexOf(c), ti = o.indexOf(target)
-    // A swap only renumbers the grid's `order`; moving nodes would restyle and repaint every cell they pass. The document catches up on the drop.
+    // A swap only re-places the cells; moving nodes would restyle and repaint every cell they pass. The document catches up on the drop.
     o.splice(fi, 1)
     o.splice(ti, 0, c)
-    for (let i = Math.min(fi, ti); i <= Math.max(fi, ti); i++) o[i].style.order = i
+    place(grid, o)
     d.swapAt = now
     d.last = [d.x, d.y]
     playFlip(grid, before, c)
@@ -2410,9 +2661,9 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
       o.slice(0, at).forEach(el => c.before(el))
       o.slice(at + 1).reduce((prev, el) => (prev.after(el), el), c)
     }
-    o.forEach(el => { el.style.order = '' })
   }
   function setMerge(d, el) {
+    if (d.app && !onMain()) el = null
     if (d.merge === el) return
     d.merge?.classList.remove('hw-merge')
     d.merge = el
@@ -2427,9 +2678,10 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     if (!d.on) return
     const c = d.cell, merge = d.merge
     setMerge(d, null)
-    const cur = c.getBoundingClientRect()
+    const k = d.v?.k || 1, cur = c.getBoundingClientRect()
     c.style.transform = 'none'
     const nat = c.getBoundingClientRect()
+    const shift = (a, b) => `translate(${(a.left - b.left) / k}px, ${(a.top - b.top) / k}px)`
     c.classList.remove('hw-dragging')
     d.app?.classList.remove('drag')
     if (d.app) S.appDragged = Date.now()
@@ -2444,15 +2696,15 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
       // The icon shrinks into the one it lands on, then the group takes that place.
       const t = merge.querySelector('.hc-app').getBoundingClientRect(), done = () => groupWith(d.app.dataset.hwApp, merge.querySelector('.hw-app').dataset.hwApp)
       saveSoon(viewKey())
-      if (c.animate && !REDUCED.matches) c.animate([{ transform: `translate(${cur.left - nat.left}px, ${cur.top - nat.top}px)`, opacity: 1 }, { transform: `translate(${t.left - nat.left}px, ${t.top - nat.top}px) scale(.45)`, opacity: 0 }], { duration: 200, easing: EASE, fill: 'forwards' }).finished.then(done, done)
+      if (c.animate && !REDUCED.matches) c.animate([{ transform: shift(cur, nat), opacity: 1 }, { transform: `${shift(t, nat)} scale(.45)`, opacity: 0 }], { duration: 200, easing: EASE, fill: 'forwards' }).finished.then(done, done)
       else done()
     } else if (merge?.isConnected) {
       // The card shrinks into the widget it lands on, then the stack takes its place.
       const t = merge.getBoundingClientRect(), done = () => stackOnto(c.dataset.hwKey, merge.dataset.hwKey)
-      if (c.animate && !REDUCED.matches) c.animate([{ transform: `translate(${cur.left - nat.left}px, ${cur.top - nat.top}px) scale(1.03)`, opacity: 1 }, { transform: `translate(${t.left - nat.left}px, ${t.top - nat.top}px) scale(.8)`, opacity: 0 }], { duration: 200, easing: EASE, fill: 'forwards' }).finished.then(done, done)
+      if (c.animate && !REDUCED.matches) c.animate([{ transform: `${shift(cur, nat)} scale(1.03)`, opacity: 1 }, { transform: `${shift(t, nat)} scale(.8)`, opacity: 0 }], { duration: 200, easing: EASE, fill: 'forwards' }).finished.then(done, done)
       else done()
     } else {
-      if (c.animate && !REDUCED.matches) c.animate([{ transform: `translate(${cur.left - nat.left}px, ${cur.top - nat.top}px)${d.app ? '' : ' scale(1.03)'}` }, { transform: 'none' }], { duration: 240, easing: EASE })
+      if (c.animate && !REDUCED.matches) c.animate([{ transform: `${shift(cur, nat)}${d.app ? '' : ' scale(1.03)'}` }, { transform: 'none' }], { duration: 240, easing: EASE })
       saveSoon(viewKey())
       saveAppOrder()
     }
@@ -2482,6 +2734,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
   }
   // After a drag the apps keep the order they now have on Home.
   function saveAppOrder() {
+    if (!onMain()) return
     const ids = homeItems(viewKey()).filter(isAppItem).map(i => i.app)
     if (ids.join() !== appList().join()) setApps(ids)
   }
@@ -2492,8 +2745,18 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     S.detail?.refresh()
     window.HUB?.save({ apps: ids }).then(() => { S.apps = null; paintApps() })
   }
-  const removeApp = id => { if (window.HUB?.groupOf?.(id)) return removeGroup(id); setApps(appList().filter(x => x !== id)); hud(`${window.HUB.appMeta(id).label} removed from Home`) }
-  const addApp = id => { if (!appList().includes(id)) setApps([...appList(), id]) }
+  // On a page an app is only a place in its layouts.
+  function pageApp(id, on) {
+    for (const k of VIEWS) {
+      const l = S.layout[k] || [], rest = l.filter(x => !(isAppItem(x) && x.app === id))
+      S.layout[k] = on ? (rest.length === l.length ? [...l, appItem(id)] : l) : rest
+      saveSoon(k)
+    }
+    paint(true)
+    S.detail?.refresh()
+  }
+  const removeApp = id => { if (!onMain()) return pageApp(id, false); if (window.HUB?.groupOf?.(id)) return removeGroup(id); setApps(appList().filter(x => x !== id)); hud(`${window.HUB.appMeta(id).label} removed from Home`) }
+  const addApp = id => { if (!onMain()) return pageApp(id, true); if (!appList().includes(id)) setApps([...appList(), id]) }
   function moveApp(id, by) {
     const vk = viewKey(), l = homeItems(vk), i = l.findIndex(x => isAppItem(x) && x.app === id), j = i + by
     if (i < 0 || j < 0 || j >= l.length) return
@@ -2536,6 +2799,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     loop()
   }
   function appMerge(d, el) {
+    if (!onMain()) el = null
     if (d.merge === el) return
     d.merge?.classList.remove('merge')
     d.merge = el
@@ -2603,12 +2867,14 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
   // A scroll or resize is the one thing besides a swap that moves the cells under a drag.
   addEventListener('scroll', e => {
     const d = S.drag
-    if (d?.on && e.target === document) { d.px = scrollX; d.py = scrollY; dragPlace(d) }
+    if (d?.on && (e.target === document || e.target === d.v.el)) { d.px = d.v.x(); d.py = d.v.y(); dragPlace(d) }
     if (appDrag?.on) { appMeasure(appDrag); appPlace(appDrag) }
   }, { capture: true, passive: true })
   addEventListener('resize', () => {
+    if (S.root?.isConnected) frameFit()
     if (S.drag?.on) { dragMeasure(S.drag); dragPlace(S.drag) }
     if (appDrag?.on) { appMeasure(appDrag); appPlace(appDrag) }
+    if (!S.drag?.on && S.root?.isConnected) setCols(S.root.querySelector('[data-hw-grid]'))
   }, { passive: true })
   const appRelease = e => {
     const d = appDrag
@@ -2639,7 +2905,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     if (d.folder) {
       const g = window.HUB.groupOf(d.folder)
       if (g && ids.join() !== g.apps.join()) groupPatch({ groups: { update: [{ id: d.folder, apps: ids }] } })
-    } else if (ids.join() !== appList().join()) setApps(ids)
+    } else if (onMain() && ids.join() !== appList().join()) setApps(ids)
   }
   document.addEventListener('pointerup', appRelease)
   document.addEventListener('pointercancel', appRelease)
@@ -2692,6 +2958,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
   function folderAppMenu(gid, a, x, y) {
     const label = window.HUB.appMeta(a).label
     showMenu(x, y, label, [
+      editItem(), '-',
       { label: a === 'chat' ? 'Open Chat' : `Open ${label}`, icon: icon('open', 16), run: () => { closeOverlay(true); openApp(a) } },
       { label: 'Move to Home', icon: icon('minus', 16), run: () => moveOut(gid, a) },
       '-',
@@ -2753,12 +3020,23 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
       e.preventDefault()
       if (!appDrag?.on) folderAppMenu(id, a.dataset.hwApp, e.clientX, e.clientY)
     })
-    // Touch and hold an app in the folder for its menu (outside edit mode, where holding picks it up).
+    // Press and hold an app in the folder to edit with it in hand, the same as on Home.
     let hold = null
     el.addEventListener('pointerdown', e => {
       const a = e.target.closest('.hw-app')
-      if (!a || S.editing || e.pointerType === 'mouse') return
-      hold = { x: e.clientX, y: e.clientY, t: setTimeout(() => { hold = null; S.appDragged = Date.now(); folderAppMenu(id, a.dataset.hwApp, e.clientX, e.clientY) }, 520) }
+      if (!a || S.editing || (e.pointerType === 'mouse' && e.button !== 0)) return
+      const { pointerId, clientX, clientY, pointerType } = e, app = a.dataset.hwApp
+      if (pointerType !== 'mouse') pinTouch(e.target)
+      hold = { x: clientX, y: clientY, t: setTimeout(() => {
+        hold = null
+        S.editing = true
+        paint(true)
+        fill()
+        const now = [...el.querySelectorAll('.hw-app')].find(x => x.dataset.hwApp === app)
+        if (!now) return
+        appDown({ target: now, pointerId, clientX, clientY, pointerType, button: 0 })
+        appBegin()
+      }, HOLD_MS) }
     })
     el.addEventListener('pointermove', e => { if (hold && Math.hypot(e.clientX - hold.x, e.clientY - hold.y) > 8) { clearTimeout(hold.t); hold = null } })
     for (const t of ['pointerup', 'pointercancel']) el.addEventListener(t, () => { if (hold) { clearTimeout(hold.t); hold = null } })
@@ -2795,32 +3073,71 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     try { await window.HUB.patch(body); S.apps = null; paintApps(); done?.() } catch (e) { hud(e.message) }
   }
 
-  function openAppPicker() {
+  function openAppPicker() { openPicker('home') }
+
+  // One picker for Home and the header: apps, websites, suggestions and your own website. The header adds the
+  // list of what is in it now, which drags to reorder; Home is in that list for good, so there is always a way back.
+  function openPicker(target) {
     if (!window.HUB) return
-    const HUB = window.HUB, el = document.createElement('div')
+    const HUB = window.HUB, header = target === 'header', place = header ? 'Header' : onMain() ? 'Home' : 'Page', el = document.createElement('div')
     el.className = 'scrim hw-scrim'
-    el.innerHTML = `<div class="hw-sheet wide" role="dialog" aria-modal="true" aria-label="Add to Home"><div class="hw-sh-top"><div class="hw-grab"></div><div class="hw-sh-head"><h2>Add to Home</h2><button type="button" class="hw-done" data-hw-close>Done</button></div><div class="seg hw-seg hw-addseg" role="tablist" aria-label="Add to Home" style="--n:2;--i:1"><span class="seg-thumb"></span><button type="button" role="tab" data-hw-addtab="widgets" aria-pressed="false">Widgets</button><button type="button" role="tab" data-hw-addtab="apps" aria-pressed="true">Apps</button></div></div><div class="hw-sh-body"></div></div>`
+    const tabsSeg = header ? '' : `<div class="seg hw-seg hw-addseg" role="tablist" aria-label="Add to Home" style="--n:2;--i:1"><span class="seg-thumb"></span><button type="button" role="tab" data-hw-addtab="widgets" aria-pressed="false">Widgets</button><button type="button" role="tab" data-hw-addtab="apps" aria-pressed="true">Apps</button></div>`
+    el.innerHTML = `<div class="hw-sheet" role="dialog" aria-modal="true" aria-label="${header ? 'Edit Tabs' : 'Add to Home'}"><div class="hw-sh-top"><div class="hw-grab"></div><div class="hw-sh-head"><h2>${header ? 'Edit Tabs' : 'Add to Home'}</h2><button type="button" class="hw-done" data-hw-close>Done</button></div>${tabsSeg}</div><div class="hw-sh-body"></div></div>`
     const body = el.querySelector('.hw-sh-body')
-    let sugg = [], draft = null
-    const pill = (id, has, label) => `<button type="button" class="hw-pill" data-hw-pick="${esc(id)}" aria-pressed="${has}" aria-label="${has ? `Remove ${esc(label)} from Home` : `Add ${esc(label)} to Home`}">${has ? `${icon('check', 14)}On Home` : `${icon('plus', 14)}Add`}</button>`
+    let sugg = [], draft = null, renaming = null
+    // On Home means on the Home row or inside one of its groups.
+    const onNow = () => header ? HUB.headerItems() : onMain() ? [...appList(), ...HUB.groups().flatMap(g => g.apps)] : layoutItems(viewKey()).filter(isAppItem).map(i => i.app)
+    const pill = (id, has, label) => `<button type="button" class="hw-pill" data-hw-pick="${esc(id)}" aria-pressed="${has}" aria-label="${has ? `Remove ${esc(label)} from ${place}` : `Add ${esc(label)} to ${place}`}">${has ? `${icon('check', 14)}On ${place}` : `${icon('plus', 14)}Add`}</button>`
+    const headerRow = id => {
+      const label = HUB.labelOf(id)
+      const name = renaming === id ? `<input class="hw-rename" value="${esc(label)}" maxlength="24" aria-label="Name for ${esc(label)}" autocomplete="off">` : `<span class="t ell">${esc(label)}</span>`
+      return `<div class="hw-row hw-hrow hc-trow" data-id="${esc(id)}"><span class="hc-grip" tabindex="0" role="button" title="Drag to reorder" aria-label="Reorder ${esc(label)}">${hic('grip', 18)}</span>${HUB.tile(id, 32, 9, 17)}${name}<button type="button" class="hw-ib" data-hw-rename="${esc(id)}" aria-label="Rename ${esc(label)}" title="Rename">${icon('pencil', 17)}</button>${id === 'home' ? '<span class="hw-ib" aria-hidden="true"></span>' : `<button type="button" class="hw-ib" data-hw-pick="${esc(id)}" aria-label="Remove ${esc(label)} from Header" title="Remove">${icon('minus', 17)}</button>`}</div>`
+    }
+    const headerOrder = () => [...body.querySelectorAll('#hc-tabs .hc-trow')].map(r => r.dataset.id)
     const fill = () => {
-      // On Home means on the Home row or inside one of its groups.
-      const on = [...appList(), ...HUB.groups().flatMap(g => g.apps)], sites = HUB.sites(), hosts = new Set(sites.map(x => HUB.hostOf(x.url)))
+      if (body.querySelector('.hc-sorting') || (renaming && body.querySelector('.hw-rename'))) return
+      const on = onNow(), sites = HUB.sites().filter(x => !x.file), hosts = new Set(sites.map(x => HUB.hostOf(x.url)))
+      const pages = header ? HUB.pages().filter(p => !on.includes(p.id)).map(p => `<div class="hw-row">${HUB.tile(p.id, 32, 9, 17)}<span class="t ell">${esc(p.name)}</span><span class="s"></span>${pill(p.id, false, p.name)}</div>`).join('') : ''
+      const files = HUB.files().map(f => ({ ...f, sid: `site-${f.id}` })).filter(f => !(header && on.includes(f.sid))).map(f => `<div class="hw-row">${HUB.tile(f.sid, 32, 9)}<span class="t ell">${esc(f.name)}</span><span class="s"></span><button type="button" class="hw-ib" data-hw-filedel="${esc(f.id)}" aria-label="Delete ${esc(f.name)}" title="Delete">${icon('trash', 16)}</button>${pill(f.sid, on.includes(f.sid), f.name)}</div>`).join('')
       // Keep what is typed in the form across repaints.
       const form = body.querySelector('[data-hw-siteform]')
       if (form) draft = { ...Object.fromEntries(new FormData(form)), newTab: form.querySelector('[data-hw-newtab]').getAttribute('aria-checked') === 'true' }
-      const apps = HUB.allApps().filter(id => !id.startsWith('site-') && !id.startsWith('group-')).map(id => {
+      const y = body.scrollTop
+      const apps = HUB.allApps().filter(id => !id.startsWith('site-') && !id.startsWith('group-') && id !== 'browser' && !(header && on.includes(id))).map(id => {
         const has = on.includes(id), label = HUB.appMeta(id).label
         return `<div class="hw-row">${HUB.tile(id, 32, 9, 17)}<span class="t ell">${esc(label)}</span><span class="s"></span>${pill(id, has, label)}</div>`
       }).join('')
-      const saved = sites.map(x => `<div class="hw-row">${HUB.tile(x.id, 32, 9)}<span class="t ell">${esc(x.name)}</span><span class="s">${esc(HUB.hostOf(x.url))}</span><button type="button" class="hw-ib" data-hw-siteedit="${esc(x.id)}" aria-label="Edit ${esc(x.name)}" title="Edit">${icon('pencil', 17)}</button>${pill(x.id, on.includes(x.id), x.name)}</div>`).join('')
+      const saved = sites.filter(x => !(header && on.includes(x.id))).map(x => `<div class="hw-row">${HUB.tile(x.id, 32, 9)}<span class="t ell">${esc(x.name)}</span><span class="s">${esc(HUB.hostOf(x.url))}</span><button type="button" class="hw-ib" data-hw-siteedit="${esc(x.id)}" aria-label="Edit ${esc(x.name)}" title="Edit">${icon('pencil', 17)}</button>${pill(x.id, on.includes(x.id), x.name)}</div>`).join('')
       const left = sugg.filter(x => !hosts.has(HUB.hostOf(x.url)))
-      const sug = left.map((x, i) => `<div class="hw-row">${HUB.siteTile(x.name, HUB.siteIcon(x.url), 32, 9)}<span class="t ell">${esc(x.name)}</span><span class="s">${esc(HUB.hostOf(x.url))}</span><button type="button" class="hw-pill" data-hw-sugg="${i}" aria-label="Add ${esc(x.name)} to Home">${icon('plus', 14)}Add</button></div>`).join('')
-      body.innerHTML = dsec('Apps', `<div class="hw-dlist hw-applist">${apps}</div>`) +
+      const sug = left.map((x, i) => `<div class="hw-row">${HUB.siteTile(x.name, HUB.siteIcon(x.url), 32, 9)}<span class="t ell">${esc(x.name)}</span><span class="s">${esc(HUB.hostOf(x.url))}</span><button type="button" class="hw-pill" data-hw-sugg="${i}" aria-label="Add ${esc(x.name)} to ${place}">${icon('plus', 14)}Add</button></div>`).join('')
+      const addons = header ? Object.entries(window.HUB_CONF?.addons || {}).filter(([, a]) => a.available).map(([id, a]) => `<div class="hw-row hw-addon"><span class="t">${esc(a.label)}<small>${esc(!a.on && a.how ? a.how : a.what)}</small></span><button type="button" class="hc-switch" role="switch" aria-label="${esc(a.label)}" aria-checked="${a.on}" data-addon="${esc(id)}"></button></div>`).join('') : ''
+      body.innerHTML = (header ? dsec('In the Header', `<div class="hw-dlist hw-applist" id="hc-tabs">${on.map(headerRow).join('')}</div>`) : '') +
+        (apps ? dsec('Apps', `<div class="hw-dlist hw-applist">${apps}</div>`) : '') +
+        (pages ? dsec('Home Pages', `<div class="hw-dlist hw-applist">${pages}</div>`) : '') +
         (saved ? dsec('Websites', `<div class="hw-dlist hw-applist">${saved}</div>`) : '') +
         (sug ? dsec('Suggested Websites', `<div class="hw-dlist hw-applist" data-hw-sugglist>${sug}</div>`) : '') +
-        dsec('Add a Website', `${siteForm(draft || {})}<button type="button" class="hw-wide solid" data-hw-siteadd>${icon('plus', 18)}Add to Home</button>`)
+        dsec('Add a Website', `${siteForm(draft || {})}<button type="button" class="hw-wide solid" data-hw-siteadd>${icon('plus', 18)}Add to ${place}</button>`) +
+        dsec('Your Files', `${files ? `<div class="hw-dlist hw-applist">${files}</div>` : ''}<button type="button" class="hw-wide" data-hw-fileadd>${icon('plus', 18)}Add from File…</button>`) +
+        (addons ? dsec('Add-ons', `<div class="hw-dlist">${addons}</div>`) : '') +
+        (header ? `<button type="button" class="hw-wide" data-hw-tabsreset>${hic('reset', 17)}Reset to Default</button>` : '')
       body._left = left
+      body.scrollTop = y
+      const list = body.querySelector('#hc-tabs')
+      if (list) HUB.sortable(list, { item: '.hc-trow', handle: '.hc-grip', scroller: body, onDrop: ids => HUB.setHeader(ids) })
+      const rn = body.querySelector('.hw-rename')
+      if (rn) { rn.focus(); rn.select() }
+    }
+    // A new website joins this place; the server names it, so find it by what is new.
+    const addSite = (site, done) => {
+      const had = new Set(HUB.sites().map(x => x.id))
+      sitePatch({ sites: { add: [header || !onMain() ? { ...site, onHome: false } : site] } }, () => {
+        const made = HUB.sites().find(x => !had.has(x.id))
+        if (header && made) HUB.setHeader([...HUB.headerItems(), made.id])
+        else if (!onMain() && made) pageApp(made.id, true)
+        hud(`${site.name} added to ${place}`)
+        done?.()
+        fill()
+      })
     }
     fill()
     showOverlay(el)
@@ -2830,7 +3147,25 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
       if (el.isConnected) fill()
     })
     el.addEventListener('submit', e => e.preventDefault())
+    el.addEventListener('focusout', e => {
+      if (!e.target.matches?.('.hw-rename')) return
+      const id = e.target.closest('.hc-trow').dataset.id
+      renaming = null
+      if (!e.target.dataset.cancel) HUB.renameHeader(id, e.target.value)
+      fill()
+    })
     el.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && e.target.matches?.('.hw-rename')) { e.preventDefault(); return e.target.blur() }
+      const grip = e.target.closest?.('.hc-grip')
+      if (grip && ['ArrowUp', 'ArrowDown'].includes(e.key)) {
+        e.preventDefault()
+        const ids = headerOrder(), at = ids.indexOf(grip.closest('.hc-trow').dataset.id), to = at + (e.key === 'ArrowUp' ? -1 : 1)
+        if (to < 0 || to >= ids.length) return
+        ids.splice(to, 0, ids.splice(at, 1)[0])
+        HUB.setHeader(ids)
+        fill()
+        return body.querySelector(`.hc-trow[data-id="${CSS.escape(ids[to])}"] .hc-grip`)?.focus()
+      }
       if (e.key !== 'Enter' || !e.target.closest?.('[data-hw-siteform] input')) return
       e.preventDefault()
       const ins = [...el.querySelectorAll('[data-hw-siteform] input')], i = ins.indexOf(e.target)
@@ -2844,38 +3179,144 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
       if (sw) return sw.setAttribute('aria-checked', String(sw.getAttribute('aria-checked') !== 'true'))
       const ed = e.target.closest('[data-hw-siteedit]')
       if (ed) return openSiteEditor(ed.dataset.hwSiteedit)
+      const rn = e.target.closest('[data-hw-rename]')
+      if (rn) { renaming = rn.dataset.hwRename; return fill() }
+      if (e.target.closest('[data-hw-fileadd]')) {
+        return void HUB.addFile().then(j => {
+          if (!j) return
+          if (header) HUB.setHeader([...HUB.headerItems(), j.site])
+          else addApp(j.site)
+          hud(`${HUB.siteOf(j.site)?.name || 'Your file'} added to ${place}`)
+          fill()
+        })
+      }
+      const fd = e.target.closest('[data-hw-filedel]')
+      if (fd) return void deleteFile(fd.dataset.hwFiledel).then(fill)
+      const addon = e.target.closest('[data-addon]')
+      if (addon) return void api('/api/hub/addons', { id: addon.dataset.addon, on: addon.getAttribute('aria-checked') !== 'true' }).then(() => location.reload(), err => hud(err.message))
+      if (e.target.closest('[data-hw-tabsreset]')) return void HUB.patch({ reset: ['tabs'] }).then(fill, err => hud(err.message))
       const sg = e.target.closest('[data-hw-sugg]')
       if (sg) {
         const x = body._left[Number(sg.dataset.hwSugg)]
         sg.disabled = true
-        return x && sitePatch({ sites: { add: [{ name: x.name, url: x.url }] } }, () => { hud(`${x.name} added to Home`); fill() })
+        return x && addSite({ name: x.name, url: x.url })
       }
       if (e.target.closest('[data-hw-siteadd]')) {
         const form = body.querySelector('[data-hw-siteform]'), v = form && readSiteForm(form)
         if (!v) return
         const add = { name: v.name, url: v.url, newTab: v.newTab }
         if (v.icon) add.icon = v.icon
-        return sitePatch({ sites: { add: [add] } }, () => {
-          hud(`${v.name} added to Home`)
+        return addSite(add, () => {
           // The sheet may have repainted while saving; clear the form that is on screen now.
+          draft = null
           const now = body.querySelector('[data-hw-siteform]')
           now?.querySelectorAll('input').forEach(i => (i.value = ''))
           now?.querySelector('[data-hw-newtab]')?.setAttribute('aria-checked', 'false')
-          fill()
         })
       }
       const b = e.target.closest('[data-hw-pick]')
       if (!b) return
-      const id = b.dataset.hwPick, g = HUB.groups().find(x => x.apps.includes(id))
-      if (g) moveOut(g.id, id, true)
-      else if (appList().includes(id)) setApps(appList().filter(x => x !== id))
-      else addApp(id)
+      const id = b.dataset.hwPick
+      if (header) {
+        const now = HUB.headerItems()
+        HUB.setHeader(now.includes(id) ? now.filter(x => x !== id) : [...now, id])
+      } else if (!onMain()) {
+        pageApp(id, !onNow().includes(id))
+      } else {
+        const g = HUB.groups().find(x => x.apps.includes(id))
+        if (g) moveOut(g.id, id, true)
+        else if (appList().includes(id)) setApps(appList().filter(x => x !== id))
+        else addApp(id)
+      }
       fill()
       body.querySelector(`[data-hw-pick="${CSS.escape(id)}"]`)?.focus()
     })
   }
+  window.HUB_OPEN_PICKER = openPicker
+  // The one sheet, for anything else on the page that needs it. Connections open theirs here.
+  window.HUB_SHEET = ({ title, onClose }) => {
+    const el = document.createElement('div')
+    el.className = 'scrim hw-scrim'
+    el.innerHTML = `<div class="hw-sheet" role="dialog" aria-modal="true" aria-label="${esc(title)}"><div class="hw-sh-top"><div class="hw-grab"></div><div class="hw-sh-head"><h2>${esc(title)}</h2><button type="button" class="hw-done" data-hw-close>Done</button></div></div><div class="hw-sh-body"></div><div class="hw-sh-foot"></div></div>`
+    el.addEventListener('click', e => { if (e.target === el || e.target.closest('[data-hw-close]')) closeOverlay() })
+    showOverlay(el, { onClose })
+    return { el, body: el.querySelector('.hw-sh-body'), foot: el.querySelector('.hw-sh-foot'), close: () => closeOverlay() }
+  }
 
-  // Edit a website app: name, address, icon, new tab; or delete it.
+  async function deleteFile(id) {
+    const f = window.HUB?.files().find(x => x.id === id)
+    if (!f) return
+    const ok = await alertBox({ title: `Delete ${f.name}?`, message: 'It comes off Home, your pages and the header.', ok: 'Delete', danger: true })
+    if (!ok) return
+    try { await window.HUB.removeFile(id); hud(`${f.name} deleted`) } catch (e) { hud(e.message) }
+  }
+
+  // Home always stays first; the pages after it can be added, named, reordered and removed.
+  function openPagesSheet() {
+    const HUB = window.HUB
+    if (!HUB) return
+    const el = document.createElement('div')
+    el.className = 'scrim hw-scrim'
+    el.innerHTML = `<div class="hw-sheet" role="dialog" aria-modal="true" aria-label="Home Pages"><div class="hw-sh-top"><div class="hw-grab"></div><div class="hw-sh-head"><h2>Home Pages</h2><button type="button" class="hw-done" data-hw-close>Done</button></div></div><div class="hw-sh-body"></div></div>`
+    const body = el.querySelector('.hw-sh-body')
+    let renaming = null
+    const row = p => `<div class="hw-row hw-hrow hc-trow" data-id="${esc(p.id)}"><span class="hc-grip" tabindex="0" role="button" title="Drag to reorder" aria-label="Reorder ${esc(p.name)}">${hic('grip', 18)}</span>${renaming === p.id ? `<input class="hw-rename" value="${esc(p.name)}" maxlength="24" aria-label="Name for ${esc(p.name)}" autocomplete="off">` : `<span class="t ell">${esc(p.name)}</span>`}<button type="button" class="hw-ib" data-hw-pagename="${esc(p.id)}" aria-label="Rename ${esc(p.name)}" title="Rename">${icon('pencil', 16)}</button><button type="button" class="hw-ib" data-hw-pagedel="${esc(p.id)}" aria-label="Remove ${esc(p.name)}" title="Remove">${icon('trash', 16)}</button></div>`
+    const fill = () => {
+      if (body.querySelector('.hc-sorting') || (renaming && body.querySelector('.hw-rename'))) return
+      const list = HUB.pages()
+      body.innerHTML = dsec('Pages', `<div class="hw-dlist hw-applist"><div class="hw-row hw-hrow"><span class="t ell">Home</span></div>${list.length ? `<div id="hw-pagelist">${list.map(row).join('')}</div>` : ''}</div>`) + `<button type="button" class="hw-wide solid" data-hw-pageadd>${icon('plus', 18)}Add Page</button>`
+      const sortList = body.querySelector('#hw-pagelist')
+      if (sortList) HUB.sortable(sortList, { item: '.hc-trow', handle: '.hc-grip', scroller: body, onDrop: ids => send({ pages: { order: ids } }) })
+      const rn = body.querySelector('.hw-rename')
+      if (rn) { rn.focus(); rn.select() }
+    }
+    const send = async patchBody => { try { await HUB.patch(patchBody) } catch (e) { hud(e.message) } fill() }
+    fill()
+    showOverlay(el)
+    S.detail = { refresh: fill }
+    el.addEventListener('submit', e => e.preventDefault())
+    el.addEventListener('focusout', e => {
+      if (!e.target.matches?.('.hw-rename')) return
+      const id = e.target.closest('.hc-trow').dataset.id, name = e.target.value.trim()
+      renaming = null
+      if (!e.target.dataset.cancel && name) send({ pages: { rename: { id, name } } })
+      else fill()
+    })
+    el.addEventListener('keydown', e => {
+      if (e.target.matches?.('.hw-rename')) {
+        if (e.key === 'Enter') { e.preventDefault(); e.target.blur() }
+        if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); e.target.dataset.cancel = '1'; e.target.blur() }
+        return
+      }
+      const grip = e.target.closest?.('.hc-grip')
+      if (!grip || !['ArrowUp', 'ArrowDown'].includes(e.key)) return
+      e.preventDefault()
+      const ids = HUB.pages().map(p => p.id), at = ids.indexOf(grip.closest('.hc-trow').dataset.id), to = at + (e.key === 'ArrowUp' ? -1 : 1)
+      if (to < 0 || to >= ids.length) return
+      ids.splice(to, 0, ids.splice(at, 1)[0])
+      send({ pages: { order: ids } }).then(() => body.querySelector(`.hc-trow[data-id="${CSS.escape(ids[to])}"] .hc-grip`)?.focus())
+    })
+    el.addEventListener('click', async e => {
+      if (e.target === el || e.target.closest('[data-hw-close]')) return closeOverlay()
+      if (e.target.closest('[data-hw-pageadd]')) {
+        const had = new Set(HUB.pages().map(p => p.id))
+        try { await HUB.patch({ pages: { add: { name: `Page ${had.size + 1}` } } }) } catch (err) { return hud(err.message) }
+        const made = HUB.pages().find(p => !had.has(p.id))
+        if (made) { renaming = made.id; await openPage(made.id) }
+        return fill()
+      }
+      const rn = e.target.closest('[data-hw-pagename]')
+      if (rn) { renaming = rn.dataset.hwPagename; return fill() }
+      const del = e.target.closest('[data-hw-pagedel]')
+      if (del) {
+        const p = HUB.pageOf(del.dataset.hwPagedel)
+        if (!p) return
+        const ok = await alertBox({ title: `Remove ${p.name}?`, message: 'The page and everything placed on it come off. Undo in Edit Style brings it back.', ok: 'Remove', danger: true })
+        if (ok) send({ pages: { remove: [p.id] } })
+      }
+    })
+  }
+
   function openSiteEditor(id) {
     const HUB = window.HUB, site = HUB?.siteOf(id)
     if (!site) return
@@ -2970,16 +3411,19 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     saveSoon(vk)
     paint(true)
   }
+  const editItem = () => ({ label: S.editing ? 'Done Editing' : 'Edit Home', icon: S.editing ? icon('check', 16) : icon('pencil', 16), run: toggleEdit })
   function contextMenu(target, x, y) {
     if (!showing() || !S.root?.isConnected || !target.closest?.('#main')) return false
     if (S.drag?.on || appDrag?.on) return true
     const HUB = window.HUB
-    const app = target.closest('.hw-app:not(.add)')
+    // The margin around an icon belongs to that app.
+    const app = target.closest('.hw-app:not(.add)') || target.closest('.hw-cell.a')?.querySelector('.hw-app:not(.add)')
     if (app && HUB) {
       const id = app.dataset.hwApp, label = HUB.appMeta(id).label
       const site = HUB.siteOf?.(id), g = HUB.groupOf?.(id)
       if (g) {
         showMenu(x, y, g.name, [
+          editItem(), '-',
           { label: 'Open', icon: icon('open', 16), run: () => openGroup(id) },
           { label: 'Rename…', icon: icon('pencil', 16), run: () => openGroup(id, true) },
           { label: 'Ungroup', icon: icon('grid', 16), run: () => groupPatch({ groups: { remove: [id] } }, () => hud(`${g.name} ungrouped`)) },
@@ -2989,15 +3433,16 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
         ])
         return true
       }
-      const items = [{ label: id === 'chat' ? 'Open Chat' : `Open ${label}`, icon: icon('open', 16), run: () => openApp(id) }]
-      if (site) items.push(
+      const items = [editItem(), '-', { label: id === 'chat' ? 'Open Chat' : `Open ${label}`, icon: icon('open', 16), run: () => openApp(id) }]
+      if (site && !site.file) items.push(
         { label: 'Open in New Tab', icon: hic('external', 16), run: () => window.open(site.url, '_blank', 'noopener,noreferrer') },
         { label: 'Always Open in New Tab', icon: site.newTab ? icon('check', 16) : '', run: () => sitePatch({ sites: { update: [{ id, newTab: !site.newTab }] } }, () => hud(site.newTab ? `${label} opens in a preview` : `${label} opens in a new tab`)) },
         { label: 'Edit Website…', icon: icon('pencil', 16), run: () => openSiteEditor(id) },
       )
       if (S.editing) items.push({ label: 'Move Left', icon: '', run: () => moveApp(id, -1) }, { label: 'Move Right', icon: '', run: () => moveApp(id, 1) })
       items.push('-', { label: 'Remove from Home', danger: true, icon: icon('trash', 16), run: () => removeApp(id) })
-      if (site) items.push({ label: 'Delete Website…', danger: true, icon: icon('trash', 16), run: () => deleteSite(id) })
+      if (site?.file) items.push({ label: 'Delete File…', danger: true, icon: icon('trash', 16), run: () => deleteFile(site.file) })
+      else if (site) items.push({ label: 'Delete Website…', danger: true, icon: icon('trash', 16), run: () => deleteSite(id) })
       showMenu(x, y, label, items)
       return true
     }
@@ -3015,7 +3460,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     }
     if (cell) {
       const key = cell.dataset.hwKey, it = top, w = it && widgetMap().get(it.id)
-      const items = []
+      const items = [editItem(), '-']
       if (w) {
         const size = sizeOf(it, w)
         if (w.sizes.length > 1) items.push(...w.sizes.map(sz => ({ label: SIZE_NAME[sz], icon: sz === size ? icon('check', 16) : '', run: () => setSize(key, sz) })), '-')
@@ -3030,9 +3475,9 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     const items = [
       { label: 'Add Widget…', icon: icon('plus', 16), run: openGallery },
       ...(HUB ? [{ label: 'Add App…', icon: icon('grid', 16), run: openAppPicker }] : []),
-      { label: S.editing ? 'Done Editing' : 'Edit Home', icon: S.editing ? icon('check', 16) : icon('pencil', 16), run: toggleEdit },
+      editItem(),
     ]
-    if (HUB) items.push('-', { label: 'Edit Style…', icon: hic('palette', 16), run: () => HUB.openStyle() }, { label: 'Change Wallpaper…', icon: hic('image', 16), run: () => HUB.openStyle('wallpaper') }, { label: 'Edit Tabs…', icon: hic('tabs', 16), run: () => HUB.openTabs() })
+    if (HUB) items.push('-', { label: 'Edit Style…', icon: hic('palette', 16), run: () => HUB.openStyle() }, { label: 'Change Wallpaper…', icon: hic('image', 16), run: () => HUB.openStyle('wallpaper') }, { label: 'Edit Tabs…', icon: hic('tabs', 16), run: () => HUB.openTabs() }, ...(window.HUB_CONNECTIONS ? [{ label: 'Connections…', icon: hic('plug', 16), run: () => window.HUB_CONNECTIONS() }] : []))
     items.push('-', { label: 'Reset Layout…', danger: true, icon: hic('reset', 16), run: resetLayout })
     showMenu(x, y, 'Home', items)
     return true
@@ -3042,53 +3487,60 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
   // the hub's chat agent) show up here without a reload.
   window.HUB_CLOSE_OVERLAYS = () => closeOverlay(true)
   window.HUB?.on((s, changed) => {
-    if (['apps', 'sites', 'groups'].some(k => changed.includes(k))) { S.apps = null; paintApps(); S.detail?.refresh() }
-    if (!changed.includes('widgets') || !S.layout || S.editing || S.drag || S.dirty.desktop || S.dirty.mobile || S.saving.desktop || S.saving.mobile) return
+    if (['apps', 'sites', 'groups', 'tabs', 'files'].some(k => changed.includes(k))) { S.apps = null; paintApps(); S.detail?.refresh() }
+    if (changed.includes('pages') && S.layouts && !(S.layoutAt && Number(s.at) < S.layoutAt)) {
+      const was = S.page
+      takePages(s.pages || [])
+      if (was !== S.page) S.sig = ''
+      scheduleRepaint()
+      S.detail?.refresh()
+      if (was !== S.page && typeof chrome === 'function') { try { chrome() } catch {} }
+    }
+    if (!changed.includes('widgets') || !S.layout || S.editing || S.drag || VIEWS.some(k => S.dirty[k] || S.saving[k])) return
     if (S.layoutAt && Number(s.at) < S.layoutAt) return
     let moved = false
-    for (const k of ['desktop', 'mobile']) if (Array.isArray(s.widgets?.[k]) && JSON.stringify(s.widgets[k]) !== JSON.stringify(S.layout[k])) { S.layout[k] = s.widgets[k]; moved = true }
-    if (moved) { scheduleRepaint(); loadSources(neededSources()) }
+    const main = S.layouts?.main || S.layout
+    for (const k of VIEWS) if (Array.isArray(s.widgets?.[k]) && JSON.stringify(s.widgets[k]) !== JSON.stringify(main[k])) { main[k] = s.widgets[k]; moved = true }
+    if (moved && onMain()) { scheduleRepaint(); loadSources(neededSources()) }
   })
 
   /* ---------- actions ---------- */
 
   function setMode(m) {
-    if (S.mode === m && !PHONE.matches) return
-    // Nothing outside the widget area may move: keep the page height until the new layout is in,
-    // hold the scroll position, and fade the grid in (no motion under reduced motion).
-    const y = scrollY, stage = S.root?.querySelector('.hw-stage'), grid = S.root?.querySelector('[data-hw-grid]')
-    if (stage) stage.style.minHeight = `${stage.offsetHeight}px`
+    if (S.mode === m || realDevice()) return
     S.mode = m
     save('hub-home-mode', m)
     S.sig = ''
+    scrollTo(0, 0)
     paint()
-    scrollTo(0, y)
-    if (grid?.animate && !REDUCED.matches) grid.animate([{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: 240, easing: EASE })
-    clearTimeout(S.holdT)
-    S.holdT = setTimeout(() => { if (stage) stage.style.minHeight = ''; scrollTo(0, Math.min(y, Math.max(0, document.documentElement.scrollHeight - innerHeight))) }, 280)
+    const dev = S.root?.querySelector('.hw-device'), grid = S.root?.querySelector('[data-hw-grid]')
+    if (S.framed) {
+      dev.querySelector('.hw-frame').scrollTop = 0
+      if (dev.animate && !REDUCED.matches) dev.animate([{ opacity: 0, transform: `scale(${S.frameK * 0.96})` }, { opacity: 1, transform: `scale(${S.frameK})` }], { duration: 280, easing: EASE })
+    } else if (grid?.animate && !REDUCED.matches) grid.animate([{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: 240, easing: EASE })
     loadSources(neededSources())
   }
   function toggleEdit() {
     S.editing = !S.editing
     closeOverlay(true)
-    if (!S.editing) { for (const vk of ['desktop', 'mobile']) { clearTimeout(S.timers[vk]); flush(vk) } hud('Layout saved') }
+    if (!S.editing) { for (const vk of VIEWS) { clearTimeout(S.timers[vk]); flush(vk) } hud('Layout saved') }
     paint(true)
     S.sig = ''
     paint()
   }
   async function resetLayout() {
-    const vk = viewKey(), name = vk === 'mobile' ? 'phone' : 'desktop'
+    const vk = viewKey(), name = { desktop: 'desktop', ipad: 'iPad', mobile: 'phone' }[vk]
     const ok = typeof alertBox === 'function'
-      ? await alertBox({ title: `Reset the ${name} layout?`, message: 'Widgets go back to the new default arrangement. The other layout stays as it is.', ok: 'Reset', danger: true })
+      ? await alertBox({ title: `Reset the ${name} layout?`, message: onMain() ? 'Widgets go back to the new default arrangement. The other layout stays as it is.' : 'Everything comes off this page in this layout. The other layouts stay as they are.', ok: 'Reset', danger: true })
       : confirm(`Reset the ${name} layout?`)
     if (!ok) return
     try {
-      const out = await api('/api/home/layout', { reset: vk })
-      S.layout[vk] = out[vk]
+      const out = await api('/api/home/layout', onMain() ? { reset: vk } : { page: S.page, reset: vk })
+      S.layout[vk] = onMain() ? out[vk] : withKeys(out.pages?.find(p => p.id === S.page)?.widgets?.[vk] || [])
       S.dirty[vk] = false
       S.layoutErr = ''
     } catch (e) {
-      S.layout[vk] = seedLayout(vk)
+      S.layout[vk] = onMain() ? seedLayout(vk) : []
       S.layoutErr = isNet(e) ? 'reconnecting' : e.message
       saveSoon(vk)
     }
@@ -3110,8 +3562,10 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
       const act = t.closest('[data-hw-act]')
       if (act) {
         const a = act.dataset.hwAct
-        return a === 'edit' ? toggleEdit() : a === 'add' ? openGallery() : a === 'style' ? window.HUB?.openStyle() : a === 'tabs' ? window.HUB?.openTabs() : resetLayout()
+        return a === 'edit' ? toggleEdit() : a === 'add' ? openGallery() : a === 'style' ? window.HUB?.openStyle() : a === 'tabs' ? window.HUB?.openTabs() : a === 'pages' ? openPagesSheet() : resetLayout()
       }
+      const pg = t.closest('[data-hw-page]')
+      if (pg) return void openPage(pg.dataset.hwPage)
       const adel = t.closest('[data-hw-appdel]')
       if (adel) return removeApp(adel.dataset.hwAppdel)
       const ao = t.closest('[data-hw-appopen]')
@@ -3128,6 +3582,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
       if (retry) { e.stopPropagation(); return void loadSource(retry.dataset.hwRetry, true) }
       const op = t.closest('[data-hw-open]')
       if (op) { e.stopPropagation(); return setEnv(op.dataset.hwOpen) }
+      if (t.closest('[data-connect]')) return
       if (cell && !S.editing && t.closest('.hw-card')) openDetail(t.closest('[data-hw-wkey]')?.dataset.hwWkey || cell.dataset.hwKey)
     })
     root.addEventListener('keydown', e => {
@@ -3138,15 +3593,21 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
       const card = e.target.closest?.('.hw-card.live')
       if (card && e.target === card) { e.preventDefault(); openDetail(card.closest('[data-hw-wkey]').dataset.hwWkey) }
     })
+    root.addEventListener('pointerdown', holdStart)
     root.addEventListener('pointerdown', dragStart)
     root.addEventListener('pointerdown', appDown)
     root.addEventListener('scroll', onStackScroll, true)
-    root.addEventListener('contextmenu', e => { if (S.editing) e.preventDefault() })
+    root.addEventListener('contextmenu', e => {
+      // A held finger means edit, never the phone's own menu.
+      if (e.pointerType === 'touch' && e.target.closest('.hw-cell')) { e.preventDefault(); e.stopPropagation(); return }
+      if (S.editing) e.preventDefault()
+    })
     root.addEventListener('dragstart', e => { if (S.editing) e.preventDefault() })
   }
 
   document.addEventListener('keydown', e => {
     if (!S.overlay) return
+    if (e.key === 'Escape' && e.target.matches?.('.hw-rename')) { e.preventDefault(); e.stopPropagation(); e.target.dataset.cancel = '1'; return e.target.blur() }
     if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); return closeOverlay() }
     if (e.key === 'Tab') {
       const f = [...S.overlay.el.querySelectorAll('button, [href], [tabindex]:not([tabindex="-1"])')].filter(x => !x.disabled && x.offsetParent !== null)
@@ -3157,7 +3618,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     }
   }, true)
 
-  PHONE.addEventListener?.('change', () => { if (S.root?.isConnected) { S.sig = ''; paint(); loadSources(neededSources()) } })
+  for (const q of [PHONE, TABLET]) q.addEventListener?.('change', () => { if (S.root?.isConnected) { S.sig = ''; paint(); loadSources(neededSources()) } })
 
   /* ---------- tab plumbing ---------- */
 
@@ -3172,13 +3633,15 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     // Second hands and seconds digits tick every second, only while one is on screen.
     setInterval(() => { if (showing() && !document.hidden && !S.drag?.on && !appDrag?.on && S.root?.querySelector('[data-hw-sec], [data-hw-hand="s"]')) tickClock() }, 1000)
     document.addEventListener('visibilitychange', () => { if (!document.hidden && showing() && Date.now() - S.lastLoad > 30_000) load() })
+    // A service was just connected or disconnected from a sheet: the cards catch up now.
+    document.addEventListener('hub-connection', () => { if (showing()) load(true) })
     document.fonts?.ready.then(() => fitAll())
   }
 
   async function load(force) {
     startTimers()
     S.lastLoad = Date.now()
-    for (const vk of ['desktop', 'mobile']) if (S.dirty[vk]) flush(vk)
+    for (const vk of VIEWS) if (S.dirty[vk]) flush(vk)
     await loadLayout()
     scheduleRepaint()
     await loadSources(neededSources(), force)

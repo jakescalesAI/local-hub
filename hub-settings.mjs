@@ -16,7 +16,8 @@ import crypto from 'node:crypto'
 import { hubConfig, enabledTabs, addonOn, activeTheme, baseTheme } from './config.mjs'
 
 export const BUILTIN_TABS = ['home', 'laptop', 'server', 'drives', 'ai', 'cloud', 'calendar', 'stripe']
-const NOT_TABS = new Set(['home', 'chat', 'custom', 'setup', 'launcher']) // files in tabs/ that are not plug-in tabs
+const NOT_TABS = new Set(['home', 'chat', 'custom', 'setup', 'launcher', 'browser']) // files in tabs/ that are not plug-in tabs
+const QUIET_TABS = ['connections'] // reached from Settings; stays out of the header until someone adds it
 export const SIZES = ['s', 'm', 'l']
 const MAX_ITEMS = 60
 const MAX_BODY = 256 * 1024
@@ -28,6 +29,16 @@ const MAX_GROUPS = 20
 const MAX_IN_GROUP = 24
 const MAX_STACK = 8
 const MAX_APP_PLACES = 100
+const MAX_PAGES = 40
+const MAX_FILES = 60
+const MAX_FILE = 512 * 1024
+const MAX_IMPORT = 40 * 2 ** 20
+const EXPORT_FORMAT = 'local-hub-settings'
+export const PAGE_ID_RE = /^page-[a-z0-9-]{1,32}$/
+export const FILE_ID_RE = /^file-[a-z0-9]{6,24}$/
+// What a custom file may do: run its own code and show its own page, in an origin of its own.
+// It can reach nothing: not the hub's API, not the network, not the page around it.
+const FILE_CSP = "sandbox allow-scripts; default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; font-src data:; media-src data:; form-action 'none'; base-uri 'none'"
 const APP_REF_RE = /^[a-z0-9][a-z0-9-]{0,63}$/
 
 export const WIDGET_IDS = [
@@ -63,6 +74,8 @@ export const STYLE = {
   shadow: { enum: ['none', 'soft', 'deep'], default: 'soft' },
   tabBar: { enum: ['solid', 'glass'], default: 'solid' },
   effect: { enum: ['none', 'grain', 'glow'], default: 'none' },
+  font: { enum: ['system', 'rounded', 'serif', 'mono'], default: 'system' },
+  density: { enum: ['compact', 'regular', 'roomy'], default: 'regular' },
 }
 
 // The default look lives in themes/default.json: style defaults, these wallpapers, the icon.
@@ -87,6 +100,18 @@ const CUSTOM_ID_RE = /^custom-[a-z0-9-]{1,24}$/
 const UPLOAD_ID_RE = /^upload-[a-z0-9]{6,24}$/
 const UPLOAD_FILE_RE = /^(upload-[a-z0-9]{6,24})\.(png|jpg|webp|gif|avif)$/
 export const SITE_ID_RE = /^site-[a-z0-9-]{1,32}$/
+const pageIds = s => (s.pages || []).map(p => p.id)
+const stripMeta = s => { const { at, ...rest } = s; return structuredClone(rest) }
+const cleanFileName = v => String(v ?? '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 40) || 'File'
+const cleanSizes = l => { const out = ['s', 'm', 'l'].filter(x => Array.isArray(l) && l.includes(x)); return out.length ? out : ['s', 'm', 'l'] }
+const blankViews = () => Object.fromEntries(VIEWS.map(vk => [vk, []]))
+// Take a widget off a layout, out of stacks too. A stack left with one widget becomes that widget.
+const dropWidget = (l, id) => l.flatMap(it => {
+  if (it.id === id) return []
+  if (it.id !== 'stack' || !it.stack?.some(x => x.id === id)) return [it]
+  const stack = it.stack.filter(x => x.id !== id)
+  return stack.length > 1 ? [{ ...it, stack }] : stack
+})
 export const GROUP_ID_RE = /^group-[a-z0-9-]{1,32}$/
 
 // Website apps: any site you want on Home. One click adds a suggestion (Coolify comes from cloud.mjs).
@@ -119,6 +144,9 @@ const groupIds = s => (s.groups || []).map(x => x.id)
 
 /* ---------- defaults ---------- */
 
+// Each view keeps its own layout. iPad starts as a copy of Desktop, reflowed to fit.
+const VIEWS = ['desktop', 'ipad', 'mobile']
+
 const WIDGET_DEFAULTS = {
   desktop: [['claude-usage', 'm'], ['clock', 's'], ['next-event', 's'], ['tokens', 'm'], ['coolify', 's'], ['services', 's'], ['today', 'm'], ['stripe-balance', 's'], ['openrouter', 's'], ['server-health', 'm'], ['deepseek', 's'], ['icloud', 's'], ['drives', 'm'], ['backup-drive', 's'], ['laptop-health', 's'], ['servers', 'l'], ['revenue', 'm'], ['clients', 'm']],
   mobile: [['claude-usage', 's'], ['clock', 's'], ['next-event', 's'], ['coolify', 's'], ['today', 'm'], ['tokens', 'm'], ['openrouter', 's'], ['deepseek', 's'], ['stripe-balance', 's'], ['icloud', 's'], ['server-health', 'm'], ['drives', 'm'], ['services', 's'], ['backup-drive', 's'], ['servers', 'm']],
@@ -130,18 +158,21 @@ const WIDGET_PLAIN = {
   mobile: [['clock', 's'], ['date', 's'], ['world-clock', 'm']],
 }
 const startLayout = name => {
-  const on = WIDGET_DEFAULTS[name].filter(([id]) => !WIDGET_NEEDS[id] || addonOn(WIDGET_NEEDS[id]))
-  return on.length >= 4 ? on : WIDGET_PLAIN[name]
+  const from = name === 'ipad' ? 'desktop' : name
+  const on = WIDGET_DEFAULTS[from].filter(([id]) => !WIDGET_NEEDS[id] || addonOn(WIDGET_NEEDS[id]))
+  return on.length >= 4 ? on : WIDGET_PLAIN[from]
 }
 export const seedLayout = name => startLayout(name).map(([id, size], i) => ({ key: `${name[0]}${i + 1}-${id}`.slice(0, 40), id, size }))
 const defaultStyle = () => ({ ...Object.fromEntries(Object.entries(STYLE).map(([k, v]) => [k, v.default])), ...activeTheme().style })
 const defaults = here => ({
   version: 1,
-  tabs: { order: allTabs(here), hidden: [] },
+  tabs: { order: allTabs(here), hidden: QUIET_TABS.filter(t => allTabs(here).includes(t)), names: {} },
   apps: allApps(here),
   sites: [],
   groups: [],
-  widgets: { desktop: seedLayout('desktop'), mobile: seedLayout('mobile') },
+  widgets: Object.fromEntries(VIEWS.map(vk => [vk, seedLayout(vk)])),
+  pages: [],
+  files: [],
   style: defaultStyle(),
   wallpaper: { current: activeTheme().wallpaper || 'none', custom: [], uploads: [] },
 })
@@ -178,7 +209,7 @@ function checker() {
 }
 
 // x-<name> is your own widget, from a tab file (HUB-GUIDE.md, "Extending the hub").
-const widgetIdOk = id => typeof id === 'string' && (WIDGET_IDS.includes(id) || FAMILY_RE.test(id) || /^x-[a-z0-9-]{1,40}$/.test(id))
+const widgetIdOk = id => typeof id === 'string' && (WIDGET_IDS.includes(id) || FAMILY_RE.test(id) || /^x-[a-z0-9-]{1,40}$/.test(id) || FILE_ID_RE.test(id))
 const itemIdOk = it => it?.id === 'stack' || it?.id === 'app' || widgetIdOk(it?.id)
 
 function cleanOpts(c, p, id, opts) {
@@ -252,12 +283,13 @@ function cleanCustom(c, p, w) {
 
 // A website app: { id: site-<name>, name, url, icon? (an image URL), newTab }.
 function cleanSite(c, p, w, { needId = true, partial = false } = {}) {
-  const keys = partial || needId ? ['id', 'name', 'url', 'icon', 'newTab'] : ['id', 'name', 'url', 'icon', 'newTab', 'onHome']
+  const keys = partial || needId ? ['id', 'name', 'url', 'file', 'icon', 'newTab'] : ['id', 'name', 'url', 'file', 'icon', 'newTab', 'onHome']
   if (!c.obj(p, w, keys)) return null
   const out = {}
   if (w.id !== undefined || needId) { if (typeof w.id !== 'string' || !SITE_ID_RE.test(w.id)) c.fail(`${p}.id`, 'must look like site-<1-32 lowercase letters, digits or ->'); else out.id = w.id }
   if (w.name !== undefined || !partial) { const n = c.text(`${p}.name`, w.name, 40); if (n) out.name = n }
-  if (w.url !== undefined || !partial) { const u = webUrl(w.url); if (!u) c.fail(`${p}.url`, 'must be an http or https address of up to 500 characters'); else out.url = u }
+  if (w.file !== undefined) { if (typeof w.file !== 'string' || !FILE_ID_RE.test(w.file)) c.fail(`${p}.file`, 'must be a custom file id'); else out.file = w.file }
+  if (w.url !== undefined || (!partial && w.file === undefined)) { const u = webUrl(w.url); if (!u) c.fail(`${p}.url`, 'must be an http or https address of up to 500 characters'); else out.url = u }
   if (w.icon === null && partial) out.icon = null
   else if (w.icon !== undefined) { const u = webUrl(w.icon); if (!u) c.fail(`${p}.icon`, 'must be an http or https image address (or null to use the site icon)'); else out.icon = u }
   if (w.newTab !== undefined) { const b = c.bool(`${p}.newTab`, w.newTab); if (b !== undefined) out.newTab = b }
@@ -285,20 +317,61 @@ export function applyPatch(cur, body, here) {
   const next = structuredClone(cur)
   const TABS = allTabs(here)
   next.sites = next.sites || []
-  if (!c.obj('body', body, ['tabs', 'apps', 'sites', 'groups', 'widgets', 'style', 'wallpaper', 'reset'])) c.done()
-  if (!Object.keys(body).length) c.fail('body', 'is empty: send at least one of tabs, apps, sites, groups, widgets, style, wallpaper, reset')
+  next.pages = next.pages || []
+  if (!c.obj('body', body, ['tabs', 'apps', 'sites', 'groups', 'pages', 'widgets', 'style', 'wallpaper', 'reset'])) c.done()
+  if (!Object.keys(body).length) c.fail('body', 'is empty: send at least one of tabs, apps, sites, groups, pages, widgets, style, wallpaper, reset')
 
   if (body.reset !== undefined) {
-    const parts = ['tabs', 'apps', 'widgets', 'style', 'wallpaper', 'all']
-    const r = c.ids('reset', body.reset, parts, 6)
+    const parts = ['tabs', 'apps', 'widgets', 'style', 'wallpaper', 'pages', 'all']
+    const r = c.ids('reset', body.reset, parts, 7)
     const d = defaults(here)
-    for (const k of r || []) for (const part of k === 'all' ? parts.slice(0, 5) : [k]) next[part] = part === 'wallpaper' ? { ...d.wallpaper, custom: next.wallpaper.custom, uploads: next.wallpaper.uploads } : d[part]
+    for (const k of r || []) for (const part of k === 'all' ? parts.slice(0, 6) : [k]) next[part] = part === 'wallpaper' ? { ...d.wallpaper, custom: next.wallpaper.custom, uploads: next.wallpaper.uploads } : d[part]
     if (r?.includes('apps') || r?.includes('all')) next.groups = []
   }
 
-  if (body.tabs !== undefined && c.obj('tabs', body.tabs, ['order', 'hidden', 'hide', 'show'])) {
-    const t = body.tabs
-    if (t.order !== undefined && c.ids('tabs.order', t.order, TABS)) next.tabs.order = [...t.order, ...TABS.filter(x => !t.order.includes(x))]
+  // Extra Home pages: { id: page-<name>, name, widgets: { desktop, ipad, mobile } }. Home itself stays in `widgets`.
+  if (body.pages !== undefined && c.obj('pages', body.pages, ['list', 'add', 'rename', 'remove', 'order', 'layout'])) {
+    const g = body.pages
+    const views = (p, w) => Object.fromEntries(VIEWS.map(vk => [vk, (w?.[vk] === undefined ? [] : cleanLayout(c, `${p}.${vk}`, w[vk])) || []]))
+    const pageId = (p, id) => { if (typeof id !== 'string' || !PAGE_ID_RE.test(id)) { c.fail(p, 'must look like page-<1-32 lowercase letters, digits or ->'); return null } return id }
+    if (g.list !== undefined && c.list('pages.list', g.list, MAX_PAGES)) {
+      next.pages = g.list.map((x, i) => {
+        const p = `pages.list[${i}]`
+        if (!c.obj(p, x, ['id', 'name', 'widgets'])) return null
+        const id = pageId(`${p}.id`, x.id), name = c.text(`${p}.name`, x.name, 24)
+        return id && name ? { id, name, widgets: views(p, x.widgets) } : null
+      }).filter(Boolean)
+      if (new Set(pageIds(next)).size !== next.pages.length) c.fail('pages.list', 'repeats a page id')
+    }
+    if (g.add !== undefined && c.obj('pages.add', g.add, ['id', 'name'])) {
+      const name = c.text('pages.add.name', g.add.name, 24)
+      const id = g.add.id === undefined ? `page-${crypto.randomBytes(4).toString('hex')}` : pageId('pages.add.id', g.add.id)
+      if (next.pages.length >= MAX_PAGES) c.fail('pages.add', `there are already ${MAX_PAGES} pages`)
+      else if (id && pageIds(next).includes(id)) c.fail('pages.add.id', `${id} already exists`)
+      else if (id && name) next.pages.push({ id, name, widgets: blankViews() })
+    }
+    if (g.rename !== undefined && c.obj('pages.rename', g.rename, ['id', 'name'])) {
+      const pg = next.pages.find(x => x.id === g.rename.id), name = c.text('pages.rename.name', g.rename.name, 24)
+      if (!pg) c.fail('pages.rename.id', 'is not a page')
+      else if (name) pg.name = name
+    }
+    if (g.remove !== undefined && c.ids('pages.remove', g.remove, pageIds(next), MAX_PAGES)) next.pages = next.pages.filter(x => !g.remove.includes(x.id))
+    if (g.order !== undefined && c.ids('pages.order', g.order, pageIds(next), MAX_PAGES)) next.pages = [...g.order.map(id => next.pages.find(x => x.id === id)), ...next.pages.filter(x => !g.order.includes(x.id))]
+    if (g.layout !== undefined && c.obj('pages.layout', g.layout, ['id', ...VIEWS])) {
+      const pg = next.pages.find(x => x.id === g.layout.id)
+      if (!pg) c.fail('pages.layout.id', 'is not a page')
+      else for (const vk of VIEWS) if (g.layout[vk] !== undefined) { const l = cleanLayout(c, `pages.layout.${vk}`, g.layout[vk]); if (l) pg.widgets[vk] = l }
+    }
+  }
+
+  if (body.tabs !== undefined && c.obj('tabs', body.tabs, ['order', 'hidden', 'hide', 'show', 'names'])) {
+    const t = body.tabs, ITEMS = [...TABS, 'chat', ...siteIds(next), ...pageIds(next)]
+    if (t.order !== undefined && c.ids('tabs.order', t.order, ITEMS, 80)) next.tabs.order = [...t.order, ...TABS.filter(x => !t.order.includes(x))]
+    if (t.names !== undefined && c.obj('tabs.names', t.names, ITEMS)) {
+      const names = {}
+      for (const [id, v] of Object.entries(t.names)) { const n = c.text(`tabs.names.${id}`, v, 24); if (n) names[id] = n }
+      next.tabs.names = names
+    }
     if (t.hidden !== undefined && c.ids('tabs.hidden', t.hidden, TABS)) next.tabs.hidden = [...t.hidden]
     if (t.hide !== undefined && c.ids('tabs.hide', t.hide, TABS)) next.tabs.hidden = [...new Set([...next.tabs.hidden, ...t.hide])]
     if (t.show !== undefined && c.ids('tabs.show', t.show, TABS)) next.tabs.hidden = next.tabs.hidden.filter(x => !t.show.includes(x))
@@ -391,6 +464,12 @@ export function applyPatch(cur, body, here) {
   }
   const APPS = [...allApps(here), ...siteIds(next), ...groupIds(next)]
 
+  if (body.sites !== undefined) {
+    const gone = id => id.startsWith('site-') && !next.sites.some(x => x.id === id)
+    next.tabs.order = next.tabs.order.filter(x => !gone(x))
+    next.tabs.names = Object.fromEntries(Object.entries(next.tabs.names || {}).filter(([id]) => !gone(id)))
+  }
+
   if (body.apps !== undefined) {
     const a = body.apps
     if (Array.isArray(a)) { if (c.ids('apps', a, APPS)) next.apps = [...a] }
@@ -409,15 +488,15 @@ export function applyPatch(cur, body, here) {
     for (const id of gids) if (!next.apps.includes(id)) next.apps.push(id)
   }
 
-  if (body.widgets !== undefined && c.obj('widgets', body.widgets, ['desktop', 'mobile', 'add', 'remove', 'reset'])) {
+  if (body.widgets !== undefined && c.obj('widgets', body.widgets, [...VIEWS, 'add', 'remove', 'reset'])) {
     const w = body.widgets
-    if (w.reset !== undefined && c.oneOf('widgets.reset', w.reset, ['desktop', 'mobile', 'both'])) for (const vk of ['desktop', 'mobile']) if (w.reset === 'both' || w.reset === vk) next.widgets[vk] = seedLayout(vk)
-    for (const vk of ['desktop', 'mobile']) if (w[vk] !== undefined) { const l = cleanLayout(c, `widgets.${vk}`, w[vk]); if (l) next.widgets[vk] = l }
+    if (w.reset !== undefined && c.oneOf('widgets.reset', w.reset, [...VIEWS, 'both'])) for (const vk of VIEWS) if (w.reset === 'both' || w.reset === vk) next.widgets[vk] = seedLayout(vk)
+    for (const vk of VIEWS) if (w[vk] !== undefined) { const l = cleanLayout(c, `widgets.${vk}`, w[vk]); if (l) next.widgets[vk] = l }
     if (w.remove !== undefined && c.list('widgets.remove', w.remove, 120)) {
       w.remove.forEach((x, i) => { if (typeof x !== 'string' || !(KEY_RE.test(x) || widgetIdOk(x))) c.fail(`widgets.remove[${i}]`, 'must be a widget key or a widget id') })
       const gone = it => w.remove.includes(it.key) || w.remove.includes(it.id)
       // A stack that drops to one widget becomes that widget.
-      for (const vk of ['desktop', 'mobile']) next.widgets[vk] = next.widgets[vk].filter(it => !gone(it)).map(it => {
+      for (const vk of VIEWS) next.widgets[vk] = next.widgets[vk].filter(it => !gone(it)).map(it => {
         if (it.id !== 'stack') return it
         const left = it.stack.filter(x => !gone(x))
         return left.length > 1 ? { ...it, stack: left } : left.length ? { ...left[0], size: it.size } : null
@@ -429,10 +508,10 @@ export function applyPatch(cur, body, here) {
         if (!c.obj(p, a, ['id', 'size', 'layout', 'opts'])) return
         if (!widgetIdOk(a.id)) return c.fail(`${p}.id`, 'is not a known widget (see /api/hub/settings/catalog)')
         const size = a.size === undefined ? 's' : c.oneOf(`${p}.size`, a.size, SIZES)
-        const layout = a.layout === undefined ? 'both' : c.oneOf(`${p}.layout`, a.layout, ['desktop', 'mobile', 'both'])
+        const layout = a.layout === undefined ? 'both' : c.oneOf(`${p}.layout`, a.layout, [...VIEWS, 'both'])
         const opts = a.opts === undefined ? undefined : cleanOpts(c, `${p}.opts`, a.id, a.opts)
         if (!size || !layout) return
-        for (const vk of ['desktop', 'mobile']) {
+        for (const vk of VIEWS) {
           if (layout !== 'both' && layout !== vk) continue
           if (next.widgets[vk].filter(x => x.id !== 'app').length >= MAX_ITEMS) { c.fail(p, `would put more than ${MAX_ITEMS} widgets on the ${vk} layout`); continue }
           next.widgets[vk].push({ key: `a${crypto.randomBytes(4).toString('hex')}`, id: a.id, size, ...(opts && Object.keys(opts).length ? { opts } : {}) })
@@ -441,8 +520,17 @@ export function applyPatch(cur, body, here) {
     }
   }
 
+  // A page holds its own app places, for any app that exists. A page that is gone leaves the header too.
+  {
+    const ok = new Set([...allApps(here), ...siteIds(next), ...groupIds(next)]), ids = pageIds(next)
+    for (const pg of next.pages) for (const vk of VIEWS) { const seen = new Set(); pg.widgets[vk] = (pg.widgets[vk] || []).filter(it => it && (it.id !== 'app' || (ok.has(it.app) && !seen.has(it.app) && seen.add(it.app)))) }
+    const gone = id => id.startsWith('page-') && !ids.includes(id)
+    next.tabs.order = next.tabs.order.filter(id => !gone(id))
+    if (next.tabs.names) next.tabs.names = Object.fromEntries(Object.entries(next.tabs.names).filter(([id]) => !gone(id)))
+  }
+
   // App places follow the apps on Home: one place per app, none for an app that left Home.
-  for (const vk of ['desktop', 'mobile']) {
+  for (const vk of VIEWS) {
     const seen = new Set()
     next.widgets[vk] = (next.widgets[vk] || []).filter(it => it && (it.id !== 'app' || (next.apps.includes(it.app) && !seen.has(it.app) && seen.add(it.app))))
   }
@@ -492,11 +580,19 @@ function repair(saved, here) {
   if (!saved || typeof saved !== 'object') return d
   const out = { ...d }
   const tryPart = (part, fn) => { try { fn() } catch {} }
-  tryPart('tabs', () => { out.tabs = applyPatch(d, { tabs: { order: saved.tabs.order.filter(t => allTabs(here).includes(t)), hidden: saved.tabs.hidden.filter(t => allTabs(here).includes(t) && t !== 'home') } }, here).tabs })
   tryPart('sites', () => { out.sites = applyPatch(d, { sites: saved.sites.filter(x => x && SITE_ID_RE.test(x.id)) }, here).sites })
+  tryPart('tabs', () => {
+    const stubs = (Array.isArray(saved.pages) ? saved.pages : []).filter(p => p && PAGE_ID_RE.test(p.id)).map(p => ({ id: p.id, name: 'Page', widgets: blankViews() }))
+    const items = [...allTabs(here), 'chat', ...siteIds(out), ...pageIds({ pages: stubs })]
+    out.tabs = applyPatch({ ...d, sites: out.sites, pages: stubs }, { tabs: { order: saved.tabs.order.filter(t => items.includes(t)), hidden: saved.tabs.hidden.filter(t => allTabs(here).includes(t) && t !== 'home') } }, here).tabs
+    if (saved.tabs.names) out.tabs = applyPatch({ ...d, sites: out.sites, pages: stubs, tabs: out.tabs }, { tabs: { names: Object.fromEntries(Object.entries(saved.tabs.names).filter(([id]) => items.includes(id))) } }, here).tabs
+  })
   tryPart('groups', () => { out.groups = applyPatch({ ...d, sites: out.sites, apps: [] }, { groups: saved.groups.filter(g => g && GROUP_ID_RE.test(g.id)) }, here).groups })
   tryPart('apps', () => { const ok = [...allApps(here), ...siteIds(out), ...groupIds(out)]; out.apps = applyPatch({ ...d, sites: out.sites, groups: out.groups }, { apps: saved.apps.filter(a => ok.includes(a)) }, here).apps })
-  for (const vk of ['desktop', 'mobile']) tryPart(vk, () => { out.widgets = { ...out.widgets, [vk]: applyPatch(d, { widgets: { [vk]: saved.widgets[vk].filter(itemIdOk) } }, here).widgets[vk] } })
+  tryPart('pages', () => { out.pages = applyPatch({ ...d, sites: out.sites, groups: out.groups, apps: out.apps }, { pages: { list: saved.pages.filter(p => p && PAGE_ID_RE.test(p.id)).map(p => ({ id: p.id, name: p.name, widgets: Object.fromEntries(VIEWS.map(vk => [vk, (p.widgets?.[vk] ?? p.widgets?.desktop ?? []).filter(itemIdOk)])) })) } }, here).pages })
+  out.files = (Array.isArray(saved.files) ? saved.files : []).filter(f => f && FILE_ID_RE.test(f.id) && fs.existsSync(path.join(here, 'data', 'custom', `${f.id}.html`))).slice(0, MAX_FILES)
+    .map(f => ({ id: f.id, name: String(f.name || 'File').slice(0, 40), sizes: cleanSizes(f.sizes), at: Number(f.at) || 0 }))
+  for (const vk of VIEWS) tryPart(vk, () => { out.widgets = { ...out.widgets, [vk]: applyPatch(d, { widgets: { [vk]: (saved.widgets[vk] ?? saved.widgets.desktop).filter(itemIdOk) } }, here).widgets[vk] } })
   for (const k of Object.keys(STYLE)) tryPart(k, () => { out.style = { ...out.style, [k]: applyPatch(d, { style: { [k]: saved.style[k] } }, here).style[k] } })
   tryPart('custom', () => { out.wallpaper = { ...out.wallpaper, custom: applyPatch(d, { wallpaper: { custom: saved.wallpaper.custom } }, here).wallpaper.custom } })
   out.wallpaper.uploads = (saved.wallpaper?.uploads || []).filter(u => u && UPLOAD_ID_RE.test(u.id) && UPLOAD_FILE_RE.test(u.file) && fs.existsSync(path.join(here, 'data', 'wallpapers', u.file))).slice(0, MAX_UPLOADS)
@@ -537,8 +633,8 @@ export function store(here) {
       const old = JSON.parse(fs.readFileSync(legacy, 'utf8'))
       const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')
       try { fs.copyFileSync(legacy, path.join(dataDir, `home-layout.backup-${stamp}.json`)) } catch {}
-      for (const vk of ['desktop', 'mobile']) {
-        try { d.widgets[vk] = applyPatch(d, { widgets: { [vk]: (old[vk] || []).filter(itemIdOk) } }, here).widgets[vk] } catch {}
+      for (const vk of VIEWS) {
+        try { d.widgets[vk] = applyPatch(d, { widgets: { [vk]: (old[vk] || old.desktop || []).filter(itemIdOk) } }, here).widgets[vk] } catch {}
       }
     } catch {}
     return write(d)
@@ -547,7 +643,8 @@ export function store(here) {
   function get() {
     // A tabs/<name>.js added or removed re-reads, so the tab joins or leaves without a restart.
     const tabs = allTabs(here)
-    if (cache && tabs.length === cache.tabs.order.length && tabs.every(t => cache.tabs.order.includes(t))) return cache
+    const listed = cache?.tabs.order.filter(t => t !== 'chat' && !t.startsWith('site-') && !t.startsWith('page-'))
+    if (cache && tabs.length === listed.length && tabs.every(t => listed.includes(t))) return cache
     let saved = null
     try { saved = JSON.parse(fs.readFileSync(file, 'utf8')) } catch (e) {
       if (e.code === 'ENOENT') return migrate()
@@ -555,11 +652,18 @@ export function store(here) {
     const fixed = repair(saved, here)
     // New plug-in tabs join the end of the saved order.
     for (const t of allTabs(here)) if (!fixed.tabs.order.includes(t)) fixed.tabs.order.push(t)
+    // Seen for the first time, a quiet tab starts hidden; after that the owner's choice stands.
+    for (const t of QUIET_TABS) if (saved?.tabs?.order && !saved.tabs.order.includes(t) && tabs.includes(t) && !fixed.tabs.hidden.includes(t)) fixed.tabs.hidden.push(t)
     cache = JSON.stringify(fixed) === JSON.stringify(saved) ? fixed : write(fixed)
     return cache
   }
-  const patch = body => write(applyPatch(stripMeta(get()), body, here))
-  const stripMeta = s => { const { at, ...rest } = s; return rest }
+  // Undo puts back the settings from before the last save. Undoing again redoes it.
+  function undo() {
+    let before
+    try { before = JSON.parse(fs.readFileSync(prev, 'utf8')) } catch { throw Object.assign(new Bad('there is nothing to undo yet'), { code: 400 }) }
+    return write(stripMeta(repair(before, here)))
+  }
+  const patch = body => (body?.undo === true && Object.keys(body).length === 1 ? undo() : write(applyPatch(stripMeta(get()), body, here)))
 
   const api = { get, patch, write: s => write(s), file, dataDir }
   stores.set(here, api)
@@ -581,14 +685,14 @@ async function readJson(req, max) {
   try { return JSON.parse(raw) } catch { throw Object.assign(new Error('body is not valid JSON'), { code: 400 }) }
 }
 
-async function readRaw(req, max) {
+async function readRaw(req, max, tooBig = 'the image is larger than 10 MB') {
   const len = Number(req.headers['content-length'])
-  if (len > max) throw Object.assign(new Error('the image is larger than 10 MB'), { code: 413 })
+  if (len > max) throw Object.assign(new Error(tooBig), { code: 413 })
   let size = 0
   const chunks = []
   for await (const chunk of req) {
     size += chunk.length
-    if (size > max) throw Object.assign(new Error('the image is larger than 10 MB'), { code: 413 })
+    if (size > max) throw Object.assign(new Error(tooBig), { code: 413 })
     chunks.push(chunk)
   }
   return Buffer.concat(chunks)
@@ -602,7 +706,10 @@ export function catalog(here) {
     widgets: { ids: WIDGET_IDS, families: WIDGET_FAMILIES.map(f => `${f}.<key>`), sizes: SIZES, options: WIDGET_OPTIONS, maxPerLayout: MAX_ITEMS, stack: { id: 'stack', min: 2, max: MAX_STACK }, app: { id: 'app', note: 'an app place: { id: "app", app: <id on Home> }' } },
     style: STYLE,
     wallpapers: { builtin: BUILTIN_WALLPAPERS, maxCustom: MAX_CUSTOM, maxUploads: MAX_UPLOADS, uploadTypes: Object.keys(IMAGE_TYPES), uploadMaxBytes: MAX_UPLOAD },
-    reset: ['tabs', 'apps', 'widgets', 'style', 'wallpaper', 'all'],
+    pages: { idPattern: PAGE_ID_RE.source, max: MAX_PAGES, patch: ['list', 'add', 'rename', 'remove', 'order', 'layout'] },
+    files: { idPattern: FILE_ID_RE.source, max: MAX_FILES, maxBytes: MAX_FILE, note: 'custom .html files are added by the owner from the page and run sandboxed with no keys' },
+    undo: 'send { undo: true } to put back the settings from before the last save',
+    reset: ['tabs', 'apps', 'widgets', 'style', 'wallpaper', 'pages', 'all'],
   }
 }
 
@@ -610,6 +717,8 @@ export function create({ here }) {
   const st = store(here)
   const upDir = path.join(st.dataDir, 'wallpapers')
   const wallDir = path.join(here, 'wallpapers')
+  const fileDir = path.join(st.dataDir, 'custom')
+  const fileOf = id => path.join(fileDir, `${id}.html`)
 
   return async function route(url, req, res, { send }) {
     const p = url.pathname
@@ -623,6 +732,102 @@ export function create({ here }) {
         return send(res, 200, st.patch(body)), true
       }
       if (p === '/api/hub/settings/catalog' && req.method === 'GET') return send(res, 200, catalog(here)), true
+
+      // The whole hub's choices as one file. Settings hold no keys, and uploaded images stay here.
+      if (p === '/api/hub/settings/export' && req.method === 'GET') {
+        const s = st.get()
+        const out = {
+          format: EXPORT_FORMAT, version: 1,
+          tabs: s.tabs, apps: s.apps, sites: s.sites, groups: s.groups, pages: s.pages, widgets: s.widgets, style: s.style,
+          wallpaper: { current: s.wallpaper.uploads.some(u => u.id === s.wallpaper.current) ? 'none' : s.wallpaper.current, custom: s.wallpaper.custom },
+          files: s.files.map(f => ({ ...f, html: fs.readFileSync(fileOf(f.id), 'utf8') })),
+        }
+        res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'content-disposition': 'attachment; filename="local-hub-settings.json"', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' })
+        return res.end(JSON.stringify(out, null, 2)), true
+      }
+      if (p === '/api/hub/settings/import' && req.method === 'POST') {
+        const b = await readJson(req, MAX_IMPORT)
+        if (b?.format !== EXPORT_FORMAT) return send(res, 400, { error: 'that isn’t a Local Hub settings file' }), true
+        const cur = stripMeta(st.get())
+        const files = (Array.isArray(b.files) ? b.files : []).filter(f => f && FILE_ID_RE.test(f.id) && typeof f.html === 'string' && Buffer.byteLength(f.html) <= MAX_FILE).slice(0, MAX_FILES)
+        const have = new Set(files.map(f => f.id))
+        const start = { ...cur, files: [...cur.files.filter(f => !have.has(f.id)), ...files.map(f => ({ id: f.id, name: cleanFileName(f.name), sizes: cleanSizes(f.sizes), at: Date.now() }))].slice(0, MAX_FILES) }
+        // What this hub doesn't have is left out; the rest is checked like any other change.
+        const fileIds = new Set(start.files.map(f => f.id))
+        const sites = (Array.isArray(b.sites) ? b.sites : []).filter(x => !x?.file || fileIds.has(x.file))
+        const items = new Set([...allTabs(here), 'chat', ...sites.map(x => x?.id), ...(Array.isArray(b.pages) ? b.pages : []).map(x => x?.id)])
+        const uses = it => !String(it?.id).startsWith('file-') || fileIds.has(it.id)
+        const lay = l => (Array.isArray(l) ? l.filter(uses) : [])
+        const tabs = b.tabs && typeof b.tabs === 'object' ? { order: (b.tabs.order || []).filter(t => items.has(t)), hidden: (b.tabs.hidden || []).filter(t => allTabs(here).includes(t) && t !== 'home'), names: Object.fromEntries(Object.entries(b.tabs.names || {}).filter(([id]) => items.has(id))) } : undefined
+        const known = ['none', ...BUILTIN_WALLPAPERS.map(x => x.id), ...(b.wallpaper?.custom || []).map(x => x?.id), ...cur.wallpaper.uploads.map(x => x.id)]
+        const change = {
+          sites,
+          pages: { list: (Array.isArray(b.pages) ? b.pages : []).map(x => ({ ...x, widgets: Object.fromEntries(VIEWS.map(vk => [vk, lay(x?.widgets?.[vk])])) })) },
+          ...(tabs ? { tabs } : {}),
+          ...(b.groups ? { groups: b.groups } : {}),
+          ...(b.apps ? { apps: b.apps.filter(a => allApps(here).includes(a) || sites.some(x => x?.id === a) || b.groups?.some(g => g?.id === a)) } : {}),
+          widgets: Object.fromEntries(VIEWS.map(vk => [vk, lay(b.widgets?.[vk] ?? b.widgets?.desktop)])),
+          ...(b.style ? { style: b.style } : {}),
+          wallpaper: { custom: b.wallpaper?.custom || [], current: known.includes(b.wallpaper?.current) ? b.wallpaper.current : 'none' },
+        }
+        // Checked first, so a refused file changes nothing on disk.
+        const next = applyPatch(start, change, here)
+        const bin = path.join(fileDir, '.removed')
+        fs.mkdirSync(bin, { recursive: true })
+        for (const f of files) {
+          // A file this replaces moves aside, the same as removing it. Nothing is erased.
+          if (fs.existsSync(fileOf(f.id)) && fs.readFileSync(fileOf(f.id), 'utf8') !== f.html) fs.renameSync(fileOf(f.id), path.join(bin, `${Date.now()}-${f.id}.html`))
+          fs.writeFileSync(fileOf(f.id), f.html)
+        }
+        return send(res, 200, st.write(next)), true
+      }
+
+      // A custom file: one plain .html the owner adds from the page. It becomes a widget and an app.
+      if (p === '/api/hub/custom' && req.method === 'POST') {
+        const type = String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase()
+        if (type !== 'text/html') return send(res, 415, { error: 'choose an .html file' }), true
+        const cur = stripMeta(st.get())
+        if (cur.files.length >= MAX_FILES) return send(res, 400, { error: `there are already ${MAX_FILES} custom files; remove one first` }), true
+        const buf = await readRaw(req, MAX_FILE, 'the file is larger than 512 KB')
+        if (!buf.length) return send(res, 400, { error: 'the file is empty' }), true
+        const html = buf.toString('utf8')
+        let asked = ''
+        try { asked = decodeURIComponent(String(req.headers['x-name'] || '')).replace(/\.html?$/i, '') } catch {}
+        const name = cleanFileName(/<title[^>]*>([^<]*)<\/title>/i.exec(html)?.[1] || asked)
+        const meta = /<meta[^>]+name=["']hub-sizes["'][^>]*>/i.exec(html)?.[0] || ''
+        const sizes = cleanSizes((/content=["']([^"']*)["']/i.exec(meta)?.[1] || '').split(/[\s,]+/))
+        const id = `file-${crypto.randomBytes(6).toString('hex')}`
+        fs.mkdirSync(fileDir, { recursive: true })
+        fs.writeFileSync(fileOf(id), buf)
+        cur.files.push({ id, name, sizes, at: Date.now() })
+        cur.sites.push({ id: `site-${id}`, name, file: id, newTab: false })
+        return send(res, 200, { id, site: `site-${id}`, settings: st.write(cur) }), true
+      }
+      if (p === '/api/hub/custom/remove' && req.method === 'POST') {
+        const body = await readJson(req, 4096)
+        const cur = stripMeta(st.get())
+        const f = cur.files.find(x => x.id === body?.id)
+        if (!f || Object.keys(body).length !== 1) return send(res, 400, { error: 'send { id } of a custom file' }), true
+        const bin = path.join(fileDir, '.removed')
+        fs.mkdirSync(bin, { recursive: true })
+        try { fs.renameSync(fileOf(f.id), path.join(bin, `${Date.now()}-${f.id}.html`)) } catch {}
+        const sid = `site-${f.id}`
+        cur.files = cur.files.filter(x => x.id !== f.id)
+        cur.sites = cur.sites.filter(x => x.id !== sid)
+        cur.apps = cur.apps.filter(x => x !== sid)
+        cur.tabs.order = cur.tabs.order.filter(x => x !== sid)
+        cur.groups = cur.groups.map(g => ({ ...g, apps: g.apps.filter(x => x !== sid) })).filter(g => g.apps.length)
+        const clean = l => dropWidget(l, f.id).filter(it => it.app !== sid)
+        for (const vk of VIEWS) cur.widgets[vk] = clean(cur.widgets[vk])
+        for (const pg of cur.pages) for (const vk of VIEWS) pg.widgets[vk] = clean(pg.widgets[vk])
+        return send(res, 200, st.write(cur)), true
+      }
+      const cf = /^\/api\/hub\/custom\/([a-z0-9-]+)$/.exec(p)
+      if (cf && req.method === 'GET') {
+        if (!FILE_ID_RE.test(cf[1]) || !st.get().files.some(f => f.id === cf[1])) return send(res, 404, { error: 'not found' }), true
+        res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'content-security-policy': FILE_CSP, 'x-content-type-options': 'nosniff', 'referrer-policy': 'no-referrer', 'cache-control': 'no-store' })
+        return res.end(fs.readFileSync(fileOf(cf[1]))), true
+      }
 
       if (p === '/api/hub/wallpapers' && req.method === 'POST') {
         const type = String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase()

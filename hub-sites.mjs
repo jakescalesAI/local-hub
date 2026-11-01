@@ -5,7 +5,7 @@
 //       refused, except the hub's own pages, which are always embeddable. The page body never
 //       leaves the hub; only the title and the icon address are returned.
 //   GET /api/hub/app-icon/<site-id>  -> the saved website app's icon (cached in data/app-icons/),
-//       404 when the site has none, so the page shows a letter tile instead.
+//       204 when the site has none, so the page shows a letter tile and logs no error.
 //   GET /api/hub/site-icon?url=<http(s) url>  -> the icon of any public page (kept in memory), for
 //       chat cards and suggestions. Only bytes that are really an image are ever returned.
 // The hub never proxies a site or strips its headers: a site that refuses framing opens in a new tab.
@@ -175,6 +175,7 @@ export function create({ here }) {
 
   // Saved sites: cached on disk per site and icon choice; a miss is tried again after a day.
   async function iconFor(site) {
+    if (!site.url) return null
     const key = crypto.createHash('sha1').update(`${site.icon || ''} ${site.url}`).digest('hex').slice(0, 12)
     try {
       const f = fs.readdirSync(iconDir).find(n => n.startsWith(`${site.id}.${key}.`))
@@ -214,9 +215,9 @@ export function create({ here }) {
     if (p === '/api/hub/site-icon' && req.method === 'GET') {
       const href = webUrl(url.searchParams.get('url') || '')
       if (!href) return send(res, 400, { error: 'url must be an http or https address of up to 500 characters' }), true
-      if (ownPage(new URL(href), req)) return send(res, 404, { error: 'no icon' }), true
+      if (ownPage(new URL(href), req)) return res.writeHead(204).end(), true
       const icon = await siteIcon(href)
-      if (!icon) return send(res, 404, { error: 'no icon' }), true
+      if (!icon) return res.writeHead(204).end(), true
       res.writeHead(200, ICON_HEADERS(icon.ext))
       return res.end(icon.body), true
     }

@@ -284,10 +284,12 @@ The hub's look and layout are stored in `data/hub-settings.json`. The previous v
   - Ids: home, laptop, server, drives, ai, cloud, calendar, stripe, plus any plug-in tab file in `tabs/`.
   - Home can't be hidden. Ids left out of `order` keep their place at the end.
   - Hidden tabs stay reachable from the Home apps and from the search field.
+  - `order` may also hold `chat`, website apps (`site-*`) and pages (`page-*`), so anything can sit in the header.
+  - `names`: `{ id: "My Name" }` renames an item in the header. Send an empty name to go back to its own.
 - `apps`
   - The Home app tiles, in order, as `[ids]`. A patch can also send `{ add: [ids], remove: [ids] }`.
   - Ids: every tab except home, plus `chat`. Chat opens the hub chat.
-- `widgets`: `{ desktop: [items], mobile: [items] }`
+- `widgets`: `{ desktop: [items], ipad: [items], mobile: [items] }`. A hub with no iPad layout starts from a copy of Desktop, reflowed to fit.
   - An item is `{ key, id, size, opts? }`.
   - `size` is s, m or l.
   - `id` is a widget id from the catalog, or a family id such as `claude-account.<name>`, `coolify-app.<name>`, `server.<name>`, `client.<name>` or `drive.<name>`.
@@ -309,6 +311,8 @@ The hub's look and layout are stored in `data/hub-settings.json`. The previous v
   - `shadow`: none|soft|deep (default soft)
   - `tabBar`: solid|glass (default solid)
   - `effect`: none|grain|glow (default none)
+  - `font`: system|rounded|serif|mono (default system)
+  - `density`: compact|regular|roomy (default regular)
   - Each value becomes a CSS variable or `data-*` attribute on `<html>`.
 - `wallpaper`: `{ current, custom: [gradients], uploads: [images] }`
   - `current` is one of:
@@ -318,7 +322,22 @@ The hub's look and layout are stored in `data/hub-settings.json`. The previous v
     - an upload id
   - A gradient is `{ id: "custom-<name>", name, colors: [2-3 hex], angle: 0-360, mesh: true|false }`. Gradients are added with `addCustom` and removed with `removeCustom` (at most 24).
   - A dimming layer keeps text readable over every wallpaper. It is light when the wallpaper's tone matches the theme (.22), strong when it doesn't (.62), and .45 for gradients and uploads.
-- `reset`: `[parts]`, where a part is tabs, apps, widgets, style, wallpaper or all. Resetting the wallpaper keeps saved gradients and uploads.
+- `pages`: extra Home pages, at most 40, each `{ id: "page-<name>", name, widgets: { desktop, ipad, mobile } }`.
+  - A patch sends `{ add: { name }, rename: { id, name }, remove: [ids], order: [ids], layout: { id, desktop?, ipad?, mobile? } }`.
+- `files`: your own files, added through the upload route below, never by a patch.
+- `reset`: `[parts]`, where a part is tabs, apps, widgets, style, wallpaper, pages or all. Resetting the wallpaper keeps saved gradients and uploads.
+- `undo`: `{"undo": true}` swaps the settings with the previous version. Undo again is redo.
+
+### Exporting and importing settings
+
+- `GET /api/hub/settings/export` downloads everything as one JSON file with `"format": "local-hub-settings"`. It holds settings, layouts, pages and your files, and no key. Uploaded wallpaper images stay out.
+- `POST /api/hub/settings/import` takes that file, up to 40 MB. A bad file changes nothing. Undo brings the old settings back. A file in the import with an id you already have replaces yours, and your old one moves to `data/custom/.removed`, so nothing is erased.
+
+### Your own files
+
+- `POST /api/hub/custom` takes one HTML file as `text/html`, up to 512 KB, at most 60 files. The answer is `{ id, site, settings }`.
+- `POST /api/hub/custom/remove` with `{ id }` moves the file to `data/custom/.removed` and takes it off Home, the pages and the header. Nothing is erased.
+- `GET /api/hub/custom/<id>` serves the file sandboxed, with no network and no access to the hub.
 
 ### Uploads
 
@@ -339,16 +358,25 @@ The hub's look and layout are stored in `data/hub-settings.json`. The previous v
 - "Analog clock with seconds": send the full `widgets.desktop` list with the clock item's `opts` set to `{"face":"analog","seconds":true}`. On the page it's quicker: right-click the clock, then Widget Options.
 - "Purple accent": `{"style":{"accent":"#7a5af8"}}`
 - "Back to how it was": `{"reset":["style","wallpaper"]}`
+- "Use a rounded font": `{"style":{"font":"rounded"}}`
+- "Make everything tighter": `{"style":{"density":"compact"}}`
+- "Add a page called Work": `{"pages":{"add":{"name":"Work"}}}`
+- "Put Work in the header": send `tabs.order` with its id in the place you want.
+- "Call the Server tab Box": `{"tabs":{"names":{"server":"Box"}}}`
+- "Undo that": `{"undo":true}`
 
 ### On the page
 
-- Edit mode shows these pills: Reset, Edit Tabs, Edit Style, Add Widget and Done.
-- Right-click Home, or touch and hold on a phone or iPad:
-  - Empty space: Add Widget, Add App, Edit Home, Edit Style, Change Wallpaper, Edit Tabs and Reset Layout (which asks first).
-  - A widget: Small/Medium/Large, Widget Options and Remove.
-  - An app: Open, plus Move Left/Right in edit mode, and Remove.
-  - Escape or a click outside closes the menu.
-- Edit Style opens a side panel on desktop and a bottom sheet on a phone. Changes show live.
+- Hold any app or widget, by touch or mouse, to start editing Home with that item ready to drag. A short press still opens it, and moving your finger first still scrolls.
+- Right-click any app or widget for Edit Home first, then what fits: Open, Small/Medium/Large, Widget Options, Remove.
+- Right-click empty space for Add to Home, Edit Home, Edit Style, Change Wallpaper, Edit Tabs and Reset Layout (which asks first).
+- Edit mode has Reset, Edit Tabs, Edit Style, Pages, Add and Done, and a Desktop, iPad and Mobile switch.
+  - Desktop is your normal Home. iPad and Mobile show that device's own layout in a frame, scaled to fit, and scroll inside the frame. Drag and edit work there as they do on the device.
+  - A real iPad shows the iPad layout and a real phone shows Mobile, full screen with no frame.
+- Add to Home and Edit Tabs are one picker. Each lists built-in tabs, apps, website suggestions, pages and your files, with a search field. Paste any web address to add a website, which gets its name and icon on its own and opens in the pop-up.
+- In Edit Tabs, drag a row or drag the tab itself in the header. Home can move, and it can't be hidden, so there's always a way back.
+- Edit Style opens a side panel on desktop and a bottom sheet on a phone. Changes show live. Your Settings at the end of it has Undo, Export and Import.
+- When you scroll down, the tab strip moves into the top bar, and the search field too if it fits. On a phone the strip scrolls sideways inside the bar.
 
 ### Defaults
 
@@ -649,6 +677,14 @@ Each of these is a plain file or a config entry. None needs a change to the hub'
 - **A theme.** Add `themes/<id>.json` with `name`, `style` and `wallpaper`, or use Import a Theme File in the Style panel. Set it as `theme` in `config/hub.json`, or Apply it in the panel. The allowed values are under "Settings API".
 - **An assistant tool.** Add any MCP server under `assistant.mcpServers`: `{"name": {"command": "node", "args": ["my-tool.mjs"], "env": {}}}`. Its tools are allowed as they are, so only add a server you trust. The approval rules in its instructions still apply, but the hub can't enforce them inside your tool.
 - **A connection.** See "Connections".
+- **Your own widget or app, as one file.** Write one `.html` file and pick Add from File in Add to Home. It shows up as an app and as a widget.
+  - `<title>` is its name.
+  - `<meta name="hub-sizes" content="s m l">` lists the widget sizes it fits. With none it offers all three.
+  - `<meta name="color-scheme" content="light dark">` lets it follow the theme.
+  - It's at most 512 KB. Put its styles, scripts and images inside the file, images as `data:` addresses.
+  - It always runs sandboxed: no network, no cookies or storage, no access to the hub or to any key. That isn't a setting.
+  - Holding or right-clicking inside the file's own frame reaches the file, not the hub. Use the widget's label to edit it.
+- **More Home pages.** Edit mode has Pages: add, rename, reorder and remove. A page can hold any app or widget, and can sit in the header. App groups only form on the main Home.
 
 ## First-run setup
 

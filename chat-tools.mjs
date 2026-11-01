@@ -16,7 +16,7 @@ import { createInterface } from 'node:readline'
 const PORT = Number(process.env.HUB_PORT) || 3100
 const API = `http://127.0.0.1:${PORT}`
 // Top-level settings keys the assistant may send. Wallpaper uploads (raw image bodies) are not here.
-const KEYS = new Set(['tabs', 'apps', 'widgets', 'style', 'wallpaper', 'sites', 'reset'])
+const KEYS = new Set(['tabs', 'apps', 'groups', 'pages', 'widgets', 'style', 'wallpaper', 'sites', 'reset', 'undo'])
 
 const READ_LIMIT = 200_000
 
@@ -33,7 +33,7 @@ const TOOLS = [
   },
   {
     name: 'settings_update',
-    description: 'Change the hub\'s look and layout through POST /api/hub/settings: tabs (hide/show/order), Home apps, widgets, style (theme, accent, widget look, blur, transparency, radius, shadow, tab bar, effect), wallpaper, website apps (sites) and reset. Send only the parts that change, exactly as the guide\'s "Settings API" section describes. A bad patch changes nothing and returns the errors. Use it only when the user asks for that change.',
+    description: 'Change the hub\'s look and layout through POST /api/hub/settings: tabs (hide/show/order/rename), Home apps, groups, pages, widgets for each view (desktop, ipad, mobile), style (theme, accent, font, density, widget look, blur, transparency, radius, shadow, tab bar, effect), wallpaper, website apps (sites), reset and undo. Send only the parts that change, exactly as the guide\'s "Settings API" section describes. A bad patch changes nothing and returns the errors. Use it only when the user asks for that change.',
     inputSchema: {
       type: 'object',
       properties: { patch: { type: 'object', description: 'Partial settings, e.g. {"tabs":{"hide":["stripe"]}} or {"style":{"widgetLook":"glass"}}' } },
