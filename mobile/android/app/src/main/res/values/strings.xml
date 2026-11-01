@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Local Hub</string>
+    <string name="title_activity_main">Local Hub</string>
+    <string name="package_name">com.example.localhub</string>
+    <string name="custom_url_scheme">com.example.localhub</string>
+</resources>
