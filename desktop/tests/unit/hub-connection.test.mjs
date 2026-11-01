@@ -297,7 +297,7 @@ test('listenersIn reads netstat, by the foreign port so any language works, on l
     '  TCP    0.0.0.0:3100           0.0.0.0:0              ABHÖREN         12',
     '  TCP    [::1]:3100             [::]:0                 LISTENING       13',
     '  TCP    [::]:3100              [::]:0                 LISTENING       14',
-    '  TCP    100.64.0.9:3100        0.0.0.0:0              LISTENING       15',
+    '  TCP    192.0.2.9:3100         0.0.0.0:0              LISTENING       15',
     '  TCP    127.0.0.1:31000        0.0.0.0:0              LISTENING       16',
     '  TCP    127.0.0.1:13100        0.0.0.0:0              LISTENING       19',
     '  TCP    127.0.0.1:3100         127.0.0.1:50000        ESTABLISHED     17',

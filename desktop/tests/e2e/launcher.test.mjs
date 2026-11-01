@@ -84,7 +84,8 @@ describe('tray', () => {
     assert.equal(loginCalls[0].args.at(-1), '--hidden', 'a login start stays in the tray')
 
     await trayItem(handle, 'quit')
-    await Promise.race([handle.exited, sleep(10_000).then(() => { throw new Error('Quit did not exit') })])
+    // The same limit as quit() in the helpers: a busy machine can take a while to end the process.
+    await Promise.race([handle.exited, sleep(30_000).then(() => { throw new Error('Quit did not exit') })])
   })
 
   test('closing the main window keeps the app in the tray', async t => {
