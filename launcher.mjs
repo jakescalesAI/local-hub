@@ -81,6 +81,8 @@ function folderPath(raw) {
   // A network path would make Windows send your sign-in to whatever machine it names.
   if (/^[\\/]{2}/.test(text)) throw fail('Network paths can’t be saved; use a folder on this computer')
   if (!path.isAbsolute(text) || (process.platform === 'win32' && !/^[a-z]:[\\/]/i.test(text))) throw fail('Use the full path of the folder')
+  // On Windows a colon past the drive names a stream of the folder, which would hide the folder's name from the key check.
+  if (process.platform === 'win32' && text.includes(':', 2)) throw fail('That isn’t a folder path')
   const clean = path.normalize(text)
   if (holdsKeys(clean)) throw fail('That folder holds keys, so the hub won’t open it')
   return clean
@@ -274,6 +276,7 @@ export function create({ here, fetchOptions = {}, openers = defaultOpeners } = {
   const file = path.join(dataDir, 'launcher.json')
   const iconDir = path.join(dataDir, 'launcher-icons')
   let warning = ''
+  let idsRepaired = false
 
   function setAside(tag) {
     const copy = path.join(dataDir, `launcher.${tag}-${Date.now()}.json`)
@@ -294,9 +297,20 @@ export function create({ here, fetchOptions = {}, openers = defaultOpeners } = {
       warning = `Your saved links file was damaged, so it was kept as ${setAside('damaged')} and the list starts empty.`
       return { links: [], snippets: [], usage: {} }
     }
-    const keep = (list, clean, prefix) => (Array.isArray(list) ? list : []).flatMap(item => {
-      try { return [{ id: /^[\w-]{1,40}$/.test(item?.id) ? item.id : newId(prefix), ...clean(item) }] } catch { return [] }
-    })
+    // A missing, malformed or repeated id gets a new one, so every item can be opened and edited.
+    const keep = (list, clean, prefix) => {
+      const seen = new Set()
+      return (Array.isArray(list) ? list : []).flatMap(item => {
+        try {
+          const cleaned = clean(item)
+          const fine = typeof item.id === 'string' && /^[\w-]{1,40}$/.test(item.id) && !seen.has(item.id)
+          if (!fine) idsRepaired = true
+          const id = fine ? item.id : newId(prefix)
+          seen.add(id)
+          return [{ id, ...cleaned }]
+        } catch { return [] }
+      })
+    }
     const links = keep(saved.links, cleanLink, 'l')
     const snippets = keep(saved.snippets, cleanSnippet, 's')
     const dropped = (saved.links?.length || 0) + (saved.snippets?.length || 0) - links.length - snippets.length
@@ -308,6 +322,8 @@ export function create({ here, fetchOptions = {}, openers = defaultOpeners } = {
 
   const db = load()
   let at = Date.now()
+  // Written back, so a repaired id stays the same after a restart.
+  if (idsRepaired) { try { saveNow() } catch {} }
 
   function saveNow() {
     fs.mkdirSync(dataDir, { recursive: true })
@@ -335,11 +351,16 @@ export function create({ here, fetchOptions = {}, openers = defaultOpeners } = {
   const keywordTaken = (keyword, id) => !!keyword && db.snippets.some(s => s.keyword === keyword && s.id !== id)
 
   async function readJsonBody(req) {
-    let raw = ''
+    // A chunk can end in the middle of a character, so they're joined before they're decoded.
+    const chunks = []
+    let size = 0
     for await (const chunk of req) {
-      raw += chunk
-      if (raw.length > MAX_BODY) throw fail('That is too large to send', 413)
+      const bytes = Buffer.from(chunk)
+      size += bytes.length
+      if (size > MAX_BODY) throw fail('That is too large to send', 413)
+      chunks.push(bytes)
     }
+    const raw = Buffer.concat(chunks).toString('utf8')
     // JSON.parse quotes the input in its error, and the input may be a snippet.
     try { return raw ? JSON.parse(raw) : {} } catch { throw fail('The request wasn’t valid JSON') }
   }
@@ -519,11 +540,12 @@ export function create({ here, fetchOptions = {}, openers = defaultOpeners } = {
         }
         if (!isLocal(req)) throw fail('Folders open only on the computer running the hub', 409)
         // holdsKeys checks the saved path, a junction can still lead elsewhere; the real path decides.
+        // Only the native call resolves a Windows stream name, so that's the one used, and what's checked is what opens.
         let real
-        try { real = fs.realpathSync(link.path) } catch { throw fail('That folder isn’t there', 404) }
+        try { real = fs.realpathSync.native(link.path) } catch { throw fail('That folder isn’t there', 404) }
         if (holdsKeys(real)) throw fail('That folder holds keys, so the hub won’t open it', 403)
         if (!fs.statSync(real).isDirectory()) throw fail('That isn’t a folder', 409)
-        openers.folder(link.path)
+        openers.folder(real)
         return send(res, 200, { ok: true }), true
       }
       if (rest === 'icon' && req.method === 'GET') {

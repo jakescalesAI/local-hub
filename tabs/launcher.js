@@ -25,13 +25,16 @@
     edit: svg('<path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/>'),
   }
 
+  // How long Delete ignores clicks after it turns into the confirmation.
+  const CONFIRM_PAUSE_MS = 400
+
   const S = {
     open: STANDALONE, view: 'list', q: '', sel: 0, rows: [],
-    lib: { links: [], snippets: [], usage: {} }, loaded: false, loadError: '',
+    lib: { links: [], snippets: [], usage: {} }, loaded: false, loading: false, enterQueued: false, loadError: '', saving: false,
     files: [], filesFor: '', filesBusy: false,
     form: null, formError: '', confirmDelete: false, report: null, copyFallback: '',
   }
-  let root, panel, input, list, foot, toastEl, lastFocus = null, filesTimer = 0, filesAbort = null, toastTimer = 0, itemsCache = null
+  let root, panel, input, list, foot, toastEl, lastFocus = null, filesTimer = 0, filesAbort = null, toastTimer = 0, itemsCache = null, confirmAt = 0
 
   /* ---------- talking to the hub ---------- */
 
@@ -47,6 +50,7 @@
   }
 
   async function refresh() {
+    S.loading = true
     try {
       S.lib = await call('/api/launcher/library')
       itemsCache = null
@@ -55,7 +59,12 @@
     } catch (e) {
       S.loadError = e.message
     }
+    S.loading = false
     if (S.open && S.view === 'list') paintList()
+    // Enter was pressed while the list was on its way. If it never came, the warning shows and nothing runs by itself.
+    const queued = S.enterQueued
+    S.enterQueued = false
+    if (queued && S.loaded && S.open && S.view === 'list') S.rows[S.sel]?.run()
   }
 
   function countUse(key) {
@@ -575,6 +584,18 @@
     paint()
   }
 
+  // One at a time, so a double click or a repeated key can't do it twice.
+  async function once(task) {
+    if (S.saving) return
+    S.saving = true
+    const submit = panel.querySelector('[type=submit]')
+    if (submit) submit.disabled = true
+    try { await task() } finally {
+      S.saving = false
+      if (submit) submit.disabled = false
+    }
+  }
+
   async function saveForm() {
     readForm()
     const f = S.form
@@ -585,27 +606,31 @@
     try {
       await call(f.id ? `${base}/${encodeURIComponent(f.id)}` : base, { method: f.id ? 'PUT' : 'POST', body })
     } catch (e) {
+      if (S.form !== f) return toast(e.message)
       S.formError = e.message
       return paint()
     }
     await refresh()
-    backToList()
+    if (S.form === f) backToList()
     toast('Saved')
   }
 
   async function deleteItem() {
     readForm()
-    if (!S.confirmDelete) { S.confirmDelete = true; return paint() }
+    if (!S.confirmDelete) { S.confirmDelete = true; confirmAt = Date.now(); return paint() }
+    // The button turns into the confirmation under the pointer, so the second click of a double click isn't a yes.
+    if (Date.now() - confirmAt < CONFIRM_PAUSE_MS) return
     const f = S.form
     try {
       await call(`/api/launcher/${f.type === 'snippet' ? 'snippets' : 'links'}/${encodeURIComponent(f.id)}`, { method: 'DELETE' })
     } catch (e) {
+      if (S.form !== f) return toast(e.message)
       S.formError = e.message
       S.confirmDelete = false
       return paint()
     }
     await refresh()
-    backToList()
+    if (S.form === f) backToList()
     toast('Deleted')
   }
 
@@ -644,6 +669,7 @@
     e.stopPropagation()
     if (e.key === 'Escape') {
       e.preventDefault()
+      S.enterQueued = false
       if (S.view !== 'list') return backToList()
       if (S.q) {
         S.q = ''
@@ -655,13 +681,16 @@
       return STANDALONE ? window.close() : close()
     }
     if (e.key === 'Tab') return trapTab(e)
-    if (S.view === 'form' && e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); return void saveForm() }
+    if (S.view === 'form' && e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); return void once(saveForm) }
     if (S.view !== 'list' || (e.key === 'Enter' && e.target !== input)) return
-    if (e.key === 'ArrowDown') { e.preventDefault(); select(S.sel + 1) }
-    else if (e.key === 'ArrowUp') { e.preventDefault(); select(S.sel - 1) }
+    if (e.key === 'ArrowDown') { e.preventDefault(); S.enterQueued = false; select(S.sel + 1) }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); S.enterQueued = false; select(S.sel - 1) }
     else if (e.key === 'Enter') {
       e.preventDefault()
-      if (!e.isComposing) S.rows[S.sel]?.run()
+      if (e.isComposing) return
+      // Until the saved list arrives the top row could be Ask chat, and that would message the agent. So Enter waits for it.
+      if (!S.loaded && S.loading) S.enterQueued = true
+      else S.rows[S.sel]?.run()
     } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'e') {
       e.preventDefault()
       S.rows[S.sel]?.edit?.()
@@ -680,17 +709,18 @@
     if (!STANDALONE && e.target === root) return close()
     if (e.target.closest('[data-close]')) return STANDALONE ? window.close() : close()
     if (e.target.closest('[data-back]')) return backToList()
-    if (e.target.closest('[data-delete]')) return void deleteItem()
+    if (e.target.closest('[data-delete]')) return void once(deleteItem)
     const edit = e.target.closest('[data-edit]')
     if (edit) { e.stopPropagation(); return S.rows[Number(edit.dataset.edit)]?.edit?.() }
     const row = e.target.closest('.lch-row')
-    if (row) S.rows[Number(row.dataset.i)]?.run()
+    // The second click of a double click on Save or Cancel lands on whichever row has just appeared there.
+    if (row && e.detail < 2) S.rows[Number(row.dataset.i)]?.run()
   }
 
   function onSubmit(e) {
     e.preventDefault()
-    if (S.view === 'form') saveForm()
-    else if (S.view === 'import') runImport()
+    if (S.view === 'form') once(saveForm)
+    else if (S.view === 'import') once(runImport)
   }
 
   function onChange(e) {
@@ -726,6 +756,7 @@
     root.addEventListener('change', onChange)
     root.addEventListener('input', e => {
       if (e.target !== input) return
+      S.enterQueued = false
       S.q = input.value
       S.sel = 0
       searchFiles()
@@ -767,6 +798,7 @@
     S.report = null
     S.formError = ''
     S.confirmDelete = false
+    S.enterQueued = false
     S.q = ''
     S.files = []
     S.filesFor = ''

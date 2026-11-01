@@ -9,6 +9,8 @@
 | `Ctrl+E` | Edit the selected link or snippet |
 | Esc | Clear the box, then close |
 
+If your saved list is still loading, Enter waits for it. Typing or moving the selection cancels the wait.
+
 On a phone, tap a row to open or copy it, and tap the pencil to edit it.
 
 The same search is also its own page at `/launcher`, sized for a small frameless window.
@@ -25,7 +27,7 @@ Everything is saved in `data/launcher.json`, which git ignores. Site icons are c
 | `obsidian` | `url`, an Obsidian `open`, `search` or `vault` link | `obsidian://open?vault=Notes` |
 | `folder` | `path`, the full path of a folder on this computer | `/home/you/Documents` |
 
-Every other scheme is refused, including `javascript:`, `data:` and `file:` as a web link. Web links can't hold a user name or password. Folders that hold keys and network paths are refused. Folders open only when you're using the hub on the computer that runs it. Obsidian links open on the device you're using.
+Every other scheme is refused, including `javascript:`, `data:` and `file:` as a web link. Web links can't hold a user name or password. Folders that hold keys, network paths and Windows stream names (`folder::$INDEX_ALLOCATION`) are refused. Folders open only when you're using the hub on the computer that runs it. Obsidian links open on the device you're using.
 
 Icons come from the site's own favicon, fetched by the hub and cached for a week. The hub only fetches for saved web links, never from a private or loopback address, and takes at most 256 KB. SVG files aren't accepted, because they can carry scripts.
 

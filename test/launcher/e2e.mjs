@@ -25,7 +25,9 @@ const XSS = '<img src=x onerror="window.__xss=1">'
 const XSS2 = '<script>window.__xss=2</script>'
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAEBgIApD5fRAAAAABJRU5ErkJggg==', 'base64')
 const SHOTS = process.env.LAUNCHER_TEST_SHOTS || ''
-const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'lh-launcher-e2e-'))
+// The hub refuses folders under AppData, which is where Windows puts its temp folder.
+const tempRoot = process.env.LAUNCHER_TEST_TMP || (/[\\/]appdata[\\/]/i.test(os.tmpdir()) ? os.homedir() : os.tmpdir())
+const scratch = fs.mkdtempSync(path.join(tempRoot, 'lh-launcher-e2e-'))
 
 const results = []
 function check(name, ok, detail = '') {
@@ -67,11 +69,15 @@ function fixtureHome() {
   return home
 }
 
+// The hub polls mutagen, and mutagen starts a daemon in the fixture home that outlives the run and locks the folder.
+const pathKey = Object.keys(process.env).find(k => k.toUpperCase() === 'PATH')
+const pathWithoutMutagen = process.env[pathKey].split(path.delimiter).filter(d => !['mutagen', 'mutagen.exe'].some(f => fs.existsSync(path.join(d, f)))).join(path.delimiter)
+
 async function startHub(dir) {
   const logs = []
   const child = spawn(process.execPath, ['server.mjs'], {
     cwd: dir,
-    env: { ...process.env, HUB_PORT: String(PORT), USERPROFILE: fixtureHome(), HOME: fixtureHome() },
+    env: { ...process.env, HUB_PORT: String(PORT), USERPROFILE: fixtureHome(), HOME: fixtureHome(), LOCALAPPDATA: fixtureHome(), [pathKey]: pathWithoutMutagen },
     stdio: ['ignore', 'pipe', 'pipe'],
   })
   child.stdout.on('data', d => logs.push(String(d)))
@@ -271,10 +277,70 @@ async function mainScenario(browser, hub, errors, noise) {
   check('The pencil opens the form', await page.inputValue('[data-f=name]') === 'Alpha Uno')
   await page.click('[data-delete]')
   check('Delete asks once more', await page.textContent('[data-delete]') === 'Confirm delete' && (await api('GET', '/api/launcher/library')).json.links.some(l => l.name === 'Alpha Uno'))
+  await sleep(450)
   await page.click('[data-delete]')
   await page.waitForSelector('.lch-input')
   check('Delete removes it', !(await api('GET', '/api/launcher/library')).json.links.some(l => l.name === 'Alpha Uno'))
   await closeBar(page)
+
+  section('Double clicks and repeated keys')
+  const namedLinks = async name => (await api('GET', '/api/launcher/library')).json.links.filter(l => l.name === name)
+  await openBar(page)
+  await page.route('**/api/launcher/links', async route => { await sleep(150); await route.continue() })
+  await search(page, 'add a link')
+  await page.keyboard.press('Enter')
+  await page.waitForSelector('.lch-form')
+  await page.fill('[data-f=name]', 'Twice Clicked')
+  await page.fill('[data-f=target]', 'https://twice-clicked.example/')
+  await page.dblclick('.lch-btn.go')
+  await page.waitForSelector('.lch-input')
+  check('Double-clicking Save saves one link', (await namedLinks('Twice Clicked')).length === 1, String((await namedLinks('Twice Clicked')).length))
+  await search(page, 'add a link')
+  await page.keyboard.press('Enter')
+  await page.waitForSelector('.lch-form')
+  await page.fill('[data-f=name]', 'Twice Keyed')
+  await page.fill('[data-f=target]', 'https://twice-keyed.example/')
+  await page.keyboard.press('Control+Enter')
+  await page.keyboard.press('Control+Enter')
+  await page.waitForSelector('.lch-input')
+  check('Pressing Ctrl+Enter twice saves one link', (await namedLinks('Twice Keyed')).length === 1, String((await namedLinks('Twice Keyed')).length))
+  await page.unroute('**/api/launcher/links')
+  await search(page, 'twice clicked')
+  await page.keyboard.press('Control+e')
+  await page.waitForSelector('[data-delete]')
+  await page.dblclick('[data-delete]')
+  check('Double-clicking Delete only asks', await page.textContent('[data-delete]') === 'Confirm delete' && (await namedLinks('Twice Clicked')).length === 1)
+  await sleep(450)
+  await page.click('[data-delete]')
+  await page.waitForSelector('.lch-input')
+  check('A later click confirms it', (await namedLinks('Twice Clicked')).length === 0)
+  await search(page, '')
+  await page.keyboard.press('Control+e')
+  await page.waitForSelector('.lch-form')
+  const cancel = await page.locator('[data-back]').boundingBox()
+  const spot = [cancel.x + cancel.width / 2, cancel.y + cancel.height / 2]
+  await page.mouse.click(spot[0], spot[1], { clickCount: 2 })
+  await page.waitForSelector('.lch-input')
+  const landed = await page.evaluate(([x, y]) => ({ onRow: !!document.elementFromPoint(x, y)?.closest('.lch-row'), open: !!document.querySelector('#hub-launcher.on'), opened: window.__opened.length }), spot)
+  check('The second click of a double click on Cancel doesn\'t run the row under it', landed.onRow && landed.open && landed.opened === 3, JSON.stringify(landed))
+  await search(page, 'twice keyed')
+  await page.click('.lch-row')
+  check('One click on a row straight after still works', !(await barOpen(page)) && (await page.evaluate(() => window.__opened.length)) === 4)
+  await api('DELETE', `/api/launcher/links/${(await namedLinks('Twice Keyed'))[0].id}`)
+  await page.evaluate(() => { window.__opened = [] })
+
+  section('Long non-English text')
+  for (const [label, ch] of [['€', '€'], ['emoji', '😀']]) {
+    const text = ch.repeat(30000)
+    const saved = (await api('POST', '/api/launcher/snippets', { name: `Long ${label}`, text })).json
+    const back = (await api('GET', '/api/launcher/snippets')).json.snippets.find(s => s.id === saved.id)
+    check(`A long snippet of ${label} comes back whole`, back?.text === text, `${back?.text?.split('\ufffd').length - 1} broken characters`)
+    await api('DELETE', `/api/launcher/snippets/${saved.id}`)
+    await api('POST', '/api/launcher/import', { data: { snippets: [{ name: `Long import ${label}`, text }] } })
+    const imported = (await api('GET', '/api/launcher/snippets')).json.snippets.find(s => s.name === `Long import ${label}`)
+    check(`An imported long snippet of ${label} comes back whole`, imported?.text === text)
+    await api('DELETE', `/api/launcher/snippets/${imported.id}`)
+  }
 
   section('Snippets: add, copy')
   await openBar(page)
@@ -497,6 +563,64 @@ async function mainScenario(browser, hub, errors, noise) {
 }
 
 /* ---------- clipboard fallbacks ---------- */
+
+// On its own unwatched page, because the failed load below is meant to fail.
+async function slowLibraryScenario(browser) {
+  section('Enter before the saved list arrives')
+  const context = await browser.newContext({ viewport: { width: 1280, height: 800 } })
+  const page = await context.newPage()
+  const link = (await api('POST', '/api/launcher/links', { name: 'Slowload Target', url: 'https://slowload.example/' })).json
+  const start = async answer => {
+    await page.unroute('**/api/launcher/library').catch(() => {})
+    await page.route('**/api/launcher/library', answer)
+    await goHome(page)
+    await stubOpen(page)
+    await page.evaluate(() => { window.__asked = []; window.HubChat.ask = t => window.__asked.push(t); window.HubChat.open = () => {} })
+    await page.keyboard.press('Control+k')
+    await page.waitForSelector('#hub-launcher.on .lch-input')
+  }
+  const slowly = async route => { await sleep(1200); await route.continue() }
+
+  await start(slowly)
+  let answered = page.waitForResponse(/\/api\/launcher\/library/)
+  await search(page, 'slowload target')
+  await page.keyboard.press('Enter')
+  check('Enter sends nothing to chat while the list loads', await barOpen(page) && (await page.evaluate(() => window.__asked.length)) === 0)
+  await answered
+  await page.waitForFunction(() => !document.querySelector('#hub-launcher.on'))
+  const first = await page.evaluate(() => ({ asked: window.__asked.length, url: window.__opened[0]?.[0] }))
+  check('Then it opens the link you typed, not chat', first.asked === 0 && first.url === 'https://slowload.example/', JSON.stringify(first))
+
+  await start(slowly)
+  answered = page.waitForResponse(/\/api\/launcher\/library/)
+  await search(page, 'slowload')
+  await page.keyboard.press('Enter')
+  await page.keyboard.type(' target')
+  await answered
+  await sleep(100)
+  const typed = await page.evaluate(() => ({ asked: window.__asked.length, opened: window.__opened.length }))
+  check('Typing after Enter cancels the wait', await barOpen(page) && typed.asked === 0 && typed.opened === 0, JSON.stringify(typed))
+
+  await start(slowly)
+  answered = page.waitForResponse(/\/api\/launcher\/library/)
+  await search(page, 'nothing saved has this name')
+  await page.keyboard.press('Enter')
+  await answered
+  await page.waitForFunction(() => window.__asked.length > 0)
+  check('With no match once loaded, Enter still asks chat', (await page.evaluate(() => window.__asked.join())) === 'nothing saved has this name')
+
+  await start(async route => { await sleep(300); await route.fulfill({ status: 500, contentType: 'application/json', body: '{}' }) })
+  answered = page.waitForResponse(/\/api\/launcher\/library/)
+  await search(page, 'slowload target')
+  await page.keyboard.press('Enter')
+  await answered
+  await page.waitForSelector('.lch-warn:not([hidden])')
+  const failed = await page.evaluate(() => ({ asked: window.__asked.length, opened: window.__opened.length }))
+  check('If the list fails to load, nothing runs by itself and the warning shows', await barOpen(page) && failed.asked === 0 && failed.opened === 0, JSON.stringify(failed))
+
+  await context.close()
+  await api('DELETE', `/api/launcher/links/${link.id}`)
+}
 
 async function clipboardScenario(browser, errors) {
   section('Copy where the clipboard API isn\'t available (plain http, another name)')
@@ -901,6 +1025,7 @@ try {
   hub = await startHub(freshCopy('main'))
   const noise = { on: false }
   await mainScenario(browser, hub, errors, noise)
+  await slowLibraryScenario(browser)
   await clipboardScenario(browser, errors)
   await phoneScenario(browser, errors)
   await standaloneScenario(browser, errors)
@@ -928,7 +1053,7 @@ try {
   await browser.close().catch(() => {})
   await hub?.stop().catch(() => {})
   clearTimeout(watchdog)
-  try { fs.rmSync(scratch, { recursive: true, force: true }) } catch {}
+  try { fs.rmSync(scratch, { recursive: true, force: true, maxRetries: 10, retryDelay: 300 }) } catch {}
 }
 
 const failed = results.filter(r => !r.ok)

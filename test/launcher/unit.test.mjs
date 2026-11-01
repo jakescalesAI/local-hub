@@ -14,8 +14,11 @@ const SENTINEL = 'SNIPPET-SENTINEL-7f3a'
 const dirs = []
 const servers = []
 
+// The hub refuses folders under AppData, which is where Windows puts its temp folder.
+const tempRoot = process.env.LAUNCHER_TEST_TMP || (/[\\/]appdata[\\/]/i.test(os.tmpdir()) ? os.homedir() : os.tmpdir())
+
 function tempDir() {
-  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'lh-launcher-unit-'))
+  const d = fs.mkdtempSync(path.join(tempRoot, 'lh-launcher-unit-'))
   dirs.push(d)
   return d
 }
@@ -39,7 +42,8 @@ function client(options = {}) {
   const here = options.here || tempDir()
   const route = create({ here, ...options })
   const call = async (method, url, body, remote = '127.0.0.1', headers = { host: 'localhost' }) => {
-    const req = Readable.from(body === undefined ? [] : [typeof body === 'string' ? body : JSON.stringify(body)])
+    const pieces = Array.isArray(body) && Buffer.isBuffer(body[0]) ? body : [typeof body === 'string' ? body : JSON.stringify(body)]
+    const req = Readable.from(body === undefined ? [] : pieces)
     req.method = method
     req.socket = { remoteAddress: remote }
     req.headers = headers
@@ -368,7 +372,7 @@ test('open: only saved folder and Obsidian links, on this computer, through the 
   const id = name => links.find(l => l.name === name).id
   assert.equal((await c.call('POST', '/api/launcher/open', { id: id('F') })).code, 200)
   assert.equal((await c.call('POST', '/api/launcher/open', { id: id('O') })).code, 200)
-  assert.deepEqual(opened, [['folder', path.normalize(dir)], ['url', 'obsidian://open?vault=V']])
+  assert.deepEqual(opened, [['folder', fs.realpathSync.native(dir)], ['url', 'obsidian://open?vault=V']])
   opened.length = 0
   assert.equal((await c.call('POST', '/api/launcher/open', { id: id('W') })).code, 400)
   assert.equal((await c.call('POST', '/api/launcher/open', { id: id('G') })).code, 404)
@@ -394,6 +398,82 @@ test('open: a folder that became a link to a key folder is refused by its real p
   const link = (await c.call('POST', '/api/launcher/links', { name: 'door', kind: 'folder', path: door })).body
   assert.equal((await c.call('POST', '/api/launcher/open', { id: link.id })).code, 403)
   assert.deepEqual(opened, [])
+})
+
+test('open: what opens is the real path that was checked', { skip: process.platform !== 'win32' && 'junctions are Windows only' }, async () => {
+  const opened = []
+  const here = tempDir()
+  const target = path.join(here, 'target')
+  const door = path.join(here, 'door')
+  fs.mkdirSync(target)
+  fs.symlinkSync(target, door, 'junction')
+  const c = client({ here, openers: { folder: p => opened.push(p), url: () => {} } })
+  const link = (await c.call('POST', '/api/launcher/links', { name: 'door', kind: 'folder', path: door })).body
+  assert.equal((await c.call('POST', '/api/launcher/open', { id: link.id })).code, 200)
+  assert.deepEqual(opened, [fs.realpathSync.native(target)])
+})
+
+test('links: a Windows stream name is refused at every way in', { skip: process.platform !== 'win32' && 'streams are Windows only' }, async () => {
+  const dir = tempDir()
+  const streams = [path.join(os.homedir(), '.ssh::$INDEX_ALLOCATION'), `${dir}::$INDEX_ALLOCATION`, `${dir}:hidden`, `${dir}\\inner:hidden`]
+  for (const p of streams) assert.throws(() => cleanLink({ name: 'x', kind: 'folder', path: p }), { code: 400 }, p)
+  const c = client()
+  assert.equal((await c.call('POST', '/api/launcher/links', { name: 'x', kind: 'folder', path: streams[0] })).code, 400)
+  const here = tempDir()
+  fs.mkdirSync(path.join(here, 'data'))
+  fs.writeFileSync(path.join(here, 'data', 'launcher.json'), JSON.stringify({ links: [{ id: 'hidden', name: 'x', kind: 'folder', path: streams[1] }] }))
+  assert.deepEqual((await client({ here }).call('GET', '/api/launcher/library')).body.links, [])
+})
+
+test('bodies: a character split across chunks stays whole, by the form and by import', async () => {
+  for (const ch of ['€', '😀']) {
+    const text = ch.repeat(30000)
+    const c = client()
+    // 1001 bytes never lines up with these characters, so most chunks end in the middle of one.
+    const split = value => {
+      const all = Buffer.from(JSON.stringify(value))
+      const pieces = []
+      for (let i = 0; i < all.length; i += 1001) pieces.push(all.subarray(i, i + 1001))
+      return pieces
+    }
+    const saved = await c.call('POST', '/api/launcher/snippets', split({ name: 'long', text }))
+    assert.equal(saved.code, 200)
+    assert.equal(saved.body.text, text)
+    const imported = await c.call('POST', '/api/launcher/import', split({ data: { snippets: [{ name: 'imported', text: `${text}!` }] } }))
+    assert.equal(imported.body.added.snippets, 1)
+    const { snippets } = (await c.call('GET', '/api/launcher/snippets')).body
+    assert.equal(snippets.find(s => s.name === 'imported').text, `${text}!`)
+  }
+})
+
+test('bodies: the size limit counts bytes', async () => {
+  const c = client()
+  const mb = Buffer.alloc(1024 * 1024, 0x20)
+  assert.equal((await c.call('POST', '/api/launcher/snippets', Array(9).fill(mb))).code, 413)
+})
+
+test('library: missing, malformed and repeated ids are replaced, and stay replaced', async () => {
+  const here = tempDir()
+  fs.mkdirSync(path.join(here, 'data'))
+  const url = 'https://a.example/'
+  fs.writeFileSync(path.join(here, 'data', 'launcher.json'), JSON.stringify({
+    links: [{ name: 'none', url }, { id: 'same', name: 'first', url }, { id: 'same', name: 'second', url }, { id: 123, name: 'number', url }, { id: 'not ok!', name: 'bad', url }],
+    snippets: [{ name: 'none', text: 't' }, { id: 'same', name: 'first', text: 't' }],
+  }))
+  const c = client({ here })
+  const lib = (await c.call('GET', '/api/launcher/library')).body
+  const ids = lib.links.map(l => l.id)
+  assert.equal(new Set(ids).size, 5, 'all different')
+  for (const id of [...ids, ...lib.snippets.map(s => s.id)]) assert.match(id, /^[\w-]{1,40}$/)
+  assert.equal(lib.links.find(l => l.name === 'first').id, 'same', 'a good id is kept')
+  assert.equal(lib.snippets.find(s => s.name === 'first').id, 'same', 'links and snippets have separate ids')
+  assert.equal(lib.warning, undefined)
+  assert.deepEqual((await client({ here }).call('GET', '/api/launcher/library')).body.links.map(l => l.id), ids, 'the same after a restart')
+  const second = lib.links.find(l => l.name === 'second')
+  assert.equal((await c.call('PUT', `/api/launcher/links/${second.id}`, { name: 'second, edited', url })).code, 200)
+  const after = (await c.call('GET', '/api/launcher/library')).body.links
+  assert.equal(after.find(l => l.id === 'same').name, 'first', 'editing one leaves the other alone')
+  assert.ok(after.some(l => l.name === 'second, edited'))
 })
 
 test('use: only known kinds of key count', async () => {
