@@ -4,6 +4,7 @@
 import assert from 'node:assert/strict'
 import { execFileSync, spawn, spawnSync } from 'node:child_process'
 import fs from 'node:fs'
+import http from 'node:http'
 import net from 'node:net'
 import os from 'node:os'
 import path from 'node:path'
@@ -13,7 +14,7 @@ import { APP_NAME } from '../../src/app-name.js'
 import { BUNDLE_MARKER } from '../../src/as-node.js'
 import {
   APP_DIR, PACKAGED_EXE, cleanup, evalIn, freePort, getJson, launch, makeUserData, ping, processAlive, quit, removeUserData,
-  trayItem, waitFor, waitForUrl, windows,
+  sleep, trayItem, waitFor, waitForUrl, windows,
 } from '../helpers.mjs'
 
 const REPO = path.resolve(APP_DIR, '..')
@@ -117,7 +118,7 @@ function askHelper(script, env) {
 }
 
 // Holds a port the way another program would. 'silent' takes connections and says nothing. 'resetting'
-// drops each one, so a check sees an empty port and starts a Hub, which then can't get the port.
+// drops each one, so a check on the port alone sees it as empty.
 async function holdPort(t, port, kind) {
   const sockets = new Set()
   const server = net.createServer(socket => {
@@ -157,23 +158,13 @@ const onHub = port => url => url.startsWith(`http://localhost:${port}/`)
 const offlineReason = url => (url.includes('offline.html') ? new URL(url).searchParams.get('reason') : null)
 
 describe('a port that is already taken', () => {
-  async function start(t, port) {
+  async function start(t, port, entry = hubDir => path.join(hubDir, 'server.mjs')) {
     const hubDir = copyHub(t)
     const userData = makeUserData({ port })
     cleanup(t, () => removeUserData(userData))
-    const handle = await launch({ userData, args: ['--hidden'], env: { LOCAL_HUB_SERVER: path.join(hubDir, 'server.mjs') } })
+    const handle = await launch({ userData, args: ['--hidden'], env: { LOCAL_HUB_SERVER: entry(hubDir) } })
     cleanup(t, () => quit(handle).catch(() => {}))
-    return { handle, userData }
-  }
-
-  // The Hub is alive and logged the error, but isn't listening and never will be.
-  async function stuckChild(t, handle, userData, port) {
-    await waitFor(() => hubLog(userData).includes('EADDRINUSE') && hubLog(userData).includes(String(port)), 'the Hub to lose the port', 60_000)
-    const [stuck] = await hubChildren(handle)
-    t.diagnostic(`Hub ${stuck} is alive without the port: ${hubLog(userData).trim().split(/\r?\n/).find(line => line.includes('EADDRINUSE'))}`)
-    assert.ok(processAlive(stuck))
-    assert.equal(await ping(port), false)
-    return stuck
+    return { handle, userData, hubDir }
   }
 
   async function recovers(t, handle, port, stuck) {
@@ -205,11 +196,38 @@ describe('a port that is already taken', () => {
     await quitAndCheck(handle, port, pid)
   })
 
-  test('a Hub that lost the port is replaced once the port is free', async t => {
+  test('a program that drops every connection still holds the port: no Hub starts until it leaves', async t => {
     const port = await freePort()
     const release = await holdPort(t, port, 'resetting')
     const { handle, userData } = await start(t, port)
-    const stuck = await stuckChild(t, handle, userData, port)
+    await waitForUrl(handle, 0, url => offlineReason(url) === 'port-silent', 'the port-in-use page', 30_000)
+    assert.deepEqual(await hubChildren(handle), [], 'nothing pointless started')
+    await release()
+    const pid = await recovers(t, handle, port, null)
+    assert.equal(hubLog(userData).includes('EADDRINUSE'), false)
+    await quitAndCheck(handle, port, pid)
+  })
+
+  test('the port taken while the Hub starts: it is stopped, the page says so, and a new one starts once it is free', async t => {
+    const port = await freePort()
+    let release
+    const { handle, userData, hubDir } = await start(t, port, dir => {
+      // Waits for the port to be taken, then starts the real server, which can't get it.
+      fs.writeFileSync(path.join(dir, 'after-squatter.mjs'), [
+        `import fs from 'node:fs'`,
+        `while (!fs.existsSync(new URL('./go', import.meta.url))) await new Promise(resolve => setTimeout(resolve, 20))`,
+        `await import('./server.mjs')`,
+      ].join('\n'))
+      return path.join(dir, 'after-squatter.mjs')
+    })
+    await waitFor(async () => (await hubChildren(handle)).length === 1, 'the Hub to start', 30_000)
+    const [stuck] = await hubChildren(handle)
+    release = await holdPort(t, port, 'silent')
+    fs.writeFileSync(path.join(hubDir, 'go'), '')
+    await waitForUrl(handle, 0, url => offlineReason(url) === 'port-silent', 'the port-in-use page', 30_000)
+    await waitFor(() => !processAlive(stuck), 'the stuck Hub to be stopped', 15_000)
+    t.diagnostic(`Hub ${stuck} stopped, its log: ${hubLog(userData).trim().split(/\r?\n/).find(line => line.includes('EADDRINUSE')) ?? 'stopped before it tried the port'}`)
+    assert.deepEqual(await hubChildren(handle), [], 'no new Hub while the port is taken')
     await release()
     const pid = await recovers(t, handle, port, stuck)
     await quitAndCheck(handle, port, pid)
@@ -227,11 +245,165 @@ describe('a port that is already taken', () => {
       return list.length === 3 && !list[2].loading && list[2].url.endsWith('settings.html')
     }, 'the settings page')
     assert.deepEqual(await evalIn(handle, 2, `window.hubDesktop.saveSettings({ port: ${port2} })`), { ok: true })
-    const stuck = await stuckChild(t, handle, userData, port2)
+    await waitForUrl(handle, 0, url => offlineReason(url) === 'port-silent', 'the port-in-use page', 30_000)
+    assert.deepEqual(await hubChildren(handle), [], 'the old Hub is stopped and no new one started')
     assert.deepEqual(listeners(port), [], 'the first port is free again')
     await release()
-    const pid = await recovers(t, handle, port2, stuck)
+    const pid = await recovers(t, handle, port2, null)
+    assert.equal(hubLog(userData).includes('EADDRINUSE'), false)
     await quitAndCheck(handle, port2, pid)
+  })
+})
+
+describe('a Hub that is slow, not gone', () => {
+  // Long enough for the 45-second limit to have passed well before the checks at the end.
+  const PAST_THE_LIMIT_MS = 60_000
+
+  async function launchWith(t, port, entry, env = {}) {
+    const userData = makeUserData({ port })
+    cleanup(t, () => removeUserData(userData))
+    const handle = await launch({ userData, args: ['--hidden'], env: { LOCAL_HUB_SERVER: entry, ...env } })
+    cleanup(t, () => quit(handle).catch(() => {}))
+    return { handle, userData }
+  }
+
+  const pingWithin = async (port, ms) => {
+    const res = await fetch(`http://localhost:${port}/api/ping`, { signal: AbortSignal.timeout(ms) })
+    return res.status
+  }
+
+  test('a Hub slower than the ping check is kept, with one process and its page up', async t => {
+    const port = await freePort()
+    const entry = path.join(APP_DIR, 'tests', 'fixtures', 'slow-hub', 'server.mjs')
+    const { handle } = await launchWith(t, port, entry)
+    await waitForUrl(handle, 0, onHub(port), 'the slow Hub in the main window', 45_000)
+    await waitFor(async () => (await inPage(handle, `document.querySelector('h1')?.textContent`)) === 'slow hub', 'its page', 20_000)
+    assert.equal(await ping(port), false, 'too slow for the ping check')
+    assert.equal(await pingWithin(port, 4000), 200, 'but it works')
+    const [pid] = await hubChildren(handle)
+    await inPage(handle, `window.__kept = true; 1`)
+    const seen = new Set()
+    const until = Date.now() + PAST_THE_LIMIT_MS
+    while (Date.now() < until) {
+      for (const child of await hubChildren(handle)) seen.add(child)
+      assert.ok(onHub(port)((await windows(handle))[0].url), 'the page stays up')
+      await sleep(3000)
+    }
+    assert.deepEqual([...seen], [pid], 'the same Hub all along')
+    assert.equal(await inPage(handle, `window.__kept`), true, 'and the same page, never reloaded')
+    assert.equal(await pingWithin(port, 4000), 200)
+    await quitAndCheck(handle, port, pid)
+  })
+
+  test('the real Hub blocked for longer than the limit is kept, and carries on afterwards', async t => {
+    const port = await freePort()
+    const hubDir = copyHub(t)
+    fs.writeFileSync(path.join(hubDir, 'busy.mjs'), [
+      `import fs from 'node:fs'`,
+      `await import('./server.mjs')`,
+      `const flag = new URL('./block', import.meta.url)`,
+      `setInterval(() => {`,
+      `  if (!fs.existsSync(flag)) return`,
+      `  fs.rmSync(flag)`,
+      `  const end = Date.now() + ${PAST_THE_LIMIT_MS}`,
+      `  while (Date.now() < end);`,
+      `}, 100)`,
+    ].join('\n'))
+    const { handle } = await launchWith(t, port, path.join(hubDir, 'busy.mjs'))
+    await waitForUrl(handle, 0, onHub(port), 'the real Hub in the main window', 60_000)
+    await waitFor(() => ping(port), 'the Hub to answer', 30_000)
+    const [pid] = await hubChildren(handle)
+    await inPage(handle, `window.__kept = true; 1`)
+    fs.writeFileSync(path.join(hubDir, 'block'), '')
+    await waitFor(async () => !(await ping(port)), 'the Hub to go quiet', 15_000)
+    const blockedAt = Date.now()
+    while (Date.now() - blockedAt < PAST_THE_LIMIT_MS - 8000) {
+      assert.ok(onHub(port)((await windows(handle))[0].url), 'the page stays up while it is blocked')
+      await sleep(3000)
+    }
+    await waitFor(() => ping(port), 'the Hub to answer again', 30_000)
+    t.diagnostic(`answered again ${Math.round((Date.now() - blockedAt) / 1000)} s after going quiet`)
+    assert.ok(processAlive(pid))
+    assert.deepEqual(await hubChildren(handle), [pid], 'the same Hub')
+    assert.deepEqual(listeners(port).map(entry => entry.pid), [pid])
+    assert.equal(await inPage(handle, `window.__kept`), true, 'and the same page, never reloaded')
+    await quitAndCheck(handle, port, pid)
+  })
+
+  test('a Hub we attached to going slow keeps its page and the hidden launcher, and is left running', async t => {
+    const port = await freePort()
+    let delay = 0
+    const server = http.createServer((req, res) => {
+      setTimeout(() => {
+        res.setHeader('content-type', req.url === '/api/ping' ? 'application/json' : 'text/html')
+        res.end(req.url === '/api/ping' ? '{"ok":true}' : `<!doctype html><title>hub</title><h1>${req.url}</h1>`)
+      }, delay)
+    })
+    await new Promise(resolve => server.listen(port, '127.0.0.1', resolve))
+    cleanup(t, () => new Promise(resolve => { server.closeAllConnections(); server.close(resolve) }))
+    const { handle } = await launchWith(t, port, path.join(APP_DIR, 'tests', 'fixtures', 'slow-hub', 'server.mjs'))
+    await waitForUrl(handle, 0, onHub(port), 'the attached Hub in the main window', 30_000)
+    await trayItem(handle, 'launcher')
+    await waitForUrl(handle, 1, url => url === `http://localhost:${port}/launcher`, 'the launcher', 15_000)
+    await handle.app.evaluate(({ BrowserWindow }) => { BrowserWindow.getAllWindows().sort((a, b) => a.id - b.id)[1].emit('blur') })
+    await waitFor(async () => !(await windows(handle))[1].visible, 'the launcher to close', 5000)
+    await inPage(handle, `window.__kept = true; 1`)
+    await evalIn(handle, 1, `window.__kept = true; 1`)
+    delay = 2200
+    assert.equal(await waitFor(async () => !(await ping(port)), 'pings to miss', 10_000), true)
+    // Past the 10 seconds the main window would wait before swapping to the offline page.
+    await sleep(15_000)
+    delay = 0
+    await waitFor(() => ping(port), 'pings to answer', 10_000)
+    await sleep(3000)
+    assert.equal(await inPage(handle, `window.__kept`), true, 'the same page, never swapped or reloaded')
+    assert.equal(await evalIn(handle, 1, `window.__kept`), true, 'the same launcher, never reloaded')
+    assert.deepEqual(await hubChildren(handle), [], 'nothing of its own started')
+    await quit(handle)
+    assert.equal(await ping(port), true, 'quitting leaves it running')
+  })
+
+  test('a slow first start gets longer on the next try and then works', async t => {
+    const port = await freePort()
+    const hubDir = copyHub(t)
+    const starts = path.join(hubDir, 'starts.txt')
+    fs.writeFileSync(path.join(hubDir, 'late.mjs'), [
+      `import fs from 'node:fs'`,
+      `fs.appendFileSync(new URL('./starts.txt', import.meta.url), 'x')`,
+      `await new Promise(resolve => setTimeout(resolve, 12_000))`,
+      `await import('./server.mjs')`,
+    ].join('\n'))
+    const { handle } = await launchWith(t, port, path.join(hubDir, 'late.mjs'), { LOCAL_HUB_START_TIMEOUT_MS: '8000' })
+    await waitForUrl(handle, 0, onHub(port), 'the Hub on its second try', 90_000)
+    assert.equal(fs.readFileSync(starts, 'utf8').length, 2, 'stopped once at 8 s, and the second try had 16 s')
+    assert.equal(await ping(port), true)
+    const [pid] = listeners(port).map(entry => entry.pid)
+    await quitAndCheck(handle, port, pid)
+  })
+
+  test('a Hub that never opens the port gets three tries, the page says so, and Try again starts over', async t => {
+    const port = await freePort()
+    const hubDir = copyHub(t)
+    const starts = path.join(hubDir, 'starts.txt')
+    fs.writeFileSync(path.join(hubDir, 'never.mjs'), [
+      `import fs from 'node:fs'`,
+      `fs.appendFileSync(new URL('./starts.txt', import.meta.url), 'x')`,
+      `if (fs.existsSync(new URL('./fixed', import.meta.url))) await import('./server.mjs')`,
+      `else setInterval(() => {}, 1000)`,
+    ].join('\n'))
+    const { handle } = await launchWith(t, port, path.join(hubDir, 'never.mjs'), { LOCAL_HUB_START_TIMEOUT_MS: '3000' })
+    await waitForUrl(handle, 0, url => offlineReason(url) === 'start-failed', 'the page saying it stopped trying', 60_000)
+    assert.match(await evalIn(handle, 0, `document.getElementById('detail').textContent`), /stopped trying/)
+    assert.equal(fs.readFileSync(starts, 'utf8').length, 3)
+    assert.deepEqual(await hubChildren(handle), [], 'none left running')
+    await sleep(5000)
+    assert.equal(fs.readFileSync(starts, 'utf8').length, 3, 'no more tries by itself')
+    fs.writeFileSync(path.join(hubDir, 'fixed'), '')
+    await evalIn(handle, 0, `document.getElementById('retry').click(); 1`)
+    await waitForUrl(handle, 0, onHub(port), 'the Hub after Try again', 45_000)
+    assert.equal(fs.readFileSync(starts, 'utf8').length, 4)
+    const [pid] = listeners(port).map(entry => entry.pid)
+    await quitAndCheck(handle, port, pid)
   })
 })
 

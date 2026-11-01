@@ -33,6 +33,8 @@ function start() {
   const connection = new HubConnection({
     port: settings.values.port,
     stopTree: platform.stopProcessTree,
+    portHolders: platform.portHolders,
+    startTimeoutMs: Number(process.env.LOCAL_HUB_START_TIMEOUT_MS) || undefined,
     spawnHub: port => {
       const entry = resolveServerEntry({
         isPackaged: app.isPackaged,
@@ -111,7 +113,7 @@ function start() {
     return true
   })
   handle('close-launcher', () => launcher.close())
-  handle('retry', () => connection.checkNow())
+  handle('retry', () => connection.retry())
   handle('start-bundled', () => connection.useBundled())
   handle('get-settings', () => ({ port: connection.port, hotkey: hotkey.current ?? settings.values.hotkey }))
   handle('save-settings', async patch => {

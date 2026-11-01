@@ -7,6 +7,9 @@ export const stopProcessTree = pid => new Promise(resolve => {
   resolve()
 })
 
+// Can't tell yet, and the app only stops its own Hub early on evidence, so here it never does.
+export const portHolders = async () => null
+
 export const spawnOptions = () => ({ detached: true })
 
 export const getLoginItem = app => app.getLoginItemSettings().openAtLogin

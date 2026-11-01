@@ -50,8 +50,16 @@ The app's name is `productName` in `package.json`, and nowhere else.
 | Nothing answering | Starts its built-in Hub on that port, restarts it if it crashes, and stops it and its child processes on quit |
 | Another program on the port | Shows a page saying so, starts nothing, and starts its Hub once the port is free |
 
-If its built-in Hub stops answering for 45 seconds, whether it never got the port or has hung, the app
-stops it and starts a new one, backing off from 1 second to 30 if that keeps failing.
+**A slow Hub is left alone.** A Hub that takes too long to answer stays up, and so does its page. The app
+only stops its built-in Hub early when it can see from the port that the Hub isn't listening:
+
+- If another program holds the port, the app stops its Hub at once and starts a new one when the port is free.
+- If nothing holds the port, the Hub gets 45 seconds to open it, then 90, then 180. After that the app stops
+  trying and says so, and **Try again** starts over.
+- If a Hub is listening but has hung for good, the app can't tell it from a busy one and leaves it running.
+  Quit the app from the tray to stop it.
+
+Only Windows can check the port for now. On other systems the app never stops its Hub early.
 
 When the app starts at login it waits 10 seconds before starting its own Hub, in case one started some
 other way is about to answer.
@@ -133,8 +141,11 @@ on real monitors, the real login-item write, the default `Ctrl+Alt+Space` bindin
 and running the installer.
 
 To press the test hotkey from your own script, import `pressKeys` and `TEST_HOTKEY_KEYS` from
-`tests/helpers.mjs`. The script goes to PowerShell on stdin, so its script policy doesn't apply and
-nothing needs changing.
+`tests/helpers.mjs`. It's for tests only and the app never uses it. It sends the script to PowerShell on
+stdin, which gets around the script policy because that policy only covers script files. The policy
+setting itself isn't changed. Node and Electron can't send a system-wide key press by themselves.
+
+`LOCAL_HUB_START_TIMEOUT_MS` shortens the 45-second start wait, so tests don't take minutes.
 
 ## Dependencies
 

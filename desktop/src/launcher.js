@@ -14,14 +14,18 @@ export class Launcher {
   #win = null
   #connection
   #onFallback = false
+  #hubWasUp = false
   #quitting = false
 
   constructor({ connection }) {
     this.#connection = connection
     connection.on('state', state => {
+      // A Hub going slow changes the state too, and that's no reason to reload what's already there.
+      const cameUp = state.status === 'online' && !this.#hubWasUp
+      this.#hubWasUp = state.status === 'online'
       if (!this.#live || this.isOpen) return
-      if (state.status === 'online') this.#load()
-      else if (!this.#onFallback) this.#showFallback()
+      if (cameUp) this.#load()
+      else if (state.status !== 'online' && !this.#onFallback) this.#showFallback()
     })
   }
 

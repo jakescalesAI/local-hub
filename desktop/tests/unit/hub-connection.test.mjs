@@ -2,9 +2,10 @@
 // matters most: nothing but our own child is ever stopped.
 import assert from 'node:assert/strict'
 import { EventEmitter } from 'node:events'
-import test from 'node:test'
+import test, { afterEach } from 'node:test'
 
 import { HubConnection, probeHub } from '../../src/hub-connection.js'
+import { listenersIn } from '../../src/platform/windows.js'
 import http from 'node:http'
 import net from 'node:net'
 import { freePort, sleep, waitFor } from '../helpers.mjs'
@@ -16,13 +17,21 @@ class FakeChild extends EventEmitter {
   die() { this.exitCode = 1; this.emit('exit', 1) }
 }
 
-function setup({ answers = () => 'none', spawnable = true, startTimeoutMs } = {}) {
+// A test that fails before its own stop would otherwise leave the loop running and the run would never end.
+const running = new Set()
+afterEach(async () => {
+  await Promise.all([...running].map(connection => connection.stop()))
+  running.clear()
+})
+
+function setup({ answers = () => 'none', holders = () => [], spawnable = true, startTimeoutMs } = {}) {
   const spawned = []
   const stopped = []
   const states = []
   const connection = new HubConnection({
     port: 4242,
     probe: async () => answers(),
+    portHolders: async () => holders(),
     pollMs: 10,
     offlinePollMs: 10,
     startTimeoutMs,
@@ -38,6 +47,7 @@ function setup({ answers = () => 'none', spawnable = true, startTimeoutMs } = {}
     },
   })
   connection.on('state', state => states.push({ ...state }))
+  running.add(connection)
   return { connection, spawned, stopped, states }
 }
 
@@ -171,17 +181,132 @@ test('something silent on the port starts no child, and a child starts once it l
   await connection.stop()
 })
 
-test('a silent attached Hub is waited for, never replaced', async () => {
+test('a silent attached Hub stays up as busy, is never replaced, and only goes offline once it has gone', async () => {
   let port = 'hub'
-  const { connection, spawned, stopped } = setup({ answers: () => port, startTimeoutMs: 20 })
+  const { connection, spawned, stopped, states } = setup({ answers: () => port, startTimeoutMs: 20 })
   await connection.start()
   port = 'silent'
-  await waitFor(() => connection.state.status === 'offline', 'offline', 2000)
-  assert.equal(connection.state.reason, 'hub-stopped')
+  await waitFor(() => connection.state.reason === 'slow', 'busy', 2000)
   await sleep(80)
+  assert.deepEqual(connection.state, { status: 'online', mode: 'attached', reason: 'slow' })
+  assert.equal(states.some(state => state.status !== 'online'), false, 'its page was never at risk')
   assert.equal(spawned.length, 0)
   assert.equal(stopped.length, 0)
+  port = 'hub'
+  await waitFor(() => connection.state.reason === null, 'answering again', 2000)
+  port = 'none'
+  await waitFor(() => connection.state.status === 'offline', 'offline', 2000)
+  assert.equal(connection.state.reason, 'hub-stopped')
+  port = 'silent'
+  await sleep(50)
+  assert.equal(connection.state.status, 'offline', 'gone first, so something silent now is not that Hub being busy')
   await connection.stop()
+})
+
+test('a child listening but too slow to answer is never stopped, and its page can load', async () => {
+  let port = 'none'
+  let listening = []
+  const { connection, spawned, stopped } = setup({ answers: () => port, holders: () => listening, startTimeoutMs: 30 })
+  await connection.start()
+  listening = [1000]
+  port = 'silent'
+  await waitFor(() => connection.state.status === 'online', 'online', 2000)
+  assert.deepEqual(connection.state, { status: 'online', mode: 'bundled', reason: 'slow' })
+  await sleep(200)
+  assert.deepEqual(stopped, [], 'many times the timeout, and it holds the port')
+  assert.equal(spawned.length, 1)
+  await connection.stop()
+  assert.deepEqual(stopped, [1000], 'quit still stops it')
+})
+
+test('a child listening that answers wrongly is kept, and the page says it is not answering', async () => {
+  const { connection, stopped } = setup({
+    answers: () => (connection.ownsHub ? 'other' : 'none'),
+    holders: () => (connection.ownsHub ? [1000] : []),
+    startTimeoutMs: 20,
+  })
+  await connection.start()
+  await waitFor(() => connection.state.reason === 'not-answering', 'not answering', 2000)
+  await sleep(80)
+  assert.deepEqual(stopped, [])
+  await connection.stop()
+})
+
+test('when it cannot tell who holds the port, nothing is stopped', async () => {
+  const { connection, stopped, spawned } = setup({ holders: () => null, startTimeoutMs: 20 })
+  await connection.start()
+  assert.equal(spawned.length, 1)
+  await sleep(150)
+  assert.deepEqual(stopped, [])
+  assert.equal(connection.state.reason, 'not-answering')
+  await connection.stop()
+})
+
+test('each try at starting gets twice as long, then it stops trying and says so until asked', async () => {
+  const startedAt = []
+  const stoppedAfter = []
+  const { connection, spawned, stopped } = setup({ startTimeoutMs: 100 })
+  const spawnHub = connection.spawnHub
+  connection.spawnHub = port => { startedAt.push(Date.now()); return spawnHub(port) }
+  const stopTree = connection.stopTree
+  connection.stopTree = pid => { stoppedAfter.push(Date.now() - startedAt.at(-1)); return stopTree(pid) }
+  await connection.start()
+  await waitFor(() => connection.state.reason === 'start-failed', 'giving up', 12_000)
+  assert.equal(spawned.length, 3)
+  assert.deepEqual(stopped, [1000, 1001, 1002])
+  assert.ok(stoppedAfter[0] >= 100 && stoppedAfter[1] >= 200 && stoppedAfter[2] >= 400, JSON.stringify(stoppedAfter))
+  assert.deepEqual(connection.state, { status: 'offline', mode: 'bundled', reason: 'start-failed' })
+  await sleep(1500)
+  assert.equal(spawned.length, 3, 'no more tries by itself')
+  connection.retry()
+  await waitFor(() => spawned.length === 4, 'try again to start one', 2000)
+  await connection.stop()
+})
+
+test('a slow start that answers on a later try is kept, and later trouble gets all three tries again', async () => {
+  let port = 'none'
+  const { connection, spawned, stopped } = setup({ answers: () => port, startTimeoutMs: 60 })
+  await connection.start()
+  await waitFor(() => spawned.length === 2, 'a second try', 3000)
+  port = 'hub'
+  await waitFor(() => connection.state.status === 'online', 'online', 2000)
+  assert.deepEqual(stopped, [1000])
+  port = 'none'
+  await waitFor(() => spawned.length === 3, 'a third child', 3000)
+  await waitFor(() => spawned.length === 4, 'a fourth, because the count started over', 6000)
+  await connection.stop()
+})
+
+test('a program holding the port that drops every connection still counts: no child until it leaves', async () => {
+  let holding = [4444]
+  const { connection, spawned } = setup({ answers: () => 'none', holders: () => holding })
+  await connection.start()
+  assert.deepEqual(connection.state, { status: 'conflict', mode: null, reason: 'port-silent' })
+  await sleep(50)
+  assert.equal(spawned.length, 0)
+  holding = []
+  await waitFor(() => spawned.length === 1, 'a child', 2000)
+  await connection.stop()
+})
+
+test('listenersIn reads netstat, by the foreign port so any language works, on local addresses only', () => {
+  const text = [
+    'Active Connections',
+    '  Proto  Local Address          Foreign Address        State           PID',
+    '  TCP    127.0.0.1:3100         0.0.0.0:0              LISTENING       11',
+    '  TCP    0.0.0.0:3100           0.0.0.0:0              ABHÖREN         12',
+    '  TCP    [::1]:3100             [::]:0                 LISTENING       13',
+    '  TCP    [::]:3100              [::]:0                 LISTENING       14',
+    '  TCP    100.64.0.9:3100        0.0.0.0:0              LISTENING       15',
+    '  TCP    127.0.0.1:31000        0.0.0.0:0              LISTENING       16',
+    '  TCP    127.0.0.1:13100        0.0.0.0:0              LISTENING       19',
+    '  TCP    127.0.0.1:3100         127.0.0.1:50000        ESTABLISHED     17',
+    '  TCP    127.0.0.1:50000        127.0.0.1:3100         TIME_WAIT       0',
+    '  UDP    127.0.0.1:3100         *:*                                    18',
+    '  TCP    127.0.0.1:3100         0.0.0.0:0              LISTENING       11',
+  ].join('\r\n')
+  assert.deepEqual(listenersIn(text, 3100), [11, 12, 13, 14])
+  assert.deepEqual(listenersIn(text, 3101), [])
 })
 
 test('a child that never answers is stopped after the timeout and a new one starts', async () => {
@@ -215,19 +340,40 @@ test('a child that answered gets the full timeout from its first missed check', 
   await connection.stop()
 })
 
-test('a child stuck behind another program is stopped, and only replaced once the port is free', async () => {
+test('a child stuck behind another program is stopped at once, and only replaced once the port is free', async () => {
   let port = 'none'
-  const { connection, spawned, stopped } = setup({ answers: () => port, startTimeoutMs: 40 })
+  let holding = []
+  const { connection, spawned, stopped } = setup({ answers: () => port, holders: () => holding })
   await connection.start()
   assert.equal(spawned.length, 1)
   port = 'other'
+  holding = [4444]
   await waitFor(() => stopped.includes(1000), 'the stuck child to be stopped', 2000)
   await sleep(1200)
   assert.equal(spawned.length, 1, 'no new child while the port is taken')
   assert.equal(connection.state.status, 'conflict')
   port = 'none'
+  holding = []
   await waitFor(() => spawned.length === 2, 'a new child', 3000)
   await connection.stop()
+})
+
+test('a child stuck behind another program is only asked to stop once, however long that takes', async () => {
+  const stopped = []
+  const child = Object.assign(new EventEmitter(), { pid: 7, exitCode: null, signalCode: null })
+  const connection = new HubConnection({
+    port: 4242, pollMs: 10, offlinePollMs: 10,
+    probe: async () => (connection.ownsHub ? 'other' : 'none'),
+    portHolders: async () => (connection.ownsHub ? [4444] : []),
+    stopTree: async pid => { stopped.push(pid) },
+    spawnHub: () => child,
+  })
+  running.add(connection)
+  await connection.start()
+  await sleep(120)
+  assert.deepEqual(stopped, [7])
+  child.exitCode = 1
+  child.emit('exit', 1)
 })
 
 test('a stop that takes a while is only asked for once per timeout', async () => {
@@ -236,6 +382,7 @@ test('a stop that takes a while is only asked for once per timeout', async () =>
   const connection = new HubConnection({
     port: 4242, pollMs: 10, offlinePollMs: 10, startTimeoutMs: 100,
     probe: async () => 'none',
+    portHolders: async () => [],
     stopTree: async pid => { stopped.push(pid) },
     spawnHub: () => child,
   })
