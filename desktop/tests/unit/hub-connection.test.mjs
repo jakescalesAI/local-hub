@@ -15,6 +15,7 @@ class FakeChild extends EventEmitter {
   signalCode = null
   constructor(pid) { super(); this.pid = pid }
   die() { this.exitCode = 1; this.emit('exit', 1) }
+  kill() { this.killed = true; this.die() }
 }
 
 // A test that fails before its own stop would otherwise leave the loop running and the run would never end.
@@ -434,4 +435,27 @@ test('probeHub reads the body, not just the status code', async t => {
   server.closeAllConnections()
   await new Promise(resolve => server.close(resolve))
   assert.equal(await probeHub(port), 'none')
+})
+
+test('stop has a limit: a tree stop that never ends and a Hub that never goes can\'t hold it', async () => {
+  const { connection, spawned } = setup({ answers: () => 'none' })
+  await connection.start()
+  await waitFor(() => spawned.length === 1, 'the child')
+  connection.stopTree = () => new Promise(() => {})
+  const startedAt = Date.now()
+  await connection.stop({ limitMs: 100 })
+  const took = Date.now() - startedAt
+  assert.ok(took >= 90 && took < 2000, `took ${took} ms`)
+  assert.equal(spawned[0].killed, undefined, 'the tree stop is still running, so the Hub is left for it')
+})
+
+test('a tree stop that finishes with the Hub still here has failed, so the Hub is ended directly', async () => {
+  const { connection, spawned } = setup({ answers: () => 'none' })
+  await connection.start()
+  await waitFor(() => spawned.length === 1, 'the child')
+  connection.stopTree = async () => {}
+  const startedAt = Date.now()
+  await connection.stop({ limitMs: 5000 })
+  assert.equal(spawned[0].killed, true)
+  assert.ok(Date.now() - startedAt < 2000, 'and stop doesn\'t wait out its limit')
 })

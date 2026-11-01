@@ -15,6 +15,7 @@ const STATUS_TEXT = {
 export function createTray({ connection, onOpen, onLauncher, onSettings, getLogin, setLogin, getHotkey, onQuit }) {
   const tray = new Tray(nativeImage.createFromPath(ICON))
   const refresh = () => {
+    if (tray.isDestroyed()) return
     const { status, mode } = connection.state
     const summary = STATUS_TEXT[status]?.(mode) ?? 'Hub'
     tray.setToolTip(`${APP_NAME}\n${summary}`)

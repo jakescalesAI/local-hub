@@ -24,6 +24,7 @@ export async function probeHub(port, timeoutMs = 1500) {
 const MAX_BACKOFF_MS = 30_000
 const STABLE_AFTER_MS = 60_000
 const MAX_START_TRIES = 3
+const STOP_LIMIT_MS = 10_000
 
 export class HubConnection extends EventEmitter {
   #child = null
@@ -83,19 +84,22 @@ export class HubConnection extends EventEmitter {
     return this.checkNow()
   }
 
-  async stop() {
+  // Waits for our own child to be gone, up to limitMs. The tree stop carries on by itself after that.
+  async stop({ limitMs = STOP_LIMIT_MS } = {}) {
     this.#running = false
     clearTimeout(this.#timer)
     const child = this.#child
     if (!child) return
     this.#child = null
-    const gone = new Promise(resolve => {
-      if (child.exitCode !== null || child.signalCode !== null) return resolve()
+    const isGone = () => child.exitCode !== null || child.signalCode !== null
+    if (isGone()) return
+    await new Promise(resolve => {
       child.once('exit', resolve)
-      setTimeout(resolve, 5000).unref?.()
+      setTimeout(resolve, limitMs).unref?.()
+      // A tree stop that finished with the Hub still here has failed. The Hub at least can still go.
+      const afterTreeStop = () => { if (!isGone()) child.kill?.() }
+      this.stopTree(child.pid).then(afterTreeStop, afterTreeStop)
     })
-    await this.stopTree(child.pid)
-    await gone
   }
 
   async setPort(port) {

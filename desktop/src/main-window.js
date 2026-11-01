@@ -126,10 +126,13 @@ export class MainWindow {
     this.#win.loadURL(url).catch(() => {})
   }
 
+  // Destroyed, not closed: closing asks the page first, and a stuck page or one that says no would keep
+  // the app open.
   prepareToQuit() {
     this.#quitting = true
     clearTimeout(this.#offlineTimer)
     this.#saveNow()
+    this.#win?.destroy()
   }
 
   #noteUrl(url) {

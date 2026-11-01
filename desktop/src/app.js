@@ -3,7 +3,7 @@ import { BrowserWindow, Menu, app, ipcMain, session, shell } from 'electron'
 import path from 'node:path'
 
 import { APP_NAME } from './app-name.js'
-import { resolveServerEntry, spawnBundledHub } from './hub-bundle.js'
+import { resolveServerEntry, spawnBundledHub, spawnQuitGuard } from './hub-bundle.js'
 import { HubConnection } from './hub-connection.js'
 import { Hotkey } from './hotkey.js'
 import { Launcher } from './launcher.js'
@@ -15,6 +15,12 @@ import { createTray } from './tray.js'
 
 // At login a Hub started some other way may be a few seconds behind us; give it the chance to answer.
 const LOGIN_GRACE_MS = 10_000
+
+// Quitting on a busy computer. The app waits this long for its Hub to go, then this long for Electron
+// to end, which a process outside it enforces. The first wait can't be cut short: Windows ends a child
+// with its parent, and a tree stop can't find what the Hub started once the Hub has gone.
+const QUIT_HUB_LIMIT_MS = Number(process.env.LOCAL_HUB_QUIT_LIMIT_MS) || 15_000
+const QUIT_MAIN_AFTER_MS = 5000
 
 if (!app.requestSingleInstanceLock()) {
   app.quit()
@@ -160,10 +166,16 @@ function start() {
   app.on('will-quit', event => {
     hotkey.clear()
     if (stopped) return
-    // Waits for our own child to be gone. An attached Hub has no child, so this leaves it running.
     event.preventDefault()
     stopped = true
-    connection.stop().finally(() => setImmediate(() => app.exit(0)))
+    // Gone at once however long the rest takes, and saved first in case Electron has to be ended.
+    trayControls.tray.destroy()
+    session.fromPartition('persist:hub').flushStorageData()
+    // Waits for our own child to be gone. An attached Hub has no child, so this leaves it running.
+    connection.stop({ limitMs: QUIT_HUB_LIMIT_MS }).finally(() => setImmediate(() => {
+      spawnQuitGuard(QUIT_MAIN_AFTER_MS)
+      app.exit(0)
+    }))
   })
 
   mainWindow.create({ visible: !startHidden })

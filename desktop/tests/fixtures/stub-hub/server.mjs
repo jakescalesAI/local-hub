@@ -12,7 +12,9 @@ const PORT = Number(process.env.HUB_PORT || 3100)
 const grandchild = process.env.STUB_GRANDCHILD === '1'
   // Detached like the real Hub's browser: Windows won't end it just because its parent exits, so only
   // a real tree stop can.
-  ? spawn(process.execPath, [path.join(HERE, 'keep-alive.mjs')], { stdio: 'ignore', windowsHide: true, detached: true })
+  // The variable matters in a packaged run, where the Hub's environment is clean: without it this
+  // would be a second full copy of the app, with a window, on the default profile.
+  ? spawn(process.execPath, [path.join(HERE, 'keep-alive.mjs')], { stdio: 'ignore', windowsHide: true, detached: true, env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' } })
   : null
 
 const page = `<!doctype html><html><head><title>Stub Hub</title></head><body>

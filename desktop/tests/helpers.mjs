@@ -134,10 +134,13 @@ export async function launch({ userData, args = [], env = {}, packaged = false }
   return { app, proc, exited, output, pid: proc.pid }
 }
 
+// The most a quit can take when everything is slow: 15 s for the Hub, 5 s for Electron, then the guard
+// has to start and end it. Idle it takes 2 to 3 s with a built-in Hub and under 1 s with an attached one.
+export const QUIT_LIMIT_MS = 25_000
+
 export async function quit(handle) {
   await handle.app.evaluate(({ app }) => { setImmediate(() => app.quit()) }).catch(() => {})
-  // Windows close at once, but on a busy machine the process itself has taken up to 12 s to go.
-  await Promise.race([handle.exited, sleep(30_000).then(() => { throw new Error('app did not exit within 30 s') })])
+  await Promise.race([handle.exited, sleep(QUIT_LIMIT_MS).then(() => { throw new Error(`app did not exit within ${QUIT_LIMIT_MS / 1000} s`) })])
 }
 
 // Windows in creation order: [0] main, [1] launcher, then anything opened later.

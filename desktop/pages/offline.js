@@ -9,7 +9,7 @@ const MESSAGES = {
   'start-failed': ['Your Hub did not start', `It didn't open port ${port} after three tries, so the app has stopped trying. The log is in the app's data folder.`],
   'no-server': ['No Hub found', `Nothing is answering on port ${port}, and this copy of the app has no built-in Hub to start.`],
   'port-conflict': ['Port in use', `Another program is using port ${port}, and it isn't a Hub. Close it, or choose another port in Settings.`],
-  'port-silent': ['Port in use', `Something is holding port ${port} without answering. Close it, or choose another port in Settings.`],
+  'port-silent': ['Port in use', `Something is holding port ${port} without answering. If it's a busy Hub, this page clears when it answers. If not, close it, or choose another port in Settings.`],
 }
 
 const [title, detail] = MESSAGES[query.get('reason')] ?? MESSAGES.starting

@@ -61,6 +61,17 @@ only stops its built-in Hub early when it can see from the port that the Hub isn
 
 Only Windows can check the port for now. On other systems the app never stops its Hub early.
 
+**Quitting has a limit.** Windows and the tray icon go at once. An idle computer takes 2 to 3 seconds to
+finish with a built-in Hub and under a second with an attached one. On a computer with every core busy,
+`taskkill` alone can take 10 seconds and Electron another 20 to end, so:
+
+- The app waits up to 15 seconds for its Hub to go. It has to stay for this, because Windows ends the
+  Hub the moment the app ends, and `taskkill` can't find what the Hub started after that.
+- A small process outside the app then gives Electron 5 seconds and ends it if it's still there. That's
+  about 20 seconds at worst from Quit to gone. Pages' saved data is flushed first.
+- The Hub never outlasts the app. If `taskkill` needs more than the 15 seconds, anything the Hub started
+  (a browser, a tunnel) stays behind.
+
 When the app starts at login it waits 10 seconds before starting its own Hub, in case one started some
 other way is about to answer.
 
@@ -136,7 +147,9 @@ off-screen, stops them taking focus, records external links and login-item calls
 them, and the hotkey is pressed for real on an unusual binding. Tests that need something missing,
 such as a build, a running Hub or a second monitor, report as skipped rather than passing.
 
-Not covered by the suite, because it would take over the desktop: real focus changes, how windows look
+`quit.test.mjs` quits with four CPU burners running for a few seconds. It presses Quit through the real tray menu item's click handler, not the native menu popup.
+
+Not covered by the suite, because it would take over the desktop: the native tray menu popup, real focus changes, how windows look
 on real monitors, the real login-item write, the default `Ctrl+Alt+Space` binding, a real Save As dialog
 and running the installer.
 

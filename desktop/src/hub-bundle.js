@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url'
 import { BUNDLE_MARKER } from './as-node.js'
 
 const RUNNER = fileURLToPath(new URL('./hub-runner.mjs', import.meta.url))
+const QUIT_GUARD = fileURLToPath(new URL('./quit-guard.mjs', import.meta.url))
 const KEPT = new Set(['config', 'data', 'workspace'])
 
 export function syncBundle(source, target, stamp) {
@@ -38,6 +39,22 @@ export function resolveServerEntry({ isPackaged, resourcesPath, appPath, userDat
   const target = path.join(userData, 'hub')
   syncBundle(source, target, `${version} ${fs.statSync(shipped).mtimeMs}`)
   return path.join(target, 'server.mjs')
+}
+
+// Outlives the app on purpose. It's a safety net, so failing to start it doesn't stop the app quitting.
+export function spawnQuitGuard(afterMs) {
+  try {
+    const guard = spawn(process.execPath, [QUIT_GUARD, process.pid, afterMs].map(String), {
+      detached: true,
+      stdio: 'ignore',
+      windowsHide: true,
+      env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
+    })
+    guard.once('error', error => console.error('quit guard:', error.message))
+    guard.unref()
+  } catch (error) {
+    console.error('quit guard:', error.message)
+  }
 }
 
 export function spawnBundledHub({ entry, port, logFile, spawnOptions = {}, cleanEnv = false }) {

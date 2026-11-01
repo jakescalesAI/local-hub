@@ -112,8 +112,10 @@ export class Launcher {
     this.#load()
   }
 
+  // Destroyed, not closed: see the main window.
   prepareToQuit() {
     this.#quitting = true
+    this.#live?.destroy()
   }
 
   #load() {

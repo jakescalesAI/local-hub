@@ -1,4 +1,4 @@
-import { execFile } from 'node:child_process'
+import { execFile, spawn } from 'node:child_process'
 import path from 'node:path'
 
 import { APP_ID } from '../app-name.js'
@@ -9,9 +9,13 @@ const NETSTAT = path.join(SYSTEM32, 'netstat.exe')
 
 // A programmatic kill on Windows runs no signal handler and leaves grandchildren (the Hub's ssh
 // tunnels, say) behind, so the whole tree goes by its root pid. Only ever called with our own child.
+// Runs on its own, so the app leaving as soon as the Hub has gone can't cut it short. It takes 2 seconds
+// on an idle computer and can take 10 on a busy one.
 export const stopProcessTree = pid => new Promise(resolve => {
-  // Quitting waits on this, so a taskkill that hangs mustn't hold the app open for good.
-  execFile(TASKKILL, ['/PID', String(pid), '/T', '/F'], { windowsHide: true, timeout: 10_000 }, () => resolve())
+  const taskkill = spawn(TASKKILL, ['/PID', String(pid), '/T', '/F'], { windowsHide: true, detached: true, stdio: 'ignore' })
+  taskkill.once('error', resolve)
+  taskkill.once('exit', resolve)
+  taskkill.unref()
 })
 
 // Only addresses a check on localhost reaches. A listener has foreign port 0, which is read instead of
