@@ -7,7 +7,7 @@ import http from 'node:http'
 import os from 'node:os'
 import { spawn, execFile } from 'node:child_process'
 import { readFile, statfs } from 'node:fs/promises'
-import { appendFile, existsSync, renameSync, statSync } from 'node:fs'
+import { appendFile, existsSync, mkdirSync, renameSync, statSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createFiles } from './files.mjs'
@@ -337,13 +337,16 @@ async function tabRoutes() {
 const ACCESS_FILE = path.join(HERE, 'data', 'access.log')
 const ACCESS_LIMIT = 20 * 2 ** 20
 let accessSize = -1
-function accessLine(req, res, url) {
+function accessLine(req, res, url, client) {
   if (hubConfig().accessLog === false) return
   if (res.statusCode < 400 && req.method === 'GET' && ['/api/ping', '/api/state'].includes(url.pathname)) return
   const forwarded = String(req.headers['x-forwarded-for'] || '').replace(/[^0-9a-fA-F.:, ]/g, '').slice(0, 80)
-  const line = [new Date().toISOString(), req.method, url.pathname.replace(/\s/g, '').slice(0, 200), res.writableFinished ? res.statusCode : `${res.statusCode}-cut`, req.socket.remoteAddress || '', forwarded].join(' ').trimEnd() + '\n'
+  const line = [new Date().toISOString(), req.method, url.pathname.replace(/\s/g, '').slice(0, 200), res.writableFinished ? res.statusCode : `${res.statusCode}-cut`, client, forwarded].join(' ').trimEnd() + '\n'
   try {
-    if (accessSize < 0) accessSize = existsSync(ACCESS_FILE) ? statSync(ACCESS_FILE).size : 0
+    if (accessSize < 0) {
+      mkdirSync(path.dirname(ACCESS_FILE), { recursive: true }) // a new hub has no data folder until something needs it
+      accessSize = existsSync(ACCESS_FILE) ? statSync(ACCESS_FILE).size : 0
+    }
     if (accessSize > ACCESS_LIMIT) { renameSync(ACCESS_FILE, `${ACCESS_FILE}.1`); accessSize = 0 }
     accessSize += line.length
     appendFile(ACCESS_FILE, line, () => {})
@@ -354,7 +357,9 @@ async function handle(req, res) {
   // A fixed base: the Host header is the sender's text, and a bad one must not stop the hub. knownHost judges it next.
   let url
   try { url = new URL(req.url, 'http://localhost') } catch { return send(res, 400, 'Bad request', 'text/plain; charset=utf-8') }
-  res.on('close', () => accessLine(req, res, url))
+  // Taken now: refusing an oversized body destroys the request and its socket. A throw in this listener would stop the hub, since handle's catch doesn't reach it.
+  const client = req.socket?.remoteAddress || ''
+  res.on('close', () => { try { accessLine(req, res, url, client) } catch (err) { console.error(err) } })
   if (!knownHost(req)) return send(res, 403, 'This hub doesn’t answer to that name. If it’s yours, add it to "hosts" in config/hub.json.', 'text/plain; charset=utf-8')
   if (!deviceAuth.admit(url, req, res) && await gate(req, res, url, send)) return
   // Changes need the page's x-hub header. A request from another site can't add it without a
