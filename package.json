@@ -1,10 +1,10 @@
 {
-  "name": "quartzi-hub",
+  "name": "local-hub",
   "version": "0.1.0",
   "description": "Your own private dashboard and AI assistant, running on your own computer.",
   "license": "MIT",
   "private": true,
   "type": "module",
   "engines": { "node": ">=20" },
-  "scripts": { "start": "node server.mjs" }
+  "scripts": { "start": "node server.mjs", "passcode": "node set-passcode.mjs" }
 }

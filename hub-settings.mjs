@@ -65,7 +65,7 @@ export const STYLE = {
   effect: { enum: ['none', 'grain', 'glow'], default: 'none' },
 }
 
-// The default look lives in themes/quartzi.json: style defaults, these wallpapers, the icon.
+// The default look lives in themes/default.json: style defaults, these wallpapers, the icon.
 for (const [k, v] of Object.entries(baseTheme().style || {})) if (STYLE[k]) STYLE[k].default = v
 export const BUILTIN_WALLPAPERS = (baseTheme().wallpapers || []).map(w => ({ ...w, url: `/wallpapers/${w.id}.svg` }))
 
@@ -177,7 +177,8 @@ function checker() {
   return { errors, fail, obj, list, oneOf, int, color, bool, text, ids, done() { if (errors.length) throw Object.assign(new Bad(errors[0].message), { errors }) } }
 }
 
-const widgetIdOk = id => typeof id === 'string' && (WIDGET_IDS.includes(id) || FAMILY_RE.test(id))
+// x-<name> is your own widget, from a tab file (HUB-GUIDE.md, "Extending the hub").
+const widgetIdOk = id => typeof id === 'string' && (WIDGET_IDS.includes(id) || FAMILY_RE.test(id) || /^x-[a-z0-9-]{1,40}$/.test(id))
 const itemIdOk = it => it?.id === 'stack' || it?.id === 'app' || widgetIdOk(it?.id)
 
 function cleanOpts(c, p, id, opts) {

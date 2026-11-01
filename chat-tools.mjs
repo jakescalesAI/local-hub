@@ -1,11 +1,12 @@
 // Hub Assistant's own tools: a tiny MCP server (JSON-RPC over stdio) that chat.mjs hands to the
-// `claude -p` run with --mcp-config. It gives the assistant exactly two ways to act, nothing more:
+// `claude -p` run with --mcp-config:
 //
-//   settings_update { patch }      POST /api/hub/settings (the hub's look and layout only)
+//   hub_read        { path }        GET /api/<path>: the hub's live data. Never a file's content.
+//   settings_update { patch }       POST /api/hub/settings (the hub's look and layout only)
 //   show_site       { url?, name? } shows a website to the user as a card in the chat
 //
-// Everything else stays read-only (see chat.mjs ALLOW/DENY). The settings API keeps the previous
-// version in data/hub-settings.prev.json, so every change can be undone with another patch.
+// The settings API keeps the previous version in data/hub-settings.prev.json, so every change can
+// be undone with another patch.
 import { createInterface } from 'node:readline'
 
 const PORT = Number(process.env.HUB_PORT) || 3100
@@ -13,7 +14,19 @@ const API = `http://127.0.0.1:${PORT}`
 // Top-level settings keys the assistant may send. Wallpaper uploads (raw image bodies) are not here.
 const KEYS = new Set(['tabs', 'apps', 'widgets', 'style', 'wallpaper', 'sites', 'reset'])
 
+const READ_LIMIT = 200_000
+
 const TOOLS = [
+  {
+    name: 'hub_read',
+    description: 'Read live data from this hub: GET /api/<path>, for example /api/state or /api/hub/settings. The guide lists the paths. It returns data, never the content of a file; use Read for files.',
+    inputSchema: {
+      type: 'object',
+      properties: { path: { type: 'string', description: 'A hub API path starting with /api/, query string included' } },
+      required: ['path'],
+      additionalProperties: false,
+    },
+  },
   {
     name: 'settings_update',
     description: 'Change the hub\'s look and layout through POST /api/hub/settings: tabs (hide/show/order), Home apps, widgets, style (theme, accent, widget look, blur, transparency, radius, shadow, tab bar, effect), wallpaper, website apps (sites) and reset. Send only the parts that change, exactly as the guide\'s "Settings API" section describes. A bad patch changes nothing and returns the errors. Use it only when the user asks for that change.',
@@ -53,6 +66,21 @@ function webUrl(u) {
     if ((x.protocol !== 'http:' && x.protocol !== 'https:') || x.username || x.password || x.href.length > 500) return null
     return x.href
   } catch { return null }
+}
+
+async function hubRead({ path } = {}) {
+  let url
+  try { url = new URL(String(path || '').replace(/^\/?/, '/'), API) } catch { return text('That isn\'t a hub path.', true) }
+  // Parsed first, so a path like /api/../files/ can't step out of the API.
+  if (url.origin !== API || !url.pathname.startsWith('/api/')) return text('hub_read only reads paths under /api/.', true)
+  let plain = url.pathname + url.search
+  try { plain = decodeURIComponent(plain) } catch {}
+  if (/^\/api\/files\/[^/]+\/(text|write|raw)\b|secret/i.test(plain)) return text('File contents don\'t go through hub_read. Use Read, which keeps key files refused.', true)
+  const r = await fetch(url, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(60e3) })
+  if (!/json|text/i.test(r.headers.get('content-type') || '')) return text(`That path returns ${r.headers.get('content-type') || 'no text'}, which hub_read can't show.`, true)
+  const body = await r.text()
+  const shown = body.length > READ_LIMIT ? `${body.slice(0, READ_LIMIT)}\n[cut at ${READ_LIMIT} characters]` : body
+  return text(r.ok ? shown : `HTTP ${r.status}: ${shown.slice(0, 2000)}`, !r.ok)
 }
 
 async function settingsUpdate({ patch } = {}) {
@@ -97,7 +125,7 @@ async function showSite({ url, name } = {}) {
   return text(JSON.stringify({ shown: true, url: href, name: label || undefined, icon, note: 'The user now sees this as a card in the chat. You cannot see or click inside it.' }))
 }
 
-const HANDLERS = { settings_update: settingsUpdate, show_site: showSite }
+const HANDLERS = { hub_read: hubRead, settings_update: settingsUpdate, show_site: showSite }
 
 function reply(id, result, error) {
   process.stdout.write(JSON.stringify({ jsonrpc: '2.0', id, ...(error ? { error } : { result }) }) + '\n')

@@ -1,6 +1,6 @@
 // File browsing and editing for the hub's file roots: iCloud Drive, the home folder,
-// every drive letter ("This PC"), and /root on your server (over ssh, via server-files.py).
-// Deletes never erase: local items go to the Recycle Bin, server items to /root/.hub-trash.
+// every drive (Windows) or your home and whole disk (Mac, Linux), and /root on your server (over ssh, via server-files.py).
+// Deletes never erase: local items go to the Recycle Bin or Trash, server items to /root/.hub-trash.
 import { spawn } from 'node:child_process'
 import { createReadStream } from 'node:fs'
 import { readFile, readdir, stat, lstat, mkdir, rename, writeFile, realpath } from 'node:fs/promises'
@@ -8,10 +8,11 @@ import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { HERE, hubConfig, addonOn, tabOn } from './config.mjs'
+import { FILE_MANAGER, ICLOUD, IS_WIN, PC_NAME, POSIX_ROOTS, TRASH_NAME, listDrives, moveToTrash } from './platform.mjs'
 
 const SKIP = new Set(['node_modules', '.git', '.next', '.turbo', '.venv', '__pycache__', '.cache'])
 // Windows profile clutter: hidden system folders and legacy junctions.
-// Drive roots add the system files and folders File Explorer also hides.
+// Drive roots add the system files and folders Windows also hides.
 const HIDDEN = /^(appdata|application data|cookies|local settings|my documents|nethood|printhood|recent|sendto|start menu|templates|ntuser.*|desktop\.ini|thumbs\.db|\$recycle\.bin|\$windows\.~(bt|ws)|system volume information|documents and settings|config\.msi|pagefile\.sys|hiberfil\.sys|swapfile\.sys|dumpstack\.log(\.tmp)?)$/i
 const TEXT_LIMIT = 1 << 20
 const RESULT_LIMIT = 200
@@ -33,12 +34,16 @@ const shown = name => !name.startsWith('.') && !HIDDEN.test(name)
 // Files that hold keys or sign-ins. On every root the hub hides them from lists and search and
 // refuses to open, download, rename, move, delete or write them; the real path is checked too,
 // so a link or junction can't reach one. server-files.py keeps the same list for /root.
-const KEY_NAMES = /^(secrets\.json|\.credentials\.json|\.claude\.json(\.backup.*)?|auth\.json|\.git-credentials|\.npmrc|\.yarnrc(\.yml)?|_?\.?netrc|\.pypirc|\.pgpass|\.env(\.(?!example$|sample$|template$).+)?|\.envrc|\.dev\.vars|(?!.*[._-](example|sample|template)\.env$).+\.env|(.+[._-])?private\.key|.+\.(pem|p12|pfx|ppk|jks|keystore|kdbx)|id_(rsa|dsa|ecdsa|ed25519)(\.pub)?|\.infisical.*|login data( for account)?|cookies|web data|local state|access_tokens\.db|credentials\.db|credentials\.tfrc\.json)$/i
-const KEY_DIRS = new Set(['.ssh', '.aws', '.azure', '.gnupg', '.kube', '.infisical', 'gcloud', '.wrangler', '.vercel'])
+const KEY_NAMES = /^(secrets\.json|\.credentials\.json|\.claude\.json(\.backup.*)?|auth\.json|\.git-credentials|\.npmrc|\.yarnrc(\.yml)?|_?\.?netrc|\.pypirc|\.pgpass|\.env(\.(?!example$|sample$|template$).+)?|\.envrc|\.dev\.vars|(?!.*[._-](example|sample|template)\.env$).+\.env|(.+[._-])?private\.key|.+\.(pem|p12|pfx|ppk|jks|keystore|kdbx)|id_(rsa|dsa|ecdsa|ed25519)(\.pub)?|\.infisical.*|login data( for account)?|cookies|web data|local state|access_tokens\.db|credentials\.db|credentials\.tfrc\.json|credentials(\.toml)?|\.s3cfg|\.boto)$/i
+// appdata, .config and Library/Application Support are where programs keep sign-ins, and no list of names
+// can cover every program, so those folders are refused whole.
+const KEY_DIRS = new Set(['.ssh', '.aws', '.azure', '.gnupg', '.kube', '.infisical', 'gcloud', '.wrangler', '.vercel',
+  'appdata', '.config', '.claude-accounts', 'tailscale', '.password-store', 'keyrings', '.oci', '.terraform.d', '.doppler', '.fly', '.netlify', '.supabase'])
 // <hub folder>/data covers data/browser/<profile> (the hub browser's Chrome profiles, with your cookies);
 // <hub folder>/config holds your keys and settings. hub.json keyDirs and keyPairs add your own.
 const HUB_DIR = path.basename(HERE).toLowerCase()
-const KEY_PAIRS = [[HUB_DIR, 'data'], [HUB_DIR, 'config'], ['local-hub', 'data'], ['local-hub', 'config'], ['.docker', 'config.json'], ['gh', 'hosts.yml']]
+const KEY_PAIRS = [[HUB_DIR, 'data'], [HUB_DIR, 'config'], ['local-hub', 'data'], ['local-hub', 'config'], ['.docker', 'config.json'], ['gh', 'hosts.yml'],
+  ['.git', 'config'], ['.claude', 'projects'], ['.claude', 'history.jsonl'], ['library', 'keychains'], ['library', 'application support'], ['library', 'cookies']]
 export function holdsKeys(p) {
   const segs = String(p || '').split(/[\\/]+/).filter(Boolean).map(s => s.toLowerCase())
   if (segs.length && KEY_NAMES.test(segs.at(-1))) return true
@@ -151,10 +156,10 @@ function localProvider(root, { run, label }) {
     async delete({ paths }) {
       const items = await Promise.all((paths || []).map(r => guard(item(r))))
       if (!items.length) throw fail('Nothing to delete')
-      for (const p of items) if ((await lstat(p)).isSymbolicLink()) throw fail(`“${path.basename(p)}” is a link; remove it in File Explorer`)
-      const r = await run('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', RECYCLE_PS], { input: JSON.stringify(items) })
-      if (!r.ok) throw fail(r.stderr.trim().split('\n')[0] || 'Delete failed', 500)
-      return { deleted: items.map(rel), trash: 'the Recycle Bin' }
+      for (const p of items) if ((await lstat(p)).isSymbolicLink()) throw fail(`“${path.basename(p)}” is a link; remove it in ${FILE_MANAGER}`)
+      const error = await moveToTrash(run, items)
+      if (error) throw fail(error, 500)
+      return { deleted: items.map(rel), trash: TRASH_NAME }
     },
     async text({ path: r }) {
       const p = await guard(full(r))
@@ -182,14 +187,12 @@ function localProvider(root, { run, label }) {
   }
 }
 
-// Every drive letter, plus iCloud Drive, under one "This PC" root. Page paths look like
-// "D:/Users/you" or "iCloud/Photos"; each drive is its own localProvider. Only Fixed drives
-// and iCloud have a Recycle Bin, so the hub refuses to delete anywhere else (a removable
-// drive would erase for good).
-const DRIVES_PS = `Get-Volume | ? DriveLetter | Sort DriveLetter | % { [pscustomobject]@{ letter = [string]$_.DriveLetter; label = $_.FileSystemLabel; type = [string]$_.DriveType; size = $_.Size; free = $_.SizeRemaining } } | ConvertTo-Json -Compress`
-const ICLOUD = path.join(os.homedir(), 'iCloudDrive')
+// Every drive, plus iCloud Drive, under one root. Page paths look like "D:/Some/Folder" or
+// "iCloud/Photos" (Windows) and "Home/Some/Folder" or "Computer/etc" (Mac, Linux); each is its
+// own localProvider. Only Fixed drives and iCloud have a bin, so the hub refuses to delete
+// anywhere else (a removable drive would erase for good).
 
-// The drive list is slow (Get-Volume ~1.3 s, longer while a USB disk spins up), so the last
+// The drive list can be slow (Get-Volume ~1.3 s, longer while a USB disk spins up), so the last
 // answer is kept in data/drives-meta.json and served at once; a rescan runs behind it when it's
 // over 15 s old. Deletes always wait for a fresh scan, since the Recycle Bin check depends on it.
 const DRIVES_META = path.join(path.dirname(fileURLToPath(import.meta.url)), 'data', 'drives-meta.json')
@@ -199,9 +202,7 @@ function drivesProvider({ run }) {
   let cache = null
   let scanning = null
   async function scan() {
-    const r = await run('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', DRIVES_PS], { timeout: 20_000 })
-    if (!r.ok) throw fail(r.stderr.trim().split('\n')[0] || 'Couldn’t list drives', 500)
-    const list = [].concat(JSON.parse(r.stdout || '[]')).filter(d => d.size).map(d => ({ ...d, id: `${d.letter}:` }))
+    const list = await listDrives(run).catch(e => { throw fail(e.message, 500) })
     if (addonOn('icloud') && await stat(ICLOUD).then(s => s.isDirectory(), () => false)) list.push({ id: 'iCloud', label: 'iCloud Drive', type: 'iCloud' })
     cache = { at: Date.now(), list }
     writeFile(DRIVES_META, JSON.stringify(cache)).catch(() => {})
@@ -216,10 +217,10 @@ function drivesProvider({ run }) {
     return cache.list
   }
   const split = r => {
-    const m = /^([A-Za-z]:|iCloud)(?:\/(.*))?$/.exec(String(r || ''))
-    if (!m) throw fail('Open a drive first')
-    const id = m[1] === 'iCloud' ? 'iCloud' : m[1].toUpperCase()
-    byId[id] ||= id === 'iCloud' ? localProvider(ICLOUD, { run, label: 'iCloud Drive' }) : localProvider(`${id}\\`, { run, label: id })
+    const m = /^([A-Za-z]:|iCloud|Home|Computer)(?:\/(.*))?$/.exec(String(r || ''))
+    if (!m || (IS_WIN ? /^(Home|Computer)$/ : /:$/).test(m[1])) throw fail('Open a drive first')
+    const id = m[1].endsWith(':') ? m[1].toUpperCase() : m[1]
+    byId[id] ||= localProvider(id === 'iCloud' ? ICLOUD : POSIX_ROOTS[id] || `${id}\\`, { run, label: id === 'iCloud' ? 'iCloud Drive' : id })
     return { id, p: byId[id], rest: m[2] || '' }
   }
   const pre = (id, r) => (r ? `${id}/${r}` : id)
@@ -232,11 +233,11 @@ function drivesProvider({ run }) {
     async list({ path: r }) {
       if (!r) {
         const entries = (await drives()).map(d => ({ name: d.id, label: d.label, dir: true, drive: true, type: d.type, size: d.size, free: d.free }))
-        return { root: 'This PC', path: '', entries }
+        return { root: PC_NAME, path: '', entries }
       }
       const { id, p, rest } = split(r)
       const out = await p.list({ path: rest })
-      return { ...out, root: 'This PC', path: pre(id, out.path) }
+      return { ...out, root: PC_NAME, path: pre(id, out.path) }
     },
     async search({ path: r, q }) {
       const targets = r ? [split(r)] : (await drives()).map(d => split(d.id))
@@ -249,7 +250,7 @@ function drivesProvider({ run }) {
     async move({ paths, to }) {
       const dest = split(to)
       const parts = sameDrive(paths)
-      if (parts.some(x => x.id !== dest.id)) throw fail('The hub moves within one drive only; copy between drives in File Explorer')
+      if (parts.some(x => x.id !== dest.id)) throw fail(`The hub moves within one drive only; copy between drives in ${FILE_MANAGER}`)
       const out = await dest.p.move({ paths: parts.map(x => x.rest), to: dest.rest })
       return { moved: out.moved.map(m => pre(dest.id, m)) }
     },
@@ -257,7 +258,7 @@ function drivesProvider({ run }) {
       const parts = sameDrive(paths)
       if (!parts.length) throw fail('Nothing to delete')
       const d = (await drives({ fresh: true })).find(x => x.id === parts[0].id)
-      if (d?.type !== 'Fixed' && d?.type !== 'iCloud') throw fail(`${parts[0].id} has no Recycle Bin, so the hub won’t delete there; use File Explorer`)
+      if (d?.type !== 'Fixed' && d?.type !== 'iCloud') throw fail(`${parts[0].id} has no bin, so the hub won’t delete there; use ${FILE_MANAGER}`)
       const out = await parts[0].p.delete({ paths: parts.map(x => x.rest) })
       return { ...out, deleted: out.deleted.map(m => pre(parts[0].id, m)) }
     },
@@ -266,19 +267,6 @@ function drivesProvider({ run }) {
     async raw(r, res, download) { const { p, rest } = split(r); return p.raw(rest, res, download) },
   }
 }
-
-// Paths travel on stdin, never inside the command.
-const RECYCLE_PS = `
-$ErrorActionPreference = 'Stop'
-Add-Type -AssemblyName Microsoft.VisualBasic
-$paths = [Console]::In.ReadToEnd() | ConvertFrom-Json
-foreach ($p in $paths) {
-  if (Test-Path -LiteralPath $p -PathType Container) {
-    [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteDirectory($p, 'OnlyErrorDialogs', 'SendToRecycleBin')
-  } else {
-    [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteFile($p, 'OnlyErrorDialogs', 'SendToRecycleBin')
-  }
-}`
 
 function sendHead(res, name, download, size) {
   const ext = path.extname(name).slice(1).toLowerCase()
@@ -324,7 +312,7 @@ function serverProvider({ run, host, here }) {
 
 export function createFiles({ run, sshHost, here }) {
   const roots = {
-    icloud: localProvider(path.join(os.homedir(), 'iCloudDrive'), { run, label: 'iCloud Drive' }),
+    icloud: localProvider(ICLOUD, { run, label: 'iCloud Drive' }),
     laptop: localProvider(os.homedir(), { run, label: 'the home folder' }),
     drives: drivesProvider({ run }),
     server: serverProvider({ run, host: sshHost, here }),

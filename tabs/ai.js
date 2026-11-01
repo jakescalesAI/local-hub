@@ -165,10 +165,10 @@
     const fixRow = (title, sub) => `<div class="list"><div class="row" data-menu="ai" data-kind="fix" data-v="${esc(a.fix || '')}"><div class="row-line"><span class="status" style="--c:${STATUS_C[a.status] || 'var(--gray)'}"><i></i></span><span class="txt"><div class="t1">${esc(title)}</div><div class="t2" style="white-space:normal">${esc(sub)}</div></span></div>
       ${a.fix ? `<div class="ai-code"><div class="urls"><div class="url"><code>${esc(a.fix)}</code><button class="icon-btn" data-copy="${esc(a.fix)}" aria-label="Copy command">${ICON.copy}</button></div></div></div>` : ''}</div></div>`
     if (a.status === 'connect')
-      return `<section class="group ai-acc" data-hay="${hay}">${head}${fixRow(`Connect ${a.label}`, 'Sign in once in PowerShell, then press Refresh. The hub reads its plan usage after that.')}</section>`
+      return `<section class="group ai-acc" data-hay="${hay}">${head}${fixRow(`Connect ${a.label}`, 'Sign in once in a terminal, then press Refresh. The hub reads its plan usage after that.')}</section>`
     const u = a.usage
     let notice = ''
-    if (a.status !== 'ok') notice = `<div style="margin-bottom:12px">${fixRow(a.message || 'Usage unavailable', a.fix ? 'Run this in PowerShell to sign in again, then press Refresh.' : a.usageAt ? `Showing numbers from ${since(a.usageAt)}.` : 'Trying again in a few minutes.')}</div>`
+    if (a.status !== 'ok') notice = `<div style="margin-bottom:12px">${fixRow(a.message || 'Usage unavailable', a.fix ? 'Run this in a terminal to sign in again, then press Refresh.' : a.usageAt ? `Showing numbers from ${since(a.usageAt)}.` : 'Trying again in a few minutes.')}</div>`
     if (!u) return `<section class="group ai-acc" data-hay="${hay}">${head}${notice}</section>`
     const w = []
     if (u.fiveHour) w.push(widget('5-hour', `${pct(u.fiveHour.pct)}<small>%</small>`, esc(resets(u.fiveHour.resetsAt)), u.fiveHour.pct))

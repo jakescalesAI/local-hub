@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Hub">
-<title>Quartzi Hub</title>
+<title>Local Hub</title>
 <link rel="icon" href="/icons/hub.svg" type="image/svg+xml">
 <link rel="icon" href="/icons/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
@@ -234,12 +234,12 @@ html.offline .reconnect { opacity: 1; transform: translate(-50%, 0); }
 <body>
 <header class="nav" id="nav"><div class="nav-in">
   <div class="nav-left"><button class="bar-btn" id="back" hidden><svg width="13" height="21" viewBox="0 0 13 21" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 2 2.5 10.5l8 8.5"/></svg><span id="back-label"></span></button></div>
-  <div class="nav-title" id="nav-title">Quartzi Hub</div>
+  <div class="nav-title" id="nav-title">Local Hub</div>
   <div class="nav-right"><button class="bar-btn" id="newfolder" title="New Folder" aria-label="New Folder" hidden><svg width="26" height="22" viewBox="0 0 26 22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M2 5.5A2.5 2.5 0 0 1 4.5 3h4.6c.7 0 1.3.3 1.8.8L12.5 5.5h9A2.5 2.5 0 0 1 24 8v9.5a2.5 2.5 0 0 1-2.5 2.5h-17A2.5 2.5 0 0 1 2 17.5z"/><path d="M13 9v7m-3.5-3.5h7" stroke-linecap="round"/></svg></button><button class="bar-btn" id="refresh" title="Refresh (R)" aria-label="Refresh"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4v5h-5"/></svg></button></div>
 </div></header>
 
 <div class="page">
-  <div class="head"><h1 class="large-title" id="title">Quartzi Hub</h1><span class="updated" id="ago"></span></div>
+  <div class="head"><h1 class="large-title" id="title">Local Hub</h1><span class="updated" id="ago"></span></div>
   <div class="controls">
     <div class="seg-scroll"><div class="seg" role="tablist" id="seg" style="--n:8">
       <span class="seg-thumb"></span>
@@ -278,11 +278,15 @@ html.offline .reconnect { opacity: 1; transform: translate(-50%, 0); }
 <script src="/tabs/chat.js"></script>
 <script src="/tabs/setup.js"></script>
 <script>
+// Your own tab files in tabs/ load here, after Home, so they can add widgets too.
+for (const t of window.HUB_CONF?.pluginTabs || []) document.write(`<script src="/tabs/${t}.js" onerror="this.remove()"><\/script>`)
+</script>
+<script>
 // A plug-in tab that failed to load, or lacks render() and load(), is dropped so the rest of the page still works.
 for (const [k, t] of Object.entries(window.TABS || {})) if (typeof t?.render !== 'function' || typeof t?.load !== 'function') delete window.TABS[k]
 // An add-on tab that is off isn't part of this hub.
 const HUB_CONF = window.HUB_CONF || {}
-const HUB_NAME = HUB_CONF.name || 'Quartzi Hub'
+const HUB_NAME = HUB_CONF.name || 'Local Hub'
 const addonOn = id => !!HUB_CONF.addons?.[id]?.on
 for (const k of ['laptop', 'server', 'ai', 'cloud', 'calendar', 'stripe']) if (!addonOn(k)) delete window.TABS?.[k]
 const $ = s => document.querySelector(s)
@@ -297,8 +301,10 @@ const ENVS = [...(HUB_CONF.tabs || ['home', 'drives']), ...(window.HUB?.pluginTa
 //   menu?(row, x, y) -> true when it opened a menu, ago?() -> text for the Updated label }.
 // They call the globals here (render, widget, group, esc, api, showMenu, MI, copy, hud, ...).
 const TABS = (window.TABS ||= {})
-const ROOT_TITLE = { icloud: 'iCloud Drive', laptop: 'Home', server: 'root', drives: 'This PC' }
-const TRASH_WORDS = { icloud: 'Move to Recycle Bin', laptop: 'Move to Recycle Bin', server: 'Move to Server Trash', drives: 'Move to Recycle Bin' }
+const OS = { isWin: true, pc: 'This PC', trash: 'the Recycle Bin', fileManager: 'File Explorer', ...window.HUB_CONF?.platform }
+const BIN = OS.trash.replace(/^the /, '')
+const ROOT_TITLE = { icloud: 'iCloud Drive', laptop: 'Home', server: 'root', drives: OS.pc }
+const TRASH_WORDS = { icloud: `Move to ${BIN}`, laptop: `Move to ${BIN}`, server: 'Move to Server Trash', drives: `Move to ${BIN}` }
 let data = null
 let storage = null
 let env = store.get('hub-env', 'home')
@@ -615,11 +621,11 @@ function fileRow(root, e, p, sub) {
   return `<div class="row" ${attrs}><a class="row-line tap" draggable="true" ${link}>${inner}</a></div>`
 }
 
-// "This PC": one row per drive letter with its free space; deletes only on Fixed drives.
+// One row per drive with its free space; deletes only on Fixed drives.
 let drives = null
 function driveRow(root, e, p) {
   const cloud = e.type === 'iCloud'
-  const name = cloud ? e.label : e.label ? `${e.label} (${e.name})` : e.name
+  const name = cloud ? e.label : e.label && e.label !== e.name ? `${e.label} (${e.name})` : e.name
   const sub = cloud ? (storage?.total ? `${size(storage.available)} free of ${size(storage.total)} · iCloud` : 'iCloud')
     : `${size(e.free)} free of ${size(e.size)}${e.type === 'Fixed' ? '' : ` · ${e.type}`}`
   return `<div class="row" data-path="${esc(p)}"><a class="row-line tap" href="#" data-nav="${esc(p)}"><span class="fileicon" style="color:${cloud ? 'var(--blue)' : 'var(--gray)'}">${cloud ? ICON.cloud : ICON.drive}</span>
@@ -630,7 +636,7 @@ function drivesWidgets() {
   return `<div class="widgets">${drives.filter(d => d.type !== 'iCloud').map(d => {
     const used = d.size - d.free
     const [v, u] = big(used)
-    return widget(d.label ? `${d.label} (${d.name})` : d.name, `${v}<small>${u}</small>`, `${size(d.free)} free of ${size(d.size)}`, (used / d.size) * 100)
+    return widget(d.label && d.label !== d.name ? `${d.label} (${d.name})` : d.name, `${v}<small>${u}</small>`, `${size(d.free)} free of ${size(d.size)}`, (used / d.size) * 100)
   }).join('')}</div>`
 }
 
@@ -665,7 +671,7 @@ function renderFiles() {
 }
 
 function fullPath(root, p) {
-  if (root === 'drives') return p ? p.replaceAll('/', '\\').replace(/^(\w:)$/, '$1\\') : 'This PC'
+  if (root === 'drives') return !p ? OS.pc : OS.isWin ? p.replaceAll('/', '\\').replace(/^(\w:)$/, '$1\\') : p
   const base = listing[root]?.root || ''
   if (root === 'server') return p ? `${base}/${p}` : base
   return p ? `${base}\\${p.replaceAll('/', '\\')}` : base
@@ -727,7 +733,7 @@ function showMenu(x, y, title, items) {
   menuEl.setAttribute('role', 'menu')
   menuEl.innerHTML = (title ? `<div class="m-title">${esc(title)}</div>` : '') + items.map((it, i) => it === '-' ? '<hr>' : `<button role="menuitem" data-i="${i}" class="${it.danger ? 'danger' : ''}"><span>${esc(it.label)}</span>${it.icon || ''}</button>`).join('')
   document.body.append(menuEl)
-  const r = menuEl.getBoundingClientRect()
+  const r = { width: menuEl.offsetWidth, height: menuEl.offsetHeight } // not the rect: the open animation scales it
   menuEl.style.left = `${Math.max(8, Math.min(x, innerWidth - r.width - 8))}px`
   menuEl.style.top = `${Math.max(8, y + r.height > innerHeight - 8 ? y - r.height : y)}px`
   menuEl.style.transformOrigin = `${x < innerWidth - r.width ? 'left' : 'right'} top`
@@ -884,9 +890,9 @@ async function deleteItems(root, paths, isDir) {
   const what = paths.length > 1 ? `${paths.length} items` : `“${baseName(paths[0])}”`
   const message = root === 'server'
     ? 'It moves to /root/.hub-trash on the server, so you can move it back.'
-    : `It goes to the Recycle Bin on the laptop${/^iCloud\//.test(paths[0] || '') ? ', and iCloud keeps it in Recently Deleted for 30 days' : ''}.`
+    : `It goes to ${OS.trash} on this computer${/^iCloud\//.test(paths[0] || '') ? ', and iCloud keeps it in Recently Deleted for 30 days' : ''}.`
   if (!(await alertBox({ title: `Delete ${what}${isDir ? ' and everything in it' : ''}?`, message, ok: 'Delete', danger: true }))) return
-  try { const r = await filesPost(root, 'delete', { paths }); hud(`Moved to ${root === 'server' ? 'Server Trash' : 'Recycle Bin'}`); reloadDir(root) } catch (e) { showError(e) }
+  try { const r = await filesPost(root, 'delete', { paths }); hud(`Moved to ${root === 'server' ? 'Server Trash' : BIN}`); reloadDir(root) } catch (e) { showError(e) }
 }
 
 function fileMenu(row, x, y) {

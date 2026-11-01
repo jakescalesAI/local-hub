@@ -1,21 +1,129 @@
-# Quartzi Hub
+# Local Hub
 
-Your own private dashboard and AI assistant, running on your own computer.
+Your own private dashboard and AI agent, running on your own computer. One page for your files, your
+services and a chat that can look things up, write, and work in a real browser while you watch.
+
+Nothing leaves your computer unless you connect something, and no account is needed to run it.
 
 ## Start
 
-Needs [Node.js](https://nodejs.org) 20 or newer. Windows only for now.
+Needs [Node.js](https://nodejs.org) 20 or newer. No other dependencies.
 
-```
+```bash
+git clone <this repo> local-hub
+cd local-hub
 npm start
 ```
 
-Open http://localhost:3100. The first run asks for a hub name, who can reach it, your Claude
+Open http://localhost:3100. The first run asks for a hub name, who can reach it, the assistant's
 connection and any optional keys. Your settings and keys stay in `config/` and `data/`, which git
-ignores.
+ignores. To use another port, run `HUB_PORT=3200 npm start`, or set `port` in `config/hub.json`.
 
-A new hub starts with Home, Files, Chat and Browser. Cloud, Stripe, Calendar and the other services
-turn on when you configure them.
+| | Start in the background | Restart |
+|---|---|---|
+| Windows | `start-hidden.vbs` | `powershell -NoProfile -ExecutionPolicy Bypass -File restart.ps1` |
+| Mac and Linux | `./start.sh` | `./restart.sh` |
+
+Windows and Linux are tested. Mac is written for but has not been run yet, so please report what breaks.
+
+### Start it at login
+
+- **Windows:** put a shortcut to `start-hidden.vbs` in your Startup folder (Win+R, `shell:startup`).
+- **Linux:** a user service, `~/.config/systemd/user/local-hub.service`, then
+  `systemctl --user enable --now local-hub`:
+
+  ```ini
+  [Unit]
+  Description=Local Hub
+
+  [Service]
+  WorkingDirectory=%h/local-hub
+  ExecStart=/usr/bin/env node server.mjs
+  Restart=on-failure
+
+  [Install]
+  WantedBy=default.target
+  ```
+
+- **Mac:** a LaunchAgent, `~/Library/LaunchAgents/local.hub.plist`, then
+  `launchctl load ~/Library/LaunchAgents/local.hub.plist`. Use your own paths, and the full path to `node`:
+
+  ```xml
+  <?xml version="1.0" encoding="UTF-8"?>
+  <plist version="1.0"><dict>
+    <key>Label</key><string>local.hub</string>
+    <key>ProgramArguments</key><array><string>/usr/local/bin/node</string><string>server.mjs</string></array>
+    <key>WorkingDirectory</key><string>/Users/you/local-hub</string>
+    <key>RunAtLoad</key><true/>
+    <key>KeepAlive</key><true/>
+  </dict></plist>
+  ```
+
+## What you get
+
+A new hub starts with **Home**, **Files** and **Chat**. The browser opens as a pop-up when you or the
+agent need it, with the chat still at the bottom centre.
+
+These stay off until you set them up, and a tab that's off fetches nothing:
+
+- **This Computer:** running services, health and files
+- **Server:** a server you reach over ssh
+- **AI:** Claude usage and tokens, other AI providers
+- **Cloud:** deploys, servers and clients, read-only
+- **Calendar:** a local calendar plus your feeds and bookings
+- **Stripe:** balance, revenue and payouts, read-only
+
+## The agent
+
+The chat is a general agent that knows your hub best. It answers anything, reads your files, searches
+the web, writes files to its own `workspace/` folder, changes the hub's look when you ask, and drives a
+real Chrome you can watch and take over at any time.
+
+It runs on [Claude Code](https://claude.com/claude-code) by default, using your own login. You can also
+give it an API key or any Anthropic-compatible provider, and choose its name, instructions, models and
+tools. All of that is `assistant` in `config/hub.json`.
+
+## Your choices, and what stays fixed
+
+Every choice has a default in `config/hub.json`, so you can change it without touching code. `config.example/`
+shows the shape, and [HUB-GUIDE.md](HUB-GUIDE.md) explains each one.
+
+Out of the box the agent asks before it sends, posts, buys, deletes or accepts terms, and it doesn't type
+passwords, card numbers or 2FA codes. It leaves the final Post or Share click on social sites to you. Those
+rules are yours to change under `assistant.approvals`, and the hub logs a warning when they differ from what ships.
+
+These are in the code and stay as they are:
+
+- Keys never reach the page, the agent, the logs or an export.
+- Key files are refused to the file browser and to the agent: `config/`, `data/`, browser cookies, `.env`, `.ssh` and the like.
+- Every request that changes something needs the `x-hub: 1` header.
+- The agent has no shell, because a shell could read a key file whatever the rules say.
+- Cloud and Stripe views only read.
+- Nothing is permanently deleted. Deletes go to the trash.
+
+## Who can reach it
+
+Only this computer, until you change that.
+
+- `"access": "tailnet"` in `config/hub.json` adds your Tailscale address, for your own devices. Tailscale is optional.
+- `"listen": ["192.168.1.20"]` adds other addresses.
+- Anything beyond this computer needs a passcode: run `npm run passcode`. Without one, the hub doesn't listen on those addresses.
+
+Don't put the hub on the open internet. It can see your files and act in your browser.
+
+## Make it your own
+
+Each of these is a plain file or a config entry. [HUB-GUIDE.md](HUB-GUIDE.md) has the details under "Extending the hub".
+
+- **A tab:** add `tabs/<id>.js`
+- **A widget:** call `registerHomeWidget` from a tab file
+- **A theme:** add `themes/<id>.json`, or import one in the Style panel
+- **An assistant tool:** add any MCP server under `assistant.mcpServers`
+
+## Backups
+
+Git covers the code only. Your settings, keys, chats and calendar are in `config/` and `data/`, so back those up
+yourself. Leave out `data/browser`: it holds the browser's signed-in cookies.
 
 ## License
 
