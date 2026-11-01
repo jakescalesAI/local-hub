@@ -48,7 +48,7 @@ function freshCopy(name, { config = true } = {}) {
   }
   if (config) {
     fs.mkdirSync(path.join(dir, 'config'))
-    fs.writeFileSync(path.join(dir, 'config', 'hub.json'), JSON.stringify({ name: 'Test Hub', owner: 'Test Owner', access: 'localhost', addons: {} }))
+    fs.writeFileSync(path.join(dir, 'config', 'hub.json'), JSON.stringify({ name: 'Test Hub', owner: 'Test Owner', access: 'localhost', hosts: ['hub-test.invalid'], addons: {} }))
     const salt = crypto.randomBytes(16)
     const hubPasscode = `scrypt$${salt.toString('hex')}$${crypto.scryptSync(PASSCODE, salt, 32).toString('hex')}`
     fs.writeFileSync(path.join(dir, 'config', 'secrets.json'), JSON.stringify({ anthropic: FAKE_KEY, hubPasscode }))
