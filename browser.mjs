@@ -1,5 +1,5 @@
 // Hub browser: a dedicated Chrome per profile that the hub assistant drives and the user watches (and
-// takes over) live in the Browser tab. Each profile is its own Chrome with its own user-data-dir
+// takes over) live in the browser pop-up. Each profile is its own Chrome with its own user-data-dir
 // under data/browser/<profile>, started on demand with --remote-debugging-port on 127.0.0.1 only
 // and closed after IDLE_MS without use (the profile and its sign-ins stay on disk). The page never
 // talks to Chrome: frames, input and actions all go through these hub routes.
@@ -18,8 +18,9 @@
 // card and one-time-code fields and clicking Post/Share on social sites (see SAFETY below).
 import { spawn } from 'node:child_process'
 import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
-import { hubConfig } from './config.mjs'
+import { hubConfig, PORT } from './config.mjs'
 
 // Your Chrome profiles (hub.json browser.profiles); each keeps its own sign-ins under data/browser/<id>.
 const PROFILES = hubConfig().browser.profiles
@@ -29,6 +30,7 @@ const START_URL = 'https://www.google.com/'
 const MIN_FRAME_MS = 33 // at most ~30 fps
 const QUALITY = [30, 45, 60, 75] // JPEG steps; the stream moves between them with the viewers' bandwidth
 const AGENT_QUIET_MS = 20e3 // the user's input takes control by itself once the agent has been quiet this long
+const GIVE_BACK_MS = 60e3 // control returns to the agent this long after the last viewer leaves
 const MAX_LOG = 400
 const CHROME = [
   process.env.HUB_CHROME,
@@ -154,7 +156,8 @@ const describeJs = (ref, x, y) => `(() => {
   const editable = tag === 'textarea' || (tag === 'input' && !['button', 'submit', 'checkbox', 'radio', 'file', 'image', 'reset', 'range', 'color'].includes(type)) || hit.isContentEditable
   const sensitive = editable && (type === 'password' || /cc-|one-time-code|password/.test(hit.getAttribute('autocomplete') || '') || SENS.test(hay))
   const label = String(hit.getAttribute('aria-label') || (tag === 'input' ? (sensitive || type === 'password' ? hit.placeholder || type : hit.value || hit.placeholder) : '') || hit.innerText || hit.title || '').replace(/\\s+/g, ' ').trim().slice(0, 80)
-  return { tag, type, label, editable, sensitive, x: ${ref ? 'Math.round(r.left + r.width / 2)' : Number(x)}, y: ${ref ? 'Math.round(r.top + r.height / 2)' : Number(y)} }
+  const unnamedSubmit = !/[\p{L}\p{N}]/u.test(label) && !!hit.form && !!hit.form.querySelector('textarea,[contenteditable]') && hit.matches('button:not([type]),button[type=submit],input[type=submit],input[type=image]')
+  return { tag, type, label, editable, sensitive, unnamedSubmit, x: ${ref ? 'Math.round(r.left + r.width / 2)' : Number(x)}, y: ${ref ? 'Math.round(r.top + r.height / 2)' : Number(y)} }
 })()`
 
 // The focused element, checked before any agent typing.
@@ -167,6 +170,17 @@ const FOCUS_JS = `(() => {
   const hay = [type, el.name, el.id, el.getAttribute('autocomplete'), el.getAttribute('aria-label'), el.placeholder].join(' ')
   const editable = tag === 'textarea' || tag === 'input' || el.isContentEditable
   return { tag, type, editable, sensitive: editable && (type === 'password' || /cc-|one-time-code|password/.test(el.getAttribute('autocomplete') || '') || SENS.test(hay)) }
+})()`
+
+// What Enter would do in the focused field: it presses the form's button, so it gets the same check as clicking it.
+const ENTER_JS = `(() => {
+  let el = document.activeElement
+  while (el?.shadowRoot?.activeElement) el = el.shadowRoot.activeElement
+  if (!el || el === document.body) return null
+  const tag = el.tagName.toLowerCase(), form = el.form || el.closest('form')
+  const b = form && form.querySelector('button[type=submit],button:not([type]),input[type=submit],input[type=image]')
+  const label = b ? String(b.getAttribute('aria-label') || b.innerText || b.value || b.title || '').replace(/\s+/g, ' ').trim().slice(0, 80) : ''
+  return { tag, rich: !!el.isContentEditable, label, unnamed: !!b && !/[\p{L}\p{N}]/u.test(label), compose: !!form && !!form.querySelector('textarea,[contenteditable]') }
 })()`
 
 const KEYS = {
@@ -322,6 +336,14 @@ export function create({ here }) {
 
   const tabInfo = t => ({ id: t.targetId, url: t.url, title: t.title, opener: t.openerId || '' })
 
+  // The hub's own addresses are off limits inside this Chrome: its file routes would hand the agent what its own read rules refuse, by a link or a page as well as by browser_open.
+  function hubPatterns() {
+    const nets = Object.values(os.networkInterfaces()).flat().map(n => n.family === 'IPv6' ? `[${n.address.split('%')[0]}]` : n.address)
+    const hosts = [...new Set(['127.0.0.1', 'localhost', '[::1]', ...nets])].map(h => `*://${h}:${PORT}/*`)
+    try { const u = new URL(hubConfig().url); hosts.push(`*://${u.host}/*`) } catch {}
+    return hosts
+  }
+
   async function attach(inst, targetId) {
     const tab = inst.tabs.get(targetId)
     if (tab?.session) return tab.session
@@ -330,6 +352,7 @@ export function create({ here }) {
     await Promise.all([
       inst.cdp.send('Page.enable', {}, sessionId),
       inst.cdp.send('Runtime.enable', {}, sessionId).catch(() => {}),
+      inst.cdp.send('Fetch.enable', { patterns: hubPatterns().map(urlPattern => ({ urlPattern })) }, sessionId).catch(() => {}),
       // Headless pages count as focused, so key events and :focus work while nobody looks at a window.
       inst.cdp.send('Emulation.setFocusEmulationEnabled', { enabled: true }, sessionId).catch(() => {}),
       applySize(inst, sessionId),
@@ -374,6 +397,7 @@ export function create({ here }) {
       for (const res of inst.viewers) sse(res, 'state', { running: false, profile: inst.profile })
       return
     }
+    if (method === 'Fetch.requestPaused') return inst.cdp.send('Fetch.failRequest', { requestId: p.requestId, errorReason: 'BlockedByClient' }, sid).catch(() => {})
     if (method === 'Page.screencastFrame') return sid === inst.session ? onFrame(inst, p) : inst.cdp.send('Page.screencastFrameAck', { sessionId: p.sessionId }, sid).catch(() => {})
     if (method === 'Target.targetCreated' && p.targetInfo.type === 'page') {
       inst.tabs.set(p.targetInfo.targetId, tabInfo(p.targetInfo))
@@ -476,6 +500,7 @@ export function create({ here }) {
     const inst = await ensure(profile)
     res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store', connection: 'keep-alive', 'x-accel-buffering': 'no' })
     res.socket?.setNoDelay(true)
+    clearTimeout(inst.giveBackTimer)
     inst.viewers.add(res)
     sse(res, 'state', state(inst))
     for (const e of log.filter(e => e.profile === inst.profile).slice(-30)) sse(res, 'log', e)
@@ -488,7 +513,17 @@ export function create({ here }) {
       clearInterval(ping)
       inst.viewers.delete(res)
       inst.lastUse = Date.now()
-      if (!inst.viewers.size) stopCast(inst)
+      if (!inst.viewers.size) {
+        stopCast(inst)
+        // Nobody is watching and the agent didn't ask for anything: a phone that just lost its link must
+        // not leave the agent locked out. A handoff stays yours until you say Done.
+        clearTimeout(inst.giveBackTimer)
+        inst.giveBackTimer = setTimeout(() => {
+          if (inst.viewers.size || inst.controller !== 'owner' || inst.ask) return
+          inst.controller = 'agent'
+          addLog(inst, 'hub', 'control', 'Nobody was watching, so control went back to the agent')
+        }, GIVE_BACK_MS)
+      }
       pushState(inst)
     })
     pushState(inst)
@@ -541,6 +576,16 @@ export function create({ here }) {
     await inst.cdp.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x, y, button, clickCount }, s)
   }
 
+  // An agent's Enter that would send: a form whose button sends, a compose form with an unnamed button, or a rich editor, where Enter or Ctrl+Enter is how mail and chat pages send.
+  async function checkEnter(inst, ctrl, confirmed) {
+    if (confirmed === true) return
+    const f = await evalPage(inst, ENTER_JS)
+    if (!f) return
+    const editor = f.rich || f.tag === 'textarea'
+    const what = (ctrl && editor) || f.rich ? 'Enter in this editor' : f.tag === 'textarea' ? '' : RISKY_RE.test(f.label) ? `Enter, which presses "${f.label}",` : f.unnamed && f.compose ? 'Enter in this form' : ''
+    if (what) throw err(428, `${what} may send something. Ask the user in chat first; only after they say yes, call again with confirmed: true.`, { needsConfirmation: f.label || 'Enter' })
+  }
+
   async function pressKey(inst, name, modifiers = 0) {
     const k = KEYS[name] || (name.length === 1 ? [name.toUpperCase().charCodeAt(0), name, name] : null)
     if (!k) throw err(400, `unknown key ${name}; use one of ${Object.keys(KEYS).join(', ')} or a single character`)
@@ -550,7 +595,7 @@ export function create({ here }) {
     await inst.cdp.send('Input.dispatchKeyEvent', { type: 'keyUp', ...base }, inst.session)
   }
 
-  // Asks the user to take over: control moves to them and the Browser tab shows the reason.
+  // Asks the user to take over: control moves to them and the pop-up shows the reason.
   function handoff(inst, reason) {
     inst.controller = 'owner'
     inst.ask = String(reason || 'The agent needs you to take over').slice(0, 200)
@@ -649,7 +694,7 @@ export function create({ here }) {
         if (who === 'agent') {
           const host = (() => { try { return new URL(inst.tabs.get(inst.active)?.url).hostname } catch { return '' } })()
           if (SOCIAL_RE.test(host) && POST_RE.test(d.label)) throw err(403, `Refused: "${d.label}" on ${host}. The agent never posts or shares on the user's social accounts; the user does that.`)
-          if (RISKY_RE.test(d.label) && body.confirmed !== true) throw err(428, `"${d.label}" sends, buys, deletes or accepts something. Ask the user in chat first; only after they say yes, call click again with confirmed: true.`, { needsConfirmation: d.label })
+          if ((RISKY_RE.test(d.label) || d.unnamedSubmit) && body.confirmed !== true) throw err(428, `"${d.label || 'This button'}" sends, buys, deletes or accepts something. Ask the user in chat first; only after they say yes, call click again with confirmed: true.`, { needsConfirmation: d.label || 'This button' })
         }
         await mouseClick(inst, d.x, d.y, body.button === 'right' ? 'right' : 'left', body.double ? 2 : 1)
         await sleep(250)
@@ -676,6 +721,7 @@ export function create({ here }) {
           if (f.sensitive) return refuseSensitive(inst, `the ${f.type === 'password' ? 'password' : 'sensitive'} field`)
           if (luhnCard(text)) return refuseSensitive(inst, 'a card number')
         }
+        if (body.submit && who === 'agent') await checkEnter(inst, false, body.confirmed)
         if (body.clear) {
           await inst.cdp.send('Input.dispatchKeyEvent', { type: 'rawKeyDown', key: 'a', code: 'KeyA', windowsVirtualKeyCode: 65, modifiers: 2 }, s)
           await inst.cdp.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'a', code: 'KeyA', windowsVirtualKeyCode: 65, modifiers: 2 }, s)
@@ -687,6 +733,7 @@ export function create({ here }) {
       }
       case 'key': {
         const mods = (body.ctrl ? 2 : 0) | (body.shift ? 8 : 0) | (body.alt ? 1 : 0)
+        if (who === 'agent' && body.key === 'Enter' && !body.shift) await checkEnter(inst, !!body.ctrl, body.confirmed)
         await pressKey(inst, String(body.key || ''), mods)
         if (body.key === 'Enter') { await sleep(250); await waitLoad(inst, 4000) }
         return done('key', `${body.ctrl ? 'Ctrl+' : ''}${body.shift ? 'Shift+' : ''}${body.key}`)
@@ -731,6 +778,8 @@ export function create({ here }) {
         // The UA switch only shows after a load, so reload the open page when phone/desktop flips
         if (wasMobile !== !!inst.size.mobile && inst.session) await inst.cdp.send('Page.reload', {}, inst.session).catch(() => {})
         await recast(inst)
+        // That first frame can still be the old layout, and a page that isn't moving sends no other.
+        setTimeout(() => { if (inst.viewers.size) recast(inst).catch(() => {}) }, 400)
         pushState(inst)
         return { ok: true, size: inst.size }
       }
