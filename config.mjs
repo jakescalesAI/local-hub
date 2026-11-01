@@ -1,0 +1,130 @@
+// Your hub's own settings. Everything personal lives in config/ (git-ignored): hub.json, secrets.json,
+// servers.json, clients.json, names.json, pinned.json and an optional notes.md for the assistant.
+// config.example/ shows the shape. With no config/hub.json the page runs the first-run wizard.
+// Only the hub process reads this; pageConfig() is the part that may reach the page and never holds a key.
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+export const HERE = path.dirname(fileURLToPath(import.meta.url))
+export const PORT = Number(process.env.HUB_PORT || 3100)
+export const CONFIG_DIR = path.join(HERE, 'config')
+export const configPath = name => path.join(CONFIG_DIR, name)
+const HUB_FILE = configPath('hub.json')
+const SECRETS_FILE = configPath('secrets.json')
+
+const NEUTRAL = {
+  name: 'Quartzi Hub',
+  owner: '',
+  access: 'localhost', // or "tailnet"
+  url: '', // the address you reach the hub at from other devices, if any
+  addons: {},
+  server: { sshAlias: '', label: 'Server', readOnly: ['/root/.ssh'], production: { units: [], paths: [] }, notes: {} },
+  keyDirs: [],
+  keyPairs: [],
+  browser: { profiles: { default: { label: 'Default', email: '' } }, current: 'default' },
+  worldClock: [['New York', 'America/New_York'], ['London', 'Europe/London'], ['UTC', 'UTC']],
+  siteSuggestions: [],
+  theme: 'quartzi',
+  claudeConfigDir: '',
+}
+
+const readJson = file => { try { return JSON.parse(fs.readFileSync(file, 'utf8')) } catch { return null } }
+
+// A short cache so a page load doesn't read the same files many times; edits show within two seconds.
+function cached(read) {
+  let at = 0, value
+  const get = () => { if (Date.now() - at > 2000) { value = read(); at = Date.now() } return value }
+  get.clear = () => { at = 0 }
+  return get
+}
+const merge = saved => ({
+  ...NEUTRAL,
+  ...saved,
+  server: { ...NEUTRAL.server, ...saved?.server },
+  browser: saved?.browser?.profiles && Object.keys(saved.browser.profiles).length ? saved.browser : NEUTRAL.browser,
+})
+export const hubConfig = cached(() => merge(readJson(HUB_FILE)))
+export const secrets = cached(() => readJson(SECRETS_FILE) || {})
+export const needsSetup = () => !fs.existsSync(HUB_FILE)
+
+function writeJson(file, value) {
+  fs.mkdirSync(CONFIG_DIR, { recursive: true })
+  const tmp = `${file}.${process.pid}.tmp`
+  fs.writeFileSync(tmp, JSON.stringify(value, null, 2))
+  fs.renameSync(tmp, file)
+}
+export function saveHubConfig(patch) {
+  writeJson(HUB_FILE, { ...(readJson(HUB_FILE) || {}), ...patch })
+  hubConfig.clear()
+}
+export function saveSecrets(patch) {
+  writeJson(SECRETS_FILE, { ...(readJson(SECRETS_FILE) || {}), ...patch })
+  secrets.clear()
+}
+
+// True when a value holds anything a person filled in.
+const filled = v => Array.isArray(v) ? v.some(filled) : v && typeof v === 'object' ? Object.entries(v).some(([k, x]) => k !== 'regions' && !k.startsWith('_') && filled(x)) : typeof v === 'string' ? !!v.trim() : false
+
+// Add-ons: off until configured. A new hub has Home, Files, Chat and Browser. Setting addons.<id> to true
+// or false in hub.json decides it outright; otherwise those with `auto` come on when their key is saved.
+export const ADDONS = {
+  laptop: { label: 'This Computer', tab: true, what: 'Running services, health and files of this computer' },
+  server: { label: 'Server', tab: true, what: 'Services and files of a server you reach over ssh', how: 'Set server.sshAlias in config/hub.json', auto: () => !!hubConfig().server.sshAlias },
+  ai: { label: 'AI', tab: true, what: 'Claude usage and AI provider balances', auto: s => filled(s.claudeAccounts) || filled(s.openrouter) || filled(s.deepseek) },
+  cloud: { label: 'Cloud', tab: true, what: 'Read-only view of your hosting: Coolify, Cloudflare, AWS, Azure', how: 'Add a key to config/secrets.json', auto: s => filled(s.coolify) || filled(s.cloudflare) || filled(s.aws) || filled(s.azure) || filled(s.euronodes) },
+  calendar: { label: 'Calendar', tab: true, what: 'Read-only calendar feeds and bookings', how: 'Add a calendar link to config/secrets.json', auto: s => filled(s.calendars) || filled(s.calcom) },
+  stripe: { label: 'Stripe', tab: true, what: 'Read-only balance, revenue and payouts', how: 'Add a restricted key to config/secrets.json', auto: s => filled(s.stripe) },
+  drives: { label: 'Drives', what: 'Disk space for each drive on the Files tab' },
+  icloud: { label: 'iCloud', what: 'iCloud Drive and its storage on the Files tab', available: () => fs.existsSync(path.join(os.homedir(), 'iCloudDrive')) },
+}
+export function addonOn(id) {
+  const a = ADDONS[id]
+  if (!a) return false
+  const set = hubConfig().addons?.[id]
+  if (typeof set === 'boolean') return set
+  return a.auto ? !!a.auto(secrets()) : false
+}
+// The tabs this hub has. The built-in order; plug-in tabs join in hub-settings.mjs.
+export const TAB_ORDER = ['home', 'laptop', 'server', 'drives', 'ai', 'cloud', 'calendar', 'stripe']
+export const tabOn = id => id === 'home' || id === 'drives' || !ADDONS[id]?.tab || addonOn(id)
+export const enabledTabs = () => TAB_ORDER.filter(tabOn)
+
+// Themes: themes/quartzi.json is the default look (glass style, wallpapers, house icon), all in one place.
+// Others are shared as files and imported into data/themes. Applying one is a settings patch (Style panel).
+const THEME_DIRS = [path.join(HERE, 'themes'), path.join(HERE, 'data', 'themes')]
+export const baseTheme = () => readJson(path.join(THEME_DIRS[0], 'quartzi.json')) || { name: 'Quartzi', style: {}, wallpaper: 'none', wallpapers: [] }
+export const themeById = id => {
+  if (!/^[a-z0-9-]+$/.test(id || '')) return null
+  for (const dir of THEME_DIRS) { const t = readJson(path.join(dir, `${id}.json`)); if (t) return { ...t, id } }
+  return null
+}
+export const activeTheme = () => themeById(hubConfig().theme) || { ...baseTheme(), id: 'quartzi' }
+export function themes() {
+  const ids = THEME_DIRS.flatMap(dir => { try { return fs.readdirSync(dir) } catch { return [] } }).map(f => /^([a-z0-9-]+)\.json$/.exec(f)?.[1]).filter(Boolean)
+  return [...new Set(ids)].map(themeById).filter(Boolean).map(({ id, name, style, wallpaper }) => ({ id, name, style, wallpaper }))
+}
+
+// What the page may know. Never a key, and nothing that isn't needed to draw it.
+export function pageConfig() {
+  const c = hubConfig()
+  return {
+    name: c.name,
+    owner: c.owner,
+    url: c.url,
+    port: PORT,
+    needsSetup: needsSetup(),
+    tabs: enabledTabs(),
+    addons: Object.fromEntries(Object.entries(ADDONS).map(([id, a]) => [id, { label: a.label, what: a.what, how: a.how || '', on: addonOn(id), tab: !!a.tab, available: a.available ? a.available() : true }])),
+    server: { label: c.server.label, notes: c.server.notes, unitPrefix: c.server.unitPrefix || '' },
+    theme: { ...activeTheme(), wallpapers: baseTheme().wallpapers },
+    browser: c.browser,
+    worldClock: c.worldClock,
+  }
+}
+
+// The assistant's extra notes for this hub (config/notes.md), if any.
+export function ownerNotes() {
+  try { return fs.readFileSync(configPath('notes.md'), 'utf8') } catch { return '' }
+}

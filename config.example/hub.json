@@ -1,0 +1,58 @@
+{
+  "name": "Quartzi Hub",
+  "owner": "",
+  "access": "localhost",
+  "url": "",
+  "addons": {},
+  "server": {
+    "sshAlias": "",
+    "label": "Server",
+    "readOnly": [
+      "/root/.ssh"
+    ],
+    "production": {
+      "units": [],
+      "paths": []
+    },
+    "notes": {}
+  },
+  "keyDirs": [],
+  "keyPairs": [],
+  "browser": {
+    "profiles": {
+      "default": {
+        "label": "Default",
+        "email": ""
+      }
+    },
+    "current": "default"
+  },
+  "worldClock": [
+    [
+      "New York",
+      "America/New_York"
+    ],
+    [
+      "London",
+      "Europe/London"
+    ],
+    [
+      "UTC",
+      "UTC"
+    ]
+  ],
+  "siteSuggestions": [],
+  "calendar": {
+    "sources": [
+      {
+        "label": "Work",
+        "color": "#5e5ce6",
+        "file": "/path/to/work.ics"
+      }
+    ],
+    "quickAdd": {
+      "command": "",
+      "check": "--check"
+    }
+  }
+}

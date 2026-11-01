@@ -6,6 +6,7 @@ clients.json
 servers.json
 names.json
 pinned.json
+!config.example/*.json
 local-only*
 handoffs/
 caddy/

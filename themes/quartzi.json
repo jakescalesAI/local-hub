@@ -1,0 +1,26 @@
+{
+  "name": "Quartzi",
+  "style": {
+    "theme": "auto",
+    "accent": "system",
+    "widgetLook": "glass",
+    "blur": 20,
+    "transparency": 30,
+    "radius": 20,
+    "shadow": "soft",
+    "tabBar": "glass",
+    "effect": "none"
+  },
+  "wallpaper": "aurora",
+  "wallpapers": [
+    { "id": "aurora", "name": "Aurora", "tone": "dark" },
+    { "id": "dusk", "name": "Dusk", "tone": "dark" },
+    { "id": "graphite", "name": "Graphite", "tone": "dark" },
+    { "id": "ocean", "name": "Ocean", "tone": "dark" },
+    { "id": "sand", "name": "Sand", "tone": "light" },
+    { "id": "mono-light", "name": "Mono Light", "tone": "light" },
+    { "id": "mono-dark", "name": "Mono Dark", "tone": "dark" },
+    { "id": "noise", "name": "Noise", "tone": "light" }
+  ],
+  "icon": "icons/hub.svg"
+}
