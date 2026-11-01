@@ -43,10 +43,20 @@ function readJson(file) {
   return readFile(configPath(file), 'utf8').then(JSON.parse).catch(() => ({}))
 }
 
+// Not everything on a local port speaks HTTP, and a GET can hurt what doesn't: DaVinci Resolve's script server
+// grows by half a gigabyte for each one. These programs are never sent a request. laptop.noProbe in hub.json adds more.
+const NEVER_PROBE = ['fuscript', 'Resolve', 'FusionServer']
+const neverProbe = s => {
+  const name = String(s.process || '').replace(/\.exe$/i, '').toLowerCase()
+  return hubConfig().laptop?.probe === false || [...NEVER_PROBE, ...(hubConfig().laptop?.noProbe || [])].some(n => n.toLowerCase() === name)
+}
+// Every other listener gets one look, then keeps that answer until its process or port changes.
+const looks = new Map() // "pid:port" -> promise of the probe result
+
 async function probe(port, paths = ['/']) {
   for (const p of paths) {
     try {
-      const res = await fetch(`http://127.0.0.1:${port}${p}`, { signal: AbortSignal.timeout(1500), redirect: 'manual' })
+      const res = await fetch(`http://127.0.0.1:${port}${p}`, { signal: AbortSignal.timeout(4000), redirect: 'manual' })
       const body = res.headers.get('content-type')?.includes('html') ? await res.text() : ''
       const title = /<title[^>]*>([^<]*)<\/title>/i.exec(body)?.[1]?.trim() ?? ''
       if (res.status !== 404 || p === paths.at(-1)) return { code: res.status, path: p, title }
@@ -90,13 +100,18 @@ async function refreshLaptop() {
     s => s.port >= 1024 && s.port < 30000 && s.port !== PORT,
   )
   const tunneled = new Set([...tunnels.values()].map(t => t.local))
+  const live = new Set(rows.map(s => `${s.pid}:${s.port}`))
+  for (const key of looks.keys()) if (!live.has(key)) looks.delete(key)
   const probed = await Promise.all(
     rows
       .filter(s => !tunneled.has(s.port))
       .map(async s => {
         const cmd = s.cmd || ''
+        if (neverProbe(s)) return { ...s, cmd: cmd.slice(0, 300), code: 0, path: '/', title: '' }
         const paths = /apps[\\/]workspace|vite/i.test(cmd) ? ['/workspace/_app/', '/'] : ['/']
-        return { ...s, cmd: cmd.slice(0, 300), ...(await probe(s.port, paths)) }
+        const key = `${s.pid}:${s.port}`
+        if (!looks.has(key)) looks.set(key, probe(s.port, paths))
+        return { ...s, cmd: cmd.slice(0, 300), ...(await looks.get(key)) }
       }),
   )
   // Listeners that answer HTTP are web services; the rest are listed as other services.

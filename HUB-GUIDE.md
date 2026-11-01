@@ -199,6 +199,7 @@ You may say which of these fields the live endpoints report as missing (for exam
 
 ### Changing small things
 
+- How ports are sorted: each new local port gets one web request, and the answer is kept until its process or port changes. Programs named in `laptop.noProbe` in `config/hub.json` are never sent it, and DaVinci Resolve's script server is on that list already. `"laptop": {"probe": false}` sends none, so every port shows under other services. A web service that takes over 4 seconds to answer that one request also shows there until it restarts.
 - Port names: edit `config/names.json` (`{"server": {"3000": "My site"}, "laptop": {...}}`).
 - Servers on the Cloud tab: edit `config/servers.json`. Clients: edit `config/clients.json`.
 - Home widgets: Edit on the Home tab.

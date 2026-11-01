@@ -25,6 +25,9 @@ const NEUTRAL = {
   url: '', // the address you reach the hub at from other devices, if any
   addons: {},
   server: { sshAlias: '', label: 'Server', readOnly: ['/root/.ssh'], production: { units: [], paths: [] }, notes: {} },
+  // The services page sends each new local port one web request, to tell web services from the rest.
+  // noProbe lists programs never to send it to. probe: false sends none, and every port shows under other services.
+  laptop: { probe: true, noProbe: [] },
   keyDirs: [],
   keyPairs: [],
   browser: { profiles: { default: { label: 'Default', email: '' } }, current: 'default' },
