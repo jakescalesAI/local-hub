@@ -826,7 +826,7 @@ export function create({ here, run, sshHost }) {
     const script = `IFS= read -r t && exec ${q.command}${check ? ` ${q.check}` : ''} "$t"`
     const r = await run('ssh', [...SSH_OPTIONS, sshHost, script], { input: `${text}\n`, timeout: QUICK_TIMEOUT })
     const lines = `${r.stdout}\n${r.ok ? '' : r.stderr}`.split('\n').map(l => l.trim()).filter(l => l && !/^(ssh|ssh_|kex_|command failed|connection |permission denied|banner |warning:|channel )/i.test(l))
-    const said = shortError(new Error(lines.at(-1) || ''), [sshHost])
+    const said = lines.length ? shortError(new Error(lines.at(-1)), [sshHost]) : ''
     if (r.ok) return said
     throw fail(lines.length ? 400 : 502, said || 'Can’t reach the server')
   }
@@ -883,14 +883,22 @@ export function create({ here, run, sshHost }) {
         const q = quickCommand()
         if (!q) throw fail(404, 'Quick add isn’t set up')
         const input = await body(req, readBody)
-        const text = quickText(input?.text)
-        const checked = await quickRun(q, text, true)
+        // A refusal or an unreachable server is an answer, not a broken request: the sheet shows the words.
+        const refused = message => send(res, 200, { ok: false, added: false, message })
+        let text, checked
+        try {
+          text = quickText(input?.text)
+          checked = await quickRun(q, text, true)
+        } catch (e) {
+          if (e.code !== 400 && e.code !== 502) throw e
+          return refused(e.message), true
+        }
         if (input?.check) return send(res, 200, { ok: true, added: false, message: checked }), true
         try {
           await quickRun(q, text, false)
         } catch (e) {
           // It may have got as far as adding, so a blind retry could double it.
-          throw fail(e.code, `${e.message}. Check the calendar before adding it again`)
+          return refused(`${e.message}. Check the calendar before adding it again`), true
         }
         await syncFeeds(cals, true)
         send(res, 200, { ok: true, added: true, message: checked })
