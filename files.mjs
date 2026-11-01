@@ -51,6 +51,13 @@ export function holdsKeys(p) {
   if (segs.some(s => KEY_DIRS.has(s) || conf.keyDirs.includes(s))) return true
   return segs.some((s, i) => [...KEY_PAIRS, ...conf.keyPairs].some(([a, b]) => s === a && segs[i + 1] === b))
 }
+// Places where a file can run as code or change how a tool behaves. Only the assistant is kept out of these.
+export const RUN_DIRS = ['.git', '.claude', '.github', '.gitlab', '.husky', '.vscode', '.idea', '.cursor', '.devcontainer', 'startup', 'start menu', 'launchagents', 'launchdaemons', 'autostart', 'systemd', 'cron.d', 'init.d']
+export const RUN_FILES = ['.gitconfig', '.gitattributes', '.gitmodules', '.bashrc', '.bash_profile', '.bash_login', '.profile', '.zshrc', '.zprofile', '.zshenv', '.zlogin', 'config.fish', '.vimrc', '.tmux.conf', 'profile.ps1', 'microsoft.powershell_profile.ps1', 'microsoft.vscode_powershell_profile.ps1', '.mcp.json', '.pre-commit-config.yaml', 'claude.md', 'agents.md', 'autorun.inf', 'desktop.ini']
+export function runsCode(p) {
+  const segs = String(p || '').split(/[\\/]+/).filter(Boolean).map(s => s.toLowerCase())
+  return RUN_FILES.includes(segs.at(-1)) || segs.some(s => RUN_DIRS.includes(s))
+}
 const KEY_REFUSAL = 'This file holds keys, so the hub won’t open it'
 const refuseKeys = p => { if (holdsKeys(p)) throw fail(KEY_REFUSAL, 403) }
 // The path as typed and as it really lands (after links and junctions).

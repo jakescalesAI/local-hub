@@ -35,6 +35,7 @@ const NEUTRAL = {
   siteSuggestions: [],
   theme: 'default',
   claudeConfigDir: '',
+  accessLog: true, // one line per request in data/access.log: time, method, path, status, address. Never a query string.
   // The assistant: every choice here is yours (see HUB-GUIDE.md, "Make it yours").
   assistant: {
     name: 'Hub Assistant',
@@ -46,7 +47,7 @@ const NEUTRAL = {
     env: {}, // extra environment for the CLI, for example {"CLAUDE_CODE_USE_BEDROCK": "1"}. No keys here: they go in secrets.json.
     models: [], // ["model-id"] or [["model-id", "Label"]]; empty offers the Claude models
     defaultModel: '',
-    tools: { web: true, files: true, browser: true, settings: true, sites: true },
+    tools: { web: true, files: true, browser: true, settings: true, sites: true, actions: true },
     readFolders: ['~'], // folders it may read, besides the hub's. Key files stay refused in all of them.
     writeFolders: [], // more folders it may write to, besides workspace/. Never inside the hub folder.
     mcpServers: {}, // your own tools: {"name": {"command": "...", "args": [], "env": {}}}
@@ -84,6 +85,31 @@ const merge = saved => ({
 export const hubConfig = cached(() => merge(readJson(HUB_FILE)))
 export const secrets = cached(() => readJson(SECRETS_FILE) || {})
 export const needsSetup = () => !fs.existsSync(HUB_FILE)
+
+// Takes known key values and key-shaped text out of anything headed for the page, the agent or a log.
+const SECRET_KEY = /key|token|secret|password|passwd/i
+const SECRET_SHAPES = /\b(?:sk-ant-[\w-]{16,}|sk-or-[\w-]{16,}|sk-[A-Za-z0-9_-]{24,}|[sr]k_(?:live|test)_[A-Za-z0-9]{12,}|AKIA[0-9A-Z]{16}|eyJ[\w-]{16,}\.[\w-]{8,}\.[\w-]{8,})/g
+let secretCache = { at: 0, values: [] }
+export function secretValues() {
+  if (Date.now() - secretCache.at < 20e3) return secretCache.values
+  const out = new Set()
+  try {
+    const walk = (v, key, cal) => {
+      if (typeof v === 'string') {
+        if (v.length >= 8 && (SECRET_KEY.test(key) || (cal && /url|ics/i.test(key)))) out.add(v)
+      } else if (Array.isArray(v)) v.forEach(x => walk(x, key, cal))
+      else if (v && typeof v === 'object') for (const [k, x] of Object.entries(v)) walk(x, k, cal || key === 'calendars')
+    }
+    walk(JSON.parse(fs.readFileSync(SECRETS_FILE, 'utf8')), '', false)
+  } catch {}
+  secretCache = { at: Date.now(), values: [...out].sort((a, b) => b.length - a.length) }
+  return secretCache.values
+}
+export const scrubSecrets = s => {
+  let t = String(s ?? '')
+  for (const v of secretValues()) if (t.includes(v)) t = t.split(v).join('[hidden]')
+  return t.replace(SECRET_SHAPES, '[hidden]')
+}
 
 function writeJson(file, value) {
   fs.mkdirSync(CONFIG_DIR, { recursive: true })

@@ -7,7 +7,7 @@ import http from 'node:http'
 import os from 'node:os'
 import { spawn, execFile } from 'node:child_process'
 import { readFile, statfs } from 'node:fs/promises'
-import { existsSync } from 'node:fs'
+import { appendFile, existsSync, renameSync, statSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createFiles } from './files.mjs'
@@ -307,7 +307,7 @@ const filesRoute = createFiles({ run, sshHost: SSH_HOST, here: HERE })
 // route(url, req, res, { send, readBody }) -> true when handled. A missing or broken one only
 // disables its tab. Keys live in config/secrets.json, which only the hub reads; never send them to
 // the page. A service add-on loads when it is turned on; until then its routes don't exist.
-const BACKENDS = ['ai', 'cloud', 'calendar', 'stripe', 'hub-settings', 'hub-setup', 'hub-sites', 'home', 'chat', 'browser']
+const BACKENDS = ['ai', 'cloud', 'calendar', 'stripe', 'hub-settings', 'hub-setup', 'hub-sites', 'home', 'chat', 'browser', 'system', 'agent-actions']
 const SERVICES = new Set(['ai', 'cloud', 'calendar', 'stripe'])
 const loaded = new Map()
 async function tabRoutes() {
@@ -329,8 +329,27 @@ async function tabRoutes() {
   return routes
 }
 
+// So "did anything fetch that?" has an answer. Never a query string, because file paths travel in those.
+// The page's own polling would bury everything else, so a successful one isn't written.
+const ACCESS_FILE = path.join(HERE, 'data', 'access.log')
+const ACCESS_LIMIT = 20 * 2 ** 20
+let accessSize = -1
+function accessLine(req, res, url) {
+  if (hubConfig().accessLog === false) return
+  if (res.statusCode < 400 && req.method === 'GET' && ['/api/ping', '/api/state'].includes(url.pathname)) return
+  const forwarded = String(req.headers['x-forwarded-for'] || '').replace(/[^0-9a-fA-F.:, ]/g, '').slice(0, 80)
+  const line = [new Date().toISOString(), req.method, url.pathname.replace(/\s/g, '').slice(0, 200), res.writableFinished ? res.statusCode : `${res.statusCode}-cut`, req.socket.remoteAddress || '', forwarded].join(' ').trimEnd() + '\n'
+  try {
+    if (accessSize < 0) accessSize = existsSync(ACCESS_FILE) ? statSync(ACCESS_FILE).size : 0
+    if (accessSize > ACCESS_LIMIT) { renameSync(ACCESS_FILE, `${ACCESS_FILE}.1`); accessSize = 0 }
+    accessSize += line.length
+    appendFile(ACCESS_FILE, line, () => {})
+  } catch {}
+}
+
 async function handle(req, res) {
   const url = new URL(req.url, `http://${req.headers.host}`)
+  res.on('close', () => accessLine(req, res, url))
   if (await gate(req, res, url, send)) return
   // Changes need the page's x-hub header. A request from another site can't add it without a
   // CORS preflight, which the hub never approves, so other tabs can't move or delete files.

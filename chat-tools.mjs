@@ -4,6 +4,10 @@
 //   hub_read        { path }        GET /api/<path>: the hub's live data. Never a file's content.
 //   settings_update { patch }       POST /api/hub/settings (the hub's look and layout only)
 //   show_site       { url?, name? } shows a website to the user as a card in the chat
+//   system_info     { folder? }     memory, top programs, or one folder's size
+//   git_read        { repo, op, .. } git status, log or diff of a repo. Key files are left out.
+//   file_op         { op, from, to } move, copy, rename or trash a file. Trash waits for a card.
+//   hub_action      { name, args }  one of the hub's named actions. Some wait for a card.
 //
 // The settings API keeps the previous version in data/hub-settings.prev.json, so every change can
 // be undone with another patch.
@@ -50,6 +54,65 @@ const TOOLS = [
     },
   },
 ]
+
+TOOLS.push(
+  {
+    name: 'system_info',
+    description: 'Look at this computer: memory, platform and the programs using the most memory. Pass folder to get that folder\'s size and its largest items instead. Listening ports are in hub_read /api/state, and a folder\'s files are in hub_read /api/files/laptop?path=.',
+    inputSchema: {
+      type: 'object',
+      properties: { folder: { type: 'string', description: 'A full path, or one starting with ~' } },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'git_read',
+    description: 'Read a git repository: status, log or diff. It can\'t change anything. Key files are left out of a diff. A repo with settings in its own config that could run programs is refused.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        repo: { type: 'string', description: 'A folder in the repository: a full path, or one starting with ~' },
+        op: { type: 'string', enum: ['status', 'log', 'diff'] },
+        ref: { type: 'string', description: 'For log and diff: a branch, commit or range such as main..HEAD or abc123^!' },
+        path: { type: 'string', description: 'Only this file or folder, relative to repo' },
+        staged: { type: 'boolean', description: 'For diff: what is staged' },
+        n: { type: 'number', description: 'For log: how many commits, 20 by default' },
+      },
+      required: ['repo', 'op'],
+      additionalProperties: false,
+    },
+  },
+)
+
+TOOLS.push(
+  {
+    name: 'file_op',
+    description: 'Move, copy, rename or trash a file or folder. Moves, renames and trash work inside workspace/ and assistant.writeFolders. Copies can come from any folder you can read and land in those. Nothing is overwritten, and a move can\'t cross drives. Key files, folders holding one, links, and places where files run as code (.git, .claude, startup folders, shell profiles) are refused. Trash waits for a card the user answers.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        op: { type: 'string', enum: ['move', 'copy', 'rename', 'trash'] },
+        from: { type: 'string', description: 'A full path, one starting with ~, or one relative to the hub folder such as workspace/notes.txt' },
+        to: { type: 'string', description: 'For move and copy, the full new path including the name. For rename, just the new name.' },
+      },
+      required: ['op', 'from'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'hub_action',
+    description: 'Run one of the hub\'s named actions. refresh, refresh_ai, refresh_cloud, refresh_stripe and refresh_calendar read the latest numbers. calendar_add takes args { title, start, end, allDay, location, notes } and adds to the hub\'s own calendar. calendar_update takes id and any of those. calendar_delete takes id, and calendar_quick takes text and adds to the calendar set up for Quick Add: both wait for a card the user answers.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', enum: ['refresh', 'refresh_ai', 'refresh_cloud', 'refresh_stripe', 'refresh_calendar', 'calendar_add', 'calendar_update', 'calendar_delete', 'calendar_quick'] },
+        args: { type: 'object' },
+      },
+      required: ['name'],
+      additionalProperties: false,
+    },
+  },
+)
 
 const text = (t, isError = false) => ({ content: [{ type: 'text', text: t }], ...(isError ? { isError: true } : {}) })
 
@@ -125,7 +188,25 @@ async function showSite({ url, name } = {}) {
   return text(JSON.stringify({ shown: true, url: href, name: label || undefined, icon, note: 'The user now sees this as a card in the chat. You cannot see or click inside it.' }))
 }
 
-const HANDLERS = { hub_read: hubRead, settings_update: settingsUpdate, show_site: showSite }
+async function looked(pathname, params) {
+  const q = new URLSearchParams(Object.entries(params).filter(([, v]) => v !== undefined && v !== '' && v !== false).map(([k, v]) => [k, String(v)]))
+  const r = await fetch(`${API}${pathname}?${q}`, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(60e3) })
+  const body = await r.json().catch(() => ({}))
+  return r.ok ? text(JSON.stringify(body)) : text(body.error || `HTTP ${r.status}`, true)
+}
+const systemInfo = ({ folder } = {}) => folder ? looked('/api/system/size', { path: folder }) : looked('/api/system/info', {})
+const gitRead = ({ repo, op, ref, path, staged, n } = {}) => ['status', 'log', 'diff'].includes(op) ? looked(`/api/git/${op}`, { repo, ref, path, staged: staged ? 1 : '', n }) : text('op must be status, log or diff.', true)
+
+// A step that waits for a card comes back with its id on the last line, which is how the chat knows to show it.
+async function acted(pathname, body) {
+  const { status, body: out } = await hub(pathname, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
+  if (status === 428 && out?.id) return text(`${out.error}\n[confirm:${out.id}]`, true)
+  return status === 200 ? text(JSON.stringify(out)) : text(out?.error || `HTTP ${status}`, true)
+}
+const fileOp = args => acted('/api/agent/file', args || {})
+const hubAction = args => acted('/api/agent/action', args || {})
+
+const HANDLERS = { hub_read: hubRead, settings_update: settingsUpdate, show_site: showSite, system_info: systemInfo, git_read: gitRead, file_op: fileOp, hub_action: hubAction }
 
 function reply(id, result, error) {
   process.stdout.write(JSON.stringify({ jsonrpc: '2.0', id, ...(error ? { error } : { result }) }) + '\n')
