@@ -76,8 +76,9 @@ These stay off until you set them up, and a tab that's off fetches nothing:
 ## The agent
 
 The chat is a general agent that knows your hub best. It answers anything, reads your files, searches
-the web, writes files to its own `workspace/` folder, changes the hub's look when you ask, and drives a
-real Chrome you can watch and take over at any time.
+the web, writes files to its own `workspace/` folder, moves, copies, renames and trashes files there,
+refreshes the hub's numbers, keeps your calendar, changes the hub's look when you ask, and drives a real
+Chrome you can watch and take over at any time.
 
 It runs on [Claude Code](https://claude.com/claude-code) by default, using your own login. You can also
 give it an API key or any Anthropic-compatible provider, and choose its name, instructions, models and
@@ -99,7 +100,9 @@ These are in the code and stay as they are:
 - Every request that changes something needs the `x-hub: 1` header.
 - The agent has no shell, because a shell could read a key file whatever the rules say.
 - Cloud and Stripe views only read.
-- Nothing is permanently deleted. Deletes go to the trash.
+- Nothing is permanently deleted. Deletes go to the trash, and when the agent is the one deleting, a card asks you first. Only the card counts, not a typed yes.
+- The agent can only move and delete inside `workspace/` and the folders in `assistant.writeFolders`. It can't overwrite anything, touch a key file or a folder holding one, or put files where they would run as code. Each step is logged in `data/agent-actions.log`.
+- It can't change its own limits: `writeFolders`, approvals, deny lists, keys and `laptop.probe` are yours to set.
 
 Two limits to know about:
 
@@ -113,6 +116,7 @@ Only this computer, until you change that.
 - `"access": "tailnet"` in `config/hub.json` adds your Tailscale address, for your own devices. Tailscale is optional.
 - `"listen": ["192.168.1.20"]` adds other addresses.
 - Anything beyond this computer needs a passcode: run `npm run passcode`. Without one, the hub doesn't listen on those addresses.
+- A phone pairs instead of typing the passcode. On this computer, open `/pair/new` for a code that works once, for 5 minutes. Put the hub's https address in `"url"` to get a QR code as well. Pairing opens no new address: a phone still has to reach the hub by one you already turned on. The app in `mobile/` has only run in tests so far.
 
 Don't put the hub on the open internet. It can see your files and act in your browser.
 

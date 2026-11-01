@@ -945,8 +945,8 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
       const row = document.createElement('div'); row.className = 'confirm-row'
       const yes = document.createElement('button'); yes.type = 'button'; yes.className = 'yes'; yes.textContent = 'Allow'
       const no = document.createElement('button'); no.type = 'button'; no.textContent = 'Don’t'
-      yes.addEventListener('click', () => answerConfirm(c.id, true))
-      no.addEventListener('click', () => answerConfirm(c.id, false))
+      yes.addEventListener('click', () => answerConfirm(c, true))
+      no.addEventListener('click', () => answerConfirm(c, false))
       row.append(yes, no)
       el.append(h, ...(d.textContent ? [d] : []), row)
       log.append(el)
@@ -1102,7 +1102,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
   window.addEventListener('keydown', e => {
     if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey) return
     if (e.key === '/' || e.code === 'Slash') { e.preventDefault(); e.stopPropagation(); setFull(!S.full) }
-    else if (e.key === 'k' || e.key === 'K') { e.preventDefault(); e.stopPropagation(); if (S.full) fta.focus(); else bta.focus() }
+    else if ((e.key === 'k' || e.key === 'K') && !window.LAUNCHER) { e.preventDefault(); e.stopPropagation(); if (S.full) fta.focus(); else bta.focus() }
   }, true)
 
   // Nothing typed in the chat may reach the hub's own shortcuts (1-8, /, f, r, Backspace ...).
@@ -1341,14 +1341,19 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
       if (row) { const done = document.createElement('div'); done.className = 'confirm-on'; done.textContent = note; row.replaceWith(done) }
     }
   }
-  async function answerConfirm(id, allow) {
+  async function answerConfirm(c, allow) {
+    const id = c.id
     for (const el of confirmCards(id)) el.querySelectorAll('button').forEach(b => { b.disabled = true })
+    let out = {}
     try {
-      const r = await hubFetch(`/api/browser/confirm/${id}`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: JSON.stringify({ allow }) })
+      const r = await hubFetch(`/api/${c.via === 'agent' ? 'agent' : 'browser'}/confirm/${id}`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: JSON.stringify({ allow }) })
       if (!r.ok) return settleConfirm(id, 'This ask has run out. Ask again if you still want it.')
+      out = await r.json().catch(() => ({}))
     } catch { return settleConfirm(id, 'Couldn’t reach the hub, so nothing happened. Ask again.') }
-    settleConfirm(id, allow ? 'Allowed' : 'Not allowed')
-    submit(allow ? 'Allowed. Go ahead.' : 'Not allowed. Don’t do that.')
+    if (!allow) { settleConfirm(id, 'Not allowed'); return submit('Not allowed. Don’t do that.') }
+    settleConfirm(id, out.message || 'Allowed')
+    // The hub already did a file or hub step, so the assistant is told what happened rather than told to go ahead.
+    submit(out.ok === false ? `Allowed, but it didn’t work: ${out.message}` : out.message ? `Allowed. ${out.message}` : 'Allowed. Go ahead.')
   }
   for (const [t, pill, b] of [[bta, barPill, bsend], [fta, fPill, fsend]]) {
     t.addEventListener('input', () => { grow(t, pill); syncSend() })

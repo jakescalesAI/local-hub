@@ -22,6 +22,7 @@ const NEUTRAL = {
   access: 'localhost', // or "tailnet"
   passcodeRequired: true, // other devices need the passcode (npm run passcode); this computer never does
   listen: [], // more addresses to answer on, such as a LAN address. Ignored until a passcode is set.
+  hosts: [], // more names it answers to, such as a local DNS name. Its own name and addresses always work.
   url: '', // the address you reach the hub at from other devices, if any
   addons: {},
   server: { sshAlias: '', label: 'Server', readOnly: ['/root/.ssh'], production: { units: [], paths: [] }, notes: {} },
@@ -35,6 +36,7 @@ const NEUTRAL = {
   siteSuggestions: [],
   theme: 'default',
   claudeConfigDir: '',
+  accessLog: true, // one line per request in data/access.log: time, method, path, status, address. Never a query string.
   // The assistant: every choice here is yours (see HUB-GUIDE.md, "Make it yours").
   assistant: {
     name: 'Hub Assistant',
@@ -46,7 +48,7 @@ const NEUTRAL = {
     env: {}, // extra environment for the CLI, for example {"CLAUDE_CODE_USE_BEDROCK": "1"}. No keys here: they go in secrets.json.
     models: [], // ["model-id"] or [["model-id", "Label"]]; empty offers the Claude models
     defaultModel: '',
-    tools: { web: true, files: true, browser: true, settings: true, sites: true },
+    tools: { web: true, files: true, browser: true, settings: true, sites: true, actions: true },
     readFolders: ['~'], // folders it may read, besides the hub's. Key files stay refused in all of them.
     writeFolders: [], // more folders it may write to, besides workspace/. Never inside the hub folder.
     mcpServers: {}, // your own tools: {"name": {"command": "...", "args": [], "env": {}}}

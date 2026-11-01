@@ -18,12 +18,12 @@
 //   | tool {id,name,label,detail} | tool_result {id,ok,text} | error {message} | ping
 //   | done {sessionId, ms, meta: {at, ms, model, in, cached, out, cost?}} (meta is also saved on the turn's last answer)
 //   | site {url, name?, icon?} (show_site: the page renders hub.siteCard) | settings {keys} (settings_update saved)
-//   | confirm {id, what, label, url} (a browser step waits for this card's answer, POST /api/browser/confirm/<id>)
+//   | confirm {id, via, what, label, url} (a step waits for this card's answer, POST /api/<via>/confirm/<id>, via browser or agent)
 //
 // A general agent that knows this hub best. It can read files apart from key files, search and fetch
 // the web, write in workspace/, drive the hub browser, read the hub's own /api/ through hub_read
 // endpoints, and use the tools in chat-tools.mjs (an MCP server passed with --mcp-config):
-// settings_update (POST /api/hub/settings), show_site, system_info and git_read. assistant.tools in config/hub.json switches
+// settings_update (POST /api/hub/settings), show_site, system_info, git_read, file_op and hub_action. assistant.tools in config/hub.json switches
 // these. The key-file deny below is not a setting, and everything it says or does is passed through
 // scrub(), which removes every key/token in config/secrets.json even if the model were tricked into reading one.
 import { spawn, execFileSync, execFile } from 'node:child_process'
@@ -33,6 +33,7 @@ import os from 'node:os'
 import crypto from 'node:crypto'
 import { HERE, PORT, configPath, hubConfig, secrets, secretValues, scrubSecrets, enabledTabs, addonOn, ownerNotes, ownerInstructions } from './config.mjs'
 import { OS_NAME, TRASH_NAME } from './platform.mjs'
+import { RUN_DIRS, RUN_EXTS, RUN_FILES, holdsKeys } from './files.mjs'
 
 const TIMEOUT_MS = 6 * 60e3 // one reply, start to finish
 const PING_MS = 15e3
@@ -77,9 +78,14 @@ const BROWSER = 'mcp__hub-browser__browser_'
 // The browser tools end a refused step with this, and the id names the ask the hub is holding.
 const CONFIRM_MARK = /\s*\[confirm:([0-9a-f]{32})\]\s*$/
 const BROWSER_TOOLS = ['status', 'open', 'snapshot', 'screenshot', 'text', 'click', 'type', 'key', 'scroll', 'select', 'hover', 'nav', 'tabs', 'dialog', 'wait', 'handoff', 'profile'].map(n => BROWSER + n)
+// The rules above and holdsKeys together, for anything that hands the assistant a file another way than Read.
+const KEY_FILE_NAMES = new RegExp(`^(${KEY_FILES.map(f => f.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')).join('|')})$`, 'i')
+export const deniedToAgent = p => /::|:\$|~\d/.test(String(p || '')) || holdsKeys(p) || KEY_FILE_NAMES.test(String(p || '').split(/[\\/]+/).filter(Boolean).at(-1) || '')
 function denyList() {
   const conf = hubConfig()
   const keys = [...KEY_FILES.map(f => `//**/${f}`), ...[...KEY_DIRS, ...conf.keyDirs].map(d => `//**/${d}/**`), ...conf.keyPairs.flatMap(([a, b]) => [`//**/${a}/${b}`, `//**/${a}/${b}/**`]),
+    // NTFS streams and 8.3 short names reach a file without saying its name, so no rule above would match them.
+    '//**/*::*', '//**/*:$*', '//**/*~[0-9]*',
     '//**/.docker/config.json', '//**/gh/hosts.yml', '//**/.git/config', '//**/AppData/Roaming/**', '//**/AppData/LocalLow/**',
     // A hub kept under AppData/Local still needs its own folder.
     ...(/[\\/]AppData[\\/]Local[\\/]/i.test(HERE) ? [] : ['//**/AppData/Local/**']),
@@ -87,6 +93,7 @@ function denyList() {
     '~/.claude/**', 'config/**', 'data/**', `${ruleDir(HERE)}/config/**`, `${ruleDir(HERE)}/data/**`]
   return [
     ...['Read', 'Grep', 'Glob', 'Edit', 'Write'].flatMap(t => keys.map(k => `${t}(${k})`)),
+    ...['Edit', 'Write'].flatMap(t => [...RUN_FILES.map(f => `//**/${f}`), ...RUN_EXTS.map(e => `//**/*${e}`), ...RUN_DIRS.map(d => `//**/${d}/**`)].map(k => `${t}(${k})`)),
     'Bash', 'PowerShell', 'NotebookEdit', 'MultiEdit',
     // the hub itself goes through its own routes, below, not a web fetch
     'WebFetch(domain:localhost)', 'WebFetch(domain:127.0.0.1)',
@@ -103,6 +110,8 @@ export function policy() {
       'mcp__hub__hub_read', 'mcp__hub__system_info', 'mcp__hub__git_read',
       ...(on('web') ? ['WebSearch', 'WebFetch'] : []),
       ...(on('files') ? folders.flatMap(f => [`Write(${f})`, `Edit(${f})`]) : []),
+      ...(on('files') ? ['mcp__hub__file_op'] : []),
+      ...(on('actions') ? ['mcp__hub__hub_action'] : []),
       ...(on('settings') ? ['mcp__hub__settings_update'] : []),
       ...(on('sites') ? ['mcp__hub__show_site'] : []),
       ...(on('browser') ? BROWSER_TOOLS : []),
@@ -131,12 +140,12 @@ const coreInstructions = () => {
 CHANGING THE HUB
 ${on('settings') ? `- Change the hub's look and layout with the settings_update tool: tabs (hide, show, order), Home apps, widgets and their options, style, wallpaper, website apps (sites) and reset. Follow the guide's "Settings API" section for the exact patch. Read the current settings first (hub_read /api/hub/settings, or /api/hub/settings/catalog for allowed ids) when you need ids or the current list.
 - Make the change when the user asks for it, then confirm in one sentence what changed and that they can say "undo that". Never show them JSON or patches. To undo, send the "Before" values the tool returned. Ask first, in one line, before anything broad: reset, removing several widgets or apps, or replacing a whole list.
-` : ''}- For other hub actions (restarts, deploys, add-on switches, wallpaper uploads, moving or deleting files) give the exact steps in the hub; the guide lists them. The Cloud and Stripe views are read-only by design, so point to the provider's own dashboard for changes.
+` : ''}- For other hub actions (restarts, deploys, add-on switches, wallpaper uploads) give the exact steps in the hub; the guide lists them. The Cloud and Stripe views are read-only by design, so point to the provider's own dashboard for changes.
 
 FILES
 - Read, Grep and Glob work in ${readFolders().map(f => `\`${f}\``).join(', ') || 'the hub folder'} and the hub folder, apart from key files (see KEYS). For a file somewhere else, say it is outside the folders you can read, and that the user can add the folder under assistant.readFolders in config/hub.json.${on('files') ? `
 - Write new files (drafts, notes, reports, exports) in the \`workspace\` folder of the hub with Write and Edit${hubConfig().assistant.writeFolders.length ? `, or in ${hubConfig().assistant.writeFolders.map(f => `\`${f}\``).join(', ')}` : ''}, and tell the user where it is; they can open it on the Files tab. Ask before replacing a file that already has content. If they want a file elsewhere, write it in \`workspace\` and say that folders can be added under assistant.writeFolders in config/hub.json. Never suggest restarting a session.` : ''}
-- You have no tool that deletes files. To remove something, tell the user how on the Files tab, which sends it to ${TRASH_NAME} or the server's trash. Nothing gets permanently deleted.
+- You can't permanently delete files. file_op's trash sends one to ${TRASH_NAME} after the user allows it on a card. Anywhere file_op refuses, tell the user how on the Files tab. Nothing gets permanently deleted.
 ${on('web') ? `
 WEB
 - Use WebSearch and WebFetch for anything current or anything you aren't sure of, and name your sources in a few words.
@@ -152,7 +161,9 @@ SITES
 ` : ''}
 LIVE DATA
 - To read live numbers, call the hub_read tool with the path, for example /api/state. Paths are in the guide.
-- If a browser step comes back with a card on screen, stop and wait for the user. Only the card's Allow counts, and a typed yes doesn't.
+- If a tool comes back saying a card is on screen, stop and wait for the user. Only the card's Allow counts, and a typed yes doesn't. For file_op and hub_action the hub does the step itself once they allow it, so don't call it again.
+${on('files') ? '' : '- file_op is turned off in this hub.\n'}- file_op moves, copies, renames and trashes files. Moves, renames and trash work inside workspace/ and writeFolders, copies can come from any folder you can read, and nothing is overwritten. Key files, folders holding one, links, and places where files run as code (.git, .claude, startup folders) are refused. /api/agent/log through hub_read lists what you've done, so you can move something back.
+- hub_action runs one of the hub's named actions: refresh, refresh_ai, refresh_cloud, refresh_stripe, refresh_calendar, calendar_add, calendar_update, calendar_delete, calendar_quick. Cloud and Stripe stay read-only, and there's no action for changing your own limits.
 - There's no shell, so use the tools made for it. system_info: memory, the programs using the most memory, or a folder's size. git_read: status, log or diff of a repo. hub_read /api/state: listening ports. Read, Grep and Glob: file contents, line counts and finding files.
 - The guide's endpoint table says which path holds what. Prefer the smaller one (for example /api/ai/usage over /api/ai/state) and call it before answering. Fields called "at" or "usageAt" are epoch milliseconds: convert them to the user's local time and say how fresh the data is when it matters.
 - If a connection reports "connect", "error" or "not connected", tell them which connection, what the response says, and the fix (config/secrets.json field name, never the value).
@@ -363,6 +374,8 @@ export function create({ run, sshHost, here }) {
     if (name === 'Edit') return `Edited ${base(i.file_path) || 'a file'}`
     if (name === 'Glob') return `Listed ${trim(i.pattern, 40)}`
     if (name === 'mcp__hub__hub_read') return `Checked ${String(i.path || '').slice(0, 60)}`
+    if (name === 'mcp__hub__file_op') return `${({ move: 'Moved', copy: 'Copied', rename: 'Renamed', trash: 'Trash' })[i.op] || 'File'}: ${base(i.from) || 'a file'}`
+    if (name === 'mcp__hub__hub_action') return `Hub action: ${String(i.name || '').slice(0, 40)}`
     if (name === 'mcp__hub__system_info') return i.folder ? `Measured ${base(i.folder) || 'a folder'}` : 'Checked this computer'
     if (name === 'mcp__hub__git_read') return `Git ${String(i.op || '')} in ${base(i.repo) || 'a repo'}`
     if (name === 'Bash') {
@@ -518,11 +531,12 @@ export function create({ run, sshHost, here }) {
     conv.items.push({ kind: 'user', text, at: Date.now(), tab: ctx.tab, ...(saved.length ? { files: saved.map(f => f.name) } : {}), ...(reply ? { reply: trim(reply, 300) } : {}) })
     save(conv)
     emit({ type: 'session', sessionId: conv.id, title: conv.title })
+    if (body.detached) res.end() // the phone goes away after sharing: keep working, the reply lands in the conversation
 
     const pingTimer = setInterval(() => emit({ type: 'ping' }), PING_MS)
     const timer = setTimeout(() => { entry.killed = 'timeout'; killTree(entry.proc) }, TIMEOUT_MS)
     // The page went away (closed, reloaded, network dropped): stop the reply.
-    res.on('close', () => { if (running.get(conv.id) === entry && !entry.finished) { entry.killed = entry.killed || 'disconnect'; killTree(entry.proc) } })
+    res.on('close', () => { if (!body.detached && running.get(conv.id) === entry && !entry.finished) { entry.killed = entry.killed || 'disconnect'; killTree(entry.proc) } })
 
     const prompt = buildPrompt(text, ctx, saved, reply)
     const toolItems = new Map()
@@ -625,18 +639,19 @@ export function create({ run, sshHost, here }) {
                   browserItem.handoff = trim(reason, 160) || 'Your turn'
                 }
                 emit({ type: 'browser', shot: browserItem.shot, url: browserItem.url, title: browserItem.title, handoff: browserItem.handoff })
-                // A floor stopped this step, so ask with a card. The hub holds the details, which means page text can't make one up.
-                const want = !ok && CONFIRM_MARK.exec(rawOut)
-                if (want) {
-                  fetch(`http://127.0.0.1:${PORT}/api/browser/confirm/${want[1]}`, { signal: AbortSignal.timeout(5e3) })
-                    .then(r => (r.ok ? r.json() : null))
-                    .then(c => {
-                      if (!c) return
-                      const card = { kind: 'confirm', id: want[1], what: scrub(trim(c.what, 200)), label: scrub(trim(c.label, 120)), url: scrub(trim(c.url, 200)), at: Date.now() }
-                      conv.items.push(card); save(conv)
-                      emit({ type: 'confirm', id: card.id, what: card.what, label: card.label, url: card.url })
-                    }, () => {})
-                }
+              }
+              // A floor stopped this step, so ask with a card. The hub holds the details, which means page text can't make one up.
+              const via = item?.name?.startsWith(BROWSER) ? 'browser' : ['mcp__hub__file_op', 'mcp__hub__hub_action'].includes(item?.name) ? 'agent' : ''
+              const want = via && !ok && CONFIRM_MARK.exec(rawOut)
+              if (want) {
+                fetch(`http://127.0.0.1:${PORT}/api/${via}/confirm/${want[1]}`, { signal: AbortSignal.timeout(5e3) })
+                  .then(r => (r.ok ? r.json() : null))
+                  .then(c => {
+                    if (!c) return
+                    const card = { kind: 'confirm', id: want[1], via, what: scrub(trim(c.what, 200)), label: scrub(trim(c.label, 300)), url: scrub(trim(c.url, 200)), at: Date.now() }
+                    conv.items.push(card); save(conv)
+                    emit({ type: 'confirm', id: card.id, via, what: card.what, label: card.label, url: card.url })
+                  }, () => {})
               }
             }
             save(conv)
