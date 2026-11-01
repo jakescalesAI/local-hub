@@ -2,6 +2,8 @@
   "name": "Quartzi Hub",
   "owner": "",
   "access": "localhost",
+  "passcodeRequired": true,
+  "listen": [],
   "url": "",
   "addons": {},
   "server": {
@@ -53,6 +55,36 @@
     "quickAdd": {
       "command": "",
       "check": "--check"
+    }
+  },
+  "assistant": {
+    "name": "Hub Assistant",
+    "instructions": "",
+    "command": "",
+    "provider": {
+      "type": "login",
+      "baseUrl": ""
+    },
+    "env": {},
+    "models": [],
+    "defaultModel": "",
+    "tools": {
+      "web": true,
+      "files": true,
+      "browser": true,
+      "settings": true,
+      "sites": true
+    },
+    "readFolders": [
+      "~"
+    ],
+    "writeFolders": [],
+    "mcpServers": {},
+    "maxChats": 1000,
+    "approvals": {
+      "secrets": "never",
+      "actions": "ask",
+      "socialPosts": "never"
     }
   }
 }

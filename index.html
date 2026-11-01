@@ -297,8 +297,10 @@ const ENVS = [...(HUB_CONF.tabs || ['home', 'drives']), ...(window.HUB?.pluginTa
 //   menu?(row, x, y) -> true when it opened a menu, ago?() -> text for the Updated label }.
 // They call the globals here (render, widget, group, esc, api, showMenu, MI, copy, hud, ...).
 const TABS = (window.TABS ||= {})
-const ROOT_TITLE = { icloud: 'iCloud Drive', laptop: 'Home', server: 'root', drives: 'This PC' }
-const TRASH_WORDS = { icloud: 'Move to Recycle Bin', laptop: 'Move to Recycle Bin', server: 'Move to Server Trash', drives: 'Move to Recycle Bin' }
+const OS = { isWin: true, pc: 'This PC', trash: 'the Recycle Bin', fileManager: 'File Explorer', ...window.HUB_CONF?.platform }
+const BIN = OS.trash.replace(/^the /, '')
+const ROOT_TITLE = { icloud: 'iCloud Drive', laptop: 'Home', server: 'root', drives: OS.pc }
+const TRASH_WORDS = { icloud: `Move to ${BIN}`, laptop: `Move to ${BIN}`, server: 'Move to Server Trash', drives: `Move to ${BIN}` }
 let data = null
 let storage = null
 let env = store.get('hub-env', 'home')
@@ -615,11 +617,11 @@ function fileRow(root, e, p, sub) {
   return `<div class="row" ${attrs}><a class="row-line tap" draggable="true" ${link}>${inner}</a></div>`
 }
 
-// "This PC": one row per drive letter with its free space; deletes only on Fixed drives.
+// One row per drive with its free space; deletes only on Fixed drives.
 let drives = null
 function driveRow(root, e, p) {
   const cloud = e.type === 'iCloud'
-  const name = cloud ? e.label : e.label ? `${e.label} (${e.name})` : e.name
+  const name = cloud ? e.label : e.label && e.label !== e.name ? `${e.label} (${e.name})` : e.name
   const sub = cloud ? (storage?.total ? `${size(storage.available)} free of ${size(storage.total)} · iCloud` : 'iCloud')
     : `${size(e.free)} free of ${size(e.size)}${e.type === 'Fixed' ? '' : ` · ${e.type}`}`
   return `<div class="row" data-path="${esc(p)}"><a class="row-line tap" href="#" data-nav="${esc(p)}"><span class="fileicon" style="color:${cloud ? 'var(--blue)' : 'var(--gray)'}">${cloud ? ICON.cloud : ICON.drive}</span>
@@ -630,7 +632,7 @@ function drivesWidgets() {
   return `<div class="widgets">${drives.filter(d => d.type !== 'iCloud').map(d => {
     const used = d.size - d.free
     const [v, u] = big(used)
-    return widget(d.label ? `${d.label} (${d.name})` : d.name, `${v}<small>${u}</small>`, `${size(d.free)} free of ${size(d.size)}`, (used / d.size) * 100)
+    return widget(d.label && d.label !== d.name ? `${d.label} (${d.name})` : d.name, `${v}<small>${u}</small>`, `${size(d.free)} free of ${size(d.size)}`, (used / d.size) * 100)
   }).join('')}</div>`
 }
 
@@ -665,7 +667,7 @@ function renderFiles() {
 }
 
 function fullPath(root, p) {
-  if (root === 'drives') return p ? p.replaceAll('/', '\\').replace(/^(\w:)$/, '$1\\') : 'This PC'
+  if (root === 'drives') return !p ? OS.pc : OS.isWin ? p.replaceAll('/', '\\').replace(/^(\w:)$/, '$1\\') : p
   const base = listing[root]?.root || ''
   if (root === 'server') return p ? `${base}/${p}` : base
   return p ? `${base}\\${p.replaceAll('/', '\\')}` : base
@@ -884,9 +886,9 @@ async function deleteItems(root, paths, isDir) {
   const what = paths.length > 1 ? `${paths.length} items` : `“${baseName(paths[0])}”`
   const message = root === 'server'
     ? 'It moves to /root/.hub-trash on the server, so you can move it back.'
-    : `It goes to the Recycle Bin on the laptop${/^iCloud\//.test(paths[0] || '') ? ', and iCloud keeps it in Recently Deleted for 30 days' : ''}.`
+    : `It goes to ${OS.trash} on this computer${/^iCloud\//.test(paths[0] || '') ? ', and iCloud keeps it in Recently Deleted for 30 days' : ''}.`
   if (!(await alertBox({ title: `Delete ${what}${isDir ? ' and everything in it' : ''}?`, message, ok: 'Delete', danger: true }))) return
-  try { const r = await filesPost(root, 'delete', { paths }); hud(`Moved to ${root === 'server' ? 'Server Trash' : 'Recycle Bin'}`); reloadDir(root) } catch (e) { showError(e) }
+  try { const r = await filesPost(root, 'delete', { paths }); hud(`Moved to ${root === 'server' ? 'Server Trash' : BIN}`); reloadDir(root) } catch (e) { showError(e) }
 }
 
 function fileMenu(row, x, y) {

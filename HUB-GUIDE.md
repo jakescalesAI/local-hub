@@ -112,7 +112,7 @@ Read-only. For each Stripe account in `config/secrets.json`: balance, revenue ov
 
 ## Endpoints you may read (GET only)
 
-Always call them as `curl -s -m 60 "http://localhost:3100/api/<path>"`.
+Always read them with the `hub_read` tool, passing the path, for example `/api/state`.
 
 | Path | What it holds |
 |---|---|

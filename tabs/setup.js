@@ -40,9 +40,10 @@
     () => `<h1>Set up your hub</h1><p>A private dashboard and assistant on this computer. This takes a minute, and you can change it all later.</p>${field('name', 'Hub name', 'text', answers.name, 'Quartzi Hub')}`,
     () => `<h1>Who can reach it?</h1><p>You can widen this later.</p>
       <label class="hs-choice"><input type="radio" name="hs-access" value="localhost" ${answers.access === 'localhost' ? 'checked' : ''}><span>Only this computer<small>The safe default. The hub answers on localhost and nowhere else.</small></span></label>
-      <label class="hs-choice" ${status.tailscale.installed ? '' : 'style="opacity:.55"'}><input type="radio" name="hs-access" value="tailnet" ${answers.access === 'tailnet' ? 'checked' : ''} ${status.tailscale.installed ? '' : 'disabled'}><span>My tailnet<small>${status.tailscale.installed ? 'Your own devices on Tailscale can open it too. Nothing on the public internet can.' : 'Needs Tailscale, which isn’t installed on this computer.'}</small></span></label>`,
+      <label class="hs-choice" ${status.tailscale.installed ? '' : 'style="opacity:.55"'}><input type="radio" name="hs-access" value="tailnet" ${answers.access === 'tailnet' ? 'checked' : ''} ${status.tailscale.installed ? '' : 'disabled'}><span>My tailnet<small>${status.tailscale.installed ? 'Your own devices on Tailscale can open it too, with a passcode. Nothing on the public internet can.' : 'Needs Tailscale, which isn’t installed on this computer.'}</small></span></label>
+      ${answers.access === 'tailnet' ? field('passcode', 'Passcode for other devices', 'password', answers.passcode || '', 'At least 8 characters') : ''}`,
     () => `<h1>Connect Claude</h1><p>The Chat tab uses your own Claude Code login on this computer. Your hub never sees your password.</p>
-      <div class="hs-status">${!status.claude.installed ? 'Claude Code isn’t installed yet. You can finish setup now and install it later; Chat waits until then.' : status.claude.signedIn ? 'Claude Code is installed and signed in.' : 'Claude Code is installed. Run <code>claude</code> in a terminal once to sign in.'}</div>
+      <div class="hs-status">${!status.claude.installed ? 'Claude Code isn’t installed yet. You can finish setup now and install it later; Chat waits until then.' : status.claude.signedIn ? 'Claude Code is installed and signed in.' : status.claude.signedIn === null ? 'Claude Code is installed. If Chat asks, run <code>claude</code> in a terminal once to sign in.' : 'Claude Code is installed. Run <code>claude</code> in a terminal once to sign in.'}</div>
       ${field('claudeConfigDir', 'Claude folder (optional)', 'text', answers.claudeConfigDir, 'Leave empty to use your usual login')}`,
     () => `<h1>Optional keys</h1><p>Each one turns on a tab. Skip them all if you like. They stay in <code>config/secrets.json</code> on this computer and are never sent to this page.</p>
       ${KEYS.map(([k, l, t]) => field(`key.${k}`, l, t, answers.keys[k] || '')).join('')}`,
@@ -64,6 +65,7 @@
       <div class="hs-err" role="alert">${esc(error)}</div>
       <div class="hs-btns">${step ? '<button class="hs-btn" data-go="back">Back</button>' : ''}<button class="hs-btn go" data-go="next">${last ? 'Finish' : 'Continue'}</button></div>`
     card.querySelector('input:not([type=radio])')?.focus()
+    for (const r of card.querySelectorAll('input[name=hs-access]')) r.onchange = () => { collect(); paint() }
   }
   async function finish() {
     const btn = card.querySelector('[data-go=next]')

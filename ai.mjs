@@ -8,6 +8,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { execFileSync } from 'node:child_process'
 import { configPath } from './config.mjs'
+import { IS_WIN } from './platform.mjs'
 
 const USAGE_URL = 'https://api.anthropic.com/api/oauth/usage'
 const MIN = 60e3
@@ -22,7 +23,7 @@ const CHUNK = 4 << 20
 const NEEDLE = Buffer.from('"usage":{')
 const HOME = os.homedir()
 const DEFAULT_DIR = path.resolve(HOME, '.claude')
-const CLAUDE_EXE = [path.join(HOME, '.local', 'bin', 'claude.exe')].find(f => fs.existsSync(f)) || 'claude'
+const CLAUDE_EXE = [path.join(HOME, '.local', 'bin', IS_WIN ? 'claude.exe' : 'claude')].find(f => fs.existsSync(f)) || 'claude'
 
 // Runs on the server over `ssh <host> python3 -`. Same incremental scan as the laptop one, with
 // its own cache in /root/.hub-cache; prints compact JSON. Read-only outside that folder.
@@ -200,11 +201,11 @@ function planName(c) {
   return [cap(c.subscriptionType || ''), x?.[1]].filter(Boolean).join(' ')
 }
 
-// PowerShell command that signs a config dir in. The default dir needs no env var.
+// The terminal command that signs a config dir in. The default dir needs no env var.
 function loginCommand(configDir, isDefault) {
   if (isDefault) return 'claude auth login'
-  const dir = String(configDir).replace(/^~(?=$|[\\/])/, '$HOME').replace(/\//g, '\\')
-  return `$env:CLAUDE_CONFIG_DIR="${dir}"; claude auth login`
+  const dir = String(configDir).replace(/^~(?=$|[\\/])/, '$HOME')
+  return IS_WIN ? `$env:CLAUDE_CONFIG_DIR="${dir.replace(/\//g, '\\')}"; claude auth login` : `CLAUDE_CONFIG_DIR="${dir}" claude auth login`
 }
 
 function money(v) {
@@ -615,6 +616,7 @@ export function create({ run, sshHost, here }) {
 
   // The hub may have started before a user variable was set, so read the registry copy too.
   function userEnv(name) {
+    if (!IS_WIN) return ''
     try {
       const out = execFileSync('reg', ['query', 'HKCU\\Environment', '/v', name], { encoding: 'utf8', windowsHide: true, stdio: ['ignore', 'pipe', 'ignore'] })
       return out.match(/REG_\w+\s+(\S+)\s*$/m)?.[1] || ''

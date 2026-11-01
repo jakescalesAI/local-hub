@@ -12,13 +12,13 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { HERE, ADDONS, hubConfig, needsSetup, saveHubConfig, saveSecrets, pageConfig, themes, themeById, baseTheme } from './config.mjs'
+import { IS_MAC, tailscalePath } from './platform.mjs'
+import { MIN_PASSCODE, hashPasscode, isLocal, setPasscode } from './access.mjs'
 import { findClaude } from './chat.mjs'
 import { STYLE, BUILTIN_WALLPAPERS, webUrl } from './hub-settings.mjs'
 
-const TAILSCALE = 'C:/Program Files/Tailscale/tailscale.exe'
 const THEME_DIR = path.join(HERE, 'data', 'themes')
 const MAX_THEME = 16 * 1024
-const isLocal = req => ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress)
 
 const bad = message => Object.assign(new Error(message), { code: 400 })
 function text(v, max, what) {
@@ -29,7 +29,9 @@ function text(v, max, what) {
 
 function claudeStatus() {
   const dir = hubConfig().claudeConfigDir || process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude')
-  return { installed: !!findClaude(), signedIn: fs.existsSync(path.join(dir, '.credentials.json')) }
+  // A Mac keeps the login in its Keychain, so the file only proves it on the other two.
+  const provider = hubConfig().assistant.provider.type
+  return { installed: !!findClaude(), signedIn: provider !== 'login' || fs.existsSync(path.join(dir, '.credentials.json')) || (IS_MAC ? null : false) }
 }
 
 // Turns the wizard's answers into hub.json values and secrets.json fields. Throws on anything malformed.
@@ -37,6 +39,8 @@ function readAnswers(body) {
   const name = text(body.name, 40, 'Hub name') || 'Quartzi Hub'
   if (!['localhost', 'tailnet'].includes(body.access || 'localhost')) throw bad('Who can reach it must be localhost or tailnet')
   const claudeConfigDir = text(body.claudeConfigDir, 400, 'Claude folder')
+  const passcode = typeof body.passcode === 'string' ? body.passcode : ''
+  if (body.access === 'tailnet' && passcode.length < MIN_PASSCODE) throw bad(`Other devices need a passcode of at least ${MIN_PASSCODE} characters`)
   const keys = body.keys && typeof body.keys === 'object' ? body.keys : {}
   const key = id => text(keys[id], 2000, id)
   const url = (id, v) => {
@@ -46,7 +50,7 @@ function readAnswers(body) {
     if (!ok) throw bad(`${id} needs an http or https address`)
     return ok
   }
-  const secrets = {}
+  const secrets = passcode ? { hubPasscode: hashPasscode(passcode) } : {}
   if (key('openrouter')) secrets.openrouter = { apiKey: key('openrouter') }
   if (key('deepseek')) secrets.deepseek = { apiKey: key('deepseek') }
   if (key('stripe')) secrets.stripe = { apiKey: key('stripe') }
@@ -106,7 +110,7 @@ export function create({ onAccessChange }) {
       return true
     }
     if (p === '/api/hub/setup' && req.method === 'GET') {
-      send(res, 200, { needsSetup: needsSetup(), local: isLocal(req), claude: claudeStatus(), tailscale: { installed: fs.existsSync(TAILSCALE) } })
+      send(res, 200, { needsSetup: needsSetup(), local: isLocal(req), claude: claudeStatus(), tailscale: { installed: !!tailscalePath() } })
       return true
     }
     if (p === '/api/hub/setup' && req.method === 'POST') {
@@ -117,7 +121,14 @@ export function create({ onAccessChange }) {
       if (Object.keys(secrets).length) saveSecrets(secrets)
       saveHubConfig(config)
       onAccessChange?.()
-      send(res, 200, { ok: true, name: config.name, access: config.access, saved: Object.keys(secrets) })
+      send(res, 200, { ok: true, name: config.name, access: config.access, saved: Object.keys(secrets).filter(k => k !== 'hubPasscode') })
+      return true
+    }
+    if (p === '/api/hub/passcode' && req.method === 'POST') {
+      if (!isLocal(req)) return send(res, 403, { error: 'The passcode is set from this computer' }), true
+      setPasscode((await readBody(req)).passcode)
+      onAccessChange?.()
+      send(res, 200, { ok: true })
       return true
     }
     if (p === '/api/hub/addons' && req.method === 'POST') {

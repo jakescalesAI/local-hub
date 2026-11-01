@@ -6,18 +6,22 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { ICLOUD, IS_WIN, OS_NAME, PC_NAME, TRASH_NAME, FILE_MANAGER } from './platform.mjs'
 
 export const HERE = path.dirname(fileURLToPath(import.meta.url))
-export const PORT = Number(process.env.HUB_PORT || 3100)
 export const CONFIG_DIR = path.join(HERE, 'config')
 export const configPath = name => path.join(CONFIG_DIR, name)
 const HUB_FILE = configPath('hub.json')
+const savedPort = () => { try { return JSON.parse(fs.readFileSync(HUB_FILE, 'utf8')).port } catch { return 0 } }
+export const PORT = Number(process.env.HUB_PORT || savedPort() || 3100)
 const SECRETS_FILE = configPath('secrets.json')
 
 const NEUTRAL = {
   name: 'Quartzi Hub',
   owner: '',
   access: 'localhost', // or "tailnet"
+  passcodeRequired: true, // other devices need the passcode (npm run passcode); this computer never does
+  listen: [], // more addresses to answer on, such as a LAN address. Ignored until a passcode is set.
   url: '', // the address you reach the hub at from other devices, if any
   addons: {},
   server: { sshAlias: '', label: 'Server', readOnly: ['/root/.ssh'], production: { units: [], paths: [] }, notes: {} },
@@ -106,7 +110,7 @@ export const ADDONS = {
   calendar: { label: 'Calendar', tab: true, what: 'Read-only calendar feeds and bookings', how: 'Add a calendar link to config/secrets.json', auto: s => filled(s.calendars) || filled(s.calcom) },
   stripe: { label: 'Stripe', tab: true, what: 'Read-only balance, revenue and payouts', how: 'Add a restricted key to config/secrets.json', auto: s => filled(s.stripe) },
   drives: { label: 'Drives', what: 'Disk space for each drive on the Files tab' },
-  icloud: { label: 'iCloud', what: 'iCloud Drive and its storage on the Files tab', available: () => fs.existsSync(path.join(os.homedir(), 'iCloudDrive')) },
+  icloud: { label: 'iCloud', what: 'iCloud Drive and its storage on the Files tab', available: () => fs.existsSync(ICLOUD) },
 }
 export function addonOn(id) {
   const a = ADDONS[id]
@@ -148,6 +152,7 @@ export function pageConfig() {
     addons: Object.fromEntries(Object.entries(ADDONS).map(([id, a]) => [id, { label: a.label, what: a.what, how: a.how || '', on: addonOn(id), tab: !!a.tab, available: a.available ? a.available() : true }])),
     server: { label: c.server.label, notes: c.server.notes, unitPrefix: c.server.unitPrefix || '' },
     theme: { ...activeTheme(), wallpapers: baseTheme().wallpapers },
+    platform: { os: OS_NAME, isWin: IS_WIN, pc: PC_NAME, trash: TRASH_NAME, fileManager: FILE_MANAGER },
     browser: c.browser,
     worldClock: c.worldClock,
     assistant: { name: c.assistant.name },

@@ -12,10 +12,10 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createFiles } from './files.mjs'
 import { HERE, PORT, configPath, hubConfig, tabOn, addonOn } from './config.mjs'
+import { IS_WIN, PYTHON, ROOT_DISK, listeners as listPorts, mutagenPath, tailscalePath } from './platform.mjs'
+import { gate, hasPasscode, passcodeNeeded } from './access.mjs'
 
 const SSH_HOST = hubConfig().server.sshAlias
-const MUTAGEN = path.join(process.env.LOCALAPPDATA || '', 'Programs', 'mutagen', 'mutagen.exe')
-const TAILSCALE = 'C:/Program Files/Tailscale/tailscale.exe'
 const SERVER_EVERY_MS = 20_000
 const LAPTOP_EVERY_MS = 8_000
 // Server kinds that stay tunnelled; production opens on demand only.
@@ -57,17 +57,6 @@ async function probe(port, paths = ['/']) {
   return { code: 0, path: paths[0], title: '' }
 }
 
-const LAPTOP_PS = `
-$ErrorActionPreference = 'SilentlyContinue'
-$procs = @{}
-Get-CimInstance Win32_Process | ForEach-Object { $procs[[int]$_.ProcessId] = $_ }
-Get-NetTCPConnection -State Listen | Sort-Object LocalPort -Unique | ForEach-Object {
-    $p = $procs[[int]$_.OwningProcess]
-    [pscustomobject]@{ port = $_.LocalPort; bind = $_.LocalAddress; pid = $_.OwningProcess;
-      process = if ($p) { $p.Name -replace '\\.exe$','' } else { '' };
-      cmd = if ($p) { $p.CommandLine } else { '' } }
-  } | ConvertTo-Json -Compress`
-
 let lastCpu = null
 function cpuPercent() {
   const now = os.cpus().reduce(
@@ -81,7 +70,7 @@ function cpuPercent() {
 }
 
 async function laptopHealth() {
-  const disk = await statfs('C:/').catch(() => null)
+  const disk = await statfs(ROOT_DISK).catch(() => null)
   return {
     cores: os.cpus().length,
     cpu: cpuPercent(),
@@ -95,13 +84,9 @@ async function laptopHealth() {
 
 async function refreshLaptop() {
   state.laptop.health = await laptopHealth()
-  const r = await run('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', LAPTOP_PS])
-  if (!r.ok && !r.stdout) return void (state.laptop.error = r.stderr.slice(0, 300))
-  let rows = []
-  try {
-    rows = JSON.parse(r.stdout || '[]')
-  } catch {}
-  rows = (Array.isArray(rows) ? rows : [rows]).filter(
+  const found = await listPorts(run)
+  if (found.error) return void (state.laptop.error = found.error)
+  let rows = found.filter(
     s => s.port >= 1024 && s.port < 30000 && s.port !== PORT,
   )
   const tunneled = new Set([...tunnels.values()].map(t => t.local))
@@ -141,8 +126,9 @@ async function refreshServer() {
 }
 
 async function refreshSyncs() {
-  if (!existsSync(MUTAGEN)) return void (state.syncs.error = 'mutagen not found')
-  const r = await run(MUTAGEN, ['sync', 'list'])
+  const mutagen = mutagenPath()
+  if (!mutagen) return void (state.syncs.error = 'mutagen not found')
+  const r = await run(mutagen, ['sync', 'list'])
   if (!r.ok) return void (state.syncs.error = r.stderr.trim().slice(0, 300))
   const list = []
   let cur = null
@@ -157,8 +143,9 @@ async function refreshSyncs() {
 }
 
 async function refreshTailnet() {
-  if (hubConfig().access !== 'tailnet' || !existsSync(TAILSCALE)) return
-  const r = await run(TAILSCALE, ['status', '--json'])
+  const tailscale = tailscalePath()
+  if (hubConfig().access !== 'tailnet' || !tailscale) return
+  const r = await run(tailscale, ['status', '--json'])
   if (!r.ok) return void (state.tailnet = { ip: '', dns: '', peers: [] })
   const j = JSON.parse(r.stdout)
   const self = j.Self || {}
@@ -292,7 +279,8 @@ function hostFor(req) {
 let storageCache = { at: 0, body: null }
 async function icloudStorage() {
   if (Date.now() - storageCache.at < 60_000 && storageCache.body) return storageCache.body
-  const r = await run('python', [path.join(HERE, 'icloud-storage.py')], { timeout: 15_000 })
+  if (!IS_WIN) return { error: 'iCloud storage figures come from iCloud for Windows' }
+  const r = await run(PYTHON, [path.join(HERE, 'icloud-storage.py')], { timeout: 15_000 })
   const body = r.ok ? JSON.parse(r.stdout) : { error: r.stderr.trim().split('\n').pop() }
   storageCache = { at: Date.now(), body }
   return body
@@ -328,6 +316,7 @@ async function tabRoutes() {
 
 async function handle(req, res) {
   const url = new URL(req.url, `http://${req.headers.host}`)
+  if (await gate(req, res, url, send)) return
   // Changes need the page's x-hub header. A request from another site can't add it without a
   // CORS preflight, which the hub never approves, so other tabs can't move or delete files.
   if (req.method !== 'GET' && req.method !== 'HEAD' && req.headers['x-hub'] !== '1') return send(res, 403, { error: 'missing x-hub header' })
@@ -340,7 +329,7 @@ async function handle(req, res) {
     if (await filesRoute(url, req, res, { send, readBody })) return
     for (const route of await tabRoutes()) if (await route(url, req, res, { send, readBody })) return
     const icon = /^\/icons\/(hub\.svg|favicon-32\.png|apple-touch-icon\.png|icon-192\.png|icon-512\.png|manifest\.webmanifest)$/.exec(url.pathname)
-    if (icon && req.method === 'GET') return send(res, 200, await readFile(path.join(HERE, 'icons', icon[1])), icon[1].endsWith('.svg') ? 'image/svg+xml' : icon[1].endsWith('.png') ? 'image/png' : 'application/manifest+json')
+    if (icon && req.method === 'GET') return send(res, 200, await readFile(existsSync(configPath(`icons/${icon[1]}`)) ? configPath(`icons/${icon[1]}`) : path.join(HERE, 'icons', icon[1])), icon[1].endsWith('.svg') ? 'image/svg+xml' : icon[1].endsWith('.png') ? 'image/png' : 'application/manifest+json')
     const tab = /^\/tabs\/([a-z]+)\.js$/.exec(url.pathname)
     if (tab && req.method === 'GET') return send(res, 200, await readFile(path.join(HERE, 'tabs', `${tab[1]}.js`)), 'text/javascript; charset=utf-8')
     if (url.pathname === '/api/refresh' && req.method === 'POST') {
@@ -382,8 +371,11 @@ async function handle(req, res) {
 // you choose "tailnet" (hub.json access).
 const LOCAL_ONLY = path.join(HERE, 'local-only')
 async function bindListeners() {
-  const tailnet = existsSync(LOCAL_ONLY) || hubConfig().access !== 'tailnet' ? '' : state.tailnet.ip
-  for (const host of ['127.0.0.1', tailnet].filter(Boolean)) {
+  const localOnly = existsSync(LOCAL_ONLY)
+  const tailnet = localOnly || hubConfig().access !== 'tailnet' ? '' : state.tailnet.ip
+  // More addresses only with a passcode in front of them.
+  const more = localOnly || (passcodeNeeded() && !hasPasscode()) ? [] : hubConfig().listen
+  for (const host of ['127.0.0.1', tailnet, ...more].filter(Boolean)) {
     if (listeners.has(host)) continue
     const server = http.createServer(handle)
     listeners.set(host, server)
@@ -395,6 +387,11 @@ async function bindListeners() {
 }
 
 for (const sig of ['SIGINT', 'SIGTERM', 'exit']) process.on(sig, () => (tunnels.forEach(t => t.child.kill()), sig !== 'exit' && process.exit(0)))
+
+const shipped = { secrets: 'never', actions: 'ask', socialPosts: 'never' }
+for (const [rule, value] of Object.entries(hubConfig().assistant.approvals)) {
+  if (shipped[rule] !== value) console.warn(`WARNING: assistant.approvals.${rule} is "${value}" (shipped default "${shipped[rule]}"). The assistant follows your setting.`)
+}
 
 await bindListeners()
 await refreshTailnet().catch(e => console.error('tailnet', e.message))

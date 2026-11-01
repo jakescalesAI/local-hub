@@ -6,5 +6,5 @@
   "private": true,
   "type": "module",
   "engines": { "node": ">=20" },
-  "scripts": { "start": "node server.mjs" }
+  "scripts": { "start": "node server.mjs", "passcode": "node set-passcode.mjs" }
 }
