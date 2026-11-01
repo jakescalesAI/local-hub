@@ -1,0 +1,26 @@
+# Your own hub: never commit any of this.
+config/
+data/
+secrets.json
+clients.json
+servers.json
+names.json
+pinned.json
+local-only*
+handoffs/
+caddy/
+
+# Logs, backups, caches, binaries
+hub.log
+*.log
+*.bak*
+__pycache__/
+*.pyc
+node_modules/
+*.exe
+*.dll
+*.tar
+*.zip
+.env*
+.DS_Store
+Thumbs.db
