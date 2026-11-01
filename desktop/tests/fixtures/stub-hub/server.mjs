@@ -53,5 +53,5 @@ http.createServer((req, res) => {
   }
   if (url.pathname === '/launcher' && process.env.STUB_LAUNCHER !== '1') return json(res, 404, { error: 'not found' })
   res.writeHead(200, { 'content-type': 'text/html' })
-  res.end(url.pathname === '/launcher' ? `<!doctype html><title>Stub launcher</title><h1 id="route">launcher route</h1><a id="open" target="_blank" href="/?from=launcher">open</a>` : page)
+  res.end(url.pathname === '/launcher' ? `<!doctype html><title>Stub launcher</title><h1 id="route">launcher route</h1><a id="open" target="_blank" href="/?from=launcher">open</a><input id="box"><script>addEventListener('keydown', e => { if (e.key !== 'Escape') return; if (box.value) box.value = ''; else window.close() })</script>` : page)
 }).listen(PORT, '127.0.0.1', () => console.log(`stub hub on ${PORT} pid ${process.pid}`))

@@ -50,8 +50,10 @@ export class Launcher {
     this.#win = win
     win.on('page-title-updated', event => event.preventDefault())
     const contents = win.webContents
+    // A Hub page handles Esc itself, since it may have a box to clear first, and calls window.close()
+    // when it's done.
     contents.on('before-input-event', (event, input) => {
-      if (input.type === 'keyDown' && input.key === 'Escape') {
+      if (this.#onFallback && input.type === 'keyDown' && input.key === 'Escape') {
         event.preventDefault()
         this.close()
       }

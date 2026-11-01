@@ -215,6 +215,23 @@ describe('hotkey and launcher', () => {
     assert.equal((await windows(handle)).length, 2, 'no extra window')
   })
 
+  test('the /launcher page gets Esc itself: it clears its box first, then closes', async t => {
+    const { port, handle } = await withApp(t, { stubEnv: { STUB_LAUNCHER: '1' }, args: ['--hidden'] })
+    await waitForUrl(handle, LAUNCHER, url => url === `http://localhost:${port}/launcher`, 'the route')
+    await trayItem(handle, 'launcher')
+    await waitFor(() => launcherVisible(handle), 'launcher open')
+    await evalIn(handle, LAUNCHER, `document.getElementById('box').value = 'typed'; 1`)
+    const pressEsc = () => handle.app.evaluate(({ BrowserWindow }) => {
+      BrowserWindow.getAllWindows().sort((a, b) => a.id - b.id)[1].webContents.sendInputEvent({ type: 'keyDown', keyCode: 'Escape' })
+    })
+    await pressEsc()
+    await waitFor(async () => (await evalIn(handle, LAUNCHER, `document.getElementById('box')?.value`).catch(() => null)) === '', 'the first Esc to clear the box', 3000)
+    assert.equal(await launcherVisible(handle), true, 'the first Esc leaves it open')
+    await pressEsc()
+    await waitFor(async () => !(await launcherVisible(handle)), 'the second Esc to close it', 5000)
+    assert.equal((await windows(handle)).length, 2)
+  })
+
   test('window.close() from the /launcher page hides it and starts it clean, every time', async t => {
     const { port, handle } = await withApp(t, { stubEnv: { STUB_LAUNCHER: '1' }, args: ['--hidden'] })
     const route = `http://localhost:${port}/launcher`

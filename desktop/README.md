@@ -63,7 +63,7 @@ keeps the app in the tray.
 **Launcher.** `Ctrl+Alt+Space` by default, changeable in Settings. It opens a small frameless always-on-top window
 on the monitor holding the cursor, and closes on Esc, on losing focus, or on a second press. It loads
 `<hub>/launcher`. If that route returns an error or the Hub is down, it shows a simple built-in page
-instead.
+instead. The Hub's page handles Esc itself, so it can clear what you typed before it closes.
 
 **Built-in Hub's data.** An installed app runs its Hub from a copy in the app's data folder, so updates
 never touch `config/` or `data/`.
@@ -84,7 +84,8 @@ never touch `config/` or `data/`.
 
 ## For whoever builds the `/launcher` page
 
-- The app handles Esc and lost focus, and reloads the route each time the launcher closes.
+- The app handles lost focus, and reloads the route each time the launcher closes.
+- Your page gets Esc, so it can clear a box or leave a form first. Handle it, or Esc does nothing there.
 - To close the launcher, call `window.close()`. It hides the window and reloads the route.
 - Hub pages have no bridge to the app. A link with `target="_blank"` on the Hub's origin, or
   `window.open`, closes the launcher and opens that URL in the main window. Other origins open in the
