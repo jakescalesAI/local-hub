@@ -1,64 +1,21 @@
-# Hub changes the app needs
+# How phones pair with the Hub
 
-The Hub's passcode gate (`access.mjs`) closes it to every other device. These changes add a second way
-past that gate, a paired device, for the Hub's owner to apply. **Nothing in the Hub has been changed
-by this branch.** They apply to, and were tested against, Hub commit `a2b7c0f`.
+The Hub's passcode gate (`access.mjs`) closes it to every other device. Pairing adds a second way past
+that gate, a paired device. It has been part of the Hub since commit `5b731df`, so there is nothing to
+apply. This folder holds this description and the tests.
 
-Browsers that sign in with the passcode work as they did. There is no setting to turn on.
-
-## Apply
-
-```bash
-node mobile/hub-changes/apply.mjs <path-to-hub>
-```
-
-It copies two files and adds the lines below. If a line has moved, it refuses and changes nothing.
-Restart the Hub afterwards.
-
-## Exactly what changes
-
-**New files in the Hub's root:** `device-auth.mjs` and `vendor/qrcode.mjs`
+The code is `device-auth.mjs` in the Hub's root, with `vendor/qrcode.mjs`
 ([qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator) 2.0.4, MIT, licence notice at
 the top of the file). The Hub stays free of `node_modules`.
 
-**`server.mjs`**, after `import { HERE, PORT, configPath, hubConfig, tabOn, addonOn } from './config.mjs'`:
+Browsers that sign in with the passcode work as they did.
 
-```js
-import { createDeviceAuth } from './device-auth.mjs'
-```
-
-after `const filesRoute = createFiles({ run, sshHost: SSH_HOST, here: HERE })`:
-
-```js
-const deviceAuth = createDeviceAuth({ here: HERE, hubName: () => hubConfig().name, hubUrl: () => hubConfig().url })
-```
-
-in `handle`, replace `if (await gate(req, res, url, send)) return` with:
-
-```js
-  if (!deviceAuth.admit(url, req, res) && await gate(req, res, url, send)) return
-```
-
-and before `if (url.pathname === '/' || url.pathname === '/index.html')`:
-
-```js
-    if (await deviceAuth.route(url, req, res, { send })) return
-```
-
-**`chat.mjs`**, after `emit({ type: 'session', sessionId: conv.id, title: conv.title })`:
-
-```js
-    if (body.detached) res.end() // the phone goes away after sharing: keep working, the reply lands in the conversation
-```
-
-and on the `res.on('close', ...)` line, add the `!body.detached &&` check:
-
-```js
-    res.on('close', () => { if (!body.detached && running.get(conv.id) === entry && !entry.finished) { entry.killed = entry.killed || 'disconnect'; killTree(entry.proc) } })
-```
+## Set it up
 
 **`config/hub.json`**, one setting: `"url"`, the HTTPS address phones use, such as
-`https://hub.example.com`. Without it the pairing page still gives a code, but no QR.
+`https://hub.example.com`. The Hub answers only to its own names, and this is how it learns that one.
+Without it, a phone using that address gets a 403 and can't pair, and the pairing page gives a code but
+no QR. To allow another name, add it to `"hosts"`.
 
 `data/devices.json` is created on first use. `data/` is already git-ignored.
 
@@ -74,16 +31,21 @@ and on the `res.on('close', ...)` line, add the `!body.detached &&` check:
 | `POST /api/pair/devices/<id>/remove` | This computer or a paired device | Ends that device's access at once |
 | `GET /pair` | Anyone | Code page, so a browser on the private network can sign in |
 
-`GET /pair` and `POST /api/pair/claim` are the only routes these changes open without a key or the
-passcode. Everything else answers as the passcode gate decides, so from outside it's a 401, or the
+`GET /pair` and `POST /api/pair/claim` are the only routes pairing opens without a key or the
+passcode, and only under a name the Hub knows. Everything else answers as the passcode gate decides, so from outside it's a 401, or the
 login page at `/`. POSTs still need the Hub's existing `x-hub: 1` header.
 
 ## Behaviour worth checking in review
 
+- **The name comes first.** A `Host` the Hub doesn't know gets a 403 before pairing or the passcode gate
+  run, even with a valid key. The app recognises that plain-text sentence and tells the person which
+  setting to change. Any other 403 could be a proxy, so it doesn't name a cause. If the sentence changes,
+  update `HUB_NAME_REFUSAL` in `src/lib/client.js`. `real-hub.mjs` fails until both match.
 - **"This computer" is not just the source address.** Behind `tailscale serve`, everything arrives from
   `127.0.0.1`. A request is local only when the source is loopback, the `Host` is `localhost`,
   `127.0.0.1` or `[::1]`, and no forwarding or `Tailscale-*` header is present. The `Host` check also
-  stops a website that rebinds its own name to `127.0.0.1`.
+  stops a website that rebinds its own name to `127.0.0.1`. The Android emulator also arrives from
+  loopback, as `10.0.2.2`, and doesn't count as this computer even with that name in `hosts`.
 - **A paired phone skips the passcode, and works on a Hub with no passcode set.** A code can only come
   from this computer or an already paired device, so holding one proves as much as the passcode does.
   Changing the passcode signs browsers out but leaves phones paired. Remove a phone to end its access.
@@ -108,8 +70,10 @@ login page at `/`. POSTs still need the Hub's existing `x-hub: 1` header.
 - **`/go/<port>` and tunnels.** These redirect to `http://<tailscale-ip>:<port>`: plain HTTP on other ports,
   outside the gate. The release app refuses plain HTTP, so those links won't load in it. They stay as
   reachable from the Tailscale network as they are today.
-- **`X-Forwarded-Proto` from `tailscale serve`** has not been measured. If Serve doesn't send it, the cookie
-  isn't marked `Secure`. It still travels only over the tunnel and still isn't readable by scripts.
+- **Real `tailscale serve` has not been run.** The tests stand in for it by sending the headers it should
+  send, so what it passes as `Host` is not measured. If that isn't the address in `url`, the Hub refuses
+  it. If Serve doesn't send `X-Forwarded-Proto`, the cookie isn't marked `Secure`. It still travels only
+  over the tunnel and still isn't readable by scripts.
 - **No "Pair a phone" button yet.** The page is at `/pair/new`. A link in Hub Settings belongs to whoever
   owns that tab.
 
@@ -118,10 +82,10 @@ login page at `/`. POSTs still need the Hub's existing `x-hub: 1` header.
 ```bash
 cd mobile/hub-changes
 node --test test/device-auth.test.mjs
-node test/real-hub.mjs <path-to-hub-checkout> a2b7c0f
+node test/real-hub.mjs <path-to-hub-checkout> 14199ff
 ```
 
 The first runs the module behind a test server and a stand-in for `tailscale serve`. The second copies the
-Hub to a temp folder, applies the changes, boots the real `server.mjs` on port 3199 and checks it from
-outside. A small fake `claude.exe` stands in for the assistant, so no real chat runs and the running Hub
-isn't touched. It needs Windows, like the Hub.
+Hub at that commit to a temp folder, boots its real `server.mjs` on a free port and checks it from
+outside, including with the app's own client. A small fake `claude.exe` stands in for the assistant, so no
+real chat runs and the running Hub isn't touched. It needs Windows, like the Hub.

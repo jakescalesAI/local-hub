@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import { cleanCode, isCode, normalizeAddress, parsePairLink, showCode } from '../src/lib/address.js'
 import { classify, STATES } from '../src/lib/status.js'
-import { MAX_HUB_NAME, createClient } from '../src/lib/client.js'
+import { HUB_NAME_REFUSAL, MAX_HUB_NAME, createClient } from '../src/lib/client.js'
 import { createConnectionStore } from '../src/lib/store.js'
 import { createQueue, MAX_QUEUE } from '../src/lib/queue.js'
 
@@ -124,11 +124,33 @@ test('client: a long or untidy Hub name is cut to what the screens can hold', as
   for (const name of await nameOf('\u{1F48E}'.repeat(5000))) assert.deepEqual([...name], Array(MAX_HUB_NAME).fill('\u{1F48E}'))
 })
 
+test('client: only the Hub\'s own sentence names the cause of a 403', async () => {
+  const opts = { name: 'n', platform: 'ios' }
+  const answering = data => createClient({ http: fakeHttp(() => ({ status: 403, data })) })
+  const refused = answering(`${HUB_NAME_REFUSAL} If it\u2019s yours, add it to "hosts" in config/hub.json.`)
+  assert.match((await refused.claim('https://h.test', 'X', opts)).error, /^That address answered, but refused the name/)
+  assert.equal(classify(await refused.check('https://h.test', 't')), 'unknownName')
+  assert.match(STATES.unknownName.body, /"url"/)
+  assert.equal(STATES.unknownName.canOpen, false)
+  for (const data of ['Forbidden', '<html>Forbidden by gateway SECRET</html>', '', '{"message":"Forbidden"}', '{"error":{"a":1}}']) {
+    const { error } = await answering(data).claim('https://h.test', 'X', opts)
+    assert.match(error, /may have blocked it/, data)
+    assert.ok(!error.includes('SECRET'), data)
+    assert.equal(classify(await answering(data).check('https://h.test', 't')), 'unexpected', data)
+  }
+  assert.equal((await answering('{"error":"missing x-hub header"}').claim('https://h.test', 'X', opts)).error, 'missing x-hub header')
+  assert.equal(classify(await answering('{"error":"missing x-hub header"}').check('https://h.test', 't')), 'unexpected')
+  assert.equal(classify({ status: 403 }), 'unexpected')
+  const wrong = createClient({ http: fakeHttp(() => ({ status: 403, data: '{"error":"That code is not right."}' })) })
+  assert.equal((await wrong.claim('https://h.test', 'X', opts)).error, 'That code is not right.')
+})
+
 test('client: a server error that isn\'t text never reaches the screen as text', async () => {
   const opts = { name: 'n', platform: 'ios' }
   const answer = (status, error) => createClient({ http: fakeHttp(() => ({ status, data: JSON.stringify({ error }) })) })
   for (const error of [{ a: 1 }, ['x'], 7, true, null, '', '   ']) {
-    assert.match((await answer(403, error).claim('https://h.test', 'X', opts)).error, /^That code didn't work/, JSON.stringify(error))
+    assert.match((await answer(400, error).claim('https://h.test', 'X', opts)).error, /^That code didn't work/, JSON.stringify(error))
+    assert.match((await answer(403, error).claim('https://h.test', 'X', opts)).error, /may have blocked it/, JSON.stringify(error))
     assert.match((await answer(400, error).send('https://h.test', 't', 'x')).error, /^Your Hub didn't accept/, JSON.stringify(error))
   }
   assert.ok((await answer(403, 'e'.repeat(5000)).claim('https://h.test', 'X', opts)).error.length <= 300)

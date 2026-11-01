@@ -11,6 +11,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright-core'
 import { startMockHub } from '../../dev/mock-hub.mjs'
+import { HUB_NAME_REFUSAL } from '../../src/lib/client.js'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const WWW = path.join(HERE, '..', '..', 'www')
@@ -50,6 +51,8 @@ const noSideScroll = async label => {
   assert.equal(over, 0, `${label}: page scrolls sideways by ${over}px`)
 }
 const recheck = () => page.evaluate(() => window.__hubTest.refresh())
+const HUB_REFUSAL = `${HUB_NAME_REFUSAL} If it\u2019s yours, add it to "hosts" in config/hub.json.`
+const NOT_THE_HUB = ['Forbidden', '<html>Forbidden by gateway</html>', '']
 const cookiesCleared = () => page.evaluate(() => window.__hubCookiesCleared ?? 0)
 const pairByLink = async () => {
   const c = await code()
@@ -192,6 +195,23 @@ try {
     assert.ok(!stored.some(k => k.includes('device-token')), 'nothing stored after a failed claim')
   })
 
+  await step('a 403 while pairing: only the Hub\'s own sentence says the name was refused', async () => {
+    const claim = () => T('pair-confirm').click() // a failed claim stays on the confirm screen
+    await mock({ answer: 403, answerText: HUB_REFUSAL })
+    await claim()
+    await page.getByText('refused the name').waitFor()
+    await shot('06b-pair-name-refused')
+    for (const answerText of NOT_THE_HUB) {
+      await mock({ answerText })
+      await claim()
+      await page.getByText('may have blocked it').waitFor()
+      assert.equal(await page.getByText('refused the name').count(), 0, answerText)
+      assert.equal(await page.getByText('Forbidden').count(), 0, answerText)
+    }
+    await shot('06c-pair-refused-unknown-cause')
+    await mock({ answer: null, answerText: null })
+  })
+
   await step('a link only fills in the confirm screen: it never pairs by itself', async () => {
     const c = await code()
     const before = (await (await fetch(`${hub.base}/api/pair/devices`)).json()).devices.length
@@ -272,6 +292,26 @@ try {
     await recheck()
     await stateIs('outdated')
     await mock({ answer: null })
+    await recheck()
+    await stateIs('ok')
+  })
+
+  await step('a 403 on the status check: only the Hub\'s own sentence blames the name, and Open is off', async () => {
+    await mock({ answer: 403, answerText: HUB_REFUSAL })
+    await recheck()
+    await stateIs('unknownName')
+    assert.equal(await T('open').isDisabled(), true)
+    await page.getByText('in config/hub.json').waitFor()
+    await shot('08b-name-refused')
+    for (const answerText of [...NOT_THE_HUB, '{"error":"missing x-hub header"}']) {
+      await mock({ answerText })
+      await recheck()
+      await stateIs('unexpected')
+      assert.equal(await T('open').isDisabled(), true)
+      assert.equal(await page.getByText('config/hub.json').count(), 0, answerText)
+    }
+    await shot('08c-refused-unknown-cause')
+    await mock({ answer: null, answerText: null })
     await recheck()
     await stateIs('ok')
   })

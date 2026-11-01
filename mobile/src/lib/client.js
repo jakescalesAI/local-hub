@@ -7,6 +7,10 @@ const SEND_TIMEOUT_MS = 20000
 export const MAX_SHARE_CHARS = 8000 // the Hub's chat takes no more than this
 export const MAX_HUB_NAME = 60
 const MAX_ERROR_CHARS = 300
+// The Hub's own answer to a name it doesn't know. A 403 can also come from a proxy or gateway, so only
+// this sentence names the cause. hub-changes/test/real-hub.mjs fails if the Hub's wording moves.
+export const HUB_NAME_REFUSAL = 'This hub doesn\u2019t answer to that name.'
+const isNameRefusal = res => res.status === 403 && res.text.startsWith(HUB_NAME_REFUSAL)
 
 // Control and direction characters, and the ones that draw nothing. Emoji joined with a zero-width
 // joiner come apart, which is a fair price for text from the other end.
@@ -57,7 +61,7 @@ export function createClient({ http }) {
         const body = res.status === 200 ? parse(res.text) : null
         const hub = readHub(body?.hub)
         if (res.status === 200 && !hub) return { status: 500 }
-        return { status: res.status, hub }
+        return { status: res.status, hub, nameRefused: isNameRefusal(res) }
       } catch {
         return { status: null }
       }
@@ -75,7 +79,9 @@ export function createClient({ http }) {
       if (res.status === 200 && body?.token && typeof body.token === 'string' && body.deviceId && typeof body.deviceId === 'string' && hub) {
         return { ok: true, token: body.token, deviceId: body.deviceId, hub }
       }
-      if (res.status === 400 || res.status === 403 || res.status === 409) return { ok: false, error: readError(body, 'That code didn\'t work. Make a new one on your computer.') }
+      if (isNameRefusal(res)) return { ok: false, error: 'That address answered, but refused the name. If it\'s your Hub, put this address in "url" or "hosts" in config/hub.json on your computer, then try again.' }
+      if (res.status === 403) return { ok: false, error: readError(body, 'That address answered, but refused the request. Something between here and your computer may have blocked it, or your Hub may not know this address. If it\'s your Hub, check "url" and "hosts" in config/hub.json on your computer.') }
+      if (res.status === 400 || res.status === 409) return { ok: false, error: readError(body, 'That code didn\'t work. Make a new one on your computer.') }
       // A Hub without the pairing routes answers 404, or 401 from its passcode gate.
       if (res.status === 401 || res.status === 404) return { ok: false, error: 'That address answered, but it isn\'t a Hub that knows about phones. It may need updating.' }
       if (res.status === 502 || res.status === 503 || res.status === 504) return { ok: false, error: 'Your computer answered, but the Hub isn\'t running.' }

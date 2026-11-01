@@ -136,9 +136,9 @@ async function refresh() {
   if (!app.hub) return
   const seq = ++checkSeq
   const online = app.conn.demo ? app.demoState !== 'offline' : app.online
-  const { status } = online ? await app.hub.check() : { status: null }
+  const { status, nameRefused } = online ? await app.hub.check() : { status: null }
   if (seq !== checkSeq || !app.hub) return // a newer check, or the person left
-  app.state = classify({ online, status })
+  app.state = classify({ online, status, nameRefused })
   if (app.state === 'ok') {
     app.conn.lastSeen = Date.now()
     if (!app.conn.demo) native.saveConnectionInfo(app.conn)

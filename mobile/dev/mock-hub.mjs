@@ -5,21 +5,22 @@
 //
 // Test controls, local to this mock:
 //   POST /__mock { answer: 503 }        every other route answers with that status
+//   POST /__mock { answerText: 'x' }    ...and with this as its plain text body
 //   POST /__mock { down: true }         connections are dropped
 //   POST /__mock { dropSends: true }    chat sends are dropped mid-request
-//   POST /__mock { answer: null, down: false, dropSends: false }
+//   POST /__mock { answer: null, answerText: null, down: false, dropSends: false }
 //   GET  /__mock                        { sends, devices }
 import http from 'node:http'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { createDeviceAuth, isLocal } from '../hub-changes/device-auth.mjs'
+import { createDeviceAuth, isLocal } from '../../device-auth.mjs'
 
 export async function startMockHub(port = 3155, { name = 'Mock Hub', url = '' } = {}) {
   const here = fs.mkdtempSync(path.join(os.tmpdir(), 'mock-hub-'))
   const auth = createDeviceAuth({ here, hubName: () => name, hubUrl: () => url })
-  const mock = { answer: null, down: false, dropSends: false }
+  const mock = { answer: null, answerText: null, down: false, dropSends: false }
   const sends = []
 
   const send = (res, code, body, type = 'application/json') => {
@@ -44,6 +45,7 @@ export async function startMockHub(port = 3155, { name = 'Mock Hub', url = '' } 
         return send(res, 200, { sends })
       }
       if (mock.down) return req.socket.destroy()
+      if (mock.answer && mock.answerText !== null) return send(res, mock.answer, mock.answerText, 'text/plain; charset=utf-8')
       if (mock.answer) return send(res, mock.answer, { error: 'mock' })
       if (req.method !== 'GET' && req.headers['x-hub'] !== '1') return send(res, 403, { error: 'missing x-hub header' })
       // Closed like the Hub's own gate with no passcode set.
