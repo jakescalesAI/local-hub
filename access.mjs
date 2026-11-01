@@ -24,7 +24,7 @@ export function knownHost(req) {
   let address = ''
   try { address = new URL(url).hostname } catch {}
   const nets = Object.values(os.networkInterfaces()).flat().map(n => n.family === 'IPv6' ? `[${n.address.split('%')[0]}]` : n.address)
-  return [address, ...nets, ...(listen || []), ...(hosts || [])].some(n => String(n).toLowerCase() === host)
+  return !!host && [address, ...nets, ...(listen || []), ...(hosts || [])].some(n => String(n).toLowerCase() === host)
 }
 
 const LOOPBACK = ['127.0.0.1', '::1', '::ffff:127.0.0.1']

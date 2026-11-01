@@ -7,7 +7,7 @@ import http from 'node:http'
 import os from 'node:os'
 import { spawn, execFile } from 'node:child_process'
 import { readFile, statfs } from 'node:fs/promises'
-import { appendFile, existsSync, renameSync, statSync } from 'node:fs'
+import { appendFile, existsSync, mkdirSync, renameSync, statSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createFiles } from './files.mjs'
@@ -310,7 +310,7 @@ const deviceAuth = createDeviceAuth({ here: HERE, hubName: () => hubConfig().nam
 // route(url, req, res, { send, readBody }) -> true when handled. A missing or broken one only
 // disables its tab. Keys live in config/secrets.json, which only the hub reads; never send them to
 // the page. A service add-on loads when it is turned on; until then its routes don't exist.
-const BACKENDS = ['ai', 'cloud', 'calendar', 'stripe', 'hub-settings', 'hub-setup', 'hub-sites', 'home', 'chat', 'browser', 'system', 'agent-actions']
+const BACKENDS = ['ai', 'cloud', 'calendar', 'stripe', 'hub-settings', 'hub-setup', 'hub-sites', 'home', 'chat', 'browser', 'system', 'agent-actions', 'launcher']
 const SERVICES = new Set(['ai', 'cloud', 'calendar', 'stripe'])
 const loaded = new Map()
 async function tabRoutes() {
@@ -337,13 +337,16 @@ async function tabRoutes() {
 const ACCESS_FILE = path.join(HERE, 'data', 'access.log')
 const ACCESS_LIMIT = 20 * 2 ** 20
 let accessSize = -1
-function accessLine(req, res, url) {
+function accessLine(req, res, url, client) {
   if (hubConfig().accessLog === false) return
   if (res.statusCode < 400 && req.method === 'GET' && ['/api/ping', '/api/state'].includes(url.pathname)) return
   const forwarded = String(req.headers['x-forwarded-for'] || '').replace(/[^0-9a-fA-F.:, ]/g, '').slice(0, 80)
-  const line = [new Date().toISOString(), req.method, url.pathname.replace(/\s/g, '').slice(0, 200), res.writableFinished ? res.statusCode : `${res.statusCode}-cut`, req.socket.remoteAddress || '', forwarded].join(' ').trimEnd() + '\n'
+  const line = [new Date().toISOString(), req.method, url.pathname.replace(/\s/g, '').slice(0, 200), res.writableFinished ? res.statusCode : `${res.statusCode}-cut`, client, forwarded].join(' ').trimEnd() + '\n'
   try {
-    if (accessSize < 0) accessSize = existsSync(ACCESS_FILE) ? statSync(ACCESS_FILE).size : 0
+    if (accessSize < 0) {
+      mkdirSync(path.dirname(ACCESS_FILE), { recursive: true }) // a new hub has no data folder until something needs it
+      accessSize = existsSync(ACCESS_FILE) ? statSync(ACCESS_FILE).size : 0
+    }
     if (accessSize > ACCESS_LIMIT) { renameSync(ACCESS_FILE, `${ACCESS_FILE}.1`); accessSize = 0 }
     accessSize += line.length
     appendFile(ACCESS_FILE, line, () => {})
@@ -351,8 +354,12 @@ function accessLine(req, res, url) {
 }
 
 async function handle(req, res) {
-  const url = new URL(req.url, `http://${req.headers.host}`)
-  res.on('close', () => accessLine(req, res, url))
+  // A fixed base: the Host header is the sender's text, and a bad one must not stop the hub. knownHost judges it next.
+  let url
+  try { url = new URL(req.url, 'http://localhost') } catch { return send(res, 400, 'Bad request', 'text/plain; charset=utf-8') }
+  // Taken now: refusing an oversized body destroys the request and its socket. A throw in this listener would stop the hub, since handle's catch doesn't reach it.
+  const client = req.socket?.remoteAddress || ''
+  res.on('close', () => { try { accessLine(req, res, url, client) } catch (err) { console.error(err) } })
   if (!knownHost(req)) return send(res, 403, 'This hub doesn’t answer to that name. If it’s yours, add it to "hosts" in config/hub.json.', 'text/plain; charset=utf-8')
   if (!deviceAuth.admit(url, req, res) && await gate(req, res, url, send)) return
   // Changes need the page's x-hub header. A request from another site can't add it without a
@@ -416,7 +423,11 @@ async function bindListeners() {
   const more = localOnly || (passcodeNeeded() && !hasPasscode()) ? [] : hubConfig().listen
   for (const host of ['127.0.0.1', tailnet, ...more].filter(Boolean)) {
     if (listeners.has(host)) continue
-    const server = http.createServer(handle)
+    const server = http.createServer((req, res) => handle(req, res).catch(err => {
+      console.error(err)
+      if (!res.headersSent) res.writeHead(500)
+      res.end()
+    }))
     listeners.set(host, server)
     await new Promise(resolve => {
       server.once('error', e => (console.error(`listen ${host}:${PORT}`, e.message), listeners.delete(host), resolve()))

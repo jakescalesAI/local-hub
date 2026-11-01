@@ -279,6 +279,7 @@ html.offline .reconnect { opacity: 1; transform: translate(-50%, 0); }
 <script src="/tabs/home.js"></script>
 <script src="/tabs/chat.js"></script>
 <script src="/tabs/setup.js"></script>
+<script src="/tabs/launcher.js" onerror="this.remove()"></script>
 <script>
 // Your own tab files in tabs/ load here, after Home, so they can add widgets too.
 for (const t of window.HUB_CONF?.pluginTabs || []) document.write(`<script src="/tabs/${t}.js" onerror="this.remove()"><\/script>`)

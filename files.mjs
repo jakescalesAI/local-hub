@@ -37,7 +37,7 @@ const shown = name => !name.startsWith('.') && !HIDDEN.test(name)
 // Files that hold keys or sign-ins. On every root the hub hides them from lists and search and
 // refuses to open, download, rename, move, delete or write them; the real path is checked too,
 // so a link or junction can't reach one. server-files.py keeps the same list for /root.
-const KEY_NAMES = /^(secrets\.json|\.credentials\.json|\.claude\.json(\.backup.*)?|auth\.json|\.git-credentials|\.npmrc|\.yarnrc(\.yml)?|_?\.?netrc|\.pypirc|\.pgpass|\.env(\.(?!example$|sample$|template$).+)?|\.envrc|\.dev\.vars|(?!.*[._-](example|sample|template)\.env$).+\.env|(.+[._-])?private\.key|.+\.(pem|p12|pfx|ppk|jks|keystore|kdbx)|id_(rsa|dsa|ecdsa|ed25519)(\.pub)?|\.infisical.*|login data( for account)?|cookies|web data|local state|access_tokens\.db|credentials\.db|credentials\.tfrc\.json|credentials(\.toml)?|\.s3cfg|\.boto)$/i
+const KEY_NAMES = /^((.+[._-])?secrets?\.(json|ya?ml|toml)|\.credentials\.json|\.claude\.json(\.backup.*)?|auth\.json|\.git-credentials|\.npmrc|\.yarnrc(\.yml)?|_?\.?netrc|\.pypirc|\.pgpass|\.env(\.(?!example$|sample$|template$).+)?|\.envrc|\.dev\.vars|(?!.*[._-](example|sample|template)\.env$).+\.env|(.+[._-])?private\.key|.+\.(pem|p12|pfx|ppk|jks|keystore|kdbx)|id_(rsa|dsa|ecdsa|ed25519)(\.pub)?|\.infisical.*|login data( for account)?|cookies|web data|local state|access_tokens\.db|credentials\.db|credentials\.tfrc\.json|credentials(\.toml)?|\.s3cfg|\.boto)$/i
 // appdata, .config and Library/Application Support are where programs keep sign-ins, and no list of names
 // can cover every program, so those folders are refused whole.
 const KEY_DIRS = new Set(['.ssh', '.aws', '.azure', '.gnupg', '.kube', '.infisical', 'gcloud', '.wrangler', '.vercel',
