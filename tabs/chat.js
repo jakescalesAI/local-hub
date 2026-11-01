@@ -1102,7 +1102,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
   window.addEventListener('keydown', e => {
     if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey) return
     if (e.key === '/' || e.code === 'Slash') { e.preventDefault(); e.stopPropagation(); setFull(!S.full) }
-    else if (e.key === 'k' || e.key === 'K') { e.preventDefault(); e.stopPropagation(); if (S.full) fta.focus(); else bta.focus() }
+    else if ((e.key === 'k' || e.key === 'K') && !window.LAUNCHER) { e.preventDefault(); e.stopPropagation(); if (S.full) fta.focus(); else bta.focus() }
   }, true)
 
   // Nothing typed in the chat may reach the hub's own shortcuts (1-8, /, f, r, Backspace ...).

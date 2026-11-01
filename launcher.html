@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Search</title>
+<link rel="icon" href="/icons/hub.svg" type="image/svg+xml">
+<style>
+/* The same palette as the main page, so this window matches it. */
+:root {
+  --surface: #ffffff; --surface-2: #f2f2f7; --press: #e5e5ea;
+  --label: #000000; --label-2: rgba(60, 60, 67, .6); --label-3: rgba(60, 60, 67, .3);
+  --sep: rgba(60, 60, 67, .18); --fill: rgba(118, 118, 128, .12); --fill-2: rgba(118, 118, 128, .2);
+  --blue: #007aff; --red: #ff3b30;
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, "Segoe UI", system-ui, sans-serif;
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --surface: #1c1c1e; --surface-2: #2c2c2e; --press: #3a3a3c;
+    --label: #ffffff; --label-2: rgba(235, 235, 245, .6); --label-3: rgba(235, 235, 245, .3);
+    --sep: rgba(84, 84, 88, .6); --fill: rgba(118, 118, 128, .24); --fill-2: rgba(118, 118, 128, .32);
+    --blue: #0a84ff; --red: #ff453a;
+  }
+}
+:root[data-theme="dark"] {
+  --surface: #1c1c1e; --surface-2: #2c2c2e; --press: #3a3a3c;
+  --label: #ffffff; --label-2: rgba(235, 235, 245, .6); --label-3: rgba(235, 235, 245, .3);
+  --sep: rgba(84, 84, 88, .6); --fill: rgba(118, 118, 128, .24); --fill-2: rgba(118, 118, 128, .32);
+  --blue: #0a84ff; --red: #ff453a;
+}
+html, body { height: 100%; margin: 0; background: var(--surface); color: var(--label); font-family: var(--font); overflow: hidden; }
+</style>
+</head>
+<body>
+<noscript>The search bar needs JavaScript.</noscript>
+<script src="/hub-config.js"></script>
+<script src="/tabs/launcher.js"></script>
+</body>
+</html>
