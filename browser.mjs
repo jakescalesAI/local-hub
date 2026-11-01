@@ -1,7 +1,7 @@
 // Hub browser: a dedicated Chrome per profile that the hub assistant drives and the user watches (and
 // takes over) live in the browser pop-up. Each profile is its own Chrome with its own user-data-dir
 // under data/browser/<profile>, started on demand with --remote-debugging-port on 127.0.0.1 only
-// and closed after IDLE_MS without use (the profile and its sign-ins stay on disk). The page never
+// and closed after IDLE_MS without use or when no hub comes back (the profile and its sign-ins stay on disk). The page never
 // talks to Chrome: frames, input and actions all go through these hub routes.
 //
 //   GET  /api/browser/status[?profile=]      -> { profiles, current, running, tabs, active, controller, ask, dialog, ... }
@@ -13,18 +13,24 @@
 //   GET  /api/browser/text[?profile=]        -> { url, title, text }
 //   GET  /api/browser/log[?since=&limit=]    -> { entries: [{ id, at, profile, who, act, detail, url, shot }] }
 //   GET  /api/browser/shots/<id>.jpg         -> the thumbnail saved right after agent action <id>
+//   GET  /api/browser/confirm/<id>           -> { what, label, url } while the card waits for an answer
+//   POST /api/browser/confirm/<id> { allow } the user's answer to the card; an agent can't send one
 // The agent's requests carry `x-hub-actor: agent` (browser-mcp.mjs sets it); everything else is the user.
 // Agent actions are refused while the user has control, and the hub itself refuses typing into password,
-// card and one-time-code fields and clicking Post/Share on social sites (see SAFETY below).
-import { spawn } from 'node:child_process'
+// card and one-time-code fields and clicking Post/Share on social sites, unless the owner changed that in
+// assistant.approvals (see SAFETY below).
+import { execFileSync, spawn } from 'node:child_process'
+import crypto from 'node:crypto'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { hubConfig, PORT } from './config.mjs'
+import { IS_MAC, IS_WIN } from './platform.mjs'
 
 // Your Chrome profiles (hub.json browser.profiles); each keeps its own sign-ins under data/browser/<id>.
 const PROFILES = hubConfig().browser.profiles
-const IDLE_MS = 15 * 60e3
+const IDLE_MS = 10 * 60e3
+const ASK_MS = 5 * 60e3 // how long a card waits for its answer, and how long a yes waits for the retry
 const DESKTOP = { w: 1280, h: 800 }
 const START_URL = 'https://www.google.com/'
 const MIN_FRAME_MS = 33 // at most ~30 fps
@@ -32,11 +38,18 @@ const QUALITY = [30, 45, 60, 75] // JPEG steps; the stream moves between them wi
 const AGENT_QUIET_MS = 20e3 // the user's input takes control by itself once the agent has been quiet this long
 const GIVE_BACK_MS = 60e3 // control returns to the agent this long after the last viewer leaves
 const MAX_LOG = 400
+const LINUX_DIRS = [...new Set(['/usr/bin', '/usr/local/bin', '/snap/bin', ...(process.env.PATH || '').split(path.delimiter).filter(Boolean)])]
 const CHROME = [
   process.env.HUB_CHROME,
-  'C:/Program Files/Google/Chrome/Application/chrome.exe',
-  'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe',
-  path.join(process.env.LOCALAPPDATA || '', 'Google/Chrome/Application/chrome.exe'),
+  ...(IS_WIN ? [
+    'C:/Program Files/Google/Chrome/Application/chrome.exe',
+    'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe',
+    path.join(process.env.LOCALAPPDATA || '', 'Google/Chrome/Application/chrome.exe'),
+  ] : IS_MAC ? [
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    path.join(os.homedir(), 'Applications/Google Chrome.app/Contents/MacOS/Google Chrome'),
+    '/Applications/Chromium.app/Contents/MacOS/Chromium',
+  ] : LINUX_DIRS.flatMap(d => ['google-chrome', 'google-chrome-stable', 'chromium', 'chromium-browser'].map(n => path.join(d, n)))),
 ].filter(Boolean)
 
 /* ---------- SAFETY: hard floors the hub enforces on agent actions ---------- */
@@ -45,7 +58,9 @@ const CHROME = [
 const SENSITIVE_RE = /pass(word|wd|code|phrase)?\b|pwd|\bpin\b|card|cc-?(num|csc|exp)|cvv|cvc|security.?code|otp|2fa|mfa|one.?time|verification.?code|auth(entication)?.?code|totp|ssn|social.?security|routing|iban|account.?number/i
 const SOCIAL_RE = /(^|\.)(linkedin\.com|x\.com|twitter\.com|facebook\.com|instagram\.com|threads\.(net|com)|tiktok\.com|youtube\.com|bsky\.app|reddit\.com|pinterest\.com|joinhandshake\.com|medium\.com|substack\.com)$/i
 const POST_RE = /^\s*(post|share|repost|re-?share|tweet|publish|send post|post now|share now|reply|comment)\b/i
-// Clicks that send, post, buy, delete or accept: allowed only with confirmed: true (the user said yes in chat).
+// What the owner set in hub.json. The floors below are what ships; these change them, and nothing the agent does can.
+const approvals = () => hubConfig().assistant.approvals
+// Clicks that send, post, buy, delete or accept: allowed only after the user's Allow on a card.
 const RISKY_RE = /\b(send|post|share|publish|buy|purchase|pay|checkout|check out|place order|order now|subscribe|delete|remove|discard|accept|agree|i agree|confirm|transfer|donate|submit order|book now|reserve|sign up|create account|unsubscribe|cancel (subscription|plan|account))\b/i
 
 function luhnCard(text) {
@@ -144,8 +159,12 @@ const SNAPSHOT_JS = `(() => {
 })()`
 
 // Describes the element for a ref or a point: its label (for the click guards) and where to click.
+// A form that only finds things or moves between pages: a search, or a plain Next or Sign in. Any other submit counts as risky, whatever its button says.
+const QUIET_FORM = `const quietForm = (f, label) => f.getAttribute('role') === 'search' || !!f.closest('[role=search]') || !!f.querySelector('input[type=search],input[name=q],input[name=query],input[name=search],input[name=s]') || /(^|[\\/?#])(search|find|results)\\b/i.test(f.getAttribute('action') || '') || /^(search|find|go|filter|sort|next|continue|back|previous|sign in|log ?in)\\b/i.test(label)`
+
 const describeJs = (ref, x, y) => `(() => {
   const SENS = ${SENSITIVE_RE}
+  ${QUIET_FORM}
   let el = ${ref ? `document.querySelector('[data-hub-ref="${Number(ref)}"]')` : `document.elementFromPoint(${Number(x)}, ${Number(y)})`}
   if (!el) return null
   ${ref ? `el.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' })` : ''}
@@ -156,8 +175,10 @@ const describeJs = (ref, x, y) => `(() => {
   const editable = tag === 'textarea' || (tag === 'input' && !['button', 'submit', 'checkbox', 'radio', 'file', 'image', 'reset', 'range', 'color'].includes(type)) || hit.isContentEditable
   const sensitive = editable && (type === 'password' || /cc-|one-time-code|password/.test(hit.getAttribute('autocomplete') || '') || SENS.test(hay))
   const label = String(hit.getAttribute('aria-label') || (tag === 'input' ? (sensitive || type === 'password' ? hit.placeholder || type : hit.value || hit.placeholder) : '') || hit.innerText || hit.title || '').replace(/\\s+/g, ' ').trim().slice(0, 80)
-  const unnamedSubmit = !/[\p{L}\p{N}]/u.test(label) && !!hit.form && !!hit.form.querySelector('textarea,[contenteditable]') && hit.matches('button:not([type]),button[type=submit],input[type=submit],input[type=image]')
-  return { tag, type, label, editable, sensitive, unnamedSubmit, x: ${ref ? 'Math.round(r.left + r.width / 2)' : Number(x)}, y: ${ref ? 'Math.round(r.top + r.height / 2)' : Number(y)} }
+  const submits = !!hit.form && hit.matches('button:not([type]),button[type=submit],input[type=submit],input[type=image]')
+  const unnamedSubmit = !/[\\p{L}\\p{N}]/u.test(label) && submits && !!hit.form.querySelector('textarea,[contenteditable]')
+  const formSubmit = submits && !quietForm(hit.form, label)
+  return { tag, type, label, editable, sensitive, unnamedSubmit, formSubmit, x: ${ref ? 'Math.round(r.left + r.width / 2)' : Number(x)}, y: ${ref ? 'Math.round(r.top + r.height / 2)' : Number(y)} }
 })()`
 
 // The focused element, checked before any agent typing.
@@ -174,13 +195,14 @@ const FOCUS_JS = `(() => {
 
 // What Enter would do in the focused field: it presses the form's button, so it gets the same check as clicking it.
 const ENTER_JS = `(() => {
+  ${QUIET_FORM}
   let el = document.activeElement
   while (el?.shadowRoot?.activeElement) el = el.shadowRoot.activeElement
   if (!el || el === document.body) return null
   const tag = el.tagName.toLowerCase(), form = el.form || el.closest('form')
   const b = form && form.querySelector('button[type=submit],button:not([type]),input[type=submit],input[type=image]')
-  const label = b ? String(b.getAttribute('aria-label') || b.innerText || b.value || b.title || '').replace(/\s+/g, ' ').trim().slice(0, 80) : ''
-  return { tag, rich: !!el.isContentEditable, label, unnamed: !!b && !/[\p{L}\p{N}]/u.test(label), compose: !!form && !!form.querySelector('textarea,[contenteditable]') }
+  const label = b ? String(b.getAttribute('aria-label') || b.innerText || b.value || b.title || '').replace(/\\s+/g, ' ').trim().slice(0, 80) : ''
+  return { tag, rich: !!el.isContentEditable, label, unnamed: !!b && !/[\\p{L}\\p{N}]/u.test(label), compose: !!form && !!form.querySelector('textarea,[contenteditable]'), submits: !!form && tag === 'input' && !quietForm(form, label) }
 })()`
 
 const KEYS = {
@@ -230,9 +252,16 @@ export function create({ here }) {
   const chromeExe = () => CHROME.find(p => fs.existsSync(p))
   // A real (not "HeadlessChrome") UA; fit mode on a phone switches to the Android one so sites send their mobile layout
   const major = (() => {
-    try { const exe = chromeExe(); return /^(\d+)\./.exec(fs.readdirSync(path.dirname(exe)).find(f => /^\d+\.\d+\.\d+\.\d+$/.test(f)) || '')?.[1] || '156' } catch { return '156' }
+    try {
+      const exe = chromeExe()
+      // Windows Chrome has no --version: it opens a window instead. Its version is a folder beside it.
+      if (IS_WIN) return /^(\d+)\./.exec(fs.readdirSync(path.dirname(exe)).find(f => /^\d+\.\d+\.\d+\.\d+$/.test(f)) || '')?.[1] || '156'
+      return /(\d+)\.\d+\.\d+/.exec(execFileSync(exe, ['--version'], { encoding: 'utf8', timeout: 5000 }))?.[1] || '156'
+    } catch { return '156' }
   })()
-  const UA_DESKTOP = `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${major}.0.0.0 Safari/537.36`
+  const UA_OS = IS_WIN ? 'Windows NT 10.0; Win64; x64' : IS_MAC ? 'Macintosh; Intel Mac OS X 10_15_7' : 'X11; Linux x86_64'
+  const UA_PLATFORM = IS_WIN ? 'Win32' : IS_MAC ? 'MacIntel' : 'Linux x86_64'
+  const UA_DESKTOP = `Mozilla/5.0 (${UA_OS}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${major}.0.0.0 Safari/537.36`
   const UA_MOBILE = `Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${major}.0.0.0 Mobile Safari/537.36`
 
   async function devtoolsPort(dir) {
@@ -269,7 +298,7 @@ export function create({ here }) {
     let proc = null
     if (!found) {
       const exe = chromeExe()
-      if (!exe) throw err(500, 'Chrome is not installed (set HUB_CHROME to chrome.exe)')
+      if (!exe) throw err(500, `Chrome is not installed (set HUB_CHROME to ${IS_WIN ? 'chrome.exe' : 'the Chrome program'})`)
       try { fs.unlinkSync(path.join(dir, 'DevToolsActivePort')) } catch {}
       const headed = conf.mode[profile] === 'headed'
       const args = [
@@ -277,6 +306,7 @@ export function create({ here }) {
         '--remote-debugging-port=0', // Chrome picks a free port and binds it to 127.0.0.1 only
         '--remote-debugging-address=127.0.0.1',
         '--no-first-run', '--no-default-browser-check', '--hide-crash-restore-bubble',
+        ...(process.getuid?.() === 0 ? ['--no-sandbox'] : []), // Chrome won't start as root on Linux without it
         '--disable-blink-features=AutomationControlled',
         '--disable-features=CalculateNativeWinOcclusion,Translate',
         '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding', '--disable-background-timer-throttling',
@@ -285,7 +315,7 @@ export function create({ here }) {
         'about:blank',
       ]
       // Detached, so a hub restart leaves Chrome (and the agent's page) running; the next hub adopts it
-      // through DevToolsActivePort and the idle timer still closes it.
+      // through DevToolsActivePort and the idle timer still closes it. If no hub comes back, watchHub does.
       proc = spawn(exe, args, { windowsHide: !headed, stdio: 'ignore', detached: true })
       proc.on('error', () => {})
       proc.unref()
@@ -296,6 +326,7 @@ export function create({ here }) {
       }
       if (!found) { proc.kill(); throw err(500, 'Chrome did not open its debugging port') }
     }
+    watchHub(dir, found.port)
     const cdp = await new Cdp(found.version.webSocketDebuggerUrl).open()
     const inst = Object.assign(insts.get(profile), {
       profile, cdp, proc, port: found.port, chrome: found.version.Browser, started: Date.now(), lastUse: Date.now(),
@@ -315,6 +346,39 @@ export function create({ here }) {
     return inst
   }
 
+  // A small watcher lives as long as Chrome does. When this hub's port stays silent for 30 seconds it closes Chrome, however
+  // the hub went away: a crash, a kill, or a desktop app that quit. A plain restart comes back in time and adopts Chrome.
+  const WATCH_JS = `const [port, hub, file] = process.argv.slice(1)
+let silent = 0
+setInterval(async () => {
+  try { if (!require('node:fs').readFileSync(file, 'utf8').startsWith(process.pid + ' ')) process.exit(0) } catch { process.exit(0) }
+  const v = await fetch('http://127.0.0.1:' + port + '/json/version', { signal: AbortSignal.timeout(3000) }).then(r => r.json()).catch(() => null)
+  if (!v) process.exit(0)
+  const up = await fetch('http://127.0.0.1:' + hub + '/api/ping', { signal: AbortSignal.timeout(3000) }).then(() => true).catch(() => false)
+  silent = up ? 0 : silent + 1
+  if (silent < 6) return
+  const ws = new WebSocket(v.webSocketDebuggerUrl)
+  ws.onopen = () => ws.send(JSON.stringify({ id: 1, method: 'Browser.close' }))
+  setTimeout(() => process.exit(0), 2000)
+}, 5000)`
+  function watchHub(dir, port) {
+    const file = path.join(dir, 'hub-watch.pid'), key = `${port} ${PORT}`
+    try {
+      const [pid, ...was] = fs.readFileSync(file, 'utf8').split(' ')
+      process.kill(+pid, 0)
+      if (was.join(' ') === key) return // the last hub's watcher is still on this Chrome
+    } catch {}
+    // A watcher for another Chrome or port sees this file change and leaves by itself.
+    const kid = spawn(process.execPath, ['-e', WATCH_JS, String(port), String(PORT), file], {
+      windowsHide: true, stdio: 'ignore', detached: true,
+      // Nothing of the hub's environment goes with it. Inside the desktop app process.execPath is Electron, and this asks it for plain Node.
+      env: { ...(process.env.SystemRoot ? { SystemRoot: process.env.SystemRoot } : {}), ...(process.versions.electron ? { ELECTRON_RUN_AS_NODE: '1' } : {}) },
+    })
+    kid.on('error', () => {})
+    kid.unref()
+    if (kid.pid) try { fs.writeFileSync(file, `${kid.pid} ${key}`) } catch {}
+  }
+
   async function stop(inst, why) {
     if (!inst || inst.cdp.closed) return
     addLog(inst, 'hub', 'stop', why)
@@ -328,7 +392,7 @@ export function create({ here }) {
     for (const inst of insts.values()) {
       if (inst.cdp.closed || inst.starting) continue
       if (inst.viewers.size) inst.lastUse = Date.now()
-      else if (Date.now() - inst.lastUse > IDLE_MS) stop(inst, 'idle for 15 minutes')
+      else if (Date.now() - inst.lastUse > IDLE_MS) stop(inst, `idle for ${IDLE_MS / 60e3} minutes`)
     }
   }, 30e3).unref()
 
@@ -339,7 +403,9 @@ export function create({ here }) {
   // The hub's own addresses are off limits inside this Chrome: its file routes would hand the agent what its own read rules refuse, by a link or a page as well as by browser_open.
   function hubPatterns() {
     const nets = Object.values(os.networkInterfaces()).flat().map(n => n.family === 'IPv6' ? `[${n.address.split('%')[0]}]` : n.address)
-    const hosts = [...new Set(['127.0.0.1', 'localhost', '[::1]', ...nets])].map(h => `*://${h}:${PORT}/*`)
+    // Any name on the hub's port, too: x.localhost, localhost. or a public name pointing back here all reach it, and the
+    // hub's own page would let the agent press its own Allow.
+    const hosts = [`*://*:${PORT}/*`, ...new Set(['127.0.0.1', 'localhost', '[::1]', ...nets])].map(h => h.startsWith('*') ? h : `*://${h}:${PORT}/*`)
     try { const u = new URL(hubConfig().url); hosts.push(`*://${u.host}/*`) } catch {}
     return hosts
   }
@@ -365,7 +431,7 @@ export function create({ here }) {
     return Promise.all([
       inst.cdp.send('Emulation.setDeviceMetricsOverride', { width: s.w, height: s.h, deviceScaleFactor: 1, mobile: !!s.mobile }, sid),
       inst.cdp.send('Emulation.setTouchEmulationEnabled', { enabled: !!s.mobile, maxTouchPoints: s.mobile ? 5 : 0 }, sid).catch(() => {}),
-      inst.cdp.send('Emulation.setUserAgentOverride', { userAgent: s.mobile ? UA_MOBILE : UA_DESKTOP, platform: s.mobile ? 'Android' : 'Win32' }, sid).catch(() => {}),
+      inst.cdp.send('Emulation.setUserAgentOverride', { userAgent: s.mobile ? UA_MOBILE : UA_DESKTOP, platform: s.mobile ? 'Android' : UA_PLATFORM }, sid).catch(() => {}),
     ]).catch(() => {})
   }
 
@@ -578,12 +644,42 @@ export function create({ here }) {
 
   // An agent's Enter that would send: a form whose button sends, a compose form with an unnamed button, or a rich editor, where Enter or Ctrl+Enter is how mail and chat pages send.
   async function checkEnter(inst, ctrl, confirmed) {
-    if (confirmed === true) return
     const f = await evalPage(inst, ENTER_JS)
     if (!f) return
     const editor = f.rich || f.tag === 'textarea'
-    const what = (ctrl && editor) || f.rich ? 'Enter in this editor' : f.tag === 'textarea' ? '' : RISKY_RE.test(f.label) ? `Enter, which presses "${f.label}",` : f.unnamed && f.compose ? 'Enter in this form' : ''
-    if (what) throw err(428, `${what} may send something. Ask the user in chat first; only after they say yes, call again with confirmed: true.`, { needsConfirmation: f.label || 'Enter' })
+    const what = (ctrl && editor) || f.rich ? 'Enter in this editor' : f.tag === 'textarea' ? '' : RISKY_RE.test(f.label) || f.submits ? `Enter, which presses "${f.label || 'the form\'s button'}",` : f.unnamed && f.compose ? 'Enter in this form' : ''
+    if (!what) return
+    const social = SOCIAL_RE.test(hostOf(inst)) && POST_RE.test(f.label)
+    if (social && approvals().socialPosts !== 'ask') throw err(403, `Refused: "${f.label}" on ${hostOf(inst)}. The agent never posts or shares on the user's social accounts; the user does that.`)
+    needYes(inst, f.label || 'Enter', `Press Enter here?`, `${what} may send something.`, 'call again', confirmed, social)
+  }
+
+  /* ---------- the user's yes: a card only they can answer, good for one try ---------- */
+
+  const asks = new Map()
+  const hostOf = inst => { try { return new URL(inst.tabs.get(inst.active)?.url).hostname } catch { return '' } }
+  const originOf = inst => { try { return new URL(inst.tabs.get(inst.active)?.url).origin } catch { return '' } }
+  const liveAsk = id => { const a = asks.get(id); return a && a.expires > Date.now() ? a : null }
+
+  // The agent's word isn't enough: confirmed: true passes only with a yes from a card, for this same Chrome, thing and site.
+  // always keeps the card when the owner turned cards off for other actions (a Post they set to ask).
+  function needYes(inst, label, what, why, retry, confirmed, always) {
+    const mode = approvals().actions
+    if (!always && (mode === 'go' || mode === 'warn')) {
+      if (mode === 'warn') addLog(inst, 'hub', 'warned', `${label}: ${why}`)
+      return
+    }
+    const origin = originOf(inst)
+    if (confirmed === true) {
+      for (const [id, a] of asks) {
+        if (a.yes && a.expires > Date.now() && a.inst === inst && a.label === label && a.origin === origin) { asks.delete(id); return }
+      }
+    }
+    for (const [id, a] of asks) if (a.expires <= Date.now()) asks.delete(id)
+    while (asks.size >= 20) asks.delete(asks.keys().next().value)
+    const id = crypto.randomBytes(16).toString('hex')
+    asks.set(id, { inst, label, what, url: inst.tabs.get(inst.active)?.url || '', origin, yes: false, expires: Date.now() + ASK_MS })
+    throw err(428, `${why} A card is on screen. Stop and wait. Only the card's Allow counts; a typed yes doesn't. After Allow, ${retry} with confirmed: true.`, { needsConfirmation: label, confirmId: id })
   }
 
   async function pressKey(inst, name, modifiers = 0) {
@@ -692,14 +788,15 @@ export function create({ here }) {
         const d = await evalPage(inst, describeJs(body.ref, body.x, body.y))
         if (!d) throw err(404, body.ref ? `no element [${body.ref}] on the page; take a new snapshot` : 'nothing at that point')
         if (who === 'agent') {
-          const host = (() => { try { return new URL(inst.tabs.get(inst.active)?.url).hostname } catch { return '' } })()
-          if (SOCIAL_RE.test(host) && POST_RE.test(d.label)) throw err(403, `Refused: "${d.label}" on ${host}. The agent never posts or shares on the user's social accounts; the user does that.`)
-          if ((RISKY_RE.test(d.label) || d.unnamedSubmit) && body.confirmed !== true) throw err(428, `"${d.label || 'This button'}" sends, buys, deletes or accepts something. Ask the user in chat first; only after they say yes, call click again with confirmed: true.`, { needsConfirmation: d.label || 'This button' })
+          const host = hostOf(inst)
+          const social = SOCIAL_RE.test(host) && POST_RE.test(d.label)
+          if (social && approvals().socialPosts !== 'ask') throw err(403, `Refused: "${d.label}" on ${host}. The agent never posts or shares on the user's social accounts; the user does that.`)
+          if (social || RISKY_RE.test(d.label) || d.unnamedSubmit || d.formSubmit) needYes(inst, d.label || 'This button', 'Click this in the browser?', `"${d.label || 'This button'}" may send, buy, delete or accept something.`, 'call click again', body.confirmed, social)
         }
         await mouseClick(inst, d.x, d.y, body.button === 'right' ? 'right' : 'left', body.double ? 2 : 1)
         await sleep(250)
         await waitLoad(inst, 4000)
-        return done('click', `${d.label || d.tag}${body.ref ? ` [${body.ref}]` : ` at ${d.x},${d.y}`}${body.confirmed ? ' (user confirmed)' : ''}`)
+        return done('click', `${d.label || d.tag}${body.ref ? ` [${body.ref}]` : ` at ${d.x},${d.y}`}${body.confirmed === true ? ' (confirmed)' : ''}`)
       }
       case 'hover': {
         const d = await evalPage(inst, describeJs(body.ref, body.x, body.y))
@@ -709,17 +806,21 @@ export function create({ here }) {
       }
       case 'type': {
         const text = String(body.text ?? '')
+        const mayType = approvals().secrets === 'allow' // the owner's choice; off unless they set it
+        let secret = false
         if (body.ref) {
           const d = await evalPage(inst, describeJs(body.ref))
           if (!d) throw err(404, `no element [${body.ref}] on the page; take a new snapshot`)
-          if (who === 'agent' && d.sensitive) return refuseSensitive(inst, `the ${d.type === 'password' ? 'password' : d.label || 'sensitive'} field`)
+          if (who === 'agent' && d.sensitive && !mayType) return refuseSensitive(inst, `the ${d.type === 'password' ? 'password' : d.label || 'sensitive'} field`)
+          secret = d.sensitive
           await mouseClick(inst, d.x, d.y)
           await sleep(80)
         }
         if (who === 'agent') {
           const f = await evalPage(inst, FOCUS_JS)
-          if (f.sensitive) return refuseSensitive(inst, `the ${f.type === 'password' ? 'password' : 'sensitive'} field`)
-          if (luhnCard(text)) return refuseSensitive(inst, 'a card number')
+          secret = secret || f.sensitive || luhnCard(text)
+          if (f.sensitive && !mayType) return refuseSensitive(inst, `the ${f.type === 'password' ? 'password' : 'sensitive'} field`)
+          if (secret && !mayType) return refuseSensitive(inst, 'a card number')
         }
         if (body.submit && who === 'agent') await checkEnter(inst, false, body.confirmed)
         if (body.clear) {
@@ -729,7 +830,7 @@ export function create({ here }) {
         }
         if (text) await inst.cdp.send('Input.insertText', { text }, s)
         if (body.submit) { await pressKey(inst, 'Enter'); await sleep(250); await waitLoad(inst, 4000) }
-        return done('type', who === 'agent' ? `"${text.slice(0, 120)}"${body.submit ? ' + Enter' : ''}` : `${text.length} characters`)
+        return done('type', who === 'agent' && !secret ? `"${text.slice(0, 120)}"${body.submit ? ' + Enter' : ''}` : `${text.length} characters`)
       }
       case 'key': {
         const mods = (body.ctrl ? 2 : 0) | (body.shift ? 8 : 0) | (body.alt ? 1 : 0)
@@ -755,7 +856,7 @@ export function create({ here }) {
       }
       case 'dialog': {
         if (!inst.dialog) throw err(409, 'no dialog is open')
-        if (who === 'agent' && body.accept && inst.dialog.type === 'beforeunload') throw err(428, 'Leaving this page may lose what was typed. Ask the user first.')
+        if (who === 'agent' && body.accept && inst.dialog.type === 'beforeunload') needYes(inst, 'Leave this page', 'Leave this page?', 'Leaving this page may lose what was typed.', 'call dialog again', body.confirmed)
         await inst.cdp.send('Page.handleJavaScriptDialog', { accept: !!body.accept, ...(body.text ? { promptText: String(body.text) } : {}) }, s)
         inst.dialog = null
         return done('dialog', body.accept ? 'OK' : 'Cancel')
@@ -869,6 +970,12 @@ export function create({ here }) {
         const entries = log.filter(e => e.id > since && (!prof || e.profile === prof)).slice(-Math.min(400, +q.get('limit') || 100))
         return send(res, 200, { entries }), true
       }
+      const yes = /^confirm\/([0-9a-f]{32})$/.exec(p)
+      if (yes) {
+        const a = liveAsk(yes[1])
+        if (!a || a.yes) return send(res, 404, { error: 'That card has gone.' }), true
+        return send(res, 200, { what: a.what, label: a.label, url: a.url }), true
+      }
       const sh = /^shots\/(\d+)\.jpg$/.exec(p)
       if (sh) {
         const buf = await fs.promises.readFile(path.join(SHOTS, `${sh[1]}.jpg`)).catch(() => null)
@@ -901,10 +1008,22 @@ export function create({ here }) {
         } catch (e) {
           if ([403, 409, 428].includes(e.code)) {
             if (who === 'agent' && e.code !== 409) addLog(insts.get(body.profile || conf.current), 'hub', 'refused', e.message.slice(0, 200))
-            return send(res, e.code, { error: e.message, ...(e.needsConfirmation ? { needsConfirmation: e.needsConfirmation } : {}) }), true
+            return send(res, e.code, { error: e.message, ...(e.needsConfirmation ? { needsConfirmation: e.needsConfirmation } : {}), ...(e.confirmId ? { confirmId: e.confirmId } : {}) }), true
           }
           throw e
         }
+      }
+      const yes = /^confirm\/([0-9a-f]{32})$/.exec(p)
+      if (yes) {
+        if (who === 'agent') return send(res, 403, { error: 'Only the user answers a card.' }), true
+        // The body is already read, so this check and the change below happen together: one answer per card.
+        const a = liveAsk(yes[1])
+        if (!a || a.yes) return send(res, 404, { error: 'That card has gone.' }), true
+        if (body?.allow !== true) { asks.delete(yes[1]); addLog(a.inst, 'owner', 'confirm', `Not allowed: ${a.label}`); return send(res, 200, { ok: true, allowed: false, message: 'Not allowed.' }), true }
+        a.yes = true
+        a.expires = Date.now() + ASK_MS
+        addLog(a.inst, 'owner', 'confirm', `Allowed: ${a.label}`)
+        return send(res, 200, { ok: true, allowed: true, message: 'Allowed once.' }), true
       }
       if (p === 'input') {
         if (who === 'agent') return send(res, 403, { error: 'agents use /api/browser/act' }), true
