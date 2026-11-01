@@ -148,7 +148,7 @@ off-screen, stops them taking focus, records external links and login-item calls
 them, and the hotkey is pressed for real on an unusual binding. Tests that need something missing,
 such as a build, a running Hub or a second monitor, report as skipped rather than passing.
 
-`quit.test.mjs` quits with four CPU burners running for a few seconds. It presses Quit through the real tray menu item's click handler, not the native menu popup.
+`quit.test.mjs` quits with four CPU burners sharing two cores with the app, so the rest of the computer stays free, for up to a minute. It presses Quit through the real tray menu item's click handler, not the native menu popup.
 
 Not covered by the suite, because it would take over the desktop: the native tray menu popup, real focus changes, how windows look
 on real monitors, the real login-item write, the default `Ctrl+Alt+Space` binding, a real Save As dialog

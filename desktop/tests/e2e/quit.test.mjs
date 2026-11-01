@@ -5,7 +5,6 @@
 import assert from 'node:assert/strict'
 import { spawn, spawnSync } from 'node:child_process'
 import fs from 'node:fs'
-import os from 'node:os'
 import path from 'node:path'
 import { describe, test } from 'node:test'
 
@@ -17,10 +16,21 @@ import {
 // A Hub goes with the app. Past this, the app has left it behind.
 const LEFT_BEHIND_LIMIT_MS = 5000
 
-// Four at most, because this may be a computer someone is working on. A loaded computer does worse than
-// this, so the limits themselves are tested by making each step slow or stuck on purpose further down.
+const powershell = script => spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', '-'], { input: script, encoding: 'utf8', windowsHide: true }).stdout.trim()
+
+// This may be a computer someone is working on, so the app and the burners share two cores and the rest
+// stay free. That's a real load for the app: a quit takes 10 to 20 s this way and 2 to 3 s with the same
+// burners spread out. What this process starts inherits the cores, so call this before starting anything.
+function keepToTwoCores(t) {
+  const affinity = value => powershell(`$p = Get-Process -Id ${process.pid}; ${value ? `$p.ProcessorAffinity = ${value}; ` : ''}$p.ProcessorAffinity`)
+  const all = BigInt(affinity())
+  const cores = [...Array(64).keys()].map(BigInt).filter(core => (all >> core) & 1n)
+  affinity((1n << cores.at(-1)) | (1n << cores.at(-2)))
+  cleanup(t, () => affinity(all))
+}
+
 function burnCpu(t) {
-  const burners = os.cpus().slice(0, 4).map(() => spawn(process.execPath, ['-e', 'for(;;){}'], { stdio: 'ignore', windowsHide: true }))
+  const burners = [1, 2, 3, 4].map(() => spawn(process.execPath, ['-e', 'for(;;){}'], { stdio: 'ignore', windowsHide: true }))
   const stop = () => burners.forEach(burner => burner.kill())
   cleanup(t, stop)
   return stop
@@ -45,11 +55,7 @@ async function startApp(t, { env = {}, packaged = false, args = [], again = null
   return { handle, port, userData, mainPid: pids[0], hubPid: pid, grandchild }
 }
 
-function describeProcess(pid) {
-  const script = `(Get-CimInstance Win32_Process -Filter "ProcessId=${pid}").CommandLine`
-  const { stdout } = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', '-'], { input: script, encoding: 'utf8', windowsHide: true })
-  return `${pid} ${stdout.trim()}`
-}
+const describeProcess = pid => `${pid} ${powershell(`(Get-CimInstance Win32_Process -Filter "ProcessId=${pid}").CommandLine`)}`
 
 // Times start from `from`, which is when Quit was pressed.
 async function assertAllGone({ port, mainPid, hubPid, grandchild }, from, mainLimitMs = QUIT_LIMIT_MS) {
@@ -71,8 +77,7 @@ const BROWSER_GONE_LIMIT_MS = 60_000
 // Everything a packaged app on this profile has running: app, Hub, browser and the browser's watcher.
 function running(userData) {
   const script = `Get-CimInstance Win32_Process | Where-Object { $_.Name -ne 'powershell.exe' -and $_.CommandLine -like '*${path.basename(userData)}*' } | ForEach-Object { '' + $_.ProcessId + ' ' + $_.Name }`
-  const { stdout } = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', '-'], { input: script, encoding: 'utf8', windowsHide: true })
-  return stdout.split(/\r?\n/).map(line => line.trim()).filter(Boolean)
+  return powershell(script).split(/\r?\n/).map(line => line.trim()).filter(Boolean)
 }
 
 function endWhatIsLeft(t, userData) {
@@ -111,6 +116,7 @@ describe('quitting', () => {
   })
 
   test('with the CPU kept busy, a tray quit ends the app in time and leaves no Hub behind', async t => {
+    keepToTwoCores(t)
     const app = await startApp(t)
     const stopBurning = burnCpu(t)
     await sleep(2000)
@@ -123,13 +129,12 @@ describe('quitting', () => {
 
   test('with the CPU kept busy, the built app ends in time too, with the real Hub and with a stub', async t => {
     if (!fs.existsSync(PACKAGED_EXE)) return t.skip('no build at dist/win-unpacked (could not check; not a pass)')
+    keepToTwoCores(t)
     const stub = await startApp(t, { packaged: true, args: ['--hidden'] })
 
     // A Hub's child must be its own small process and not a second copy of the app. That once opened a
     // real window on the default profile.
-    const script = `(Get-CimInstance Win32_Process -Filter "ParentProcessId=${stub.grandchild}" | Measure-Object).Count`
-    const { stdout } = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', '-'], { input: script, encoding: 'utf8', windowsHide: true })
-    assert.equal(stdout.trim(), '0')
+    assert.equal(powershell(`(Get-CimInstance Win32_Process -Filter "ParentProcessId=${stub.grandchild}" | Measure-Object).Count`), '0')
 
     const stopBurning = burnCpu(t)
     await sleep(2000)
