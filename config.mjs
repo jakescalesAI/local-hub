@@ -35,6 +35,7 @@ const NEUTRAL = {
   siteSuggestions: [],
   theme: 'default',
   claudeConfigDir: '',
+  accessLog: true, // one line per request in data/access.log: time, method, path, status, address. Never a query string.
   // The assistant: every choice here is yours (see HUB-GUIDE.md, "Make it yours").
   assistant: {
     name: 'Hub Assistant',
@@ -46,7 +47,7 @@ const NEUTRAL = {
     env: {}, // extra environment for the CLI, for example {"CLAUDE_CODE_USE_BEDROCK": "1"}. No keys here: they go in secrets.json.
     models: [], // ["model-id"] or [["model-id", "Label"]]; empty offers the Claude models
     defaultModel: '',
-    tools: { web: true, files: true, browser: true, settings: true, sites: true },
+    tools: { web: true, files: true, browser: true, settings: true, sites: true, actions: true },
     readFolders: ['~'], // folders it may read, besides the hub's. Key files stay refused in all of them.
     writeFolders: [], // more folders it may write to, besides workspace/. Never inside the hub folder.
     mcpServers: {}, // your own tools: {"name": {"command": "...", "args": [], "env": {}}}

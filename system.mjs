@@ -7,7 +7,7 @@ import { lstat, readdir, realpath } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import { HERE, hubConfig, scrubSecrets } from './config.mjs'
-import { holdsKeys } from './files.mjs'
+import { deniedToAgent as holdsKeys } from './chat.mjs'
 
 const IS_WIN = process.platform === 'win32'
 const KEY_REFUSAL = 'This folder holds keys, so the hub won’t open it'

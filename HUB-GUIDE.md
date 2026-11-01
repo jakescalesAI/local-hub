@@ -140,6 +140,15 @@ Three more read-only routes stand in for a shell. The assistant has them as the 
 | `/api/system/size?path=` | A folder's size and largest items. Key folders are left out and counted as `refused`. It stops after 20 seconds or 200,000 items, and says `capped` |
 | `/api/git/status?repo=`, `/api/git/log?repo=&ref=&n=&path=`, `/api/git/diff?repo=&ref=&staged=1&path=` | Git, read-only. Folders must be in `assistant.readFolders` or the hub folder. Key files are left out of a diff, and a repo with settings in its own config that the hub doesn't know to be harmless gets a 403 |
 
+Two tools change things, through routes that keep the same refusals:
+
+- `file_op` (`POST /api/agent/file`) moves, copies, renames and trashes. Moves, renames and trash work inside `workspace/` and `assistant.writeFolders`, and copies can come from any folder the assistant can read. It refuses key files, a folder with a key file or a link anywhere inside, and places where files run as code (`.git`, `.claude`, `.vscode`, startup folders, shell profiles, `CLAUDE.md`). Nothing is overwritten. Trash waits for a card, and the file goes to the bin or trash, where you can restore it.
+- `hub_action` (`POST /api/agent/action`) runs a named action, and nothing else: `refresh`, `refresh_ai`, `refresh_cloud`, `refresh_stripe`, `refresh_calendar`, `calendar_add`, `calendar_update`, `calendar_delete`, `calendar_quick`. The last two wait for a card. The refreshes only read Cloud and Stripe again. No action changes `writeFolders`, `assistant.approvals`, deny lists, keys or `laptop.probe`, and `assistant.tools.actions: false` turns the tool off.
+
+A card's Allow is the only yes. The agent can't answer one or pass a flag instead, and the hub does the step itself once you allow it. `GET /api/agent/log` lists each of these, newest first, in `data/agent-actions.log`.
+
+`data/access.log` has one line per request: time, method, path, status, address, and the forwarded address if a proxy sent one. It never has a query string. Successful `/api/ping` and `/api/state` polls aren't written, and it's kept to about 40 MB. `"accessLog": false` in hub.json turns it off.
+
 `hub_read` refuses `/api/files/<root>/text` and `/files/<root>/raw` (file contents) and anything touching `config/secrets.json`. Use Read for files.
 
 Fast paths: for Claude usage questions read `/api/ai/usage` (small). Do not fetch the big endpoints unless the question needs them, and do not paste raw JSON at the user; summarise.
@@ -253,7 +262,7 @@ It is a general agent that knows this hub best. It answers any question, researc
 - **Work in the hub browser** when the user asks it to do something on a website. The chat shows one card per reply: live while it works, then the last step's screenshot, with Watch, and Take control when it hands over.
 - **Use your own tools** from `assistant.mcpServers`.
 
-It has no shell. For restarts, deploys, add-on switches, and moving or deleting files, it gives the user the exact steps. "What stays fixed" and "What it asks about first" say where it stops.
+It has no shell. It moves, copies, renames and trashes files with `file_op`, and runs a short list of hub actions with `hub_action`. For restarts, deploys and add-on switches, it gives the user the exact steps. "What stays fixed" and "What it asks about first" say where it stops.
 
 ## Settings API
 
@@ -398,7 +407,7 @@ Every preview iframe uses `sandbox="allow-scripts allow-same-origin allow-forms 
 
 ## Hub browser
 
-A real Chrome that the assistant drives and the user watches live in a pop-up, from this computer or any device that can reach the hub. The chat stays at the bottom centre while it is open. The user can take control at any time. Code: `browser.mjs` (routes, Chrome, guards), `browser-mcp.mjs` (the agent's tools), `tabs/browser.js` (the pop-up). Agent rules: `browser-rules.md`. It needs Chrome or Chromium installed; `HUB_CHROME` points at a copy somewhere else.
+A real Chrome that the assistant drives and the user watches live in a pop-up, from this computer or any device that can reach the hub. The same pop-up opens for a clicked website, a Home app, `show_site` and the agent opening a page. It shows the streamed Chrome, so a site's frame rules don't matter and nothing is proxied. The top bar has the site icon, address, refresh, Open in New Tab and close. Closing hides it and the session stays alive, so reopening is quick. The chat stays at the bottom centre above it: the stream stops above the chat bar, and an expanded chat grows over the stream. Watching is the default. Take control hands over the keyboard and mouse, and sign-ins are done by hand inside the stream. Code: `browser.mjs` (routes, Chrome, guards), `browser-mcp.mjs` (the agent's tools), `tabs/browser.js` (the pop-up). Agent rules: `browser-rules.md`. It needs Chrome or Chromium installed; `HUB_CHROME` points at a copy somewhere else.
 
 ### How it runs
 - Each profile is its own Chrome, which the hub starts and drives over CDP: `--remote-debugging-port=0 --remote-debugging-address=127.0.0.1 --user-data-dir=data/browser/<profile>`. It runs headless by default, and "Show window on this computer" restarts it headed. The stream is `Page.startScreencast` JPEG frames sent over SSE. Input goes back through `Input.dispatch*`.
