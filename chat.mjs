@@ -80,10 +80,12 @@ const CONFIRM_MARK = /\s*\[confirm:([0-9a-f]{32})\]\s*$/
 const BROWSER_TOOLS = ['status', 'open', 'snapshot', 'screenshot', 'text', 'click', 'type', 'key', 'scroll', 'select', 'hover', 'nav', 'tabs', 'dialog', 'wait', 'handoff', 'profile'].map(n => BROWSER + n)
 // The rules above and holdsKeys together, for anything that hands the assistant a file another way than Read.
 const KEY_FILE_NAMES = new RegExp(`^(${KEY_FILES.map(f => f.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')).join('|')})$`, 'i')
-export const deniedToAgent = p => holdsKeys(p) || KEY_FILE_NAMES.test(String(p || '').split(/[\\/]+/).filter(Boolean).at(-1) || '')
+export const deniedToAgent = p => /::|:\$|~\d/.test(String(p || '')) || holdsKeys(p) || KEY_FILE_NAMES.test(String(p || '').split(/[\\/]+/).filter(Boolean).at(-1) || '')
 function denyList() {
   const conf = hubConfig()
   const keys = [...KEY_FILES.map(f => `//**/${f}`), ...[...KEY_DIRS, ...conf.keyDirs].map(d => `//**/${d}/**`), ...conf.keyPairs.flatMap(([a, b]) => [`//**/${a}/${b}`, `//**/${a}/${b}/**`]),
+    // NTFS streams and 8.3 short names reach a file without saying its name, so no rule above would match them.
+    '//**/*::*', '//**/*:$*', '//**/*~[0-9]*',
     '//**/.docker/config.json', '//**/gh/hosts.yml', '//**/.git/config', '//**/AppData/Roaming/**', '//**/AppData/LocalLow/**',
     // A hub kept under AppData/Local still needs its own folder.
     ...(/[\\/]AppData[\\/]Local[\\/]/i.test(HERE) ? [] : ['//**/AppData/Local/**']),

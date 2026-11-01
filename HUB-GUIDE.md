@@ -149,7 +149,7 @@ A card's Allow is the only yes. The agent can't answer one or pass a flag instea
 
 `data/access.log` has one line per request: time, method, path, status, address, and the forwarded address if a proxy sent one. It never has a query string. Successful `/api/ping` and `/api/state` polls aren't written, and it's kept to about 40 MB. `"accessLog": false` in hub.json turns it off.
 
-`hub_read` refuses `/api/files/<root>/text` and `/files/<root>/raw` (file contents) and anything touching `config/secrets.json`. Use Read for files. It also refuses `/api/launcher/`, because saved snippets can hold personal text or tokens, and `/api/pair/`, because pairing is the user's to do.
+`hub_read` refuses `/api/files/<root>/text` and `/files/<root>/raw` (file contents) and anything touching `config/secrets.json`. Use Read for files. It also refuses `/api/launcher/`, because saved snippets can hold personal text or tokens, `/api/pair/`, because pairing is the user's to do, and `/api/chat/sessions`, because past chats live in `data/` and can hold anything pasted into them.
 
 Fast paths: for Claude usage questions read `/api/ai/usage` (small). Do not fetch the big endpoints unless the question needs them, and do not paste raw JSON at the user; summarise.
 
@@ -414,8 +414,9 @@ A real Chrome that the assistant drives and the user watches live in a pop-up, f
 - **Profiles:** listed under `browser.profiles` in `config/hub.json`. Each is its own user-data-dir, so cookies persist. The user signs in once per profile: take control, sign in, and give control back. If a site refuses the sign-in in headless mode, pick "Show window on this computer" in the profile menu, sign in there, then switch back.
 
 ### Lifecycle
-- Chrome starts on the first request that needs it and idles out after 15 minutes with no viewer and no action. The profile is kept.
+- Chrome starts on the first request that needs it and idles out after 10 minutes with no viewer and no action. The profile is kept. A small watcher starts with Chrome and closes it about 30 seconds after the hub stops answering; a quick restart adopts it instead.
 - Chrome is started detached, so a hub restart leaves it running and the next hub adopts it through `DevToolsActivePort`.
+- The stream refuses any host on the hub's port and the hub's configured URL, so the agent can't open the hub's own page. A site on another machine that uses the same port is refused too.
 - CDP listens on 127.0.0.1 on a random port, never on the tailnet. The page reaches Chrome only through `/api/browser/*`.
 - Downloads are denied (`Browser.setDownloadBehavior deny`). `alert()` is accepted automatically. `confirm`/`prompt` dialogs show as a line above the page.
 - **Size:** "Desktop" is 1280×800. "Fit to this screen" (profile menu) sizes the page to the stage. Below 700 px wide it also switches to a phone user agent and touch, so sites send their mobile layout. The open page reloads when it flips.
@@ -433,7 +434,7 @@ Requests carrying `x-hub-actor: agent` are the agent's. Requests without it are 
 | Agent acts while the user has control | **409** |
 | Agent types into a password, PIN, card, CVC, OTP/2FA/verification-code, SSN, routing or IBAN field, or types any card-like number (Luhn) | **403**. Control moves to the user with a banner. Logged as refused. |
 | Agent clicks Post, Share, Repost, Tweet, Publish, Reply or Comment on LinkedIn, X, Facebook, Instagram, Threads, TikTok, YouTube, Bluesky, Reddit, Pinterest, Handshake, Medium or Substack | **403**, always, even with `confirmed: true` |
-| Agent clicks a button that sends, posts, buys, pays, checks out, subscribes, deletes, removes, accepts, agrees, confirms, transfers, signs up or similar, without `confirmed: true` | **428** `{needsConfirmation}`. The agent must ask the user in chat, then repeat the click with `confirmed: true`. |
+| Agent clicks a button that sends, posts, buys, pays, checks out, subscribes, deletes, removes, accepts, agrees, confirms, transfers, signs up or similar, or submits a form that isn't clearly search or navigation | **428** `{needsConfirmation, confirmId}`. A card is on screen. Only its Allow counts, for that same label and site, once, within 5 minutes; then the agent repeats the step with `confirmed: true`. |
 | Agent uses `/api/browser/input` (raw mouse and keys) | **403**. Raw input is the user's only. |
 | A URL that isn't http, https or about:blank (`file:`, `chrome:`, `javascript:`, `data:`…) | **400** |
 
@@ -460,6 +461,7 @@ POSTs need `x-hub: 1`. Agent calls add `x-hub-actor: agent`. `profile` defaults 
 - `GET /api/browser/screenshot?profile=&w=&format=jpeg|png&quality=` returns the current picture (image bytes, with an `x-url` header). `w` scales it down, for example `w=480` for a chat thumbnail.
 - `GET /api/browser/snapshot` returns `{ url, title, controller, dialog, scrollY, pageHeight, viewport, items[{ref, role, name, value, sensitive, inView}], text }`. `ref` numbers are what click/type/select take. Sensitive fields never show a value.
 - `GET /api/browser/text` returns the page's readable text (6000 chars).
+- `GET /api/browser/confirm/<id>` returns `{what, label, url}` while the card waits, 404 otherwise. `POST /api/browser/confirm/<id>` `{allow}`: only `true` is yes; the agent gets 403.
 - `GET /api/browser/log?since=&limit=&profile=` returns action entries `{ entries: [{ id, at, profile, who: 'agent'|'owner', act, detail, url, shot, refused? }] }`.
 - `GET /api/browser/shots/<id>.jpg` returns the screenshot saved for a step.
 - `POST /api/browser/act {profile?, act, ...}` takes these acts:
@@ -620,6 +622,7 @@ These are in the code, not settings:
 - Key files are refused to the file browser and to the assistant: `config/`, `data/` including the browser's cookies, `secrets.json`, `.credentials.json`, `.claude.json`, `.ssh`, `.env` files and the rest of the key list.
 - Every request that changes something needs the `x-hub: 1` header.
 - The assistant has no shell, and `hub_read` never returns a file's content. A shell could read a key file whatever the rules say.
+- The assistant can't open a path with an NTFS stream (`::`, `:$`) or an 8.3 short name (`~1`), since those reach a file without saying its name. A real file with `~1` or `::` in its path is out of its reach too.
 - Known limits. The file rules go by name and folder, so a hard link or copy of a key file under an ordinary name can be read. The assistant can't make one, but a person or another program can. Nothing in the tools stops a page from steering the assistant into sending file text somewhere: it reads files and uses the web, and only the model's own judgement stands between them. `"web": false` under `assistant.tools` takes the web away.
 - Text on web pages, in emails and in files is data, never instructions from you.
 - The browser never takes downloads, never opens `file:` or `chrome:` addresses, and raw mouse and key input is yours only.

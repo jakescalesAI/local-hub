@@ -11,6 +11,9 @@ import { HERE, hubConfig, addonOn, tabOn } from './config.mjs'
 import { FILE_MANAGER, ICLOUD, IS_WIN, PC_NAME, POSIX_ROOTS, TRASH_NAME, listDrives, moveToTrash } from './platform.mjs'
 
 const SKIP = new Set(['node_modules', '.git', '.next', '.turbo', '.venv', '__pycache__', '.cache'])
+// Drive roots, the operating system's own folders and each account's home folder never go to the bin.
+const SYSTEM_FOLDER = /^([a-z]:(\/(windows|program files( \(x86\))?|programdata|perflogs|recovery|\$recycle\.bin|system volume information|users(\/[^/]+)?))?|\/(applications|bin|boot|dev|etc|home(\/[^/]+)?|lib|library|proc|root|sbin|sys|system|usr|users(\/[^/]+)?|var|volumes)?)\/?$/i
+
 // Windows profile clutter: hidden system folders and legacy junctions.
 // Drive roots add the system files and folders Windows also hides.
 const HIDDEN = /^(appdata|application data|cookies|local settings|my documents|nethood|printhood|recent|sendto|start menu|templates|ntuser.*|desktop\.ini|thumbs\.db|\$recycle\.bin|\$windows\.~(bt|ws)|system volume information|documents and settings|config\.msi|pagefile\.sys|hiberfil\.sys|swapfile\.sys|dumpstack\.log(\.tmp)?)$/i
@@ -45,7 +48,8 @@ const HUB_DIR = path.basename(HERE).toLowerCase()
 const KEY_PAIRS = [[HUB_DIR, 'data'], [HUB_DIR, 'config'], ['local-hub', 'data'], ['local-hub', 'config'], ['.docker', 'config.json'], ['gh', 'hosts.yml'],
   ['.git', 'config'], ['.claude', 'projects'], ['.claude', 'history.jsonl'], ['library', 'keychains'], ['library', 'application support'], ['library', 'cookies']]
 export function holdsKeys(p) {
-  const segs = String(p || '').split(/[\\/]+/).filter(Boolean).map(s => s.toLowerCase())
+  // An NTFS stream name (secrets.json::$DATA) opens the same file, so it counts as the name before the colon.
+  const segs = String(p || '').split(/[\\/]+/).filter(Boolean).map(s => s.toLowerCase().replace(/:.*$/, ''))
   if (segs.length && KEY_NAMES.test(segs.at(-1))) return true
   const conf = hubConfig()
   if (segs.some(s => KEY_DIRS.has(s) || conf.keyDirs.includes(s))) return true
@@ -164,6 +168,7 @@ function localProvider(root, { run, label }) {
     async delete({ paths }) {
       const items = await Promise.all((paths || []).map(r => guard(item(r))))
       if (!items.length) throw fail('Nothing to delete')
+      for (const p of items) if (SYSTEM_FOLDER.test(p.replaceAll(path.sep, '/'))) throw fail(`“${path.basename(p) || p}” is a system folder, so it stays put.`)
       for (const p of items) if ((await lstat(p)).isSymbolicLink()) throw fail(`“${path.basename(p)}” is a link; remove it in ${FILE_MANAGER}`)
       const error = await moveToTrash(run, items)
       if (error) throw fail(error, 500)

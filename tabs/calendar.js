@@ -15,7 +15,7 @@
 .cal-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 12px; margin: 0 0 14px; }
 .cal-title { margin: 0 6px; font: 700 22px/1.2 var(--display); letter-spacing: .005em; flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cal-nav, .cal-tools { display: flex; align-items: center; gap: 6px; }
-.cal-pill { height: 32px; padding: 0 14px; border-radius: 99px; background: var(--fill); color: var(--blue); font-size: 15px; font-weight: 600; letter-spacing: -0.016em; transition: opacity .15s; }
+.cal-pill { height: 32px; padding: 0 14px; border-radius: 99px; background: var(--fill); color: color-mix(in srgb, var(--blue) 72%, var(--label)); font-size: 15px; font-weight: 600; letter-spacing: -0.016em; transition: opacity .15s; }
 .cal-ic { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 50%; color: var(--blue); flex: none; transition: opacity .15s; }
 .cal-ic.fill { background: var(--fill); }
 .cal-pill:active, .cal-ic:active { opacity: .35; }
@@ -129,6 +129,8 @@
   .cal-more .long { display: none; }
   .cal-panel { display: block; }
   .cal-wk { --gut: 30px; --hh: 44px; }
+  .cal-wk .cal-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .cal-wk .cal-sticky, .cal-wk .cal-hours { min-width: 560px; }
   .cal-wh .dwl { display: none; }
   .cal-wh .dws { display: block; }
   .cal-wh .dn { min-width: 24px; height: 24px; font-size: 15px; border-radius: 12px; }
@@ -190,7 +192,7 @@
     const last = addDays(e, -1)
     const sameYear = s.getFullYear() === last.getFullYear()
     const a = dfmt(s, { month: 'short', day: 'numeric', year: sameYear ? undefined : 'numeric' })
-    const b = dfmt(last, { month: s.getMonth() === last.getMonth() ? undefined : 'short', day: 'numeric', year: 'numeric' })
+    const b = s.getMonth() === last.getMonth() ? `${last.getDate()}, ${last.getFullYear()}` : dfmt(last, { month: 'short', day: 'numeric', year: 'numeric' })
     return `${a} – ${b}`
   }
 
@@ -645,6 +647,7 @@
       btn.textContent = 'Adding…'
       try {
         const r = await post('quick', { text: input.value })
+        if (r.ok === false) throw new Error(r.message)
         hud(r.message || 'Event added')
         close()
         reload()
