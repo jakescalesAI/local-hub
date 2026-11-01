@@ -230,7 +230,7 @@ You may say which of these fields the live endpoints report as missing (for exam
 - `chat.mjs` and `tabs/chat.js` this assistant (back end and the bar/card/full-chat page code)
 - `index.html` the page and shared styles; `tabs/*.js` each tab's page code
 - `server-probe.py`, `server-files.py` run on the server over ssh; `icloud-storage.py` reads iCloud storage on Windows
-- `platform.mjs` what differs between Windows, Mac and Linux; `access.mjs` the passcode
+- `platform.mjs` what differs between Windows, Mac and Linux; `access.mjs` the passcode; `device-auth.mjs` paired phones
 - `restart.ps1`, `start-hidden.vbs` restart and start the hub on Windows; `start.sh`, `restart.sh` on Mac and Linux
 - `config.mjs` reads `config/`; `hub-setup.mjs` and `tabs/setup.js` the first-run wizard, add-ons and themes
 - `themes/default.json` the default look; `browser-rules.md` the browser rules
@@ -631,6 +631,7 @@ These are in the code, not settings:
 - Out of the box, only this computer: the hub listens on `127.0.0.1`. This computer never needs a passcode.
 - `"access": "tailnet"` also listens on your Tailscale address, for your own devices. Tailscale is optional.
 - `"listen": ["192.168.1.20"]` adds other addresses.
+- A paired device skips the passcode. Codes come from `/pair/new`, which only opens on this computer, or from a paired device. A code lasts 5 minutes, works once, and five wrong guesses burn it. The hub keeps only a hash of each device's token, in `data/devices.json`, and removing a device ends its access at once. Paired devices get the same key-file refusals and need `x-hub: 1` like everything else. The assistant can't pair anything: `hub_read` refuses `/api/pair/`, and its browser can't open the hub. `mobile/hub-changes/README.md` has the routes.
 - Any address beyond this computer needs a passcode. Without one the hub doesn't bind those addresses; the wizard asks for it, or run `npm run passcode` on the hub's computer. It is stored as a hash. Five wrong tries from an address lock it out for 15 minutes.
 - `"passcodeRequired": false` turns the passcode off. Use it only when something else already guards the address, such as a private tailnet.
 - Don't put the hub on the open internet. It can see your files and act in your browser.

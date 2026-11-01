@@ -529,11 +529,12 @@ export function create({ run, sshHost, here }) {
     conv.items.push({ kind: 'user', text, at: Date.now(), tab: ctx.tab, ...(saved.length ? { files: saved.map(f => f.name) } : {}), ...(reply ? { reply: trim(reply, 300) } : {}) })
     save(conv)
     emit({ type: 'session', sessionId: conv.id, title: conv.title })
+    if (body.detached) res.end() // the phone goes away after sharing: keep working, the reply lands in the conversation
 
     const pingTimer = setInterval(() => emit({ type: 'ping' }), PING_MS)
     const timer = setTimeout(() => { entry.killed = 'timeout'; killTree(entry.proc) }, TIMEOUT_MS)
     // The page went away (closed, reloaded, network dropped): stop the reply.
-    res.on('close', () => { if (running.get(conv.id) === entry && !entry.finished) { entry.killed = entry.killed || 'disconnect'; killTree(entry.proc) } })
+    res.on('close', () => { if (!body.detached && running.get(conv.id) === entry && !entry.finished) { entry.killed = entry.killed || 'disconnect'; killTree(entry.proc) } })
 
     const prompt = buildPrompt(text, ctx, saved, reply)
     const toolItems = new Map()

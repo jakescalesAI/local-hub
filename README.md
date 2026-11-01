@@ -116,6 +116,7 @@ Only this computer, until you change that.
 - `"access": "tailnet"` in `config/hub.json` adds your Tailscale address, for your own devices. Tailscale is optional.
 - `"listen": ["192.168.1.20"]` adds other addresses.
 - Anything beyond this computer needs a passcode: run `npm run passcode`. Without one, the hub doesn't listen on those addresses.
+- A phone pairs instead of typing the passcode. On this computer, open `/pair/new` for a code that works once, for 5 minutes. Put the hub's https address in `"url"` to get a QR code as well. Pairing opens no new address: a phone still has to reach the hub by one you already turned on. The app in `mobile/` has only run in tests so far.
 
 Don't put the hub on the open internet. It can see your files and act in your browser.
 

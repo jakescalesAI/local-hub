@@ -12,6 +12,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createFiles } from './files.mjs'
 import { HERE, PORT, configPath, hubConfig, tabOn, addonOn } from './config.mjs'
+import { createDeviceAuth } from './device-auth.mjs'
 import { IS_WIN, PYTHON, ROOT_DISK, listeners as listPorts, mutagenPath, tailscalePath } from './platform.mjs'
 import { gate, hasPasscode, passcodeNeeded } from './access.mjs'
 
@@ -303,6 +304,7 @@ async function icloudStorage() {
 }
 
 const filesRoute = createFiles({ run, sshHost: SSH_HOST, here: HERE })
+const deviceAuth = createDeviceAuth({ here: HERE, hubName: () => hubConfig().name, hubUrl: () => hubConfig().url })
 
 // Tab back-ends (ai.mjs, cloud.mjs): each exports create({ run, sshHost, here }) returning
 // route(url, req, res, { send, readBody }) -> true when handled. A missing or broken one only
@@ -351,11 +353,12 @@ function accessLine(req, res, url) {
 async function handle(req, res) {
   const url = new URL(req.url, `http://${req.headers.host}`)
   res.on('close', () => accessLine(req, res, url))
-  if (await gate(req, res, url, send)) return
+  if (!deviceAuth.admit(url, req, res) && await gate(req, res, url, send)) return
   // Changes need the page's x-hub header. A request from another site can't add it without a
   // CORS preflight, which the hub never approves, so other tabs can't move or delete files.
   if (req.method !== 'GET' && req.method !== 'HEAD' && req.headers['x-hub'] !== '1') return send(res, 403, { error: 'missing x-hub header' })
   try {
+    if (await deviceAuth.route(url, req, res, { send })) return
     if (url.pathname === '/' || url.pathname === '/index.html')
       return send(res, 200, await readFile(path.join(HERE, 'index.html')), 'text/html; charset=utf-8')
     if (url.pathname === '/api/ping') return send(res, 200, { ok: true })
