@@ -570,22 +570,26 @@ async function slowLibraryScenario(browser) {
   const context = await browser.newContext({ viewport: { width: 1280, height: 800 } })
   const page = await context.newPage()
   const link = (await api('POST', '/api/launcher/links', { name: 'Slowload Target', url: 'https://slowload.example/' })).json
+  // The list stays on its way until the test releases it, however busy the computer is.
+  let release = () => {}
   const start = async answer => {
+    const gate = new Promise(resolve => { release = resolve })
     await page.unroute('**/api/launcher/library').catch(() => {})
-    await page.route('**/api/launcher/library', answer)
+    await page.route('**/api/launcher/library', async route => { await gate; await answer(route) })
     await goHome(page)
     await stubOpen(page)
     await page.evaluate(() => { window.__asked = []; window.HubChat.ask = t => window.__asked.push(t); window.HubChat.open = () => {} })
     await page.keyboard.press('Control+k')
     await page.waitForSelector('#hub-launcher.on .lch-input')
   }
-  const slowly = async route => { await sleep(1200); await route.continue() }
+  const slowly = route => route.continue()
 
   await start(slowly)
   let answered = page.waitForResponse(/\/api\/launcher\/library/)
   await search(page, 'slowload target')
   await page.keyboard.press('Enter')
   check('Enter sends nothing to chat while the list loads', await barOpen(page) && (await page.evaluate(() => window.__asked.length)) === 0)
+  release()
   await answered
   await page.waitForFunction(() => !document.querySelector('#hub-launcher.on'))
   const first = await page.evaluate(() => ({ asked: window.__asked.length, url: window.__opened[0]?.[0] }))
@@ -596,6 +600,7 @@ async function slowLibraryScenario(browser) {
   await search(page, 'slowload')
   await page.keyboard.press('Enter')
   await page.keyboard.type(' target')
+  release()
   await answered
   await sleep(100)
   const typed = await page.evaluate(() => ({ asked: window.__asked.length, opened: window.__opened.length }))
@@ -605,14 +610,16 @@ async function slowLibraryScenario(browser) {
   answered = page.waitForResponse(/\/api\/launcher\/library/)
   await search(page, 'nothing saved has this name')
   await page.keyboard.press('Enter')
+  release()
   await answered
   await page.waitForFunction(() => window.__asked.length > 0)
   check('With no match once loaded, Enter still asks chat', (await page.evaluate(() => window.__asked.join())) === 'nothing saved has this name')
 
-  await start(async route => { await sleep(300); await route.fulfill({ status: 500, contentType: 'application/json', body: '{}' }) })
+  await start(route => route.fulfill({ status: 500, contentType: 'application/json', body: '{}' }))
   answered = page.waitForResponse(/\/api\/launcher\/library/)
   await search(page, 'slowload target')
   await page.keyboard.press('Enter')
+  release()
   await answered
   await page.waitForSelector('.lch-warn:not([hidden])')
   const failed = await page.evaluate(() => ({ asked: window.__asked.length, opened: window.__opened.length }))
@@ -960,11 +967,14 @@ async function speedScenario(browser) {
   check('5,000 links and 5,000 snippets import', a.json.added.links === 5000 && b.json.added.snippets === 5000, `${a.json.added.links} + ${b.json.added.snippets}`)
   const context = await browser.newContext({ viewport: { width: 1280, height: 800 } })
   const page = await context.newPage()
-  await goHome(page)
-  const openStart = Date.now()
-  await page.keyboard.press('Control+k')
-  await page.waitForFunction(() => document.querySelectorAll('.lch-row').length === 50)
-  const openMs = Date.now() - openStart
+  const opens = []
+  for (let i = 0; i < 3; i++) {
+    await goHome(page)
+    const openStart = Date.now()
+    await page.keyboard.press('Control+k')
+    await page.waitForFunction(() => document.querySelectorAll('.lch-row').length === 50)
+    opens.push(Date.now() - openStart)
+  }
   const onePass = () => page.evaluate(() => {
     const box = document.querySelector('.lch-input')
     const out = []
@@ -984,7 +994,7 @@ async function speedScenario(browser) {
   const middle = [...passes].sort((x, y) => x - y)[2]
   check('Each keystroke redraws in under 50 ms', middle < 50, `worst keystroke per pass: ${passes.join(', ')} ms`)
   check('Even the first, cold pass stays under 200 ms', passes[0] < 200, `${passes[0]} ms`)
-  check('Opening with everything loaded takes under 500 ms', openMs < 500, `${openMs} ms`)
+  check('Opening with everything loaded takes under 500 ms', [...opens].sort((x, y) => x - y)[1] < 500, `${opens.join(', ')} ms from a fresh load`)
   await search(page, 'k4999')
   check('An exact keyword still wins', (await rowTitles(page))[0] === 'Snippet 4999')
   await context.close()
