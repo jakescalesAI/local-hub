@@ -54,7 +54,8 @@ jobs:
         working-directory: mobile/android/app/build/outputs/apk/debug
         run: |
           ls -l
-          "$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/aapt2" dump badging app-debug.apk | grep -E "^(package|sdkVersion|targetSdkVersion|uses-permission|application-label:)"
+          "$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/aapt2" dump badging app-debug.apk | grep -E "^(package|sdkVersion|minSdkVersion|targetSdkVersion|uses-permission|application-label:)" | tee "$RUNNER_TEMP/badging.txt"
+          ! grep -E "RECORD_AUDIO|MODIFY_AUDIO_SETTINGS|ACCESS_(COARSE|FINE)_LOCATION" "$RUNNER_TEMP/badging.txt"
       - uses: actions/upload-artifact@v4
         with:
           name: android-debug-apk

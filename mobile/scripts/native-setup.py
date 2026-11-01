@@ -79,7 +79,12 @@ edit(
     (
         '    <uses-permission android:name="android.permission.INTERNET" />\n',
         '    <uses-permission android:name="android.permission.INTERNET" />\n'
-        '    <uses-feature android:name="android.hardware.camera" android:required="false" />\n',
+        '    <uses-feature android:name="android.hardware.camera" android:required="false" />\n'
+        '    <!-- A plugin asks for these. The app uses neither, so they stay out of the build. -->\n'
+        '    <uses-permission android:name="android.permission.RECORD_AUDIO" tools:node="remove" />\n'
+        '    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" tools:node="remove" />\n'
+        '    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" tools:node="remove" />\n'
+        '    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" tools:node="remove" />\n',
     ),
 )
 write(
