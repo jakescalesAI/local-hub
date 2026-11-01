@@ -60,8 +60,14 @@ export async function prepareStorage() {
 
 export const saveConnection = store.save
 export const saveConnectionInfo = store.saveInfo
-export const loadConnection = store.load
-export const clearConnection = store.clear
+export const clearConnection = async () => {
+  if (__DEV__ && window.__testClearFails) throw new Error('test')
+  await store.clear()
+}
+export const loadConnection = async () => {
+  if (__DEV__ && window.__testTokenReadFails) throw new Error('test')
+  return store.load()
+}
 
 export const queueStorage = {
   get: async key => (await Preferences.get({ key })).value,

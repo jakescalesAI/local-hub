@@ -16,7 +16,7 @@ before(() => {
 
 test('the release bundle carries no test hooks or debug addresses', () => {
   const js = www('app.js')
-  for (const hook of ['__hubTest', '__testScan', '__hubOpened', '__hubCookiesCleared', '__testCookiesFail', '__testStorageFails', '__DEV__']) assert.ok(!js.includes(hook), hook)
+  for (const hook of ['__hubTest', '__testScan', '__hubOpened', '__hubCookiesCleared', '__testCookiesFail', '__testStorageFails', '__testTokenReadFails', '__testClearFails', '__DEV__']) assert.ok(!js.includes(hook), hook)
   assert.ok(!js.includes('console.log('), 'no logging in app code paths')
 })
 

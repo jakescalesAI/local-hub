@@ -71,14 +71,49 @@ async function step(name, fn) {
   console.log(`ok  ${name}`)
 }
 
-// Every write to browser storage, so a token that is saved and later overwritten still shows.
+// Writes to localStorage, sessionStorage, cookies and IndexedDB, so a token that is saved and later
+// overwritten still shows. The Cache API isn't watched, and nothing here can see native storage.
 const storageWrites = []
 await page.exposeFunction('__recordStorageWrite', (key, value) => { storageWrites.push([key, value]) })
 await page.addInitScript(() => {
+  const record = window.__recordStorageWrite
+  // A sandboxed frame, like the demo's, has no storage to watch and throws on reading it.
+  try {
+    void window.localStorage
+  } catch {
+    return
+  }
   const setItem = Storage.prototype.setItem
   Storage.prototype.setItem = function (key, value) {
-    window.__recordStorageWrite(key, String(value))
+    record(key, String(value))
     return setItem.call(this, key, value)
+  }
+  for (const name of ['localStorage', 'sessionStorage']) {
+    const real = window[name]
+    const watched = new Proxy(real, {
+      get: (target, key) => (typeof target[key] === 'function' ? target[key].bind(target) : target[key]),
+      set: (target, key, value) => {
+        record(String(key), String(value))
+        target[key] = value
+        return true
+      },
+    })
+    Object.defineProperty(window, name, { get: () => watched })
+  }
+  const cookie = Object.getOwnPropertyDescriptor(Document.prototype, 'cookie')
+  Object.defineProperty(document, 'cookie', {
+    get: () => cookie.get.call(document),
+    set: value => {
+      record('document.cookie', String(value))
+      cookie.set.call(document, value)
+    },
+  })
+  for (const method of ['add', 'put']) {
+    const real = IDBObjectStore.prototype[method]
+    IDBObjectStore.prototype[method] = function (value, key) {
+      record(`indexedDB.${this.name}`, JSON.stringify(value) ?? '')
+      return real.call(this, value, key)
+    }
   }
 })
 
@@ -393,6 +428,40 @@ try {
     await failing.locator('[data-test="scan"]').waitFor()
     assert.deepEqual(errors, [])
     await failing.close()
+  })
+
+  await step('a token that can\'t be read shows the same screen, not the welcome screen, and nothing is lost', async () => {
+    await pairByLink()
+    const failing = await context.newPage()
+    await failing.addInitScript(() => { if (!sessionStorage.getItem('storage-back')) window.__testTokenReadFails = true })
+    await failing.goto(SHELL)
+    await failing.getByRole('heading', { name: 'Local Hub couldn\'t start' }).waitFor()
+    assert.equal(await failing.locator('[data-test="scan"]').count(), 0)
+    await failing.evaluate(() => sessionStorage.setItem('storage-back', '1'))
+    await failing.locator('[data-test="start-retry"]').click()
+    await failing.locator('[data-test="status"][data-state="ok"]').waitFor({ timeout: 10000 })
+    await failing.close()
+  })
+
+  await step('if it keeps failing, the person can forget the Hub here and pair again', async () => {
+    const failing = await context.newPage()
+    await failing.addInitScript(() => { if (!sessionStorage.getItem('storage-back')) window.__testTokenReadFails = true })
+    await failing.goto(SHELL)
+    await failing.evaluate(() => { window.__testClearFails = true })
+    await failing.locator('[data-test="start-forget"]').click()
+    await failing.getByText('That didn\'t work either').waitFor()
+    await failing.evaluate(() => {
+      window.__testClearFails = false
+      sessionStorage.setItem('storage-back', '1')
+    })
+    await failing.locator('[data-test="start-forget"]').click()
+    await failing.locator('[data-test="scan"]').waitFor()
+    await failing.close()
+    const { devices } = await (await fetch(`${hub.base}/api/pair/devices`)).json()
+    assert.equal(devices.length, 1, 'still listed on the Hub, as the screen says')
+    assert.equal((await fetch(`${hub.base}/api/pair/devices/${devices[0].id}/remove`, { method: 'POST', headers: { 'x-hub': '1' } })).status, 200)
+    await page.reload()
+    await T('scan').waitFor()
   })
 
   await step('no token was ever written anywhere but secure storage', async () => {

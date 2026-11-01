@@ -134,8 +134,9 @@ that we will pass.
 ### To settle before a store build
 
 - **Android `minifyEnabled false`.** The release build isn't shrunk, so the APK is larger than it has
-  to be and its code is easier to read. Turning on R8 can strip what plugins reach by reflection, and
-  there is no release build or device here to prove it doesn't, so it waits for the first release build.
+  to be and its code is easier to read. Fine for debug CI, but turn it on and test it before a store
+  build. R8 can strip what plugins reach by reflection, so Capacitor's bridge will need keep rules, and
+  there is no release build or device here to prove them.
 - **File provider.** It now covers the app's own external files and its cache, not all external
   storage. Capacitor's and the in-app browser's camera files use those two places. Photo and video
   capture through the Hub page hasn't been run on a device.
@@ -157,7 +158,7 @@ that we will pass.
 Five wrong guesses burn the code. Removing a phone in the Hub ends its access, and the app shows
 "This phone was removed" with a way to pair again.
 
-Two choices, made on purpose:
+Three choices, made on purpose:
 
 - **Any HTTPS address is accepted.** People host on any domain, so no list of allowed hosts could
   work. The confirm screen, which shows the full address with its warning, is the only guard. Someone
@@ -167,6 +168,10 @@ Two choices, made on purpose:
   the computer itself, and forwarding headers can't be trusted, so the Hub can't tell callers apart. Anyone
   who can reach the claim route can burn a live code. The cost is making a new one, and guessing stays
   negligible.
+- **A Hub name may look like an address.** Control, direction and invisible characters are removed, and
+  a name with nothing left to read is refused. A name like `hub.example.test` stays allowed, because
+  people name a Hub after its machine or domain, and the person already chose the real address on the
+  confirm screen. Settings shows that address.
 
 ### Reaching it away from home, without exposing it
 
@@ -223,7 +228,7 @@ The Hub's passcode gate closes it to every other device, and it has no way to re
 paired device has to become a second way past that gate. It is written and tested in
 [`hub-changes/`](hub-changes/README.md), with the exact lines for `server.mjs` and `chat.mjs`, for the
 Hub's owner to apply. Nothing in the Hub itself has been changed. It was tested against the real
-`server.mjs` at commit `cfe83f9`, and refuses to apply to a Hub without the gate.
+`server.mjs` at commit `a2b7c0f`, and refuses to apply to a Hub without the gate.
 
 | Route | Who | What |
 | --- | --- | --- |
@@ -262,12 +267,12 @@ Simulator builds need no signing and no account. Anything on a real iPhone needs
 [Apple asks that apps be tested on a device before submitting](https://developer.apple.com/app-store/review/guidelines/),
 so at least one TestFlight round on a real phone is needed.
 
-### First results (2026-11-01, GitHub Actions)
+### Results at `4361acf` (2026-11-01, GitHub Actions)
 
 | Build | Result | Run time | What it shows |
 | --- | --- | --- | --- |
-| Android debug, Ubuntu, JDK 21 | Success, 12.6 MB APK | 3 min 40 s | It compiles and the manifest merges. Never opened |
-| iOS simulator, unsigned, Xcode 26.6 | Success, no errors | 2 min 33 s | It compiles, the share extension is inside the app, and the app opened to its welcome screen once |
+| Android debug, Ubuntu, JDK 21 | Success, 12.6 MB APK | 4 min 29 s | It compiles and the manifest merges, and the web UI test passes in headless Edge. Never opened |
+| iOS simulator, unsigned, Xcode 26.6 | Success, no errors | 3 min 24 s | It compiles, the share extension and its privacy manifest are inside the app, and the app opened to its welcome screen once |
 
 A build that compiles doesn't show the app works. Nothing was tapped in either build, and neither ran
 on a real device. The first APK also showed that a plugin adds microphone and location permissions.

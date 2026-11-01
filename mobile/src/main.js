@@ -356,7 +356,11 @@ const SCREENS = {
       h('img', { class: 'logo', src: 'icon.png', alt: '', width: '72', height: '72' }),
       title('Local Hub couldn\'t start'),
       h('p', { class: 'lead' }, 'This device\'s secure storage didn\'t respond. Nothing was changed. Try again, or restart the device if this keeps happening.'),
-      h('div', { class: 'stack' }, button('Try again', () => location.reload(), { kind: 'primary', test: 'start-retry' }))),
+      noticeLine(),
+      h('div', { class: 'stack' },
+        button('Try again', () => location.reload(), { kind: 'primary', test: 'start-retry' }),
+        button('Forget this Hub here', forgetAndRestart, { disabled: app.busy, test: 'start-forget' })),
+      h('p', { class: 'foot' }, 'Forgetting lets you pair again. Text waiting to send is lost, and this device stays on your Hub\'s list until you remove it there.')),
 
   demoHub: () =>
     h('main', { class: 'hubview' },
@@ -402,10 +406,26 @@ async function forgetLocal() {
 
 // --- Start
 
+// The way out when secure storage keeps failing, since nothing else can be reached from that screen.
+async function forgetAndRestart() {
+  app.busy = true
+  render()
+  try {
+    await native.clearConnection()
+    await createQueue({ storage: native.queueStorage, send: async () => {} }).clear()
+    await native.clearHubCookies()
+    location.reload()
+  } catch {
+    app.busy = false
+    app.notice = 'That didn\'t work either. Restart the device and try again.'
+    render()
+  }
+}
+
 async function start() {
   try {
     await native.prepareStorage()
-    const saved = await native.loadConnection().catch(() => null)
+    const saved = await native.loadConnection()
     if (saved) {
       connect(saved.conn, realHub(saved.conn, saved.token), native.queueStorage)
       app.waiting = await app.queue.list()

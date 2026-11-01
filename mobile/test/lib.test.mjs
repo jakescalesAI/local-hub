@@ -134,6 +134,30 @@ test('client: a server error that isn\'t text never reaches the screen as text',
   assert.ok((await answer(403, 'e'.repeat(5000)).claim('https://h.test', 'X', opts)).error.length <= 300)
 })
 
+test('client: a Hub name loses what can\'t be seen, and needs something that can', async () => {
+  const opts = { name: 'n', platform: 'ios' }
+  const reply = name => createClient({ http: fakeHttp(() => ({ status: 200, data: JSON.stringify({ token: 'T', deviceId: 'D', hub: { id: '1', name } }) })) })
+  for (const name of ['\u200b\u200b\u200b', '\u2066\u202e', '\u0000\u0007', '\u0301', '\ufe0f', '\u3164', '\u2800', '\u00ad', ' \u200b ']) {
+    assert.deepEqual(await reply(name).check('https://h.test', 't'), { status: 500 }, JSON.stringify(name))
+    assert.equal((await reply(name).claim('https://h.test', 'X', opts)).ok, false, JSON.stringify(name))
+  }
+  const cases = {
+    'Safe\u202eBank': 'SafeBank',
+    'a\u0000b\u001bc\u007f': 'abc',
+    'Ha\u200bllo': 'Hallo',
+    'My\nHub': 'My Hub',
+    'Caf\u00e9 Cafe\u0301': 'Caf\u00e9 Cafe\u0301',
+    '\u{1F48E} Hub': '\u{1F48E} Hub',
+    'hub.example.test': 'hub.example.test',
+  }
+  for (const [name, shown] of Object.entries(cases)) assert.equal((await reply(name).check('https://h.test', 't')).hub.name, shown)
+})
+
+test('client: a server error loses the same characters', async () => {
+  const http = fakeHttp(() => ({ status: 400, data: '{"error":"Too\\u202e long\\u0007"}' }))
+  assert.equal((await createClient({ http }).send('https://h.test', 't', 'x')).error, 'Too long')
+})
+
 const fakeStores = () => {
   const secure = { value: null, set: async v => { secure.value = v }, get: async () => secure.value, remove: async () => { secure.value = null } }
   const entries = new Map()
@@ -168,6 +192,22 @@ test('load reads the token only from secure storage: restored details alone mean
   await store.save({ address: 'https://h.test' }, 'THE-TOKEN')
   secure.value = null
   assert.equal(await store.load(), null)
+})
+
+test('load lets a storage failure through, so it isn\'t mistaken for not being paired', async () => {
+  const { secure, prefs } = fakeStores()
+  const store = createConnectionStore({ secure, prefs })
+  await store.save({ address: 'https://h.test' }, 'THE-TOKEN')
+  const realGet = secure.get
+  secure.get = async () => { throw new Error('keystore') }
+  await assert.rejects(store.load(), /keystore/)
+  secure.get = realGet
+  const realPrefs = prefs.get
+  prefs.get = async () => { throw new Error('prefs') }
+  await assert.rejects(store.load(), /prefs/)
+  prefs.get = realPrefs
+  prefs.entries.set('connection', '{not json')
+  assert.equal(await store.load(), null, 'damaged details mean pair again')
 })
 
 test('the app wires the store to the real secure storage plugin', () => {

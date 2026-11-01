@@ -9,6 +9,7 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import crypto from 'node:crypto'
 import http from 'node:http'
+import net from 'node:net'
 import os from 'node:os'
 import path from 'node:path'
 import { apply } from '../apply.mjs'
@@ -19,7 +20,16 @@ if (!repo) {
   process.exit(2)
 }
 
-const PORT = 3199
+const freePort = () => new Promise((resolve, reject) => {
+  const probe = net.createServer()
+  probe.on('error', reject)
+  probe.listen(0, '127.0.0.1', () => {
+    const { port } = probe.address()
+    probe.close(() => resolve(port))
+  })
+})
+
+const PORT = await freePort()
 const REPLY_MS = 4000
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'hub-real-'))
 const copy = path.join(tmp, 'hub')

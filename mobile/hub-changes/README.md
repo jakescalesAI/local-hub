@@ -2,7 +2,7 @@
 
 The Hub's passcode gate (`access.mjs`) closes it to every other device. These changes add a second way
 past that gate, a paired device, for the Hub's owner to apply. **Nothing in the Hub has been changed
-by this branch.** They apply to, and were tested against, Hub commit `cfe83f9`.
+by this branch.** They apply to, and were tested against, Hub commit `a2b7c0f`.
 
 Browsers that sign in with the passcode work as they did. There is no setting to turn on.
 
@@ -118,7 +118,7 @@ login page at `/`. POSTs still need the Hub's existing `x-hub: 1` header.
 ```bash
 cd mobile/hub-changes
 node --test test/device-auth.test.mjs
-node test/real-hub.mjs <path-to-hub-checkout> cfe83f9
+node test/real-hub.mjs <path-to-hub-checkout> a2b7c0f
 ```
 
 The first runs the module behind a test server and a stand-in for `tailscale serve`. The second copies the

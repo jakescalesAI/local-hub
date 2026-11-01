@@ -8,13 +8,18 @@ export const MAX_SHARE_CHARS = 8000 // the Hub's chat takes no more than this
 export const MAX_HUB_NAME = 60
 const MAX_ERROR_CHARS = 300
 
-const clip = (text, limit) => [...text.trim().replace(/\s+/g, ' ')].slice(0, limit).join('')
+// Control and direction characters, and the ones that draw nothing. Emoji joined with a zero-width
+// joiner come apart, which is a fair price for text from the other end.
+const UNSEEN = /[\p{Cc}\p{Cf}\p{Cs}\p{Co}\p{Default_Ignorable_Code_Point}\u2800]/gu
+const VISIBLE = /[\p{L}\p{N}\p{P}\p{S}]/u
 
-// A reply only counts as a Hub if it names itself. The name comes from the other end, so it's cut to
-// a length the screens can hold.
+const clip = (text, limit) => [...text.replace(/\s/g, ' ').replace(UNSEEN, '').replace(/ +/g, ' ').trim()].slice(0, limit).join('')
+
+// A reply only counts as a Hub if it names itself with something a person can read. The name comes
+// from the other end, so it's cut to a length the screens can hold.
 function readHub(hub) {
   const name = typeof hub?.name === 'string' ? clip(hub.name, MAX_HUB_NAME) : ''
-  return name ? { id: typeof hub.id === 'string' ? hub.id : undefined, name } : null
+  return VISIBLE.test(name) ? { id: typeof hub.id === 'string' ? hub.id : undefined, name } : null
 }
 
 const readError = (body, fallback) => (typeof body?.error === 'string' && clip(body.error, MAX_ERROR_CHARS)) || fallback

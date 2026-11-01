@@ -11,12 +11,17 @@ export function createConnectionStore({ secure, prefs }) {
       await secure.set(token)
       await saveInfo(conn)
     },
+    // Nothing saved means pair again. Storage that fails throws, so it's never mistaken for that.
     async load() {
       const { value } = await prefs.get({ key: CONN_KEY })
       if (!value) return null
       const token = await secure.get()
       if (typeof token !== 'string' || !token) return null // restored onto a new device: pair again
-      return { conn: JSON.parse(value), token }
+      try {
+        return { conn: JSON.parse(value), token }
+      } catch {
+        return null
+      }
     },
     async clear() {
       await secure.remove()
