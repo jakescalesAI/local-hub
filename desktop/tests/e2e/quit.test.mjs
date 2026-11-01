@@ -6,6 +6,7 @@ import assert from 'node:assert/strict'
 import { spawn, spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
+import path from 'node:path'
 import { describe, test } from 'node:test'
 
 import {
@@ -64,6 +65,43 @@ async function assertAllGone({ port, mainPid, hubPid, grandchild }, from, mainLi
 
 const pressQuit = handle => trayItem(handle, 'quit').catch(() => {})
 
+// The Hub's watcher closes the browser after 30 s of silence from the Hub, checking every 5 s.
+const BROWSER_GONE_LIMIT_MS = 60_000
+
+// Everything a packaged app on this profile has running: app, Hub, browser and the browser's watcher.
+function running(userData) {
+  const script = `Get-CimInstance Win32_Process | Where-Object { $_.Name -ne 'powershell.exe' -and $_.CommandLine -like '*${path.basename(userData)}*' } | ForEach-Object { '' + $_.ProcessId + ' ' + $_.Name }`
+  const { stdout } = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', '-'], { input: script, encoding: 'utf8', windowsHide: true })
+  return stdout.split(/\r?\n/).map(line => line.trim()).filter(Boolean)
+}
+
+function endWhatIsLeft(t, userData) {
+  cleanup(t, async () => {
+    for (const line of running(userData)) try { process.kill(Number(line.split(' ')[0])) } catch {}
+    await sleep(1000)
+  })
+}
+
+// Headless, on a profile inside the test's own folder, so nothing shows and no real sign-ins are near it.
+async function openBrowser(port) {
+  const res = await fetch(`http://localhost:${port}/api/browser/act`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-hub': '1' },
+    body: JSON.stringify({ act: 'open', url: `http://localhost:${port}/api/ping` }),
+    signal: AbortSignal.timeout(60_000),
+  })
+  return { ok: res.ok, text: await res.text() }
+}
+
+const browserRunning = userData => running(userData).some(line => /chrome|msedge/i.test(line))
+
+async function allGoneWithin(userData, ms, from) {
+  await waitFor(() => running(userData).length === 0, 'nothing of this profile left', ms).catch(error => {
+    throw new Error(`${error.message}: ${running(userData).join('; ')}`)
+  })
+  return Date.now() - from
+}
+
 describe('quitting', () => {
   test('at rest, a tray quit ends the app and leaves no Hub or anything it started behind', async t => {
     const app = await startApp(t)
@@ -119,6 +157,71 @@ describe('quitting', () => {
     await handle.app.evaluate(({ app }) => { setImmediate(() => app.quit()) }).catch(() => {})
     t.diagnostic(`real Hub: ${JSON.stringify(await assertAllGone({ port, mainPid, hubPid, grandchild: hubPid }, from))}`)
     stopAgain()
+  })
+
+  test('the built app with the browser open: a quit ends the browser too', async t => {
+    if (!fs.existsSync(PACKAGED_EXE)) return t.skip('no build at dist/win-unpacked (could not check; not a pass)')
+    const port = await freePort()
+    const userData = makeUserData({ port })
+    cleanup(t, () => removeUserData(userData))
+    endWhatIsLeft(t, userData)
+    const handle = await launch({ userData, packaged: true, args: ['--hidden'] })
+    await waitFor(() => ping(port), 'the real Hub to answer', 90_000)
+    const opened = await openBrowser(port)
+    if (!opened.ok && /chrome|edge/i.test(opened.text)) return t.skip(`no browser to open (could not check; not a pass): ${opened.text}`)
+    assert.ok(opened.ok, opened.text)
+    assert.ok(browserRunning(userData))
+    const from = Date.now()
+    await handle.app.evaluate(({ app }) => { setImmediate(() => app.quit()) }).catch(() => {})
+    t.diagnostic(`all gone after ${await allGoneWithin(userData, QUIT_LIMIT_MS, from)} ms`)
+  })
+
+  test('the built app crashing with the browser open: the Hub goes at once and the browser soon after', async t => {
+    if (!fs.existsSync(PACKAGED_EXE)) return t.skip('no build at dist/win-unpacked (could not check; not a pass)')
+    const port = await freePort()
+    const userData = makeUserData({ port })
+    cleanup(t, () => removeUserData(userData))
+    endWhatIsLeft(t, userData)
+    // Started directly, because Playwright has its own way of ending what it started.
+    const env = { ...process.env }
+    delete env.ELECTRON_RUN_AS_NODE
+    const app = spawn(PACKAGED_EXE, [`--user-data-dir=${userData}`, '--hidden'], { env, stdio: 'ignore', windowsHide: true })
+    await waitFor(() => ping(port), 'the real Hub to answer', 90_000)
+    const opened = await openBrowser(port)
+    if (!opened.ok && /chrome|edge/i.test(opened.text)) return t.skip(`no browser to open (could not check; not a pass): ${opened.text}`)
+    assert.ok(opened.ok, opened.text)
+    assert.ok(browserRunning(userData))
+    const from = Date.now()
+    process.kill(app.pid, 'SIGKILL')
+    await waitFor(async () => !await ping(port), 'the Hub to stop answering', 5000)
+    t.diagnostic(`at the crash: ${running(userData).join('; ')}`)
+    t.diagnostic(`all gone after ${await allGoneWithin(userData, BROWSER_GONE_LIMIT_MS, from)} ms`)
+  })
+
+  test('the built app restarted after a crash picks the browser up, and then a quit still ends it', async t => {
+    if (!fs.existsSync(PACKAGED_EXE)) return t.skip('no build at dist/win-unpacked (could not check; not a pass)')
+    const port = await freePort()
+    const userData = makeUserData({ port })
+    cleanup(t, () => removeUserData(userData))
+    endWhatIsLeft(t, userData)
+    const env = { ...process.env }
+    delete env.ELECTRON_RUN_AS_NODE
+    const app = spawn(PACKAGED_EXE, [`--user-data-dir=${userData}`, '--hidden'], { env, stdio: 'ignore', windowsHide: true })
+    await waitFor(() => ping(port), 'the real Hub to answer', 90_000)
+    const opened = await openBrowser(port)
+    if (!opened.ok && /chrome|edge/i.test(opened.text)) return t.skip(`no browser to open (could not check; not a pass): ${opened.text}`)
+    assert.ok(opened.ok, opened.text)
+    process.kill(app.pid, 'SIGKILL')
+    await waitFor(async () => !await ping(port), 'the Hub to stop answering', 5000)
+
+    const handle = await launch({ userData, packaged: true, args: ['--hidden'] })
+    await waitFor(() => ping(port), 'the real Hub to answer again', 90_000)
+    assert.ok((await openBrowser(port)).ok)
+    const from = Date.now()
+    await handle.app.evaluate(({ app: electronApp }) => { setImmediate(() => electronApp.quit()) }).catch(() => {})
+    await waitFor(async () => !await ping(port), 'the Hub to go', QUIT_LIMIT_MS)
+    t.diagnostic(`after the quit: ${running(userData).join('; ')}`)
+    t.diagnostic(`all gone after ${await allGoneWithin(userData, BROWSER_GONE_LIMIT_MS, from)} ms`)
   })
 
   test('a Hub stop that outlasts the limit can\'t hold the app, and the Hub goes with it', async t => {

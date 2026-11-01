@@ -105,9 +105,10 @@ never touch `config/` or `data/`.
 - Permissions are refused except clipboard writes and fullscreen for the Hub's origin.
 - No telemetry and no auto-update.
 
-**If the app crashes.** The built-in Hub stops with it. A browser the Hub started keeps running, since
-the Hub starts it detached so it survives a Hub restart. The next Hub reuses it. A normal quit doesn't
-stop a browser it inherited this way, so it stays until the Hub's idle timer or a restart closes it.
+**If the app crashes.** The built-in Hub stops with it. A browser the Hub started keeps running for about
+30 seconds, because it's started so that it can survive a Hub restart. If the app comes back in that time,
+the Hub reuses it. If not, a small watcher the Hub starts closes it. A browser reused this way also closes
+about 30 seconds after a later quit, not with it.
 
 ## For whoever builds the `/launcher` page
 
