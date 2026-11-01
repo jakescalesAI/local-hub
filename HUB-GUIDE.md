@@ -142,14 +142,14 @@ Three more read-only routes stand in for a shell. The assistant has them as the 
 
 Two tools change things, through routes that keep the same refusals:
 
-- `file_op` (`POST /api/agent/file`) moves, copies, renames and trashes. Moves, renames and trash work inside `workspace/` and `assistant.writeFolders`, and copies can come from any folder the assistant can read. It refuses key files, a folder with a key file or a link anywhere inside, and places where files run as code (`.git`, `.claude`, `.vscode`, startup folders, shell profiles, `CLAUDE.md`). Nothing is overwritten. Trash waits for a card, and the file goes to the bin or trash, where you can restore it.
+- `file_op` (`POST /api/agent/file`) moves, copies, renames and trashes. Moves, renames and trash work inside `workspace/` and `assistant.writeFolders`, and copies can come from any folder the assistant can read. It refuses key files, a folder with a key file or a link anywhere inside, and places where files run as code (`.git`, `.claude`, `.vscode`, startup folders, shell profiles, `CLAUDE.md`). It also refuses a file with a second hard link and Windows device names such as `NUL`. Nothing is overwritten, and operations run one at a time. Trash waits for a card, and the file goes to the bin or trash, where you can restore it. If what the card showed changes before the yes, nothing moves.
 - `hub_action` (`POST /api/agent/action`) runs a named action, and nothing else: `refresh`, `refresh_ai`, `refresh_cloud`, `refresh_stripe`, `refresh_calendar`, `calendar_add`, `calendar_update`, `calendar_delete`, `calendar_quick`. The last two wait for a card. The refreshes only read Cloud and Stripe again. No action changes `writeFolders`, `assistant.approvals`, deny lists, keys or `laptop.probe`, and `assistant.tools.actions: false` turns the tool off.
 
 A card's Allow is the only yes. The agent can't answer one or pass a flag instead, and the hub does the step itself once you allow it. `GET /api/agent/log` lists each of these, newest first, in `data/agent-actions.log`.
 
 `data/access.log` has one line per request: time, method, path, status, address, and the forwarded address if a proxy sent one. It never has a query string. Successful `/api/ping` and `/api/state` polls aren't written, and it's kept to about 40 MB. `"accessLog": false` in hub.json turns it off.
 
-`hub_read` refuses `/api/files/<root>/text` and `/files/<root>/raw` (file contents) and anything touching `config/secrets.json`. Use Read for files.
+`hub_read` refuses `/api/files/<root>/text` and `/files/<root>/raw` (file contents) and anything touching `config/secrets.json`. Use Read for files. It also refuses `/api/launcher/`, because saved snippets can hold personal text or tokens, and `/api/pair/`, because pairing is the user's to do.
 
 Fast paths: for Claude usage questions read `/api/ai/usage` (small). Do not fetch the big endpoints unless the question needs them, and do not paste raw JSON at the user; summarise.
 

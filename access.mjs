@@ -98,6 +98,7 @@ const noPasscodePage = name => page(name, `<h1>${esc(name)}</h1><p>This hub is s
 
 async function readJsonBody(req) {
   let raw = ''
+  req.setEncoding('utf8') // so a character split across two chunks stays whole
   for await (const chunk of req) {
     raw += chunk
     if (raw.length > 4096) return {}

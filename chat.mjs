@@ -33,7 +33,7 @@ import os from 'node:os'
 import crypto from 'node:crypto'
 import { HERE, PORT, configPath, hubConfig, secrets, secretValues, scrubSecrets, enabledTabs, addonOn, ownerNotes, ownerInstructions } from './config.mjs'
 import { OS_NAME, TRASH_NAME } from './platform.mjs'
-import { RUN_DIRS, RUN_FILES, holdsKeys } from './files.mjs'
+import { RUN_DIRS, RUN_EXTS, RUN_FILES, holdsKeys } from './files.mjs'
 
 const TIMEOUT_MS = 6 * 60e3 // one reply, start to finish
 const PING_MS = 15e3
@@ -91,7 +91,7 @@ function denyList() {
     '~/.claude/**', 'config/**', 'data/**', `${ruleDir(HERE)}/config/**`, `${ruleDir(HERE)}/data/**`]
   return [
     ...['Read', 'Grep', 'Glob', 'Edit', 'Write'].flatMap(t => keys.map(k => `${t}(${k})`)),
-    ...['Edit', 'Write'].flatMap(t => [...RUN_FILES.map(f => `//**/${f}`), ...RUN_DIRS.map(d => `//**/${d}/**`)].map(k => `${t}(${k})`)),
+    ...['Edit', 'Write'].flatMap(t => [...RUN_FILES.map(f => `//**/${f}`), ...RUN_EXTS.map(e => `//**/*${e}`), ...RUN_DIRS.map(d => `//**/${d}/**`)].map(k => `${t}(${k})`)),
     'Bash', 'PowerShell', 'NotebookEdit', 'MultiEdit',
     // the hub itself goes through its own routes, below, not a web fetch
     'WebFetch(domain:localhost)', 'WebFetch(domain:127.0.0.1)',

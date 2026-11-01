@@ -139,6 +139,9 @@ async function hubRead({ path } = {}) {
   let plain = url.pathname + url.search
   try { plain = decodeURIComponent(plain) } catch {}
   if (/^\/api\/files\/[^/]+\/(text|write|raw)\b|secret/i.test(plain)) return text('File contents don\'t go through hub_read. Use Read, which keeps key files refused.', true)
+  // Snippets can hold personal text or tokens, so the user's own library stays theirs to open.
+  if (/^\/api\/launcher\//i.test(plain)) return text('Saved links and snippets don\'t go through hub_read. They are the user\'s own, so ask them for what you need.', true)
+  if (/^\/api\/pair\//i.test(plain)) return text('Paired devices don\'t go through hub_read. Pairing is for the user to do at /pair/new on this computer.', true)
   const r = await fetch(url, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(60e3) })
   if (!/json|text/i.test(r.headers.get('content-type') || '')) return text(`That path returns ${r.headers.get('content-type') || 'no text'}, which hub_read can't show.`, true)
   const body = await r.text()

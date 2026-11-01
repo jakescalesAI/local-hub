@@ -278,6 +278,7 @@ function send(res, code, body, type = 'application/json') {
 
 async function readBody(req) {
   let raw = ''
+  req.setEncoding('utf8') // so a character split across two chunks stays whole
   for await (const chunk of req) raw += chunk
   return raw ? JSON.parse(raw) : {}
 }

@@ -101,7 +101,8 @@ async function folderSize(asked) {
 // Config inside a repo can make git run a program or look in another folder, and a folder someone unzipped, or one the
 // assistant wrote to, could carry it. So only settings known to do neither are accepted, and any other refuses the repo.
 const REPO_INERT = /^(core\.(repositoryformatversion|filemode|bare|logallrefupdates|ignorecase|precomposeunicode|symlinks|autocrlf|eol|safecrlf|longpaths|abbrev|quotepath|preloadindex|fscache|checkstat|trustctime|commitgraph|multipackindex|untrackedcache|sparsecheckout|sparsecheckoutcone)|extensions\.(worktreeconfig|objectformat)|remote\.[^\n]*\.(url|pushurl|fetch|tagopt|prune|gh-resolved)|branch\.[^\n]*\.\S+|(user|author|committer|init|pull|push|fetch|gc|pack|rerere|maintenance|color|advice|commit|tag|rebase|lfs)\.\S+)$/i
-const GIT = ['--no-pager', '--no-optional-locks', '-c', 'core.fsmonitor=false', '-c', 'core.hooksPath=', '-c', 'diff.external=', '-c', 'core.quotePath=false', '-c', 'log.showSignature=false']
+// --literal-pathspecs: a tracked file named like a pattern, such as [s]ecrets.json, would otherwise pull in the file it matches.
+const GIT = ['--literal-pathspecs', '--no-pager', '--no-optional-locks', '-c', 'core.fsmonitor=false', '-c', 'core.hooksPath=', '-c', 'diff.external=', '-c', 'core.quotePath=false', '-c', 'log.showSignature=false']
 const REF = /^(?!-)[\w./~^!@{}+-]{1,120}$/
 
 async function gitRead(run, op, q) {

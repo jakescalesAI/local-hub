@@ -32,17 +32,21 @@ const inside = (p, root) => {
   return !r || (!r.startsWith('..') && !path.isAbsolute(r))
 }
 const exists = p => lstat(p).then(() => true, () => false)
+const str = v => typeof v === 'string' ? v : ''
+const clip = v => str(v).slice(0, 2000) // a log line stays a line, whatever was asked
+// Windows opens these as devices. A file called one of them, with any extension, can't be opened or removed by most programs.
+const DEVICE_NAME = /^(con|prn|aux|nul|clock\$|conin\$|conout\$|com[0-9¹²³]|lpt[0-9¹²³])\s*(\..*)?$/i
 
 // Spellings Windows treats as another name for a file, and anything that isn't a plain path, never get as far as a check.
 function plainPath(asked) {
-  const s = String(asked ?? '')
+  const s = str(asked)
   if (!s.trim()) throw fail('Pass a path.')
   if (/[\0-\x1f]/.test(s)) throw fail('That isn’t a path.')
   if (IS_WIN && /^[\\/]{2}/.test(s)) throw fail('Network paths aren’t allowed.', 403)
   const abs = path.resolve(HERE, s.replace(/^~(?=$|[\\/])/, os.homedir()))
   if (IS_WIN) {
     const parts = abs.slice(path.parse(abs).root.length).split(path.sep).filter(Boolean)
-    if (parts.some(x => /[<>:"|?*]/.test(x) || /[. ]$/.test(x))) throw fail('That name isn’t allowed.')
+    if (parts.some(x => /[<>:"|?*]/.test(x) || /[. ]$/.test(x) || DEVICE_NAME.test(x))) throw fail('That name isn’t allowed.')
   }
   return abs
 }
@@ -76,8 +80,11 @@ async function checkFolder(dir) {
       const p = path.join(d, e.name)
       refuse(p)
       if (e.isSymbolicLink()) throw fail(`“${path.relative(dir, p)}” is a link, so the hub won’t touch this folder.`, 403)
-      if (e.isDirectory()) await walk(p)
-      else { sum.files++; sum.bytes += (await lstat(p)).size }
+      if (e.isDirectory()) { await walk(p); continue }
+      const st = await lstat(p)
+      if (st.nlink > 1) throw fail(`“${path.relative(dir, p)}” has another name elsewhere, so the hub won’t touch this folder.`, 403)
+      sum.files++
+      sum.bytes += st.size
     }
   }
   await walk(dir)
@@ -89,6 +96,8 @@ async function source(asked, roots, { removes = false } = {}) {
   refuse(abs)
   const st = await lstat(abs).catch(() => { throw fail('That doesn’t exist.', 404) })
   if (st.isSymbolicLink()) throw fail('That’s a link, so the hub won’t touch it.', 403)
+  // A hard link is the same file under another name, and no check on this name can tell what that file is.
+  if (!st.isDirectory() && st.nlink > 1) throw fail('This file has another name elsewhere, so the hub won’t touch it.', 403)
   const real = await realOf(abs)
   refuse(real)
   if (!roots.some(r => inside(real, r))) throw fail('That’s outside the folders the assistant can change.', 403)
@@ -143,8 +152,15 @@ async function copy(from, to) {
   else await copyFile(src.real, dst, FS.COPYFILE_EXCL)
   return { from: src.real, to: dst }
 }
+// One at a time: rename overwrites on Windows, so two moves to one name could both pass the name check and lose a file.
+let turn = Promise.resolve()
+function oneAtATime(step) {
+  const mine = turn.then(step)
+  turn = mine.catch(() => {})
+  return mine
+}
 function sameFolder(from, name) {
-  const n = String(name ?? '')
+  const n = str(name)
   if (!n || /[\\/]/.test(n) || n === '.' || n === '..') throw fail('A new name can’t be a path.')
   return path.join(path.dirname(plainPath(from)), n)
 }
@@ -175,6 +191,7 @@ async function hub(pathname, body) {
     method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: JSON.stringify(body ?? {}), signal: AbortSignal.timeout(90e3),
   })
   const out = await r.json().catch(() => ({}))
+  if (r.status === 404 && out.error === 'not found') throw fail('That tab isn’t set up in this hub.', 404)
   if (!r.ok) throw fail(out.error || `The hub answered ${r.status}`, [400, 403, 404, 409].includes(r.status) ? r.status : 502)
   return out
 }
@@ -182,7 +199,7 @@ const refreshed = (pathname, says) => ({ run: async () => { await hub(pathname);
 const EVENT_ID = /^l[0-9a-f]{12}$/
 const eventFields = a => Object.fromEntries(['title', 'allDay', 'start', 'end', 'location', 'notes'].filter(k => k in a).map(k => [k, a[k]]))
 const eventId = a => {
-  if (!EVENT_ID.test(String(a.id ?? ''))) throw fail('id must be a hub calendar event. Feed and Cal.com events are read-only.', 403)
+  if (!EVENT_ID.test(str(a.id))) throw fail('id must be a hub calendar event. Feed and Cal.com events are read-only.', 403)
   return a.id
 }
 // The whole list. Refreshing Cloud and Stripe only reads them again, and nothing here writes to them.
@@ -206,47 +223,50 @@ const ACTIONS = {
   // This one adds to a calendar outside the hub, so it's shown first with what it will add.
   calendar_quick: {
     card: async a => {
-      const text = String(a.text ?? '').trim()
+      const text = str(a.text).trim()
       if (!text) throw fail('Pass text.')
       const checked = await hub('/api/calendar/quick', { text, check: true })
       return { what: 'Add this to your calendar?', label: String(checked.message || text).slice(0, 300) }
     },
-    run: async a => ({ ok: true, message: (await hub('/api/calendar/quick', { text: String(a.text ?? '').trim() })).message || 'It’s added.' }),
+    run: async a => ({ ok: true, message: (await hub('/api/calendar/quick', { text: str(a.text).trim() })).message || 'It’s added.' }),
   },
 }
 
 export function create({ run }) {
   async function fileOp({ op, from, to } = {}) {
-    if (op === 'move') return move(from, to)
-    if (op === 'rename') return move(from, sameFolder(from, to))
-    if (op === 'copy') return copy(from, to)
+    if (op === 'move') return oneAtATime(() => move(from, to))
+    if (op === 'rename') return oneAtATime(() => move(from, sameFolder(from, to)))
+    if (op === 'copy') return oneAtATime(() => copy(from, to))
     if (op !== 'trash') throw fail('op must be move, copy, rename or trash.')
-    const src = await trashable(from)
+    const src = await oneAtATime(() => trashable(from))
     const sized = src.folder ? `Folder, ${src.files} file${src.files === 1 ? '' : 's'}` : ''
     return ({
-      ask: ask(`Move this to ${TRASH_NAME}?`, [src.real, sized].filter(Boolean).join(' · '), async () => {
+      ask: ask(`Move this to ${TRASH_NAME}?`, [src.real, sized].filter(Boolean).join(' · '), () => oneAtATime(async () => {
         const now = await trashable(from)
+        // The yes was for what the card showed.
+        if (now.real !== src.real || now.folder !== src.folder || now.files !== src.files || now.bytes !== src.bytes) throw fail('That changed after the card appeared, so nothing was moved.', 409)
         const error = await moveToTrash(run, [now.real])
         if (error) throw fail(error, 500)
         await log({ op: 'trash', from: now.real, ok: true })
         return { ok: true, message: `It’s in ${TRASH_NAME}, where you can restore it.` }
-      }),
+      })),
     })
   }
   async function hubAction({ name, args } = {}) {
     const a = typeof name === 'string' && Object.hasOwn(ACTIONS, name) ? ACTIONS[name] : null
-    if (!a) throw fail(`There's no action called ${String(name).slice(0, 40)}. These exist: ${Object.keys(ACTIONS).join(', ')}.`, 403)
+    if (!a) throw fail(`There's no action called ${str(name).slice(0, 40)}. These exist: ${Object.keys(ACTIONS).join(', ')}.`, 403)
     const given = args && typeof args === 'object' && !Array.isArray(args) ? args : {}
     if (!a.card) return a.run(given)
     const c = await a.card(given)
     return ({
       ask: ask(c.what, c.label, async () => {
         const out = await a.run(given)
-        await log({ op: `action ${name}`, ok: true, id: given.id })
+        await log({ op: `action ${name}`, ok: true, id: clip(given.id), label: clip(c.label) })
         return out
       }),
     })
   }
+  const bodyOf = (req, readBody) => readBody(req).catch(() => { throw fail('That isn’t valid JSON.') })
   const asked = (res, send, out) => send(res, 428, { error: out.ask.error, needsConfirmation: true, id: out.ask.id, what: out.ask.what })
 
   return async function route(url, req, res, { send, readBody }) {
@@ -258,16 +278,16 @@ export function create({ run }) {
       return send(res, 200, { entries: lines.flatMap(l => { try { return [JSON.parse(l)] } catch { return [] } }) }), true
     }
     if ((p === '/api/agent/file' || p === '/api/agent/action') && req.method === 'POST') {
-      const body = await readBody(req)
+      const body = await bodyOf(req, readBody)
       const isFile = p === '/api/agent/file'
-      const line = isFile ? { op: String(body?.op), from: String(body?.from ?? ''), to: String(body?.to ?? '') } : { op: `action ${String(body?.name)}` }
+      const line = isFile ? { op: clip(body?.op), from: clip(body?.from), to: clip(body?.to) } : { op: `action ${clip(body?.name)}` }
       try {
         const out = isFile ? await fileOp(body || {}) : await hubAction(body || {})
         if (out?.ask) {
           await log({ ...line, ok: false, note: 'waiting for a card' })
           return asked(res, send, out), true
         }
-        await log({ ...line, ...(isFile ? out : {}), ok: true })
+        await log({ ...line, ...(isFile ? out : { id: clip(out?.event?.id) }), ok: true })
         return send(res, 200, isFile ? { ok: true, ...out } : out), true
       } catch (e) {
         await log({ ...line, ok: false, note: e.message })
@@ -276,13 +296,17 @@ export function create({ run }) {
     }
     const m = /^\/api\/agent\/confirm\/([0-9a-f]{32})$/.exec(p)
     if (m) {
-      const a = asks.get(m[1])
-      if (!a || a.expires < Date.now()) return send(res, 404, { error: 'That ask has run out.' }), true
+      const live = () => {
+        const a = asks.get(m[1])
+        return a && a.expires >= Date.now() ? a : null
+      }
+      if (req.method !== 'GET' && req.method !== 'POST') return send(res, 405, { error: 'method not allowed' }), true
+      const answer = req.method === 'POST' ? await bodyOf(req, readBody) : null
+      const a = live() // after the body, with nothing awaited before the delete, so one that arrives late finds it gone
+      if (!a) return send(res, 404, { error: 'That ask has run out.' }), true
       if (req.method === 'GET') return send(res, 200, { what: a.what, label: a.label }), true
-      if (req.method !== 'POST') return send(res, 405, { error: 'method not allowed' }), true
-      const { allow } = await readBody(req)
       asks.delete(m[1]) // one answer, so a yes can't be used twice
-      if (allow !== true) {
+      if (answer?.allow !== true) {
         await log({ op: 'card', what: a.what, label: a.label, ok: false, note: 'not allowed' })
         return send(res, 200, { ok: true, allowed: false }), true
       }
