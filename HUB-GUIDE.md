@@ -576,7 +576,7 @@ Everything personal lives in `config/` and `data/`, which git ignores. `config.e
 ### The hub
 
 - `name` the hub's name, `owner` who it belongs to, `theme` the look, `port` the port (the `HUB_PORT` environment variable wins).
-- `access`, `passcodeRequired`, `listen`, `url`: who can reach it, see below.
+- `access`, `passcodeRequired`, `listen`, `url`, `hosts`: who can reach it, see below.
 - `addons`: turns add-ons on or off outright, for example `{"stripe": false}`. An add-on with no entry here comes on when its key is saved.
 - `server`: `sshAlias`, `label`, `readOnly` folders, `production` (`units` and `paths`), `unitPrefix`, `notes` (short texts on the Server tab).
 - `keyDirs`, `keyPairs`: more folders the file browser and the assistant refuse, on top of the built-in key list.
@@ -631,6 +631,7 @@ These are in the code, not settings:
 - Out of the box, only this computer: the hub listens on `127.0.0.1`. This computer never needs a passcode.
 - `"access": "tailnet"` also listens on your Tailscale address, for your own devices. Tailscale is optional.
 - `"listen": ["192.168.1.20"]` adds other addresses.
+- The hub only answers to its own names: `localhost`, this computer's name and addresses, the address in `url`, and anything in `hosts`. Any other name gets a 403, so a website can't rebind its name to this computer and the agent's browser can't open the hub under another name.
 - A paired device skips the passcode. Codes come from `/pair/new`, which only opens on this computer, or from a paired device. A code lasts 5 minutes, works once, and five wrong guesses burn it. The hub keeps only a hash of each device's token, in `data/devices.json`, and removing a device ends its access at once. Paired devices get the same key-file refusals and need `x-hub: 1` like everything else. The assistant can't pair anything: `hub_read` refuses `/api/pair/`, and its browser can't open the hub. `mobile/hub-changes/README.md` has the routes.
 - Any address beyond this computer needs a passcode. Without one the hub doesn't bind those addresses; the wizard asks for it, or run `npm run passcode` on the hub's computer. It is stored as a hash. Five wrong tries from an address lock it out for 15 minutes.
 - `"passcodeRequired": false` turns the passcode off. Use it only when something else already guards the address, such as a private tailnet.

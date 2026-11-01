@@ -3,6 +3,7 @@
 // config/secrets.json, and signed-in browsers are kept hashed in data/hub-sessions.json.
 import crypto from 'node:crypto'
 import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import { HERE, hubConfig, secrets, saveSecrets } from './config.mjs'
 
@@ -12,6 +13,19 @@ const FAIL_WINDOW = 15 * 60_000
 const FAILS_PER_ADDRESS = 5
 const FAILS_IN_ALL = 30
 export const MIN_PASSCODE = 8
+
+// The names this hub answers to. Any other name is a page that reached it by a trick: a website rebinding its
+// own name to this computer, or another name for it in the agent's browser. "hosts" in hub.json adds more.
+export function knownHost(req) {
+  const host = String(req.headers.host || '').replace(/:\d+$/, '').toLowerCase()
+  const me = os.hostname().toLowerCase()
+  if (host === 'localhost' || host === me || host === `${me}.local`) return true
+  const { url, listen, hosts } = hubConfig()
+  let address = ''
+  try { address = new URL(url).hostname } catch {}
+  const nets = Object.values(os.networkInterfaces()).flat().map(n => n.family === 'IPv6' ? `[${n.address.split('%')[0]}]` : n.address)
+  return [address, ...nets, ...(listen || []), ...(hosts || [])].some(n => String(n).toLowerCase() === host)
+}
 
 const LOOPBACK = ['127.0.0.1', '::1', '::ffff:127.0.0.1']
 const LOCAL_HOSTS = ['localhost', '127.0.0.1', '[::1]']

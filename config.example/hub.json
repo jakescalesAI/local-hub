@@ -4,6 +4,7 @@
   "access": "localhost",
   "passcodeRequired": true,
   "listen": [],
+  "hosts": [],
   "url": "",
   "addons": {},
   "server": {

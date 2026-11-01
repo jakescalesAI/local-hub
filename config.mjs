@@ -22,6 +22,7 @@ const NEUTRAL = {
   access: 'localhost', // or "tailnet"
   passcodeRequired: true, // other devices need the passcode (npm run passcode); this computer never does
   listen: [], // more addresses to answer on, such as a LAN address. Ignored until a passcode is set.
+  hosts: [], // more names it answers to, such as a local DNS name. Its own name and addresses always work.
   url: '', // the address you reach the hub at from other devices, if any
   addons: {},
   server: { sshAlias: '', label: 'Server', readOnly: ['/root/.ssh'], production: { units: [], paths: [] }, notes: {} },

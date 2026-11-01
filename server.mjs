@@ -14,7 +14,7 @@ import { createFiles } from './files.mjs'
 import { HERE, PORT, configPath, hubConfig, tabOn, addonOn } from './config.mjs'
 import { createDeviceAuth } from './device-auth.mjs'
 import { IS_WIN, PYTHON, ROOT_DISK, listeners as listPorts, mutagenPath, tailscalePath } from './platform.mjs'
-import { gate, hasPasscode, passcodeNeeded } from './access.mjs'
+import { gate, hasPasscode, knownHost, passcodeNeeded } from './access.mjs'
 
 const SSH_HOST = hubConfig().server.sshAlias
 const SERVER_EVERY_MS = 20_000
@@ -353,6 +353,7 @@ function accessLine(req, res, url) {
 async function handle(req, res) {
   const url = new URL(req.url, `http://${req.headers.host}`)
   res.on('close', () => accessLine(req, res, url))
+  if (!knownHost(req)) return send(res, 403, 'This hub doesn’t answer to that name. If it’s yours, add it to "hosts" in config/hub.json.', 'text/plain; charset=utf-8')
   if (!deviceAuth.admit(url, req, res) && await gate(req, res, url, send)) return
   // Changes need the page's x-hub header. A request from another site can't add it without a
   // CORS preflight, which the hub never approves, so other tabs can't move or delete files.
