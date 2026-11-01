@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Demo Hub</title>
+    <style>
+      :root { color-scheme: light dark; --bg: #f2f2f7; --surface: #fff; --label: #000; --label-2: rgba(60, 60, 67, 0.6); --sep: rgba(60, 60, 67, 0.18); --blue: #007aff; --green: #34c759; }
+      @media (prefers-color-scheme: dark) { :root { --bg: #000; --surface: #1c1c1e; --label: #fff; --label-2: rgba(235, 235, 245, 0.6); --sep: rgba(84, 84, 88, 0.6); --blue: #0a84ff; --green: #30d158; } }
+      * { box-sizing: border-box; }
+      body { margin: 0; padding: 16px; background: var(--bg); color: var(--label); font: 17px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, "Segoe UI", system-ui, sans-serif; letter-spacing: -0.022em; }
+      h1 { margin: 0 0 16px; font-size: 34px; line-height: 1.15; letter-spacing: -0.03em; }
+      h2 { margin: 24px 0 8px; font-size: 13px; font-weight: 400; color: var(--label-2); letter-spacing: 0; }
+      ul { list-style: none; margin: 0; padding: 0 16px; background: var(--surface); border-radius: 14px; }
+      li { display: flex; justify-content: space-between; gap: 16px; padding: 12px 0; border-bottom: 0.5px solid var(--sep); }
+      li:last-child { border-bottom: 0; }
+      li span:last-child { color: var(--label-2); text-align: right; }
+      .up::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 8px; border-radius: 50%; background: var(--green); vertical-align: 1px; }
+      p { color: var(--label-2); font-size: 15px; }
+      .bubble { margin: 8px 0; padding: 10px 14px; border-radius: 18px; background: var(--surface); }
+      .mine { margin-left: 48px; background: var(--blue); color: #fff; }
+    </style>
+  </head>
+  <body>
+    <h1>Demo Hub</h1>
+    <p>Sample data. A real Hub shows your own computer here.</p>
+    <h2>This computer</h2>
+    <ul>
+      <li><span class="up">Sample web server</span><span>Port 8080</span></li>
+      <li><span class="up">Sample database</span><span>Port 5432</span></li>
+      <li><span>Disk</span><span>212 GB free</span></li>
+    </ul>
+    <h2>Chat</h2>
+    <div class="bubble mine">Is the sample web server still running?</div>
+    <div class="bubble">Yes, it has been up for 3 hours on port 8080.</div>
+  </body>
+</html>

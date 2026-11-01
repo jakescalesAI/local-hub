@@ -1,0 +1,127 @@
+# Debug builds of the mobile app. No signing, no secrets, nothing is released or uploaded to a store.
+# A build that compiles proves it compiles, not that the app works.
+name: Mobile
+
+on:
+  push:
+    branches: [claude/mobile-app]
+    paths:
+      - 'mobile/**'
+      - '.github/workflows/mobile.yml'
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: Which build to run
+        type: choice
+        options: [android, ios]
+        default: android
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android:
+    if: github.event_name == 'push' || inputs.platform == 'android'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: npm ci
+      - run: npm test
+      - run: npm run build:dev
+      - run: npm run test:ui
+      - name: Keep the UI test's screenshots if it failed
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-test-screenshots
+          path: mobile/test/ui/out
+          retention-days: 3
+          if-no-files-found: ignore
+      - run: npm run licenses
+      - run: npm run build
+      - run: npx cap sync android
+      - name: Build the debug APK
+        working-directory: mobile/android
+        run: sh ./gradlew assembleDebug --no-daemon --stacktrace
+      - name: Show what was built
+        working-directory: mobile/android/app/build/outputs/apk/debug
+        run: |
+          ls -l
+          "$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/aapt2" dump badging app-debug.apk | grep -E "^(package|sdkVersion|minSdkVersion|targetSdkVersion|uses-permission|application-label:)" | tee "$RUNNER_TEMP/badging.txt"
+          ! grep -E "RECORD_AUDIO|MODIFY_AUDIO_SETTINGS|ACCESS_(COARSE|FINE)_LOCATION" "$RUNNER_TEMP/badging.txt"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-debug-apk
+          path: mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 3
+
+  ios:
+    if: github.event_name == 'workflow_dispatch' && inputs.platform == 'ios'
+    runs-on: macos-26
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - run: xcodebuild -version
+      - run: npm ci
+      - run: npm run build
+      - run: npx cap sync ios
+      - name: Build for the simulator, unsigned
+        run: >-
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -sdk iphonesimulator
+          -destination 'generic/platform=iOS Simulator' -derivedDataPath build
+          CODE_SIGNING_ALLOWED=NO build
+      - name: Check the share extension is inside the app
+        run: |
+          app=build/Build/Products/Debug-iphonesimulator/App.app
+          du -sh "$app"
+          test -d "$app/PlugIns/ShareExtension.appex"
+          test -f "$app/PlugIns/ShareExtension.appex/PrivacyInfo.xcprivacy"
+          plutil -p "$app/Info.plist" | grep -E "CFBundleIdentifier|CFBundleURLSchemes|NSCameraUsageDescription"
+      # Reported on its own: a failure here does not undo the build result above.
+      - name: Launch it once and take a screenshot
+        continue-on-error: true
+        timeout-minutes: 6
+        run: |
+          device=$(xcrun simctl list devices available -j | node -e "
+            const all = JSON.parse(require('fs').readFileSync(0, 'utf8')).devices
+            const ios = Object.keys(all).filter(k => k.includes('iOS')).sort().reverse()
+            console.log(ios.flatMap(k => all[k]).find(d => d.name.startsWith('iPhone')).udid)")
+          xcrun simctl boot "$device"
+          xcrun simctl bootstatus "$device" -b
+          xcrun simctl install "$device" build/Build/Products/Debug-iphonesimulator/App.app
+          xcrun simctl launch "$device" com.example.localhub
+          sleep 20
+          xcrun simctl spawn "$device" launchctl list | grep com.example.localhub
+          xcrun simctl io "$device" screenshot launch.png
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-simulator-launch
+          path: mobile/launch.png
+          if-no-files-found: warn
+          retention-days: 3
