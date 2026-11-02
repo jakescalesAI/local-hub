@@ -372,11 +372,11 @@
   /* ---------- drawing ---------- */
 
   const CSS = `
-  .lch-root { position: fixed; inset: 0; z-index: 8500; display: none; justify-content: center; align-items: flex-start; padding: 12vh 16px 16px; box-sizing: border-box;
+  .lch-root { position: fixed; inset: 0; z-index: 8500; display: none; justify-content: center; align-items: flex-start; --lch-top: max(calc(env(safe-area-inset-top, 0px) + 12px), calc(var(--lch-vh, 100vh) * .12)); padding: calc(var(--lch-vt, 0px) + var(--lch-top)) 16px 0; box-sizing: border-box;
     background: rgba(8, 10, 16, .38); font: 15px/1.35 var(--font, system-ui, sans-serif); color: var(--label, #111); }
   .lch-root.on { display: flex; }
   .lch-root *, .lch-root *::before { box-sizing: border-box; }
-  .lch-panel { display: flex; flex-direction: column; width: min(640px, 100%); max-height: min(560px, calc(var(--lch-vh, 100vh) - 12vh - 16px)); overflow: hidden; border-radius: 16px;
+  .lch-panel { display: flex; flex-direction: column; width: min(640px, 100%); max-height: min(560px, calc(var(--lch-vh, 100vh) - var(--lch-top) - var(--lch-bot, calc(env(safe-area-inset-bottom, 0px) + 16px)))); overflow: hidden; border-radius: 16px;
     background: var(--surface, #fff); border: 1px solid var(--sep, rgba(0,0,0,.15)); box-shadow: 0 24px 70px rgba(0,0,0,.35); }
   .lch-root.alone { padding: 0; background: none; }
   .lch-root.alone .lch-panel { width: 100%; height: 100%; max-height: none; border: 0; border-radius: 0; box-shadow: none; }
@@ -384,7 +384,7 @@
   .lch-input { flex: 1; min-width: 0; height: 44px; padding: 0; border: 0; outline: 0; background: none; color: inherit; font: 18px var(--font, system-ui, sans-serif); }
   .lch-input::placeholder { color: var(--label-2, #777); }
   .lch-x { flex: none; width: 44px; height: 44px; border: 0; border-radius: 10px; background: none; color: var(--label-2, #777); font-size: 20px; line-height: 1; cursor: pointer; display: none; }
-  .lch-list { flex: 1 1 auto; min-height: 0; margin: 0; padding: 6px; list-style: none; overflow-y: auto; scrollbar-width: thin; }
+  .lch-list { flex: 1 1 auto; min-height: 0; margin: 0; padding: 6px; list-style: none; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
   .lch-row { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 6px 6px 6px 10px; border-radius: 10px; cursor: pointer; }
   .lch-row.sel { background: var(--fill, rgba(120,120,128,.14)); }
   .lch-ic { flex: none; width: 28px; height: 28px; border-radius: 7px; display: grid; place-items: center; overflow: hidden; color: var(--label-2, #777); background: var(--fill, rgba(120,120,128,.14)); font-weight: 600; font-size: 14px; }
@@ -422,9 +422,11 @@
   .lch-toast { position: fixed; z-index: 8600; left: 50%; bottom: 24px; max-width: calc(100vw - 32px); transform: translate(-50%, 8px); padding: 8px 14px; border-radius: 10px; opacity: 0; pointer-events: none; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
     background: var(--label, #111); color: var(--surface, #fff); font: 500 14px var(--font, system-ui, sans-serif); transition: opacity .15s, transform .15s; }
   .lch-toast.on { opacity: 1; transform: translate(-50%, 0); }
+  @media (max-width: 600px) {
+    .lch-root { --lch-top: calc(env(safe-area-inset-top, 0px) + 12px); padding-left: 8px; padding-right: 8px; }
+    .lch-panel { max-height: calc(var(--lch-vh, 100vh) - var(--lch-top) - var(--lch-bot, calc(env(safe-area-inset-bottom, 0px) + 16px))); }
+  }
   @media (max-width: 600px), (hover: none) {
-    .lch-root { padding: 8px 8px 0; }
-    .lch-panel { max-height: calc(var(--lch-vh, 100vh) - 16px); }
     .lch-x { display: block; }
     .lch-row { min-height: 52px; }
     .lch-edit { width: 44px; height: 44px; visibility: visible; }
@@ -729,8 +731,14 @@
   }
 
   function fitViewport() {
-    const h = window.visualViewport?.height || window.innerHeight
-    root?.style.setProperty('--lch-vh', `${h}px`)
+    const vv = window.visualViewport
+    const h = vv?.height || window.innerHeight
+    if (!root) return
+    root.style.setProperty('--lch-vh', `${h}px`)
+    // Follows the visible screen, which the on-screen keyboard shrinks and can scroll.
+    root.style.setProperty('--lch-vt', `${vv?.offsetTop || 0}px`)
+    if (window.innerHeight - h > 60) root.style.setProperty('--lch-bot', '8px')
+    else root.style.removeProperty('--lch-bot')
   }
 
   function build() {
@@ -773,6 +781,7 @@
       box.textContent = box.dataset.letter || ''
     }, true)
     window.visualViewport?.addEventListener('resize', fitViewport)
+    window.visualViewport?.addEventListener('scroll', fitViewport)
     window.addEventListener('resize', fitViewport)
     fitViewport()
   }
