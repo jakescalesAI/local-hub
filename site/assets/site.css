@@ -69,8 +69,8 @@ ul { list-style: none; }
 .closing { display: flex; flex-direction: column; align-items: center; text-align: center; padding-block: clamp(70px, 10vw, 120px) 8px; }
 .closing h2 { margin: 0 0 24px; font-size: clamp(30px, 5vw, 52px); letter-spacing: -0.035em; }
 
-/* The real app: Home, with the real search panel floating over its empty corner. */
-.demo { margin-top: clamp(40px, 7vh, 72px); }
+/* The real app, one screen per function, with the chrome ribbons passing behind its window. */
+.demo { position: relative; isolation: isolate; margin-top: clamp(40px, 7vh, 72px); }
 .demo-title { margin: 0 0 22px; font-size: clamp(28px, 4.4vw, 46px); letter-spacing: -0.035em; text-align: center; text-wrap: balance; }
 /* Radio inputs drive the tabs, so the tour works with no script and arrow keys move through it. */
 .tour { position: relative; }
@@ -101,7 +101,19 @@ ul { list-style: none; }
 #tour-browser:checked ~ .tour-panels .tour-browser,
 #tour-look:checked ~ .tour-panels .tour-look { display: block; }
 .tour-panel figcaption { max-width: 56ch; min-height: 3em; margin: 16px auto 18px; color: var(--label-2); text-align: center; text-wrap: balance; }
-.tour-panel img { width: 100%; height: auto; border-radius: 20px; background: var(--surface); box-shadow: var(--ring), var(--lift); }
+.tour-panels { --w: min(100%, 80vw); position: relative; }
+.tour-panel img { width: var(--w); height: auto; margin-inline: auto; border-radius: 20px; background: var(--surface); box-shadow: var(--ring), var(--lift); }
+/* The browser window is wider than the other screens: even margins keep the page from jumping between tabs. */
+.tour-browser { padding-bottom: calc(var(--w) * .0301); }
+.tour-browser img { margin-top: calc(18px + var(--w) * .0301); }
+.ribbons { position: absolute; z-index: -1; top: 0; bottom: -56px; left: 50%; width: 100vw; margin-left: -50vw; background: url("shots/ribbons.webp") center / cover no-repeat; pointer-events: none; }
+.gl .ribbons { background-image: none; }
+.ribbons canvas { display: block; width: 100%; height: 100%; opacity: 0; transition: opacity .9s var(--ease); }
+.ribbons canvas.on { opacity: 1; }
+@media (max-width: 719px) {
+  .tour-panels { --w: 100%; }
+  .ribbons { display: none; }
+}
 @media (prefers-reduced-motion: no-preference) {
   .tour-panel { animation: tour-in .35s var(--ease); }
   @keyframes tour-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }

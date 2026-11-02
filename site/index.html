@@ -32,10 +32,12 @@
 <script>
   // Decided before first paint, so the page never flashes. See assets/js/hero.js.
   if (window.WebGL2RenderingContext && matchMedia("(prefers-reduced-motion: no-preference)").matches && !scrollY) document.documentElement.classList.add("intro")
+  if (window.WebGLRenderingContext && matchMedia("(prefers-reduced-motion: no-preference)").matches) document.documentElement.classList.add("gl")
 </script>
 <script src="assets/js/glass.js" defer></script>
 <script src="assets/js/metal.js" defer></script>
 <script src="assets/js/hero.js" defer></script>
+<script src="assets/js/ribbons.js" defer></script>
 </head>
 <body>
 
@@ -81,6 +83,7 @@
         <label for="tour-look">Your look</label>
       </div>
       <div class="tour-panels">
+        <div class="ribbons" aria-hidden="true"></div>
         <figure class="tour-panel tour-search">
           <figcaption>Type a few letters. Links, snippets, files, folders, actions and the assistant all answer in one list.</figcaption>
           <img src="assets/shots/tour-search.webp" width="1760" height="1100" fetchpriority="high" alt="The search bar open over Home with “lis” typed in. It lists a saved link called Trip to Lisbon, two actions, an option to ask the chat, and matching files and folders.">
@@ -91,7 +94,7 @@
         </figure>
         <figure class="tour-panel tour-files">
           <figcaption>Browse the folders on your PC. Open, rename, move or download from the same window.</figcaption>
-          <img src="assets/shots/tour-files.webp" width="1760" height="1100" loading="lazy" alt="The Files tab showing a folder called Trip to Lisbon, with a right-click menu open on itinerary.md: Open, Open in New Tab, Download, Rename, Move to, Copy Path and Move to Recycle Bin.">
+          <img src="assets/shots/tour-files.webp" width="1760" height="1100" loading="lazy" alt="The Files tab showing a Documents folder with eight folders and a list of files, and a right-click menu open on the folder Trip to Lisbon: Open, Rename, Move to, New Folder Inside, Copy Path and Move to Recycle Bin.">
         </figure>
         <figure class="tour-panel tour-calendar">
           <figcaption>Month, week and agenda views. The assistant can keep it for you when you ask.</figcaption>
@@ -103,7 +106,7 @@
         </figure>
         <figure class="tour-panel tour-browser">
           <figcaption>It works in a real Chrome you can watch and take over, with a log of every step.</figcaption>
-          <img src="assets/shots/tour-browser.webp" width="1760" height="1100" loading="lazy" alt="The browser pop-up showing a made-up stays website searched for Lisbon. Beside it, an Activity list shows the assistant’s steps with a small screenshot of each: open, type and click.">
+          <img src="assets/shots/tour-browser.webp" width="1760" height="994" loading="lazy" alt="The browser window showing a made-up stays website searched for Lisbon, with a Take control button at the top. Beside it, an Activity list shows the assistant’s steps with a small screenshot of each: open, type and click.">
         </figure>
         <figure class="tour-panel tour-look">
           <figcaption>Themes, accent colours, fonts, widget styles and wallpapers, including your own.</figcaption>

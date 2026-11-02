@@ -1,0 +1,40 @@
+LocalHub's page is built on these open components. Each was ported to plain JavaScript and CSS and changed for this page.
+
+Glass reveal (glass.js)
+  Glass icon reveal by Zanwei Guo. MIT. Full text in LICENSE-glass-icon-reveal.txt.
+
+Chrome ribbons (ribbons.js)
+  shader-metal by jay sharma (radiumcoders).
+  https://21st.dev/@radiumcoders/components/shader-metal
+
+Screenshot wall
+  tilted-grid-hero by Ruixen.
+  https://21st.dev/@ruixen.ui/components/tilted-grid-hero
+
+Features orbit
+  ink-orbit-features by Kedhareswer Naidu.
+  https://21st.dev/@kedhareswer/components/ink-orbit-features
+
+Polished chrome buttons (metal.js)
+  Started from liquid-metal by Edu Calvo (SmoothUI), since rewritten; none of its surface code remains.
+  https://21st.dev/@educalvolpz/components/liquid-metal
+  https://github.com/educlopez/smoothui/blob/main/LICENSE
+
+Note on these licences, to review before going live:
+  The MIT terms for shader-metal, tilted-grid-hero and ink-orbit-features come from the "License: mit" field on
+  their 21st.dev listings. No licence file from the author was found for any of the three.
+
+MIT License
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+documentation files (the "Software"), to deal in the Software without restriction, including without limitation the
+rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit
+persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the
+Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
