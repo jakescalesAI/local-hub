@@ -146,12 +146,13 @@ jobs:
           echo "ANDROID_AVD_HOME=$ANDROID_AVD_HOME" >> "$GITHUB_ENV"
           manager="$ANDROID_HOME/cmdline-tools/latest/bin"
           yes | "$manager/sdkmanager" --licenses > /dev/null || true
-          "$manager/sdkmanager" --install platform-tools emulator "system-images;android-33;google_apis;x86_64" > /dev/null
-          echo no | "$manager/avdmanager" create avd -n hub -k "system-images;android-33;google_apis;x86_64" -d pixel_5
+          "$manager/sdkmanager" --install platform-tools emulator "system-images;android-33;default;x86_64" > /dev/null
+          echo no | "$manager/avdmanager" create avd -n hub -k "system-images;android-33;default;x86_64" -d pixel_5
           echo "disk.dataPartition.size=3G" >> "$ANDROID_AVD_HOME/hub.avd/config.ini"
       - name: Start the emulator
         run: |
           ls -l /dev/kvm
+          emulator -accel-check | tail -2
           emulator -list-avds
           nohup emulator -avd hub -no-window -no-audio -no-boot-anim -no-snapshot -partition-size 3072 -gpu swiftshader_indirect > "$RUNNER_TEMP/emulator.log" 2>&1 &
           emulator_pid=$!
@@ -168,6 +169,8 @@ jobs:
             tail -80 "$RUNNER_TEMP/emulator.log"
             exit 1
           fi
+          # Booted isn't the same as ready. The package service can still refuse an install.
+          timeout 300 sh -c 'until adb shell cmd package list packages android 2>/dev/null | grep -q "package:android"; do sleep 5; done'
           adb shell settings put global window_animation_scale 0
           adb shell settings put global transition_animation_scale 0
           adb shell settings put global animator_duration_scale 0
@@ -176,7 +179,11 @@ jobs:
           adb shell wm dismiss-keyguard
       - name: Run the app against the real Hub
         run: |
-          adb install android/app/build/outputs/apk/minified/app-minified.apk
+          for try in 1 2 3; do
+            adb install android/app/build/outputs/apk/minified/app-minified.apk && break
+            [ "$try" != 3 ] || exit 1
+            sleep 30
+          done
           adb logcat -c
           node test/device/android-e2e.mjs .. "$RUNNER_TEMP/app-debug.apk" test/device/out
       - name: Keep the emulator's screenshots
