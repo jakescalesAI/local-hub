@@ -6,28 +6,16 @@ import { execFileSync, spawn, spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import http from 'node:http'
 import net from 'node:net'
-import os from 'node:os'
 import path from 'node:path'
 import { describe, test } from 'node:test'
 
 import { APP_NAME } from '../../src/app-name.js'
-import { BUNDLE_MARKER } from '../../src/as-node.js'
 import {
-  APP_DIR, PACKAGED_EXE, cleanup, evalIn, freePort, getJson, launch, makeUserData, ping, processAlive, quit, removeUserData,
+  PACKAGED_EXE, REPO, cleanup, copyHub, evalIn, freePort, getJson, launch, makeUserData, ping, processAlive, quit, removeUserData,
   sleep, trayItem, waitFor, waitForUrl, windows,
 } from '../helpers.mjs'
 
-const REPO = path.resolve(APP_DIR, '..')
-const NOT_THE_HUB = new Set(['desktop', '.git', 'config', 'data', 'workspace', 'node_modules', 'handoffs', 'caddy', 'logs'])
 const SHIPPED = path.join(path.dirname(PACKAGED_EXE), 'resources', 'hub')
-
-function copyHub(t) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'lh-hub-e2e-real-'))
-  cleanup(t, () => fs.rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }))
-  fs.cpSync(REPO, dir, { recursive: true, filter: from => !NOT_THE_HUB.has(path.relative(REPO, from).split(path.sep)[0]) })
-  fs.writeFileSync(path.join(dir, BUNDLE_MARKER), 'test')
-  return dir
-}
 
 // Who is listening on this port, and on which addresses.
 const listeners = port => execFileSync('netstat.exe', ['-ano', '-p', 'TCP'], { encoding: 'utf8', windowsHide: true })

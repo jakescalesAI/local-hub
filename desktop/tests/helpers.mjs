@@ -7,8 +7,11 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { _electron as electron } from 'playwright-core'
 
+import { BUNDLE_MARKER } from '../src/as-node.js'
+
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 export const APP_DIR = path.resolve(HERE, '..')
+export const REPO = path.resolve(APP_DIR, '..')
 export const PACKAGED_EXE = path.join(APP_DIR, 'dist', 'win-unpacked', 'Local Hub.exe')
 const SHIM = path.join(HERE, 'fixtures', 'test-shim.cjs')
 export const STUB_DIR = path.join(HERE, 'fixtures', 'stub-hub')
@@ -86,6 +89,17 @@ export async function startForeignServer() {
   return { port, origin: `http://localhost:${port}`, hits, close: () => new Promise(resolve => { server.closeAllConnections(); server.close(resolve) }) }
 }
 
+// A copy of the real Hub with no config, in a temp folder, so nothing lands in this clone.
+const NOT_THE_HUB = new Set(['desktop', '.git', 'config', 'data', 'workspace', 'node_modules', 'handoffs', 'caddy', 'logs'])
+
+export function copyHub(t) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'lh-hub-e2e-real-'))
+  cleanup(t, () => fs.rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }))
+  fs.cpSync(REPO, dir, { recursive: true, filter: from => !NOT_THE_HUB.has(path.relative(REPO, from).split(path.sep)[0]) })
+  fs.writeFileSync(path.join(dir, BUNDLE_MARKER), 'test')
+  return dir
+}
+
 export function makeUserData(settings = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'lh-hub-e2e-'))
   fs.writeFileSync(path.join(dir, 'settings.json'), JSON.stringify({ hotkey: TEST_HOTKEY, ...settings }))
@@ -135,7 +149,8 @@ export async function launch({ userData, args = [], env = {}, packaged = false }
 }
 
 // The most a quit can take when everything is slow: 15 s for the Hub, 5 s for Electron, then the guard
-// has to start and end it. Idle it takes 2 to 3 s with a built-in Hub and under 1 s with an attached one.
+// has to start and end it, which came to 21 to 23 s under load. Idle it takes 2 to 3 s with a built-in Hub
+// and under 1 s with an attached one. Don't raise this to get a test through: past it, something is wrong.
 export const QUIT_LIMIT_MS = 25_000
 
 export async function quit(handle) {

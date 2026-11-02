@@ -65,12 +65,20 @@ Only Windows can check the port for now. On other systems the app never stops it
 finish with a built-in Hub and under a second with an attached one. On a computer with every core busy,
 `taskkill` alone can take 10 seconds and Electron another 20 to end, so:
 
-- The app waits up to 15 seconds for its Hub to go. It has to stay for this, because Windows ends the
-  Hub the moment the app ends, and `taskkill` can't find what the Hub started after that.
-- A small process outside the app then gives Electron 5 seconds and ends it if it's still there. That's
-  about 20 seconds at worst from Quit to gone. Pages' saved data is flushed first.
+- What a page just saved to local storage is written to disk first. That covers local storage only:
+  cookies and IndexedDB are left to Chromium's own saving, so the newest of those can be lost if Electron
+  has to be ended.
+- The app waits up to 15 seconds for its Hub to go, and goes on as soon as it has. It has to stay for
+  this, because Windows ends the Hub the moment the app ends, and `taskkill` can't find what the Hub
+  started after that.
+- A small process outside the app then gives Electron 5 seconds and ends it if it's still there.
 - The Hub never outlasts the app. If `taskkill` needs more than the 15 seconds, anything the Hub started
   (a browser, a tunnel) stays behind.
+
+With the app on two cores shared with four busy programs, Quit to gone took 9 to 11 seconds in 10 quits
+out of 10: the Hub went after 3 to 5 seconds, and Electron used up its 5 seconds and was ended. The
+longest case is a Hub that really needs the whole 15 seconds. Then it's 15 and 5 seconds plus the time
+the outside process needs to act, which came to 21 to 23 seconds under the same load.
 
 When the app starts at login it waits 10 seconds before starting its own Hub, in case one started some
 other way is about to answer.
@@ -142,11 +150,13 @@ npm run test:e2e
 
 `npm test` runs without Electron. The end-to-end suite drives the real app through Playwright's
 Electron driver, mostly against a stub Hub in `tests/fixtures`. `real-server.test.mjs` runs the real Hub
-from this repo with no config, in a temp folder, through the first-run wizard. If a Hub is running on
-3100, the live-Hub tests only ever read from it. A shim loaded ahead of the app keeps windows
+from this repo with no config, in a temp folder, through the first-run wizard. The tests of a Hub started
+apart from the app use a copy of the real Hub in a temp folder, on a free port, so the suite never
+touches a Hub you have running. To try them on a running Hub, set `LOCAL_HUB_TEST_HUB_PORT` to its port;
+they reach it through a proxy that refuses anything but reads. A shim loaded ahead of the app keeps windows
 off-screen, stops them taking focus, records external links and login-item calls instead of making
 them, and the hotkey is pressed for real on an unusual binding. Tests that need something missing,
-such as a build, a running Hub or a second monitor, report as skipped rather than passing.
+such as a build or a second monitor, report as skipped rather than passing.
 
 `quit.test.mjs` quits with four CPU burners sharing two cores with the app, so the rest of the computer stays free, for up to a minute. It presses Quit through the real tray menu item's click handler, not the native menu popup.
 

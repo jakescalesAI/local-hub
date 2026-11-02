@@ -15,6 +15,9 @@ import {
 
 // A Hub goes with the app. Past this, the app has left it behind.
 const LEFT_BEHIND_LIMIT_MS = 5000
+// Under load the app sees its Hub go in under a second, and can take a few more to start the guard. Sitting
+// out the limit takes over 11 s.
+const HUB_NOTICED_LIMIT_MS = 8000
 
 const powershell = script => spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', '-'], { input: script, encoding: 'utf8', windowsHide: true }).stdout.trim()
 
@@ -59,14 +62,37 @@ const describeProcess = pid => `${pid} ${powershell(`(Get-CimInstance Win32_Proc
 
 // Times start from `from`, which is when Quit was pressed.
 async function assertAllGone({ port, mainPid, hubPid, grandchild }, from, mainLimitMs = QUIT_LIMIT_MS) {
-  await waitFor(() => !processAlive(mainPid), `the app to end within ${mainLimitMs / 1000} s`, mainLimitMs)
+  let hubGone
+  const watching = setInterval(() => { if (!hubGone && !processAlive(hubPid)) hubGone = Date.now() - from }, 100)
+  await waitFor(() => !processAlive(mainPid), `the app to end within ${mainLimitMs / 1000} s`, mainLimitMs).catch(error => {
+    clearInterval(watching)
+    throw error
+  })
   const mainGone = Date.now() - from
   const left = () => [hubPid, grandchild].filter(processAlive)
   await waitFor(() => left().length === 0, 'no Hub or anything it started left behind', LEFT_BEHIND_LIMIT_MS).catch(error => {
+    clearInterval(watching)
     throw new Error(`${error.message}: ${left().map(describeProcess).join('; ')}`)
   })
+  clearInterval(watching)
   assert.equal(await ping(port), false)
-  return { mainGone, allGone: Date.now() - from }
+  return { hubGone, mainGone, allGone: Date.now() - from }
+}
+
+// The app has to go on as soon as its Hub has gone. Under load the exit event can come many seconds late,
+// and the app once sat out its whole 15 s limit in about half of all quits, with the Hub gone after 3 to 4 s.
+// So this marks when it goes on.
+const hubWaitMark = userData => path.join(userData, 'hub-wait-ended.txt')
+
+const markWhenHubWaitEnds = (handle, userData) => handle.app.evaluate(({ app }, file) => {
+  const exit = app.exit.bind(app)
+  app.exit = code => { process.getBuiltinModule('fs').writeFileSync(file, String(Date.now())); exit(code) }
+}, hubWaitMark(userData))
+
+function assertWentOnWithTheHub(userData, from, { hubGone }) {
+  const wentOn = Number(fs.readFileSync(hubWaitMark(userData), 'utf8')) - from
+  assert.ok(wentOn - hubGone < HUB_NOTICED_LIMIT_MS, `the Hub went at ${hubGone} ms, and the app went on at ${wentOn} ms`)
+  return wentOn
 }
 
 const pressQuit = handle => trayItem(handle, 'quit').catch(() => {})
@@ -118,13 +144,14 @@ describe('quitting', () => {
   test('with the CPU kept busy, a tray quit ends the app in time and leaves no Hub behind', async t => {
     keepToTwoCores(t)
     const app = await startApp(t)
+    await markWhenHubWaitEnds(app.handle, app.userData)
     const stopBurning = burnCpu(t)
     await sleep(2000)
     const from = Date.now()
     await pressQuit(app.handle)
     const times = await assertAllGone(app, from)
     stopBurning()
-    t.diagnostic(JSON.stringify(times))
+    t.diagnostic(JSON.stringify({ ...times, wentOn: assertWentOnWithTheHub(app.userData, from, times) }))
   })
 
   test('with the CPU kept busy, the built app ends in time too, with the real Hub and with a stub', async t => {
@@ -136,11 +163,13 @@ describe('quitting', () => {
     // real window on the default profile.
     assert.equal(powershell(`(Get-CimInstance Win32_Process -Filter "ParentProcessId=${stub.grandchild}" | Measure-Object).Count`), '0')
 
+    await markWhenHubWaitEnds(stub.handle, stub.userData)
     const stopBurning = burnCpu(t)
     await sleep(2000)
     let from = Date.now()
     await stub.handle.app.evaluate(({ app }) => { setImmediate(() => app.quit()) }).catch(() => {})
-    t.diagnostic(`stub: ${JSON.stringify(await assertAllGone(stub, from))}`)
+    const stubTimes = await assertAllGone(stub, from)
+    t.diagnostic(`stub: ${JSON.stringify({ ...stubTimes, wentOn: assertWentOnWithTheHub(stub.userData, from, stubTimes) })}`)
     stopBurning()
 
     // The real Hub starts with nothing to run from, in its first-run state, on a free port.
@@ -156,11 +185,13 @@ describe('quitting', () => {
     const hubPid = Number(list.split(/\r?\n/).map(line => line.trim().split(/\s+/)).find(cols => cols[3] === 'LISTENING' && cols[1]?.endsWith(`:${port}`))?.[4])
     assert.ok(hubPid > 0)
     pids.push(hubPid)
+    await markWhenHubWaitEnds(handle, userData)
     const stopAgain = burnCpu(t)
     await sleep(2000)
     from = Date.now()
     await handle.app.evaluate(({ app }) => { setImmediate(() => app.quit()) }).catch(() => {})
-    t.diagnostic(`real Hub: ${JSON.stringify(await assertAllGone({ port, mainPid, hubPid, grandchild: hubPid }, from))}`)
+    const hubTimes = await assertAllGone({ port, mainPid, hubPid, grandchild: hubPid }, from)
+    t.diagnostic(`real Hub: ${JSON.stringify({ ...hubTimes, wentOn: assertWentOnWithTheHub(userData, from, hubTimes) })}`)
     stopAgain()
   })
 
@@ -255,11 +286,66 @@ describe('quitting', () => {
     t.diagnostic(JSON.stringify(times))
     assert.ok(times.mainGone >= 4000, `ended by the guard, not by itself: ${times.mainGone} ms`)
 
+    // By now Chromium has saved the write by itself, so this doesn't show the flush. The tests below do.
     // The same port comes back from the saved settings, so this is the same origin and the same storage.
     const again = await startApp(t, { again: app })
     await waitForUrl(again.handle, 0, url => url.startsWith(`http://localhost:${port}/`), 'the Hub page')
     assert.equal(await evalIn(again.handle, 0, `localStorage.getItem('quit-test')`), 'kept')
     await quit(again.handle)
+  })
+
+  // Chromium holds a page's writes back for a few seconds before they reach the disk, so a hard end in that
+  // time loses them. This reads the disk, because a restart can't tell: under Playwright a Hub outlives a
+  // hard end by many seconds and the next app attaches to it.
+  const onDisk = ({ userData }, key) => {
+    const dir = path.join(userData, 'Partitions', 'hub', 'Local Storage', 'leveldb')
+    return fs.readdirSync(dir).some(name => {
+      try { return fs.readFileSync(path.join(dir, name)).includes(key) } catch { return false }
+    })
+  }
+
+  test('a page\'s write reaches the disk only later, unless the storage is flushed', async t => {
+    const app = await startApp(t)
+    const { handle, port } = app
+    await waitForUrl(handle, 0, url => url.startsWith(`http://localhost:${port}/`), 'the Hub page')
+    await evalIn(handle, 0, `localStorage.setItem('quit-test-flushed', 'kept')`)
+    await sleep(300)
+    assert.equal(onDisk(app, 'quit-test-flushed'), false, 'still in memory, or this test shows nothing')
+    await handle.app.evaluate(({ session }) => session.fromPartition('persist:hub').flushStorageData())
+    await waitFor(() => onDisk(app, 'quit-test-flushed'), 'the flush to reach the disk', 2000)
+    await quit(handle)
+  })
+
+  test('a quit flushes what the page just saved, before it waits for anything', async t => {
+    const app = await startApp(t)
+    const { handle, port } = app
+    await waitForUrl(handle, 0, url => url.startsWith(`http://localhost:${port}/`), 'the Hub page')
+    const mark = path.join(app.userData, 'flushed-at')
+    await handle.app.evaluate(({ session }, file) => {
+      const hub = session.fromPartition('persist:hub')
+      const flush = hub.flushStorageData.bind(hub)
+      hub.flushStorageData = () => { process.getBuiltinModule('fs').writeFileSync(file, String(Date.now())); flush() }
+    }, mark)
+    await evalIn(handle, 0, `localStorage.setItem('quit-test-quit', 'kept')`)
+    const from = Date.now()
+    await pressQuit(handle)
+    const { hubGone } = await assertAllGone(app, from)
+    // Closing the windows can save the write too, so what's on the disk can't show the flush alone. The
+    // call has to be seen as well.
+    assert.ok(fs.existsSync(mark), 'the quit has to flush the page\'s storage')
+    const flushedAt = Number(fs.readFileSync(mark, 'utf8')) - from
+    assert.ok(flushedAt <= hubGone, `the flush came at ${flushedAt} ms, after the Hub went at ${hubGone} ms`)
+    assert.ok(onDisk(app, 'quit-test-quit'), 'the write has to be on the disk')
+  })
+
+  test('a launcher page that refuses to unload can\'t stop the app quitting', async t => {
+    const app = await startApp(t, { env: { STUB_LAUNCHER: '1' } })
+    const { handle, port } = app
+    await waitForUrl(handle, 1, url => url === `http://localhost:${port}/launcher`, 'the launcher page')
+    await evalIn(handle, 1, `window.addEventListener('beforeunload', event => { event.preventDefault(); event.returnValue = 'no' }); true`)
+    const from = Date.now()
+    await pressQuit(handle)
+    t.diagnostic(JSON.stringify(await assertAllGone(app, from)))
   })
 
   test('a page that refuses to unload can\'t stop the app quitting', async t => {

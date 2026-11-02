@@ -33,6 +33,7 @@ function setup({ answers = () => 'none', holders = () => [], spawnable = true, s
     port: 4242,
     probe: async () => answers(),
     portHolders: async () => holders(),
+    isAlive: () => true,
     pollMs: 10,
     offlinePollMs: 10,
     startTimeoutMs,
@@ -311,7 +312,7 @@ test('listenersIn reads netstat, by the foreign port so any language works, on l
 })
 
 test('a child that never answers is stopped after the timeout and a new one starts', async () => {
-  const { connection, spawned, stopped } = setup({ startTimeoutMs: 60 })
+  const { connection, spawned, stopped } = setup({ startTimeoutMs: 400 })
   await connection.start()
   assert.equal(spawned.length, 1)
   await sleep(20)
@@ -447,6 +448,18 @@ test('stop has a limit: a tree stop that never ends and a Hub that never goes ca
   const took = Date.now() - startedAt
   assert.ok(took >= 90 && took < 2000, `took ${took} ms`)
   assert.equal(spawned[0].killed, undefined, 'the tree stop is still running, so the Hub is left for it')
+})
+
+test('stop goes on once the system says the Hub has gone, though no exit event has come', async () => {
+  const { connection, spawned } = setup({ answers: () => 'none' })
+  await connection.start()
+  await waitFor(() => spawned.length === 1, 'the child')
+  let alive = true
+  connection.isAlive = () => alive
+  connection.stopTree = () => { alive = false; return new Promise(() => {}) }
+  const startedAt = Date.now()
+  await connection.stop({ limitMs: 5000 })
+  assert.ok(Date.now() - startedAt < 2000, `it waited ${Date.now() - startedAt} ms`)
 })
 
 test('a tree stop that finishes with the Hub still here has failed, so the Hub is ended directly', async () => {

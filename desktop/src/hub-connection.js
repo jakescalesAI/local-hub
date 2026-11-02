@@ -25,6 +25,16 @@ const MAX_BACKOFF_MS = 30_000
 const STABLE_AFTER_MS = 60_000
 const MAX_START_TRIES = 3
 const STOP_LIMIT_MS = 10_000
+const STOP_WATCH_MS = 200
+
+function processAlive(pid) {
+  try {
+    process.kill(pid, 0)
+    return true
+  } catch (error) {
+    return error.code === 'EPERM'
+  }
+}
 
 export class HubConnection extends EventEmitter {
   #child = null
@@ -39,13 +49,14 @@ export class HubConnection extends EventEmitter {
   #graceUntil = 0
 
   // portHolders lists the pids listening on a port, or gives null when it can't tell.
-  constructor({ port, spawnHub, stopTree, portHolders = async () => null, probe = probeHub, pollMs = 2000, offlinePollMs = 1000, startTimeoutMs = 45_000 }) {
+  constructor({ port, spawnHub, stopTree, portHolders = async () => null, probe = probeHub, isAlive = processAlive, pollMs = 2000, offlinePollMs = 1000, startTimeoutMs = 45_000 }) {
     super()
     this.port = port
     this.spawnHub = spawnHub
     this.stopTree = stopTree
     this.portHolders = portHolders
     this.probe = probe
+    this.isAlive = isAlive
     this.pollMs = pollMs
     this.offlinePollMs = offlinePollMs
     this.startTimeoutMs = startTimeoutMs
@@ -93,13 +104,17 @@ export class HubConnection extends EventEmitter {
     this.#child = null
     const isGone = () => child.exitCode !== null || child.signalCode !== null
     if (isGone()) return
+    let watching
     await new Promise(resolve => {
       child.once('exit', resolve)
       setTimeout(resolve, limitMs).unref?.()
+      // Under load the exit event can come many seconds after the Hub has gone, so ask the system too.
+      watching = setInterval(() => { if (!this.isAlive(child.pid)) resolve() }, STOP_WATCH_MS)
       // A tree stop that finished with the Hub still here has failed. The Hub at least can still go.
       const afterTreeStop = () => { if (!isGone()) child.kill?.() }
       this.stopTree(child.pid).then(afterTreeStop, afterTreeStop)
     })
+    clearInterval(watching)
   }
 
   async setPort(port) {

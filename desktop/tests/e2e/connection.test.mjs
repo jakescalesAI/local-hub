@@ -1,12 +1,14 @@
 // Attach mode, bundled mode and recovery, in the real app against real processes.
 import assert from 'node:assert/strict'
 import { after, before, describe, test } from 'node:test'
+import { spawn, spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import http from 'node:http'
+import path from 'node:path'
 
 import { HubConnection, probeHub } from '../../src/hub-connection.js'
 import {
-  PACKAGED_EXE, STUB_SERVER, cleanup, evalIn, freePort, getJson, launch, makeUserData, ping, processAlive, quit, removeUserData,
+  PACKAGED_EXE, STUB_SERVER, cleanup, copyHub, evalIn, freePort, getJson, launch, makeUserData, ping, processAlive, quit, removeUserData,
   runKey, sleep, startExternalStub, stopExternalStub, waitFor, waitForUrl, windows,
 } from '../helpers.mjs'
 
@@ -192,24 +194,36 @@ describe('Hub restart', () => {
   })
 })
 
-// The live Hub, reads only. The app reaches it through a proxy that refuses anything but GET and
-// HEAD, so nothing the Hub's page does while loaded can change anything.
-describe('the live Hub on port 3100', () => {
-  const LIVE = 3100
-  test('the connection attaches on the real port, sends only pings, and leaves it running', async t => {
-    if (!(await ping(LIVE))) return t.skip('no Hub is running on 3100 (could not check; not a pass)')
+// A real Hub the app didn't start: a scratch copy with no config, so nothing here reaches a Hub already on
+// this computer. To check against a running one, set LOCAL_HUB_TEST_HUB_PORT to its port. The app reaches
+// it through a proxy that refuses anything but GET and HEAD, so nothing the page does can change it.
+describe('a real Hub started apart from the app', () => {
+  const startOtherHub = async t => {
+    const given = Number(process.env.LOCAL_HUB_TEST_HUB_PORT)
+    if (given) return given
+    const dir = copyHub(t)
+    const port = await freePort()
+    const hub = spawn(process.execPath, [path.join(dir, 'server.mjs')], { cwd: dir, env: { ...process.env, HUB_PORT: String(port) }, stdio: 'ignore', windowsHide: true })
+    cleanup(t, () => { spawnSync('taskkill.exe', ['/PID', String(hub.pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true }) })
+    await waitFor(() => ping(port), 'the scratch Hub to answer', 30_000)
+    return port
+  }
+
+  test('the connection attaches, sends only pings, and leaves it running', async t => {
+    const other = await startOtherHub(t)
     let spawned = 0
     let stops = 0
-    const connection = new HubConnection({ port: LIVE, spawnHub: () => { spawned += 1; return null }, stopTree: async () => { stops += 1 } })
+    const connection = new HubConnection({ port: other, spawnHub: () => { spawned += 1; return null }, stopTree: async () => { stops += 1 } })
     await connection.start()
     assert.deepEqual(connection.state, { status: 'online', mode: 'attached', reason: null })
     await connection.stop()
     assert.equal(spawned, 0)
     assert.equal(stops, 0)
-    assert.equal(await ping(LIVE), true)
+    assert.equal(await ping(other), true)
   })
 
   const viewThroughProxy = async (t, launchOptions) => {
+    const other = await startOtherHub(t)
     const port = await freePort()
     const refused = []
     const seen = []
@@ -220,7 +234,7 @@ describe('the live Hub on port 3100', () => {
         res.writeHead(403, { 'content-type': 'application/json' })
         return res.end('{"error":"read-only test proxy"}')
       }
-      const upstream = http.request({ host: '127.0.0.1', port: LIVE, path: req.url, method: req.method, headers: { ...req.headers, host: `localhost:${LIVE}` } }, reply => {
+      const upstream = http.request({ host: '127.0.0.1', port: other, path: req.url, method: req.method, headers: { ...req.headers, host: `localhost:${other}` } }, reply => {
         res.writeHead(reply.statusCode, reply.headers)
         reply.pipe(res)
       })
@@ -234,7 +248,7 @@ describe('the live Hub on port 3100', () => {
 
     const handle = await launch({ userData, ...launchOptions, args: ['--hidden'] })
     cleanup(t, () => quit(handle).catch(() => {}))
-    const main = await waitForUrl(handle, 0, url => url.startsWith(`http://localhost:${port}/`), 'the live Hub')
+    const main = await waitForUrl(handle, 0, url => url.startsWith(`http://localhost:${port}/`), 'the other Hub')
     await sleep(3000)
     const [{ title }, launcher] = await windows(handle)
     const textLength = await evalIn(handle, 0, `document.body.innerText.length`)
@@ -243,16 +257,14 @@ describe('the live Hub on port 3100', () => {
     t.diagnostic(`routes refused: ${JSON.stringify([...new Set(refused)])}`)
     assert.ok(textLength > 0, 'the page has content')
     await quit(handle)
-    assert.equal(await ping(LIVE), true, 'the live Hub still answers')
+    assert.equal(await ping(other), true, 'the other Hub still answers')
   }
 
   test('the real Hub page renders in the app through a read-only proxy', async t => {
-    if (!(await ping(LIVE))) return t.skip('no Hub is running on 3100 (could not check; not a pass)')
     await viewThroughProxy(t, {})
   })
 
   test('the real Hub page renders in the built app through a read-only proxy', async t => {
-    if (!(await ping(LIVE))) return t.skip('no Hub is running on 3100 (could not check; not a pass)')
     if (!fs.existsSync(PACKAGED_EXE)) return t.skip('no build at dist/win-unpacked (could not check; not a pass)')
     await viewThroughProxy(t, { packaged: true })
   })
