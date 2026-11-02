@@ -292,6 +292,7 @@ The hub's look and layout are stored in `data/hub-settings.json`. The previous v
   - The Home app tiles, in order, as `[ids]`. A patch can also send `{ add: [ids], remove: [ids] }`.
   - Ids: every tab except home, plus `chat`. Chat opens the hub chat.
 - `widgets`: `{ desktop: [items], ipad: [items], mobile: [items] }`. A hub with no iPad layout starts from a copy of Desktop, reflowed to fit.
+- An item can carry `br: true`, meaning it starts a new Home page. Anything other than `true` is refused, and items inside a stack don't have it.
   - An item is `{ key, id, size, opts? }`.
   - `size` is s, m or l.
   - `id` is a widget id from the catalog, or a family id such as `claude-account.<name>`, `coolify-app.<name>`, `server.<name>`, `client.<name>` or `drive.<name>`.
@@ -324,7 +325,7 @@ The hub's look and layout are stored in `data/hub-settings.json`. The previous v
     - an upload id
   - A gradient is `{ id: "custom-<name>", name, colors: [2-3 hex], angle: 0-360, mesh: true|false }`. Gradients are added with `addCustom` and removed with `removeCustom` (at most 24).
   - A dimming layer keeps text readable over every wallpaper. It is light when the wallpaper's tone matches the theme (.22), strong when it doesn't (.62), and .45 for gradients and uploads.
-- `pages`: extra Home pages, at most 40, each `{ id: "page-<name>", name, widgets: { desktop, ipad, mobile } }`.
+- `pages`: older named Home pages, at most 40, each `{ id: "page-<name>", name, widgets: { desktop, ipad, mobile } }`. They keep working, but Home makes no new ones.
   - A patch sends `{ add: { name }, rename: { id, name }, remove: [ids], order: [ids], layout: { id, desktop?, ipad?, mobile? } }`.
 - `files`: your own files, added through the upload route below, never by a patch.
 - `reset`: `[parts]`, where a part is tabs, apps, widgets, style, wallpaper, pages or all. Resetting the wallpaper keeps saved gradients and uploads.
@@ -372,8 +373,9 @@ The hub's look and layout are stored in `data/hub-settings.json`. The previous v
 - Hold any app or widget, by touch or mouse, to start editing Home with that item ready to drag. A short press still opens it, and moving your finger first still scrolls.
 - Right-click any app or widget for Edit Home first, then what fits: Open, Small/Medium/Large, Widget Options, Remove.
 - Right-click empty space for Add to Home, Edit Home, Edit Style, Change Wallpaper, Edit Tabs and Reset Layout (which asks first).
-- Edit mode has Reset, Edit Tabs, Edit Style, Pages, Add and Done, and a Desktop, iPad and Mobile switch.
-  - Desktop is your normal Home. iPad and Mobile show that device's own layout in a frame, scaled to fit, and scroll inside the frame. Drag and edit work there as they do on the device.
+- Edit mode has Reset, Edit Tabs, Edit Style, Add and Done, a Desktop, iPad and Mobile switch, and Add Page and Remove Page beside the page dots. Named Pages shows only if the hub already has some.
+  - Desktop is your normal Home. iPad and Mobile show that device's own layout in a frame, scaled to fit. Drag and edit work there as they do on the device.
+- Home doesn't scroll in any view. What doesn't fit goes to the next page. Swipe or drag sideways, use the wheel or arrow keys, or click the dots. Hold a card at the side of the page to carry it to the next one.
   - A real iPad shows the iPad layout and a real phone shows Mobile, full screen with no frame.
 - Add to Home and Edit Tabs are one picker. Each lists built-in tabs, apps, website suggestions, pages and your files, with a search field. Paste any web address to add a website, which gets its name and icon on its own and opens in the pop-up.
 - In Edit Tabs, drag a row or drag the tab itself in the header. Home can move, and it can't be hidden, so there's always a way back.
