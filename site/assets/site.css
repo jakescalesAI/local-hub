@@ -67,7 +67,25 @@ ul { list-style: none; }
 
 /* Closing download */
 .closing { display: flex; flex-direction: column; align-items: center; text-align: center; padding-block: clamp(70px, 10vw, 120px) 8px; }
-.closing h2 { margin: 0 0 24px; font-size: clamp(30px, 5vw, 52px); letter-spacing: -0.035em; }
+.for-phone { display: none; }
+.coming { font-size: 19px; font-weight: 600; line-height: 1.25; letter-spacing: -0.018em; text-wrap: balance; }
+.on-pc { margin-top: 6px; font-size: 15px; letter-spacing: -0.012em; color: var(--label-2); text-wrap: balance; }
+/* Desktop and Mobile side by side: both pictures stand on one line, their captions start on another. */
+.both { display: grid; grid-template-columns: minmax(0, 3.2fr) minmax(0, 1fr); grid-template-rows: auto auto; gap: 22px clamp(20px, 3.4vw, 40px); width: 100%; }
+.both figure { display: grid; grid-row: span 2; grid-template-rows: subgrid; row-gap: 22px; min-width: 0; margin: 0; }
+.both h3 { margin: 0 0 12px; font-size: 13px; font-weight: 600; letter-spacing: -0.006em; color: var(--label-2); }
+.both figcaption { display: flex; flex-direction: column; align-items: center; }
+.both-phone .coming { font-size: 17px; }
+.window, .phone { align-self: end; box-shadow: var(--ring), 0 24px 70px -20px rgba(255, 255, 255, .13); }
+.window { overflow: hidden; border-radius: 12px; background: var(--surface); }
+.window-bar { display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 12px; font-size: 13px; font-weight: 500; letter-spacing: -0.006em; }
+.window-bar svg { margin-left: auto; color: var(--label-2); }
+.window > img { display: block; width: 100%; height: auto; }
+.phone { padding: 7px; border-radius: 34px; background: var(--surface); }
+.phone-screen { display: grid; place-items: center; overflow: hidden; aspect-ratio: 390 / 844; border-radius: 27px; background: #0b0b0c; }
+.phone-screen > img:not(.phone-mark) { display: block; width: 100%; height: auto; }
+.phone-mark { opacity: .9; }
+.closing h2 { margin: 0 0 clamp(26px, 4vw, 44px); font-size: clamp(30px, 5vw, 52px); letter-spacing: -0.035em; }
 
 /* The real app, one screen per function, with the chrome ribbons passing behind its window. */
 .demo { position: relative; isolation: isolate; margin-top: clamp(40px, 7vh, 72px); }
@@ -121,7 +139,7 @@ ul { list-style: none; }
 
 /* The curved row of screens, driven by assets/js/wall.js. Only transforms move, and only while it is on screen. */
 .wall { margin-top: clamp(84px, 11vw, 136px); }
-.wall-title { margin-bottom: clamp(4px, 1vw, 12px); font-size: clamp(28px, 4.4vw, 46px); letter-spacing: -0.035em; text-align: center; }
+.wall-title { margin-bottom: clamp(4px, 1vw, 12px); font-size: clamp(28px, 4.4vw, 46px); letter-spacing: -0.035em; text-align: center; text-wrap: balance; }
 .wall-band { --fade: linear-gradient(90deg, transparent, #000 11%, #000 89%, transparent); position: relative; overflow: hidden; height: clamp(240px, 30vw, 470px); container-type: size; background: url("shots/wall/still.webp") center / auto 100% no-repeat; -webkit-mask-image: var(--fade); mask-image: var(--fade); }
 .motion .wall-band { background-image: none; }
 .wall-stage { display: none; position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .6s var(--ease); }
@@ -261,12 +279,23 @@ kbd { display: inline-block; padding: .05em .34em .08em; border-radius: .26em; b
 }
 @media (max-width: 539px) { .tools { --tool-text: 12px; } }
 
+/* Where an installer is no use: the phone's own lines take the button's place. */
+@media (max-width: 639px), (hover: none) and (pointer: coarse) and (max-width: 1024px) {
+  .for-pc, .get .download, .both .download { display: none; }
+  .for-phone { display: block; }
+  .both-phone { order: -1; }
+  .both { grid-template-columns: minmax(0, 1fr) minmax(0, 3.2fr); }
+}
+
 /* Phone */
 @media (max-width: 639px) {
   .download { width: min(100%, 340px); }
   .tour-tabs label { padding: 7px 12px; font-size: 14px; }
   .tour-panel img { border-radius: 12px; }
   .foot { flex-direction: column; align-items: flex-start; }
+  .both { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; gap: 44px; }
+  .both figure { grid-row: auto; grid-template-rows: none; }
+  .phone { justify-self: center; width: min(60vw, 240px); }
 }
 @media (max-width: 439px) {
   .orbit { --rx: 104px; --ry: 86px; width: 100%; max-width: 300px; height: 226px; }

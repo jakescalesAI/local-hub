@@ -164,7 +164,7 @@ void main(){
     if (start.done) return
     start.done = true
     document.removeEventListener("hero:done", start)
-    window.LiquidMetal = Array.prototype.map.call(document.querySelectorAll(".download"), attach)
+    window.LiquidMetal = Array.prototype.filter.call(document.querySelectorAll(".download"), function (b) { return b.offsetWidth }).map(attach)
   }
 
   if (!window.WebGL2RenderingContext || !matchMedia("(prefers-reduced-motion: no-preference)").matches) return

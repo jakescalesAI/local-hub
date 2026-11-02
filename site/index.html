@@ -47,7 +47,7 @@
 <main>
   <section class="hero" aria-labelledby="hero-title">
     <div class="hero-body page">
-      <p class="pill arrive">
+      <p class="pill arrive for-pc">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M2 4.6 10.2 3.5v8H2zM11.2 3.3 22 2v9.5H11.2zM2 12.5h8.2v8L2 19.4zM11.2 12.5H22V22l-10.8-1.5z"/></svg>
         Windows only for now
       </p>
@@ -60,8 +60,11 @@
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="m7 10.5 5 5 5-5"/><path d="M5 20h14"/></svg>
           <span>Download for Windows</span>
         </a>
-        <p class="platform">The installer isn’t signed yet, so Windows may warn you first: choose <b>More info</b>, then <b>Run anyway</b>.</p>
+        <p class="platform for-pc">The installer isn’t signed yet, so Windows may warn you first: choose <b>More info</b>, then <b>Run anyway</b>.</p>
         <p class="not-yet" id="not-yet">The installer isn’t published yet. This button will download it once it is.</p>
+        <!-- MOBILE_TEXT: what the page says about the mobile app. The closing section has the same line. -->
+        <p class="coming for-phone">Coming soon to iPhone, iPad and Android</p>
+        <p class="on-pc for-phone">Download for Windows on your PC.</p>
       </div>
     </div>
   </section>
@@ -211,14 +214,40 @@
       </div>
     </div>
   </section>
-  <section class="closing page" aria-label="Download">
-    <h2>Your computer, one search away.</h2>
-    <!-- DOWNLOAD_URL: at release, replace "#not-yet" on the next line with the installer's address. The hero button has the same line. -->
-    <a class="download" href="#not-yet">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="m7 10.5 5 5 5-5"/><path d="M5 20h14"/></svg>
-      <span>Download for Windows</span>
-    </a>
-    <p class="platform">Windows only for now.</p>
+  <section class="closing page" aria-labelledby="closing-title">
+    <h2 id="closing-title">Your computer, one search away.</h2>
+    <div class="both">
+      <figure class="both-desk">
+        <div class="window">
+          <p class="window-bar" aria-hidden="true"><img src="icons/hub.svg" width="16" height="16" alt="">LocalHub<svg width="84" height="12" viewBox="0 0 84 12" fill="none" stroke="currentColor"><path d="M2 6h10M38 1.5h9v9h-9zM74 1.5l9 9M83 1.5l-9 9"/></svg></p>
+          <img src="assets/shots/desktop-home.webp" width="1600" height="1000" loading="lazy" alt="LocalHub on a desktop: Home with a clock, today’s events, this week and a world clock, all made-up sample content.">
+        </div>
+        <figcaption>
+          <h3>Desktop</h3>
+          <!-- DOWNLOAD_URL: at release, replace "#not-yet" on the next line with the installer's address. The hero button has the same line. -->
+          <a class="download" href="#not-yet">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="m7 10.5 5 5 5-5"/><path d="M5 20h14"/></svg>
+            <span>Download for Windows</span>
+          </a>
+          <p class="platform for-pc">Windows only for now.</p>
+          <p class="on-pc for-phone">Download for Windows on your PC.</p>
+        </figcaption>
+      </figure>
+      <figure class="both-phone">
+        <!-- PHONE_SHOT: when the real shots come, put the image inside .phone-screen in place of the mark:
+             <img src="assets/shots/phone-home.webp" width="1170" height="2532" loading="lazy" alt="LocalHub on a phone: ..."> -->
+        <div class="phone">
+          <div class="phone-screen">
+            <img class="phone-mark" src="icons/hub.svg" width="56" height="56" alt="">
+          </div>
+        </div>
+        <figcaption>
+          <h3>Mobile</h3>
+          <!-- MOBILE_TEXT: what the page says about the mobile app. The hero has the same line. -->
+          <p class="coming">Coming soon to iPhone, iPad and Android</p>
+        </figcaption>
+      </figure>
+    </div>
   </section>
 </main>
 
