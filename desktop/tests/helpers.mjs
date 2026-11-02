@@ -54,8 +54,27 @@ export async function ping(port) {
   }
 }
 
-export async function getJson(port, route) {
-  const res = await fetch(`http://localhost:${port}${route}`, { signal: AbortSignal.timeout(25_000) })
+const callHub = (port, route) => fetch(`http://localhost:${port}${route}`, { signal: AbortSignal.timeout(25_000) })
+
+// A call that fails stays failed. This only says why, for a failure that may not come back: each address
+// tried, what held the port, what the Hub wrote (no log means this app never started one), and a second look.
+async function whyNoAnswer(error, port, route, userData) {
+  const attempts = (error.cause?.errors ?? [error.cause]).map(item => `${item?.code ?? item?.name} ${item?.address ?? ''}`.trim())
+  const holders = () => spawnSync('netstat.exe', ['-ano'], { encoding: 'utf8', windowsHide: true }).stdout.split(/\r?\n/)
+    .filter(line => line.includes(`:${port} `)).map(line => line.trim().replace(/\s+/g, ' '))
+  const details = [`tried: ${attempts.join(', ')}`, `port: ${JSON.stringify(holders())}`]
+  if (userData) {
+    const log = path.join(userData, 'logs', 'hub.log')
+    details.push(`hub.log: ${fs.existsSync(log) ? fs.readFileSync(log, 'utf8').slice(-1000) : '(none)'}`)
+  }
+  await sleep(1500)
+  const later = await callHub(port, route).then(res => `answered ${res.status}`, e => `refused again: ${e.cause?.code ?? e.message}`)
+  details.push(`1.5 s later: ${later}`, `port then: ${JSON.stringify(holders())}`)
+  return new Error(`${error.message} (${details.join('; ')})`, { cause: error })
+}
+
+export async function getJson(port, route, { userData } = {}) {
+  const res = await callHub(port, route).catch(async error => { throw await whyNoAnswer(error, port, route, userData) })
   return res.json()
 }
 
@@ -131,12 +150,18 @@ process.on('exit', () => {
   for (const proc of liveApps) spawnSync('taskkill.exe', ['/PID', String(proc.pid), '/T', '/F'], { windowsHide: true })
 })
 
+// While tests/tools/net-audit.ps1 is watching, Chromium also writes down each connection the app makes.
+let netLogs = 0
+export const netLogArgs = () => (process.env.LH_NET_LOG_DIR
+  ? [`--log-net-log=${path.join(process.env.LH_NET_LOG_DIR, `net-${process.pid}-${netLogs += 1}.json`)}`]
+  : [])
+
 export async function launch({ userData, args = [], env = {}, packaged = false }) {
   const launchEnv = { ...process.env, LH_TEST_USER_DATA: userData, ...env }
   delete launchEnv.ELECTRON_RUN_AS_NODE
   const app = await electron.launch(packaged
-    ? { executablePath: PACKAGED_EXE, args: [`--user-data-dir=${userData}`, ...args], env: launchEnv, timeout: 60_000 }
-    : { args: ['-r', SHIM, APP_DIR, ...args], env: launchEnv, cwd: APP_DIR, timeout: 60_000 })
+    ? { executablePath: PACKAGED_EXE, args: [`--user-data-dir=${userData}`, ...netLogArgs(), ...args], env: launchEnv, timeout: 60_000 }
+    : { args: ['-r', SHIM, ...netLogArgs(), APP_DIR, ...args], env: launchEnv, cwd: APP_DIR, timeout: 60_000 })
   const proc = app.process()
   // A failed test must not leave the app behind, or the runner waits on it forever.
   liveApps.add(proc)

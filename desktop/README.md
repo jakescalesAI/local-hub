@@ -161,6 +161,18 @@ such as a build or a second monitor, report as skipped rather than passing.
 
 `quit.test.mjs` quits with four CPU burners sharing two cores with the app, so the rest of the computer stays free, for up to a minute. It presses Quit through the real tray menu item's click handler, not the native menu popup.
 
+To check whether a run touched a Hub you have running, run it under the connection audit, then read the result:
+
+```bash
+powershell -ExecutionPolicy Bypass -File tests/tools/net-audit.ps1 -WatchPort 3100 -OutDir audit-output -Command "npm run test:e2e"
+```
+
+```bash
+node tests/tools/net-audit-report.mjs audit-output
+```
+
+It runs the command in a Windows job, so every process the command starts is listed. Each Node connection is logged where it starts, each of Chromium's in its net log, and the system's connection table is read every 10 ms for everything else, with the owner of each row. A built app has no shim, so its main process and the Hub it starts aren't logged: only the table sees them, and a connection shorter than 10 ms could be missed. The report exits 0 when no record shows the port touched, 1 when one does and 2 when a record it depends on is empty.
+
 Not covered by the suite, because it would take over the desktop: the native tray menu popup, real focus changes, how windows look
 on real monitors, the real login-item write, the default `Ctrl+Alt+Space` binding, a real Save As dialog
 and running the installer.

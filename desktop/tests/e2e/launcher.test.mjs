@@ -411,7 +411,7 @@ describe('settings', () => {
     const handle = await launch({ userData, args: ['--hidden'], env: { LOCAL_HUB_SERVER: STUB_SERVER, STUB_GRANDCHILD: '1' } })
     cleanup(t, () => quit(handle).catch(() => {}))
     await waitForUrl(handle, 0, isHub(port), 'the bundled Hub')
-    const first = await getJson(port, '/api/pid')
+    const first = await getJson(port, '/api/pid', { userData })
     assert.ok(processAlive(first.grandchild))
 
     const port2 = await freePort()
@@ -419,7 +419,7 @@ describe('settings', () => {
     assert.deepEqual(await evalIn(handle, 2, `window.hubDesktop.saveSettings({ port: ${port2} })`), { ok: true })
     await waitForUrl(handle, 0, isHub(port2), 'the Hub on the new port')
     await waitFor(() => !processAlive(first.pid) && !processAlive(first.grandchild), 'the old Hub and its child to be gone', 8000)
-    const second = await getJson(port2, '/api/pid')
+    const second = await getJson(port2, '/api/pid', { userData })
     t.diagnostic(`old hub ${first.pid} and child ${first.grandchild} gone, new hub ${second.pid} on ${port2}, app pid ${handle.pid} still running`)
     assert.equal(await ping(port), false, 'the old port is quiet')
     assert.notEqual(second.pid, first.pid)

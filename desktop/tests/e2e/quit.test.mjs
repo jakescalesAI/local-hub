@@ -9,7 +9,8 @@ import path from 'node:path'
 import { describe, test } from 'node:test'
 
 import {
-  PACKAGED_EXE, QUIT_LIMIT_MS, STUB_SERVER, cleanup, evalIn, freePort, getJson, launch, makeUserData, ping, processAlive, quit,
+  PACKAGED_EXE, QUIT_LIMIT_MS, STUB_SERVER, cleanup, evalIn, freePort, getJson, launch, makeUserData, netLogArgs, ping, processAlive,
+  quit,
   removeUserData, sleep, trayItem, waitFor, waitForUrl,
 } from '../helpers.mjs'
 
@@ -221,7 +222,7 @@ describe('quitting', () => {
     // Started directly, because Playwright has its own way of ending what it started.
     const env = { ...process.env }
     delete env.ELECTRON_RUN_AS_NODE
-    const app = spawn(PACKAGED_EXE, [`--user-data-dir=${userData}`, '--hidden'], { env, stdio: 'ignore', windowsHide: true })
+    const app = spawn(PACKAGED_EXE, [`--user-data-dir=${userData}`, ...netLogArgs(), '--hidden'], { env, stdio: 'ignore', windowsHide: true })
     await waitFor(() => ping(port), 'the real Hub to answer', 90_000)
     const opened = await openBrowser(port)
     if (!opened.ok && /chrome|edge/i.test(opened.text)) return t.skip(`no browser to open (could not check; not a pass): ${opened.text}`)
@@ -242,7 +243,7 @@ describe('quitting', () => {
     endWhatIsLeft(t, userData)
     const env = { ...process.env }
     delete env.ELECTRON_RUN_AS_NODE
-    const app = spawn(PACKAGED_EXE, [`--user-data-dir=${userData}`, '--hidden'], { env, stdio: 'ignore', windowsHide: true })
+    const app = spawn(PACKAGED_EXE, [`--user-data-dir=${userData}`, ...netLogArgs(), '--hidden'], { env, stdio: 'ignore', windowsHide: true })
     await waitFor(() => ping(port), 'the real Hub to answer', 90_000)
     const opened = await openBrowser(port)
     if (!opened.ok && /chrome|edge/i.test(opened.text)) return t.skip(`no browser to open (could not check; not a pass): ${opened.text}`)
@@ -316,26 +317,44 @@ describe('quitting', () => {
     await quit(handle)
   })
 
-  test('a quit flushes what the page just saved, before it waits for anything', async t => {
+  test('a quit flushes what the page just saved, before it starts stopping the Hub', async t => {
     const app = await startApp(t)
     const { handle, port } = app
     await waitForUrl(handle, 0, url => url.startsWith(`http://localhost:${port}/`), 'the Hub page')
-    const mark = path.join(app.userData, 'flushed-at')
+    const marks = path.join(app.userData, 'quit-order.txt')
+    // Both run on the app's one thread, so the order they're noted in needs no clock.
     await handle.app.evaluate(({ session }, file) => {
+      const note = what => process.getBuiltinModule('fs').appendFileSync(file, `${what}\n`)
       const hub = session.fromPartition('persist:hub')
       const flush = hub.flushStorageData.bind(hub)
-      hub.flushStorageData = () => { process.getBuiltinModule('fs').writeFileSync(file, String(Date.now())); flush() }
-    }, mark)
+      hub.flushStorageData = () => { note('flush'); flush() }
+      const childProcess = process.getBuiltinModule('child_process')
+      const spawnChild = childProcess.spawn
+      childProcess.spawn = (command, ...rest) => {
+        if (/taskkill/i.test(command)) note('stop the Hub')
+        return spawnChild(command, ...rest)
+      }
+      process.getBuiltinModule('module').syncBuiltinESMExports()
+    }, marks)
     await evalIn(handle, 0, `localStorage.setItem('quit-test-quit', 'kept')`)
     const from = Date.now()
     await pressQuit(handle)
-    const { hubGone } = await assertAllGone(app, from)
+    await assertAllGone(app, from)
     // Closing the windows can save the write too, so what's on the disk can't show the flush alone. The
     // call has to be seen as well.
-    assert.ok(fs.existsSync(mark), 'the quit has to flush the page\'s storage')
-    const flushedAt = Number(fs.readFileSync(mark, 'utf8')) - from
-    assert.ok(flushedAt <= hubGone, `the flush came at ${flushedAt} ms, after the Hub went at ${hubGone} ms`)
+    const order = fs.readFileSync(marks, 'utf8').trim().split('\n')
+    assert.deepEqual(order, ['flush', 'stop the Hub'], 'the quit has to flush the page\'s storage, and first')
     assert.ok(onDisk(app, 'quit-test-quit'), 'the write has to be on the disk')
+  })
+
+  // Under load the Hub's exit event can come many seconds late. That can't be made to happen at will, so here
+  // it never comes. The limit is longer than the app's whole allowance, so only the app's own check on the Hub
+  // can get it out in time.
+  test('a quit goes on once the Hub has gone, though its exit event never comes', async t => {
+    const app = await startApp(t, { env: { LH_TEST_NO_HUB_EXIT_EVENT: '1', LOCAL_HUB_QUIT_LIMIT_MS: '60000' } })
+    const from = Date.now()
+    await pressQuit(app.handle)
+    t.diagnostic(JSON.stringify(await assertAllGone(app, from)))
   })
 
   test('a launcher page that refuses to unload can\'t stop the app quitting', async t => {
