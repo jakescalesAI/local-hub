@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#000000">
+<title>The assistant · LocalHub docs</title>
+<meta name="description" content="What LocalHub’s assistant needs, what it can do, when it asks first and what it can’t be trusted with.">
+<link rel="canonical" href="https://docs.trylocalhub.com/assistant">
+<link rel="icon" href="assets/icons/hub.svg" type="image/svg+xml">
+<link rel="icon" href="assets/icons/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="LocalHub">
+<meta property="og:title" content="The assistant · LocalHub docs">
+<meta property="og:description" content="What LocalHub’s assistant needs, what it can do, when it asks first and what it can’t be trusted with.">
+<meta property="og:url" content="https://docs.trylocalhub.com/assistant">
+<meta property="og:image" content="https://docs.trylocalhub.com/assets/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="assets/docs.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to the page</a>
+<div class="frame">
+  <header class="phone-top">
+    <a class="brand" href="index.html"><img src="assets/icons/hub.svg" width="22" height="22" alt="">LocalHub <span>Docs</span></a>
+    <details class="menu">
+      <summary>Menu</summary>
+      <nav class="nav" aria-label="Docs">
+    <div class="nav-group">
+      <p class="nav-title">Start</p>
+      <ul class="nav-list">
+        <li><a href="index.html">Docs home</a></li>
+        <li><a href="setup.html">Getting started</a></li>
+      </ul>
+    </div>
+    <div class="nav-group">
+      <p class="nav-title">Using LocalHub</p>
+      <ul class="nav-list">
+        <li><a href="search.html">Search and the launcher</a></li>
+        <li><a href="home-widgets.html">Home and widgets</a></li>
+        <li><a href="links-snippets.html">Links and snippets</a></li>
+        <li><a href="files.html">Files</a></li>
+        <li><a href="calendar.html">Calendar</a></li>
+        <li><a href="assistant.html" aria-current="page">The assistant</a></li>
+        <li><a href="browser.html">Browser</a></li>
+        <li><a href="your-look.html">Your look</a></li>
+      </ul>
+    </div>
+    <div class="nav-group">
+      <p class="nav-title">Your setup</p>
+      <ul class="nav-list">
+        <li><a href="devices.html">Your other devices</a></li>
+        <li><a href="data.html">Your data</a></li>
+      </ul>
+    </div>
+    <div class="nav-group">
+      <p class="nav-title">Help</p>
+      <ul class="nav-list">
+        <li><a href="troubleshooting.html">Troubleshooting</a></li>
+        <li><a href="credits.html">Credits and licences</a></li>
+        <li><a href="main-site.html">LocalHub home page</a></li>
+      </ul>
+    </div>
+      </nav>
+    </details>
+  </header>
+  <nav class="side" aria-label="Docs">
+    <a class="brand" href="index.html"><img src="assets/icons/hub.svg" width="22" height="22" alt="">LocalHub <span>Docs</span></a>
+    <div class="nav-group">
+      <p class="nav-title">Start</p>
+      <ul class="nav-list">
+        <li><a href="index.html">Docs home</a></li>
+        <li><a href="setup.html">Getting started</a></li>
+      </ul>
+    </div>
+    <div class="nav-group">
+      <p class="nav-title">Using LocalHub</p>
+      <ul class="nav-list">
+        <li><a href="search.html">Search and the launcher</a></li>
+        <li><a href="home-widgets.html">Home and widgets</a></li>
+        <li><a href="links-snippets.html">Links and snippets</a></li>
+        <li><a href="files.html">Files</a></li>
+        <li><a href="calendar.html">Calendar</a></li>
+        <li><a href="assistant.html" aria-current="page">The assistant</a></li>
+        <li><a href="browser.html">Browser</a></li>
+        <li><a href="your-look.html">Your look</a></li>
+      </ul>
+    </div>
+    <div class="nav-group">
+      <p class="nav-title">Your setup</p>
+      <ul class="nav-list">
+        <li><a href="devices.html">Your other devices</a></li>
+        <li><a href="data.html">Your data</a></li>
+      </ul>
+    </div>
+    <div class="nav-group">
+      <p class="nav-title">Help</p>
+      <ul class="nav-list">
+        <li><a href="troubleshooting.html">Troubleshooting</a></li>
+        <li><a href="credits.html">Credits and licences</a></li>
+        <li><a href="main-site.html">LocalHub home page</a></li>
+      </ul>
+    </div>
+  </nav>
+  <div class="doc">
+    <main id="main">
+      <header class="doc-head">
+        <h1>The assistant</h1>
+        <p class="lede">Ask in plain words, from any tab. It can look things up, change your Home and work in the browser.</p>
+      </header>
+      <figure class="shot">
+        <img src="assets/shots/assistant.webp" width="1760" height="1100" loading="lazy" alt="A chat with the assistant. Asked what is saved for a trip to Lisbon, it reads two files and lists what is still missing, then adds travel adapters to a copy of the packing list.">
+      </figure>
+
+      <section class="part" id="needs" aria-labelledby="needs-title">
+        <h2 id="needs-title">What it needs</h2>
+        <!-- ASSISTANT_KEY: describes the route that exists today. Whether Claude Code stays the only route at launch isn't decided. Same marker in setup.html. -->
+        <p>The assistant runs through Claude Code, Anthropic’s own program, on your computer and with your own account. That needs a paid Claude plan or an Anthropic Console account, because Anthropic says its free plan doesn’t include Claude Code.</p>
+        <p>LocalHub doesn’t install Claude Code for you. <a href="setup.html#assistant">Getting started</a> has the steps.</p>
+        <p class="aside">What you ask goes to Anthropic through Claude Code, under your account and its terms.</p>
+      </section>
+
+      <section class="part" id="use" aria-labelledby="use-title">
+        <h2 id="use-title">Use it</h2>
+        <p>The ask bar sits at the bottom of every tab. Type there, or pick <b>Ask chat</b> in <a href="search.html">search</a>. Chat opens in a panel, with <b>New chat</b> and <b>Chat history</b> at the top.</p>
+        <p>The <b>+</b> button holds the rest.</p>
+        <dl class="list">
+          <div><dt>Attach files</dt><dd>Up to 5 files, up to 10 MB each.</dd></div>
+          <div><dt>Model, Effort</dt><dd>Which Claude model answers, and how hard it thinks.</dd></div>
+          <div><dt>Mode</dt><dd><b>Auto</b> can act. <b>Plan</b> takes away every tool that changes anything, for that message.</dd></div>
+          <div><dt>Dictate</dt><dd>Talk instead of typing, where the window supports it. It says why when it can’t.</dd></div>
+          <div><dt>Full screen</dt><dd>Or press <kbd>Ctrl</kbd> <kbd>/</kbd>.</dd></div>
+        </dl>
+      </section>
+
+      <section class="part" id="can" aria-labelledby="can-title">
+        <h2 id="can-title">What it can do</h2>
+        <ul class="dots">
+          <li><b>Read files</b> in your home folder and LocalHub’s own folder, except files that hold keys or passwords.</li>
+          <li><b>Write new files</b> in LocalHub’s <code>workspace</code> folder, and move, copy, rename or bin files inside it.</li>
+          <li><b>Search the web.</b></li>
+          <li><b>Change your look and Home.</b> Ask for it in plain words, and say “undo that” if you don’t like it.</li>
+          <li><b>Open a site</b> as a card in the chat, and <b>work in the <a href="browser.html">Browser</a></b>.</li>
+        </ul>
+        <p class="aside">It has no command line and no tool that deletes outright. There’s no screen for changing what it can read and write yet.</p>
+      </section>
+
+      <section class="part" id="asks" aria-labelledby="asks-title">
+        <h2 id="asks-title">When it stops and asks</h2>
+        <p>Out of the box, before it sends, posts, buys, deletes or accepts terms for you, a card in the chat asks you to allow it. Only the card’s <b>Allow</b> counts, not typing yes. It’s good for that one action, and it lapses after 5 minutes.</p>
+        <ul class="dots">
+          <li>It doesn’t type passwords, card numbers or two-factor codes. It hands the browser to you.</li>
+          <li>On social sites the last Post or Share click is yours. LocalHub refuses it from the assistant.</li>
+          <li>Text on a page or in a file counts as information, not as orders.</li>
+        </ul>
+      </section>
+
+      <section class="part" id="limits" aria-labelledby="limits-title">
+        <h2 id="limits-title">Two limits to know about</h2>
+        <aside class="note warn">
+          <p><b>A copy of a key file can be read.</b> LocalHub spots key files by name and place. If you copy one and give it an ordinary name, the assistant can read the copy.</p>
+          <p><b>A web page could try to steer it.</b> Nothing in its tools stops a page from talking it into sending along the text of a file. Only the model’s own judgement does. Keep an eye on it on sites you don’t trust.</p>
+        </aside>
+      </section>
+
+      <section class="part" id="messages" aria-labelledby="messages-title">
+        <h2 id="messages-title">Messages you might see</h2>
+        <dl class="list">
+          <div><dt>The assistant needs Claude Code.</dt><dd>It isn’t installed, or LocalHub can’t find it. See <a href="troubleshooting.html#chat">Troubleshooting</a>.</dd></div>
+          <div><dt>Claude is still answering in this chat.</dt><dd>Wait for the answer, or start a new chat.</dd></div>
+          <div><dt>Too many answers running at once. Try again in a moment.</dt><dd>Up to 3 can run together.</dd></div>
+          <div><dt>Claude usage limit reached.</dt><dd>You’ve reached your Claude plan’s limit. Try again after it resets.</dd></div>
+          <div><dt>This holds keys, so the hub won’t show it.</dt><dd>That’s on purpose. Attached files with names like that are left out too.</dd></div>
+        </dl>
+      </section>
+    </main>
+    <p class="next">Next: <a href="browser.html">Browser</a></p>
+    <footer class="foot">
+      <p class="foot-name">LocalHub</p>
+      <p>Screens show LocalHub with made-up content. These pages have no trackers, analytics or cookies.</p>
+    </footer>
+  </div>
+</div>
+</body>
+</html>

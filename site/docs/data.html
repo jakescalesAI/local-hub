@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#000000">
+<title>Your data · LocalHub docs</title>
+<meta name="description" content="Where LocalHub keeps your settings and files, what leaves your PC, how to back up and how to uninstall.">
+<link rel="canonical" href="https://docs.trylocalhub.com/data">
+<link rel="icon" href="assets/icons/hub.svg" type="image/svg+xml">
+<link rel="icon" href="assets/icons/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="LocalHub">
+<meta property="og:title" content="Your data · LocalHub docs">
+<meta property="og:description" content="Where LocalHub keeps your settings and files, what leaves your PC, how to back up and how to uninstall.">
+<meta property="og:url" content="https://docs.trylocalhub.com/data">
+<meta property="og:image" content="https://docs.trylocalhub.com/assets/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="assets/docs.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to the page</a>
+<div class="frame">
+  <header class="phone-top">
+    <a class="brand" href="index.html"><img src="assets/icons/hub.svg" width="22" height="22" alt="">LocalHub <span>Docs</span></a>
+    <details class="menu">
+      <summary>Menu</summary>
+      <nav class="nav" aria-label="Docs">
+    <div class="nav-group">
+      <p class="nav-title">Start</p>
+      <ul class="nav-list">
+        <li><a href="index.html">Docs home</a></li>
+        <li><a href="setup.html">Getting started</a></li>
+      </ul>
+    </div>
+    <div class="nav-group">
+      <p class="nav-title">Using LocalHub</p>
+      <ul class="nav-list">
+        <li><a href="search.html">Search and the launcher</a></li>
+        <li><a href="home-widgets.html">Home and widgets</a></li>
+        <li><a href="links-snippets.html">Links and snippets</a></li>
+        <li><a href="files.html">Files</a></li>
+        <li><a href="calendar.html">Calendar</a></li>
+        <li><a href="assistant.html">The assistant</a></li>
+        <li><a href="browser.html">Browser</a></li>
+        <li><a href="your-look.html">Your look</a></li>
+      </ul>
+    </div>
+    <div class="nav-group">
+      <p class="nav-title">Your setup</p>
+      <ul class="nav-list">
+        <li><a href="devices.html">Your other devices</a></li>
+        <li><a href="data.html" aria-current="page">Your data</a></li>
+      </ul>
+    </div>
+    <div class="nav-group">
+      <p class="nav-title">Help</p>
+      <ul class="nav-list">
+        <li><a href="troubleshooting.html">Troubleshooting</a></li>
+        <li><a href="credits.html">Credits and licences</a></li>
+        <li><a href="main-site.html">LocalHub home page</a></li>
+      </ul>
+    </div>
+      </nav>
+    </details>
+  </header>
+  <nav class="side" aria-label="Docs">
+    <a class="brand" href="index.html"><img src="assets/icons/hub.svg" width="22" height="22" alt="">LocalHub <span>Docs</span></a>
+    <div class="nav-group">
+      <p class="nav-title">Start</p>
+      <ul class="nav-list">
+        <li><a href="index.html">Docs home</a></li>
+        <li><a href="setup.html">Getting started</a></li>
+      </ul>
+    </div>
+    <div class="nav-group">
+      <p class="nav-title">Using LocalHub</p>
+      <ul class="nav-list">
+        <li><a href="search.html">Search and the launcher</a></li>
+        <li><a href="home-widgets.html">Home and widgets</a></li>
+        <li><a href="links-snippets.html">Links and snippets</a></li>
+        <li><a href="files.html">Files</a></li>
+        <li><a href="calendar.html">Calendar</a></li>
+        <li><a href="assistant.html">The assistant</a></li>
+        <li><a href="browser.html">Browser</a></li>
+        <li><a href="your-look.html">Your look</a></li>
+      </ul>
+    </div>
+    <div class="nav-group">
+      <p class="nav-title">Your setup</p>
+      <ul class="nav-list">
+        <li><a href="devices.html">Your other devices</a></li>
+        <li><a href="data.html" aria-current="page">Your data</a></li>
+      </ul>
+    </div>
+    <div class="nav-group">
+      <p class="nav-title">Help</p>
+      <ul class="nav-list">
+        <li><a href="troubleshooting.html">Troubleshooting</a></li>
+        <li><a href="credits.html">Credits and licences</a></li>
+        <li><a href="main-site.html">LocalHub home page</a></li>
+      </ul>
+    </div>
+  </nav>
+  <div class="doc">
+    <main id="main">
+      <header class="doc-head">
+        <h1>Your data</h1>
+        <p class="lede">No account to make. Your links, chats and settings are files on your PC.</p>
+      </header>
+      <section class="part" id="where" aria-labelledby="where-title">
+        <h2 id="where-title">What lives where</h2>
+        <!-- APP_NAME: this path follows the desktop app's product name. The rename to LocalHub is committed on the desktop branch but not pushed yet; the pushed branch still makes a "Local Hub" folder. -->
+        <p>The desktop app keeps everything in one folder. To open it, press <kbd>Windows</kbd> <kbd>R</kbd> and enter <code>%APPDATA%\LocalHub\hub</code>. Three folders in there hold what’s yours.</p>
+        <dl class="list">
+          <div><dt><code>config</code></dt><dd>Your settings and keys. Keep this private.</dd></div>
+          <div><dt><code>data</code></dt><dd>Home, chats, calendar, links and snippets, and the Browser’s sign-ins in <code>data\browser</code>.</dd></div>
+          <div><dt><code>workspace</code></dt><dd>What the assistant writes, and what you attach in chat, in <code>workspace\uploads</code>.</dd></div>
+        </dl>
+        <p class="aside">Installing a newer version leaves these three alone. The desktop app’s log is <code>%APPDATA%\LocalHub\logs\hub.log</code>.</p>
+      </section>
+
+      <section class="part" id="leaves" aria-labelledby="leaves-title">
+        <h2 id="leaves-title">What leaves your PC</h2>
+        <p>Nothing is stored on a LocalHub server, because there isn’t one. These go out when you use them.</p>
+        <ul class="dots">
+          <li><b>Chat:</b> what you ask, and what the assistant reads to answer it, goes to Anthropic through Claude Code.</li>
+          <li><b>Browser and web search:</b> the sites you and the assistant visit.</li>
+          <li><b>Icons and calendars:</b> LocalHub asks saved sites for their icons and fetches any calendar link you added.</li>
+          <li><b>Optional keys:</b> the AI, Stripe and Cloud tabs read from those services with your keys.</li>
+          <li><b>Other devices:</b> your traffic travels over your own Tailscale network.</li>
+        </ul>
+      </section>
+
+      <section class="part" id="backup" aria-labelledby="backup-title">
+        <h2 id="backup-title">Back up</h2>
+        <dl class="list">
+          <div><dt>Your look and Home</dt><dd>Open <a href="your-look.html#settings">Style</a> and use <b>Export</b> under <b>Your Settings</b>.</dd></div>
+          <div><dt>Links and snippets</dt><dd>Use <a href="links-snippets.html#move">Export links and snippets</a> in search.</dd></div>
+          <div><dt>Everything</dt><dd>Quit LocalHub from the tray and copy the three folders above. You can leave out <code>data\browser</code>. Keep the copy private, because <code>config</code> holds your keys.</dd></div>
+        </dl>
+      </section>
+
+      <section class="part" id="uninstall" aria-labelledby="uninstall-title">
+        <h2 id="uninstall-title">Uninstall</h2>
+        <ol class="how">
+          <li>Quit LocalHub from the tray.</li>
+          <li>Open Windows Settings, then Apps, find LocalHub and choose <b>Uninstall</b>.</li>
+          <li>Your settings, keys and data stay on the computer. To remove them too, delete the <code>%APPDATA%\LocalHub</code> folder.</li>
+        </ol>
+        <p class="aside">Claude Code, Tailscale and Chrome are separate programs. Uninstall them on their own if you want them gone.</p>
+      </section>
+    </main>
+    <p class="next">Next: <a href="troubleshooting.html">Troubleshooting</a></p>
+    <footer class="foot">
+      <p class="foot-name">LocalHub</p>
+      <p>Screens show LocalHub with made-up content. These pages have no trackers, analytics or cookies.</p>
+    </footer>
+  </div>
+</div>
+</body>
+</html>

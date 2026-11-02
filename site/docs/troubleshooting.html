@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#000000">
+<title>Troubleshooting · LocalHub docs</title>
+<meta name="description" content="What LocalHub’s messages mean and what to do about them.">
+<link rel="canonical" href="https://docs.trylocalhub.com/troubleshooting">
+<link rel="icon" href="assets/icons/hub.svg" type="image/svg+xml">
+<link rel="icon" href="assets/icons/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="LocalHub">
+<meta property="og:title" content="Troubleshooting · LocalHub docs">
+<meta property="og:description" content="What LocalHub’s messages mean and what to do about them.">
+<meta property="og:url" content="https://docs.trylocalhub.com/troubleshooting">
+<meta property="og:image" content="https://docs.trylocalhub.com/assets/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="assets/docs.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to the page</a>
+<div class="frame">
+  <header class="phone-top">
+    <a class="brand" href="index.html"><img src="assets/icons/hub.svg" width="22" height="22" alt="">LocalHub <span>Docs</span></a>
+    <details class="menu">
+      <summary>Menu</summary>
+      <nav class="nav" aria-label="Docs">
+    <div class="nav-group">
+      <p class="nav-title">Start</p>
+      <ul class="nav-list">
+        <li><a href="index.html">Docs home</a></li>
+        <li><a href="setup.html">Getting started</a></li>
+      </ul>
+    </div>
+    <div class="nav-group">
+      <p class="nav-title">Using LocalHub</p>
+      <ul class="nav-list">
+        <li><a href="search.html">Search and the launcher</a></li>
+        <li><a href="home-widgets.html">Home and widgets</a></li>
+        <li><a href="links-snippets.html">Links and snippets</a></li>
+        <li><a href="files.html">Files</a></li>
+        <li><a href="calendar.html">Calendar</a></li>
+        <li><a href="assistant.html">The assistant</a></li>
+        <li><a href="browser.html">Browser</a></li>
+        <li><a href="your-look.html">Your look</a></li>
+      </ul>
+    </div>
+    <div class="nav-group">
+      <p class="nav-title">Your setup</p>
+      <ul class="nav-list">
+        <li><a href="devices.html">Your other devices</a></li>
+        <li><a href="data.html">Your data</a></li>
+      </ul>
+    </div>
+    <div class="nav-group">
+      <p class="nav-title">Help</p>
+      <ul class="nav-list">
+        <li><a href="troubleshooting.html" aria-current="page">Troubleshooting</a></li>
+        <li><a href="credits.html">Credits and licences</a></li>
+        <li><a href="main-site.html">LocalHub home page</a></li>
+      </ul>
+    </div>
+      </nav>
+    </details>
+  </header>
+  <nav class="side" aria-label="Docs">
+    <a class="brand" href="index.html"><img src="assets/icons/hub.svg" width="22" height="22" alt="">LocalHub <span>Docs</span></a>
+    <div class="nav-group">
+      <p class="nav-title">Start</p>
+      <ul class="nav-list">
+        <li><a href="index.html">Docs home</a></li>
+        <li><a href="setup.html">Getting started</a></li>
+      </ul>
+    </div>
+    <div class="nav-group">
+      <p class="nav-title">Using LocalHub</p>
+      <ul class="nav-list">
+        <li><a href="search.html">Search and the launcher</a></li>
+        <li><a href="home-widgets.html">Home and widgets</a></li>
+        <li><a href="links-snippets.html">Links and snippets</a></li>
+        <li><a href="files.html">Files</a></li>
+        <li><a href="calendar.html">Calendar</a></li>
+        <li><a href="assistant.html">The assistant</a></li>
+        <li><a href="browser.html">Browser</a></li>
+        <li><a href="your-look.html">Your look</a></li>
+      </ul>
+    </div>
+    <div class="nav-group">
+      <p class="nav-title">Your setup</p>
+      <ul class="nav-list">
+        <li><a href="devices.html">Your other devices</a></li>
+        <li><a href="data.html">Your data</a></li>
+      </ul>
+    </div>
+    <div class="nav-group">
+      <p class="nav-title">Help</p>
+      <ul class="nav-list">
+        <li><a href="troubleshooting.html" aria-current="page">Troubleshooting</a></li>
+        <li><a href="credits.html">Credits and licences</a></li>
+        <li><a href="main-site.html">LocalHub home page</a></li>
+      </ul>
+    </div>
+  </nav>
+  <div class="doc">
+    <main id="main">
+      <header class="doc-head">
+        <h1>Troubleshooting</h1>
+        <p class="lede">What can go wrong, in the words LocalHub uses, and what to do about it.</p>
+      </header>
+      <section class="part" id="starting" aria-labelledby="starting-title">
+        <h2 id="starting-title">Starting up</h2>
+        <div class="problem"><h3>Windows protected your PC</h3><p>The installer isn’t signed yet, so SmartScreen may warn you. Choose <b>More info</b>, then <b>Run anyway</b>.</p></div>
+        <div class="problem"><h3>Your Hub did not start</h3><p>It didn’t open its port after three tries, so the app stopped trying. The log is <code>%APPDATA%\LocalHub\logs\hub.log</code>. Press <b>Try again</b>.</p></div>
+        <div class="problem"><h3>Your Hub is not answering</h3><p>It started but isn’t responding. Press <b>Try again</b>, and look in the same log if it keeps happening.</p></div>
+        <div class="problem"><h3>Port in use</h3><p>Another program is using LocalHub’s port. Close it, or click the tray icon, choose <b>Settings</b> and pick another <b>Hub port</b>.</p></div>
+        <div class="problem"><h3>Waiting for your Hub</h3><p>Nothing is answering on the port. The page reconnects by itself when LocalHub is back, or press <b>Start the built-in Hub</b>.</p></div>
+        <div class="problem"><h3>Restarting your Hub</h3><p>It stopped unexpectedly, and the app is starting it again. You don’t need to do anything.</p></div>
+      </section>
+
+      <section class="part" id="setup" aria-labelledby="setup-title">
+        <h2 id="setup-title">First-run setup</h2>
+        <div class="problem"><h3>My tailnet is grey</h3><p>Tailscale isn’t installed on this computer, or LocalHub looked before it was. Install it, quit LocalHub from the tray and open it again.</p></div>
+        <div class="problem"><h3>Setup only runs from this computer</h3><p>Finish setup on the PC running LocalHub, not from another device.</p></div>
+        <div class="problem"><h3>I chose Only this computer and now want other devices</h3><p>There’s no screen for changing it yet.</p></div>
+      </section>
+
+      <section class="part" id="launcher" aria-labelledby="launcher-title">
+        <h2 id="launcher-title">Search and the launcher</h2>
+        <div class="problem"><h3>… isn’t available. It may be invalid or in use by another app.</h3><p>Those keys are taken, so the app kept the ones that were working. Try a different set in <b>Settings</b>.</p></div>
+        <div class="problem"><h3>The full launcher isn’t available from your Hub yet.</h3><p>The launcher couldn’t get its full page from LocalHub, so it offers a plain box instead. Type a web address, or press <kbd>Enter</kbd> to open LocalHub.</p></div>
+        <div class="problem"><h3>The keys do nothing</h3><p>The launcher only works while LocalHub is running. Check for the icon in the tray, and turn on <b>Start at login</b> there if you want it after every restart.</p></div>
+      </section>
+
+      <section class="part" id="chat" aria-labelledby="chat-title">
+        <h2 id="chat-title">Chat</h2>
+        <div class="problem"><h3>The assistant needs Claude Code.</h3><p>Follow <a href="setup.html#assistant">the steps</a> to install it. Use Anthropic’s native installer, because LocalHub doesn’t find a copy installed with npm.</p></div>
+        <div class="problem"><h3>Claude Code is installed. Run claude in a terminal once to sign in.</h3><p>Open PowerShell, type <code>claude</code>, press <kbd>Enter</kbd> and sign in with your browser.</p></div>
+        <div class="problem"><h3>Couldn’t start Claude Code: …</h3><p>Claude Code is there but wouldn’t run. Run <code>claude</code> in PowerShell to see what it says.</p></div>
+        <div class="problem"><h3>Claude usage limit reached.</h3><p>You’ve reached your Claude plan’s limit. Try again after it resets.</p></div>
+        <p class="aside"><a href="assistant.html#messages">The assistant</a> has the rest of its messages.</p>
+      </section>
+
+      <section class="part" id="browser" aria-labelledby="browser-title">
+        <h2 id="browser-title">Browser</h2>
+        <div class="problem"><h3>Chrome is not installed</h3><p>Install Google Chrome, then try again.</p></div>
+        <div class="problem"><h3>Chrome exited at start (is this profile open in another Chrome?)</h3><p>Close that window and try again.</p></div>
+        <div class="problem"><h3>Chrome did not open its debugging port</h3><p>Chrome started but LocalHub couldn’t talk to it. Close the Browser pop-up and open it again.</p></div>
+      </section>
+
+      <section class="part" id="devices" aria-labelledby="devices-title">
+        <h2 id="devices-title">Other devices</h2>
+        <div class="problem"><h3>That passcode isn’t right</h3><p>Check it and try again. After 5 wrong tries you’ll have to wait.</p></div>
+        <div class="problem"><h3>Too many tries. Wait 15 minutes.</h3><p>That address is locked out for 15 minutes. Then try again.</p></div>
+        <div class="problem"><h3>This hub doesn’t answer to that name</h3><p>Use the <code>100.x.y.z</code> address from <a href="devices.html#tailscale">Your other devices</a>, not the computer’s longer Tailscale name.</p></div>
+      </section>
+
+      <section class="part" id="other" aria-labelledby="other-title">
+        <h2 id="other-title">Files, links and calendar</h2>
+        <p>Those pages list their own messages: <a href="files.html#messages">Files</a>, <a href="links-snippets.html#messages">Links and snippets</a> and <a href="calendar.html#messages">Calendar</a>.</p>
+      </section>
+    </main>
+    <p class="next">Next: <a href="credits.html">Credits and licences</a></p>
+    <footer class="foot">
+      <p class="foot-name">LocalHub</p>
+      <p>Screens show LocalHub with made-up content. These pages have no trackers, analytics or cookies.</p>
+    </footer>
+  </div>
+</div>
+</body>
+</html>

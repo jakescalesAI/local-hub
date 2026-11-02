@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#000000">
+<title>Your other devices · LocalHub docs</title>
+<meta name="description" content="Reach LocalHub from your other devices over Tailscale, with a passcode, and keep it off the open internet.">
+<link rel="canonical" href="https://docs.trylocalhub.com/devices">
+<link rel="icon" href="assets/icons/hub.svg" type="image/svg+xml">
+<link rel="icon" href="assets/icons/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="LocalHub">
+<meta property="og:title" content="Your other devices · LocalHub docs">
+<meta property="og:description" content="Reach LocalHub from your other devices over Tailscale, with a passcode, and keep it off the open internet.">
+<meta property="og:url" content="https://docs.trylocalhub.com/devices">
+<meta property="og:image" content="https://docs.trylocalhub.com/assets/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="assets/docs.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to the page</a>
+<div class="frame">
+  <header class="phone-top">
+    <a class="brand" href="index.html"><img src="assets/icons/hub.svg" width="22" height="22" alt="">LocalHub <span>Docs</span></a>
+    <details class="menu">
+      <summary>Menu</summary>
+      <nav class="nav" aria-label="Docs">
+    <div class="nav-group">
+      <p class="nav-title">Start</p>
+      <ul class="nav-list">
+        <li><a href="index.html">Docs home</a></li>
+        <li><a href="setup.html">Getting started</a></li>
+      </ul>
+    </div>
+    <div class="nav-group">
+      <p class="nav-title">Using LocalHub</p>
+      <ul class="nav-list">
+        <li><a href="search.html">Search and the launcher</a></li>
+        <li><a href="home-widgets.html">Home and widgets</a></li>
+        <li><a href="links-snippets.html">Links and snippets</a></li>
+        <li><a href="files.html">Files</a></li>
+        <li><a href="calendar.html">Calendar</a></li>
+        <li><a href="assistant.html">The assistant</a></li>
+        <li><a href="browser.html">Browser</a></li>
+        <li><a href="your-look.html">Your look</a></li>
+      </ul>
+    </div>
+    <div class="nav-group">
+      <p class="nav-title">Your setup</p>
+      <ul class="nav-list">
+        <li><a href="devices.html" aria-current="page">Your other devices</a></li>
+        <li><a href="data.html">Your data</a></li>
+      </ul>
+    </div>
+    <div class="nav-group">
+      <p class="nav-title">Help</p>
+      <ul class="nav-list">
+        <li><a href="troubleshooting.html">Troubleshooting</a></li>
+        <li><a href="credits.html">Credits and licences</a></li>
+        <li><a href="main-site.html">LocalHub home page</a></li>
+      </ul>
+    </div>
+      </nav>
+    </details>
+  </header>
+  <nav class="side" aria-label="Docs">
+    <a class="brand" href="index.html"><img src="assets/icons/hub.svg" width="22" height="22" alt="">LocalHub <span>Docs</span></a>
+    <div class="nav-group">
+      <p class="nav-title">Start</p>
+      <ul class="nav-list">
+        <li><a href="index.html">Docs home</a></li>
+        <li><a href="setup.html">Getting started</a></li>
+      </ul>
+    </div>
+    <div class="nav-group">
+      <p class="nav-title">Using LocalHub</p>
+      <ul class="nav-list">
+        <li><a href="search.html">Search and the launcher</a></li>
+        <li><a href="home-widgets.html">Home and widgets</a></li>
+        <li><a href="links-snippets.html">Links and snippets</a></li>
+        <li><a href="files.html">Files</a></li>
+        <li><a href="calendar.html">Calendar</a></li>
+        <li><a href="assistant.html">The assistant</a></li>
+        <li><a href="browser.html">Browser</a></li>
+        <li><a href="your-look.html">Your look</a></li>
+      </ul>
+    </div>
+    <div class="nav-group">
+      <p class="nav-title">Your setup</p>
+      <ul class="nav-list">
+        <li><a href="devices.html" aria-current="page">Your other devices</a></li>
+        <li><a href="data.html">Your data</a></li>
+      </ul>
+    </div>
+    <div class="nav-group">
+      <p class="nav-title">Help</p>
+      <ul class="nav-list">
+        <li><a href="troubleshooting.html">Troubleshooting</a></li>
+        <li><a href="credits.html">Credits and licences</a></li>
+        <li><a href="main-site.html">LocalHub home page</a></li>
+      </ul>
+    </div>
+  </nav>
+  <div class="doc">
+    <main id="main">
+      <header class="doc-head">
+        <h1>Your other devices</h1>
+        <p class="lede">Open LocalHub in a browser on your other devices, over your own private network.</p>
+      </header>
+      <section class="part" id="tailscale" aria-labelledby="tailscale-title">
+        <h2 id="tailscale-title">Set it up with Tailscale</h2>
+        <p>Tailscale is a separate service that puts your own devices on one private network, and it has a free personal plan. LocalHub uses it to reach your PC from your other devices. LocalHub doesn’t install it for you.</p>
+        <div class="split">
+          <ol class="how">
+            <li><a href="https://tailscale.com/download/windows">Install Tailscale on this PC</a> and sign in.</li>
+            <li><a href="https://tailscale.com/download">Install Tailscale on the other device</a> and sign in with the same account.</li>
+            <li>In LocalHub’s first-run setup, choose <b>My tailnet</b> and set a passcode of at least 8 characters. If the option is still grey, quit LocalHub from the tray and open it again.</li>
+            <li>Find this PC’s Tailscale address on the <a href="https://console.tailscale.com/admin/machines">Machines page</a> of Tailscale’s admin console. It looks like <code>100.x.y.z</code>.</li>
+            <li>On the other device, open a browser and go to <code>http://100.x.y.z:3100</code> with your own address in it. Enter your passcode. That browser stays signed in for 30 days.</li>
+          </ol>
+          <figure class="shot small">
+            <img src="assets/shots/setup/reach-tailnet.webp" width="760" height="771" loading="lazy" alt="The setup screen titled Who can reach it, with My tailnet selected and a field for a passcode of at least 8 characters.">
+          </figure>
+        </div>
+        <!-- ACCESS_LATER: same note as in setup.html. -->
+        <p class="aside">Already finished setup with <b>Only this computer</b>? There’s no screen for changing it yet.</p>
+        <aside class="note warn">
+          <h3>Keep it off the open internet</h3>
+          <p>Never use Tailscale Funnel with LocalHub, and never put LocalHub on the open internet in any other way. Funnel opens a service on your computer to the wider internet, and LocalHub can see your files and act in your browser.</p>
+        </aside>
+      </section>
+
+      <section class="part" id="passcode" aria-labelledby="passcode-title">
+        <h2 id="passcode-title">How the passcode works</h2>
+        <ul class="dots">
+          <li>The PC running LocalHub never asks for it. Every other device does.</li>
+          <li>After 5 wrong tries from one address, that address is locked out for 15 minutes.</li>
+          <li>A browser stays signed in for 30 days, then asks again.</li>
+        </ul>
+        <p class="aside">The port is 3100 unless you chose another in the desktop app’s <b>Settings</b>. Use the <code>100.x.y.z</code> address, because LocalHub doesn’t answer to the computer’s longer Tailscale name.</p>
+      </section>
+
+      <section class="part" id="phone" aria-labelledby="phone-title">
+        <h2 id="phone-title">Phone and iPad</h2>
+        <!-- SETUP_PHONE: the steps go here once the Hub's "Connect a device" screen exists. Until then, only the idea. -->
+        <p class="coming">Coming soon</p>
+        <p>You’ll pair the app with your PC using a one-time code.</p>
+      </section>
+    </main>
+    <p class="next">Next: <a href="data.html">Your data</a></p>
+    <footer class="foot">
+      <p class="foot-name">LocalHub</p>
+      <p>Screens show LocalHub with made-up content. These pages have no trackers, analytics or cookies.</p>
+    </footer>
+  </div>
+</div>
+</body>
+</html>
