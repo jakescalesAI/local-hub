@@ -23,7 +23,9 @@ const PIN = '1111'
 const PORT = 3171
 const ENROLLED = 1
 const STRANGER = 2
-const HUB_NAME = 'Test Hub'
+const HUB_NAME = 'My Hub'
+// Made up, and it shows in the screenshots this run keeps.
+const FAKE_REPLY = 'You have two things on today: the dentist at 3, and the garden notes you wanted to finish.'
 const sleep = ms => new Promise(r => setTimeout(r, ms))
 
 const adb = (...args) => execFileSync('adb', args, { encoding: 'utf8', timeout: 90000, stdio: ['ignore', 'pipe', 'pipe'] })
@@ -179,8 +181,8 @@ async function startHub() {
   fs.writeFileSync(path.join(bin, 'claude'), `#!/bin/sh
 cat > /dev/null
 echo done > '${marker}'
-printf '%s\\n' '{"type":"assistant","message":{"content":[{"type":"text","text":"fake reply"}]}}'
-printf '%s\\n' '{"type":"result","subtype":"success","is_error":false,"result":"fake reply"}'
+printf '%s\\n' '{"type":"assistant","message":{"content":[{"type":"text","text":"${FAKE_REPLY}"}]}}'
+printf '%s\\n' '{"type":"result","subtype":"success","is_error":false,"result":"${FAKE_REPLY}"}'
 `, { mode: 0o755 })
   child = spawn(process.execPath, ['server.mjs'], { cwd: copy, env: { ...process.env, HUB_PORT: String(PORT), HOME: hubHome, USERPROFILE: hubHome } })
   child.stdout.on('data', d => (hubLog += d))
@@ -202,6 +204,11 @@ async function enroll(id) {
   console.log(`    ${sh('am start -W -a android.settings.FINGERPRINT_ENROLL 2>&1').trim().replace(/\s*\n\s*/g, ' | ')}`)
   await sleep(1500)
   console.log(`    on top: ${focus()}`)
+  if (!/settings/i.test(focus())) {
+    console.log(`    ${sh('am start -W -a android.settings.BIOMETRIC_ENROLL --ei android.provider.extra.BIOMETRIC_AUTHENTICATORS_ALLOWED 15 2>&1').trim().replace(/\s*\n\s*/g, ' | ')}`)
+    await sleep(1500)
+    console.log(`    on top: ${focus()}`)
+  }
   const end = Date.now() + 150000
   let touches = 0
   while (Date.now() < end) {
@@ -232,6 +239,59 @@ async function enroll(id) {
   throw new Error(`Enrolling a fingerprint timed out after ${touches} touches. On screen:\n${screenText(dump())}`)
 }
 
+// --- Pictures of the main screens, made up data only. A failure here is logged and doesn't fail the run.
+
+async function pictures(mode, name) {
+  const dir = path.join(out, 'screens')
+  fs.mkdirSync(dir, { recursive: true })
+  const picture = n => fs.writeFileSync(path.join(dir, `${n}-${name}.png`), shot('latest-picture'))
+  const onPage = () => screenText(dump()).replace(/^\s+$/gm, '').replace(/\n+/g, ' | ').slice(0, 1500)
+  const hideKeyboard = () => { if (/mInputShown=true/.test(sh('dumpsys input_method'))) key('KEYCODE_BACK') }
+  sh(`cmd uimode night ${mode}`)
+  sh(`am force-stop ${APP}`)
+  await sleep(1000)
+  open()
+  await waitFor(CONNECTED, 40000)
+  await waitFor(new RegExp(HUB_NAME))
+  await sleep(1500)
+  picture('app-home')
+  await tapOn(/^\s*Open Hub\s*$/)
+  await waitFor(/^\s*Done\s*$/)
+  await sleep(6000)
+  picture('hub-home')
+  console.log(`    Hub page: ${onPage()}`)
+  const search = dump().find(n => n.cls.includes('EditText') && /search/i.test(label(n)))
+  if (search) {
+    tap(search)
+    await sleep(800)
+    sh('input text "cal"')
+    await sleep(2000)
+    picture('hub-search')
+    console.log(`    searching: ${onPage()}`)
+    hideKeyboard()
+    await sleep(500)
+    for (let i = 0; i < 3; i++) key('KEYCODE_DEL')
+    await sleep(800)
+    hideKeyboard()
+  } else console.log('    no search box on the Hub page')
+  const ask = dump().find(n => n.cls.includes('EditText') && /ask anything|message/i.test(label(n)))
+  if (ask) {
+    tap(ask)
+    await sleep(800)
+    sh('input text "What%sis%son%stoday?"')
+    await sleep(800)
+    const send = dump().find(n => /^\s*Send\s*$/.test(label(n)))
+    if (send) tap(send)
+    else key('KEYCODE_ENTER')
+    await sleep(6000)
+    hideKeyboard()
+    await sleep(1000)
+    picture('hub-chat')
+    console.log(`    chat: ${onPage()}`)
+  } else console.log('    no chat bar on the Hub page')
+  sh(`am force-stop ${APP}`)
+}
+
 let passed = 0
 async function step(name, fn) {
   await fn()
@@ -249,7 +309,7 @@ try {
     viaLink(pairingLink(firstCode))
     await tapOn(/^\s*Connect\s*$/)
     await waitFor(CONNECTED)
-    assert.ok(screenText(dump()).includes(HUB_NAME))
+    await waitFor(new RegExp(HUB_NAME))
     shot('01-connected')
   })
 
@@ -285,6 +345,19 @@ try {
     await tapOn(/^\s*Cancel\s*$/)
     await waitFor(CONNECTED)
   })
+
+  for (const [mode, name] of [['yes', 'dark'], ['no', 'light']]) {
+    try {
+      await pictures(mode, name)
+    } catch (e) {
+      console.log(`    pictures (${name}) stopped: ${e.message}`)
+    }
+  }
+  sh('cmd uimode night no')
+  sh(`am force-stop ${APP}`)
+  await sleep(1000)
+  open()
+  await waitFor(CONNECTED, 40000)
 
   await step('with no fingerprint enrolled the lock can\'t be turned on, and says so', async () => {
     await tapOn(/^\s*Settings\s*$/)
@@ -362,7 +435,7 @@ try {
     await sleep(2500)
     finger(ENROLLED)
     await waitFor(CONNECTED)
-    assert.ok(screenText(dump()).includes(HUB_NAME))
+    await waitFor(new RegExp(HUB_NAME))
   })
 
   await step('stopping the app and starting it again comes up locked', async () => {
