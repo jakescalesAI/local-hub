@@ -7,7 +7,7 @@ const { syncBuiltinESMExports } = require('node:module')
 const { app, BrowserWindow, Tray, shell } = require('electron')
 
 const OFF_SCREEN = -32000
-const lh = { external: [], loginCalls: [], loginOn: false, shown: [], focusCalls: 0, trayMenu: null, tray: null }
+const lh = { external: [], loginCalls: [], loginOn: false, shown: [], focusCalls: 0, trayMenu: null, tray: null, failedLoads: [], startedLoads: [] }
 global.__lh = lh
 
 app.setPath('userData', process.env.LH_TEST_USER_DATA)
@@ -51,6 +51,8 @@ BrowserWindow.prototype.maximize = function maximize() { lh.maximized = true }
 
 app.on('web-contents-created', (_event, contents) => {
   contents.focus = () => { lh.focusCalls += 1 }
+  contents.on('did-fail-load', (_event, code, _text, url) => { lh.failedLoads.push({ code, url }) })
+  contents.on('did-start-navigation', (_event, url, _inPlace, isMainFrame) => { if (isMainFrame) lh.startedLoads.push(url) })
 })
 
 const setContextMenu = Tray.prototype.setContextMenu

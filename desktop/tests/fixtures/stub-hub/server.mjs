@@ -43,7 +43,7 @@ function runHelper(res) {
   helper.stdin.end('ping')
 }
 
-http.createServer((req, res) => {
+const server = http.createServer((req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`)
   if (req.method !== 'GET' && req.method !== 'HEAD' && req.headers['x-hub'] !== '1') return json(res, 403, { error: 'missing x-hub header' })
   if (url.pathname === '/api/ping') return json(res, 200, { ok: true })
@@ -58,4 +58,9 @@ http.createServer((req, res) => {
   if (url.pathname === '/launcher' && process.env.STUB_LAUNCHER !== '1') return json(res, 404, { error: 'not found' })
   res.writeHead(200, { 'content-type': 'text/html' })
   res.end(url.pathname === '/launcher' ? `<!doctype html><title>Stub launcher</title><h1 id="route">launcher route</h1><a id="open" target="_blank" href="/?from=launcher">open</a><input id="box"><script>addEventListener('keydown', e => { if (e.key !== 'Escape') return; if (box.value) box.value = ''; else window.close() })</script>` : page)
-}).listen(PORT, '127.0.0.1', () => console.log(`stub hub on ${PORT} pid ${process.pid}`))
+})
+
+// STUB_LISTEN_AFTER_MS leaves the port empty for that long, as a Hub that's slow to start would.
+setTimeout(() => {
+  server.listen(PORT, '127.0.0.1', () => console.log(`stub hub on ${PORT} pid ${process.pid}`))
+}, Number(process.env.STUB_LISTEN_AFTER_MS) || 0)

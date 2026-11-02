@@ -120,6 +120,8 @@ export class Launcher {
 
   #load() {
     if (!this.#live) return
+    // With no Hub up there's nothing to ask. The built-in page stands in, and the state change above loads the route.
+    if (this.#connection.state.status !== 'online') return this.#showFallback()
     this.#onFallback = false
     this.#win.loadURL(`${this.#connection.origin}/launcher`).catch(() => {})
   }

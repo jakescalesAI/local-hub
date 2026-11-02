@@ -424,4 +424,40 @@ describe('settings', () => {
     assert.equal(await ping(port), false, 'the old port is quiet')
     assert.notEqual(second.pid, first.pid)
   })
+
+  // Each Hub here leaves its port empty for a few seconds after it starts. An app that showed a port as soon as
+  // it started a Hub would find nothing there, and that load would fail.
+  test('a port is only shown once its Hub is listening, at the start and after a port change', async t => {
+    const port = await freePort()
+    const userData = makeUserData({ port })
+    cleanup(t, () => removeUserData(userData))
+    const handle = await launch({ userData, env: { LOCAL_HUB_SERVER: STUB_SERVER, STUB_LISTEN_AFTER_MS: '4000' } })
+    cleanup(t, () => quit(handle).catch(() => {}))
+    await waitForUrl(handle, 0, isHub(port), 'the first Hub', 60_000)
+    const first = await getJson(port, '/api/pid', { userData })
+
+    const port2 = await freePort()
+    await settingsPage(handle)
+    assert.deepEqual(await evalIn(handle, 2, `window.hubDesktop.saveSettings({ port: ${port2} })`), { ok: true })
+    await waitForUrl(handle, 0, isHub(port2), 'the second Hub', 60_000)
+    const second = await getJson(port2, '/api/pid', { userData })
+    assert.notEqual(second.pid, first.pid)
+    // -3 is a load the app's own next navigation replaced, such as the offline page once a Hub comes up.
+    const failed = (await handle.app.evaluate(() => global.__lh.failedLoads)).filter(load => load.code !== -3)
+    assert.deepEqual(failed, [], `no page loaded before its Hub was listening (first Hub ${port}, second ${port2})`)
+  })
+
+  // The Hub here stays silent for far longer than the test, so nothing the app loaded can have been an answer to it.
+  test('nothing asks a Hub for a page until one is up', async t => {
+    const port = await freePort()
+    const userData = makeUserData({ port })
+    cleanup(t, () => removeUserData(userData))
+    const handle = await launch({ userData, env: { LOCAL_HUB_SERVER: STUB_SERVER, STUB_LISTEN_AFTER_MS: '120000' } })
+    cleanup(t, () => quit(handle).catch(() => {}))
+    await waitForUrl(handle, LAUNCHER, isFallback, 'the built-in launcher page')
+    await waitForUrl(handle, 0, url => url.includes('/pages/offline.html'), 'the offline page')
+    const started = await handle.app.evaluate(() => global.__lh.startedLoads)
+    assert.ok(started.length >= 2, 'the record has the two pages in it')
+    assert.deepEqual(started.filter(url => url.startsWith('http')), [])
+  })
 })

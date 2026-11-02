@@ -124,10 +124,16 @@ public static class NetAudit {
     } finally { Marshal.FreeHGlobal(buffer); }
   }
 
+  static long reads, longestGapMs;
+
   static void WatchTable(object watchPort) {
+    Stopwatch sinceLast = Stopwatch.StartNew();
     while (running) {
       ReadTable(2, 24, (int)watchPort);
       ReadTable(23, 56, (int)watchPort);
+      reads += 1;
+      longestGapMs = Math.Max(longestGapMs, sinceLast.ElapsedMilliseconds);
+      sinceLast.Restart();
       Thread.Sleep(10);
     }
   }
@@ -154,6 +160,7 @@ public static class NetAudit {
       foreach (Thread thread in threads) thread.Join(5000);
       processes.Close();
       tcp.Close();
+      File.WriteAllText(Path.Combine(outDir, "tcp-reads.txt"), reads + " " + longestGapMs);
       return code;
     }
   }

@@ -57,8 +57,12 @@ const tcp = lines('tcp.log').map(line => {
   const [time, pid, localPort, state, where, image] = line.split('\t')
   return { time, pid, localPort, state, where, image: base(image) }
 })
-const inJob = tcp.filter(row => row.where === 'in-job' || processes.has(row.pid))
-const outside = tcp.filter(row => !inJob.includes(row))
+// Asked of the system at the moment the row was seen. A pid alone can't say: Windows reuses them, so another
+// program can hold a pid that a process in the job had earlier.
+const inJob = tcp.filter(row => row.where === 'in-job')
+const outside = tcp.filter(row => row.where === 'outside')
+const cantTell = tcp.filter(row => row.where === 'unknown')
+const [reads, longestGapMs] = read('tcp-reads.txt').trim().split(' ').map(Number)
 
 const count = (list, key) => Object.entries(Object.groupBy(list, key)).map(([name, rows]) => `${name} ${rows.length}`).join(', ')
 const ports = new Set(connects.map(entry => entry.port))
@@ -74,18 +78,20 @@ console.log(`Node connections: ${connects.length} to ${ports.size} ports; to ${w
 for (const entry of nodeHits.slice(0, 20)) console.log(`    pid ${entry.pid} ${entry.host}:${entry.port}`)
 console.log(`Chromium net logs: ${appRuns} read, ${unreadable.length} not finished; with ${watch} in them: ${netHits.length}`)
 for (const entry of netHits.slice(0, 20)) console.log(`    ${entry.name}: ${entry.count} mentions`)
+console.log(`Connection table: read ${reads} times, longest gap ${longestGapMs} ms`)
 console.log(`Connection table, in the job, to ${watch}: ${inJob.length}`)
 for (const row of inJob.slice(0, 20)) console.log(`    ${row.time} pid ${row.pid} ${row.image} state ${row.state}`)
 console.log(`Connection table, outside the job, to ${watch}: ${outside.length}${outside.length ? `: ${count(outside, row => row.image)}` : ''}`)
-for (const row of outside.slice(0, 40)) console.log(`    ${row.time} pid ${row.pid} ${row.image} ${row.where}`)
+console.log(`Connection table, owner gone before it could be asked, to ${watch}: ${cantTell.length}`)
+for (const row of cantTell.slice(0, 20)) console.log(`    ${row.time} pid ${row.pid} ${row.image}`)
 
 const touched = nodeHits.length + netHits.length + inJob.length
 if (touched) {
   console.log(`RESULT: the run touched ${watch}`)
   process.exit(1)
 }
-if (!processes.size || !hooked.size || !appRuns) {
-  console.log('RESULT: some records are empty, so finding nothing shows nothing')
+if (!processes.size || !hooked.size || !appRuns || !reads || cantTell.length) {
+  console.log(`RESULT: nothing found, but it can't be trusted: ${cantTell.length} rows with no owner to ask, or an empty record`)
   process.exit(2)
 }
 console.log(`RESULT: no record shows the run touching ${watch}`)
