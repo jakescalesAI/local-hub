@@ -30,6 +30,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="assets/site.css">
 <script>
+  if (matchMedia("(prefers-reduced-motion: no-preference)").matches) document.documentElement.classList.add("motion")
   // Decided before first paint, so the page never flashes. See assets/js/hero.js.
   if (window.WebGL2RenderingContext && matchMedia("(prefers-reduced-motion: no-preference)").matches && !scrollY) document.documentElement.classList.add("intro")
   if (window.WebGLRenderingContext && matchMedia("(prefers-reduced-motion: no-preference)").matches) document.documentElement.classList.add("gl")
@@ -38,6 +39,7 @@
 <script src="assets/js/metal.js" defer></script>
 <script src="assets/js/hero.js" defer></script>
 <script src="assets/js/ribbons.js" defer></script>
+<script src="assets/js/wall.js" defer></script>
 </head>
 <body>
 
@@ -114,6 +116,11 @@
         </figure>
       </div>
     </div>
+  </section>
+
+  <section class="wall" aria-labelledby="wall-title">
+    <h2 id="wall-title" class="wall-title page">Every screen, set up your way.</h2>
+    <div class="wall-band" role="img" aria-label="A curved row of LocalHub screens in light and dark: Home on different wallpapers, the calendar by month, week and agenda, the assistant, the Style panel and the search bar."></div>
   </section>
 
   <section class="features page" aria-label="Features">

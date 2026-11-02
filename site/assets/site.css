@@ -56,13 +56,13 @@ ul { list-style: none; }
 /* The opening, driven by assets/js/hero.js. Only opacity and transform, so the layout never moves. */
 .reveal { position: fixed; inset: 0; z-index: 50; width: 100%; height: 100%; display: block; background: var(--bg); }
 .intro { overflow: hidden; }
-.intro .tile, .intro .word, .intro .arrive, .intro .demo, .intro .features, .intro .closing, .intro .foot { opacity: 0; animation: hero-failsafe 0s linear 7s forwards; }
+.intro .tile, .intro .word, .intro .arrive, .intro .demo, .intro .wall, .intro .features, .intro .closing, .intro .foot { opacity: 0; animation: hero-failsafe 0s linear 7s forwards; }
 .intro .word-l { transform: translateX(.2em); }
 .intro .word-r { transform: translateX(-.2em); }
 .intro .arrive, .intro .demo { transform: translateY(14px); }
 .intro-move .tile { opacity: 1; animation: none; }
 .intro-words .word { opacity: 1; transform: none; animation: none; transition: opacity .45s var(--ease), transform .7s var(--ease); }
-.intro-rest .arrive, .intro-rest .demo, .intro-rest .features, .intro-rest .closing, .intro-rest .foot { opacity: 1; transform: none; animation: none; transition: opacity .5s var(--ease), transform .7s var(--ease); }
+.intro-rest .arrive, .intro-rest .demo, .intro-rest .wall, .intro-rest .features, .intro-rest .closing, .intro-rest .foot { opacity: 1; transform: none; animation: none; transition: opacity .5s var(--ease), transform .7s var(--ease); }
 @keyframes hero-failsafe { to { opacity: 1; transform: none; } }
 
 /* Closing download */
@@ -118,6 +118,19 @@ ul { list-style: none; }
   .tour-panel { animation: tour-in .35s var(--ease); }
   @keyframes tour-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 }
+
+/* The curved row of screens, driven by assets/js/wall.js. Only transforms move, and only while it is on screen. */
+.wall { margin-top: clamp(84px, 11vw, 136px); }
+.wall-title { margin-bottom: clamp(4px, 1vw, 12px); font-size: clamp(28px, 4.4vw, 46px); letter-spacing: -0.035em; text-align: center; }
+.wall-band { --fade: linear-gradient(90deg, transparent, #000 11%, #000 89%, transparent); position: relative; overflow: hidden; height: clamp(240px, 30vw, 470px); container-type: size; background: url("shots/wall/still.webp") center / auto 100% no-repeat; -webkit-mask-image: var(--fade); mask-image: var(--fade); }
+.motion .wall-band { background-image: none; }
+.wall-stage { display: none; position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .6s var(--ease); }
+.wall-on .wall-stage { display: block; }
+.wall-stage.on { opacity: 1; }
+.wall-tile { position: absolute; left: calc(50% - var(--a) * var(--h) / 2); top: calc(50% - var(--h) / 2); width: calc(var(--a) * var(--h)); height: var(--h); transform-style: preserve-3d; animation: wall-orbit linear infinite; }
+.wall-tile i { position: absolute; top: 0; left: calc((var(--a) - var(--share)) * var(--h) / 2); width: calc(var(--share) * var(--h) + 1px); height: var(--h); background: var(--surface) var(--img) no-repeat; background-size: calc(var(--a) * var(--h)) var(--h); background-position: calc(var(--k) * var(--share) * var(--h) * -1) 0; }
+.wall-tile i:first-child { border-radius: calc(var(--h) * .05) 0 0 calc(var(--h) * .05); }
+.wall-tile i:last-child { width: calc(var(--share) * var(--h)); border-radius: 0 calc(var(--h) * .05) calc(var(--h) * .05) 0; }
 
 /* Features: the app's Home widgets, in its grid, radius and glass. */
 .features { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--gap); margin-top: 110px; }
