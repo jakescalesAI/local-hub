@@ -486,7 +486,7 @@ export function create({ run, sshHost, here }) {
     const lines = []
     if (ctx.tabTitle) lines.push(`The user is looking at the "${ctx.tabTitle}" tab (id ${ctx.tab}).`)
     if (ctx.narrow) lines.push('They are on a narrow screen (phone or iPad portrait).')
-    if (ctx.plan) lines.push('Plan mode is on for this message: you can look and read, and you cannot change anything. Say what you would do, step by step. If they want it done, tell them to switch Mode to Auto in the + menu.')
+    if (ctx.plan) lines.push('Plan mode is on for this message: you can look and read, and you cannot change anything. Attaching a file with attach_file is still fine, because it changes none of their files. Say what you would do, step by step. If they want it done, tell them to switch Mode to Auto in the + menu.')
     else if (ctx.wasPlan) lines.push('Plan mode is off now, so you can make changes again.')
     lines.push('Their question may have nothing to do with this tab. Keep the answer short unless the question needs more or they ask for detail.')
     lines.push(`Local time: ${new Date().toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'short' })}.`)
