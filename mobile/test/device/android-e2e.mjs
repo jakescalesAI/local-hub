@@ -201,20 +201,16 @@ const pairingLink = c => `localhub://pair?u=${encodeURIComponent(`http://10.0.2.
 
 async function enroll(id) {
   console.log(`    sensor: ${sh('pm list features | grep -i fingerprint || echo none').trim()}`)
-  console.log(`    ${sh('am start -W -a android.settings.FINGERPRINT_ENROLL 2>&1').trim().replace(/\s*\n\s*/g, ' | ')}`)
-  await sleep(1500)
-  console.log(`    on top: ${focus()}`)
-  if (!/settings/i.test(focus())) {
-    console.log(`    ${sh('am start -W -a android.settings.BIOMETRIC_ENROLL --ei android.provider.extra.BIOMETRIC_AUTHENTICATORS_ALLOWED 15 2>&1').trim().replace(/\s*\n\s*/g, ' | ')}`)
-    await sleep(1500)
-    console.log(`    on top: ${focus()}`)
-  }
+  sh('am start -a android.settings.FINGERPRINT_ENROLL')
   const end = Date.now() + 150000
   let touches = 0
+  let seen = ''
   while (Date.now() < end) {
     await sleep(1200)
     const nodes = dump()
     const text = screenText(nodes)
+    const now = `${focus().replace(/.*\//, '').replace(/\}.*/, '')}: ${nodes.map(n => n.text).filter(Boolean).slice(0, 4).join(' | ').slice(0, 160)}`
+    if (now !== seen) console.log(`    enrol: ${(seen = now)}`)
     const button = pattern => nodes.find(n => pattern.test(n.text) && !/\bfinger/i.test(n.text))
     if (/Fingerprint added/i.test(text) || /Done/.test(button(/^done$/i)?.text ?? '')) {
       tap(button(/^done$/i))
@@ -260,22 +256,27 @@ async function pictures(mode, name) {
   await sleep(6000)
   picture('hub-home')
   console.log(`    Hub page: ${onPage()}`)
-  const search = dump().find(n => n.cls.includes('EditText') && /search/i.test(label(n)))
+  // A web page's placeholder text isn't in the dump, so they go by position: search on top, chat at the bottom.
+  const fields = () => dump().filter(n => n.cls.includes('EditText')).sort((a, b) => a.y - b.y)
+  const [search] = fields()
   if (search) {
     tap(search)
     await sleep(800)
-    sh('input text "cal"')
-    await sleep(2000)
+    sh('input text "clock"')
+    await sleep(1500)
+    hideKeyboard()
+    await sleep(1500)
     picture('hub-search')
     console.log(`    searching: ${onPage()}`)
-    hideKeyboard()
-    await sleep(500)
-    for (let i = 0; i < 3; i++) key('KEYCODE_DEL')
+    tap(search)
+    await sleep(800)
+    for (let i = 0; i < 5; i++) key('KEYCODE_DEL')
     await sleep(800)
     hideKeyboard()
+    await sleep(800)
   } else console.log('    no search box on the Hub page')
-  const ask = dump().find(n => n.cls.includes('EditText') && /ask anything|message/i.test(label(n)))
-  if (ask) {
+  const ask = fields().at(-1)
+  if (ask && ask.y !== search?.y) {
     tap(ask)
     await sleep(800)
     sh('input text "What%sis%son%stoday?"')
