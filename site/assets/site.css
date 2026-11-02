@@ -140,8 +140,10 @@ ul { list-style: none; }
 /* The curved row of screens, driven by assets/js/wall.js. Only transforms move, and only while it is on screen. */
 .wall { margin-top: clamp(84px, 11vw, 136px); }
 .wall-title { margin-bottom: clamp(4px, 1vw, 12px); font-size: clamp(28px, 4.4vw, 46px); letter-spacing: -0.035em; text-align: center; text-wrap: balance; }
-.wall-band { --fade: linear-gradient(90deg, transparent, #000 11%, #000 89%, transparent); position: relative; overflow: hidden; height: clamp(240px, 30vw, 470px); container-type: size; background: url("shots/wall/still.webp") center / auto 100% no-repeat; -webkit-mask-image: var(--fade); mask-image: var(--fade); }
-.motion .wall-band { background-image: none; }
+.wall-band { --fade: linear-gradient(90deg, transparent, #000 11%, #000 89%, transparent); position: relative; overflow: hidden; height: clamp(240px, 30vw, 470px); container-type: size; -webkit-mask-image: var(--fade); mask-image: var(--fade); }
+.wall-band::before { content: ""; position: absolute; inset: 0; background: url("shots/wall/still.webp") center / auto 100% no-repeat; }
+/* Goes once the live row has faded in over it, so the two never sit on top of each other. */
+.wall-live::before { opacity: 0; visibility: hidden; transition: opacity .5s linear .3s, visibility 0s linear .8s; }
 .wall-stage { display: none; position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .6s var(--ease); }
 .wall-on .wall-stage { display: block; }
 .wall-stage.on { opacity: 1; }

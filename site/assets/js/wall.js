@@ -2,8 +2,8 @@
  * The curved row of app screens. From tilted-grid-hero by Ruixen (see CREDITS.txt): one row of screens streams
  * around the inside of a cylinder. A CSS box can't bend, so each tile is cut into vertical strips, each a flat facet
  * of the cylinder, and one rotation on the tile carries the whole thing along the arc.
- * Built only when the row is close, shown only while on screen. Under reduced motion or with no script,
- * .wall-band shows assets/shots/wall/still.webp instead.
+ * Built only when the row is close, shown only while on screen. .wall-band shows assets/shots/wall/still.webp until
+ * the row is ready, and for good under reduced motion or with no script.
  */
 (function () {
   "use strict"
@@ -98,9 +98,11 @@
       im.src = address(i)
       return im.decode().catch(function () {})
     })
-    function reveal() { stage.classList.add("on") }
-    Promise.all(loads).then(reveal)
-    setTimeout(reveal, 2500)
+    // The still holds the band until then, however long the screens take.
+    Promise.all(loads).then(function () {
+      stage.classList.add("on")
+      band.classList.add("wall-live")
+    })
 
     band.append(sheet, stage)
     build()
