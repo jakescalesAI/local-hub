@@ -1,0 +1,66 @@
+{
+  "id": "calcom",
+  "name": "Cal.com",
+  "category": "Calendar",
+  "auth": {
+    "type": "token",
+    "header": "Authorization",
+    "prefix": "Bearer ",
+    "keyUrl": "https://app.cal.com/settings/developer/api-keys",
+    "keyHelp": "Settings, Developer, API keys. Create a key and paste it here.",
+    "fields": [
+      {
+        "name": "token",
+        "label": "API key",
+        "secret": true,
+        "placeholder": "cal_live_…"
+      }
+    ]
+  },
+  "baseUrl": "https://api.cal.com/v2",
+  "headers": {
+    "cal-api-version": "2024-08-13"
+  },
+  "store": {
+    "key": "calcom",
+    "fields": {
+      "token": "apiKey"
+    }
+  },
+  "test": {
+    "method": "GET",
+    "path": "/me",
+    "expect": 200,
+    "who": "data.username"
+  },
+  "read": [
+    {
+      "id": "list_bookings",
+      "label": "List bookings",
+      "method": "GET",
+      "path": "/bookings",
+      "query": [
+        "status",
+        "take",
+        "skip"
+      ]
+    },
+    {
+      "id": "list_event_types",
+      "label": "List event types",
+      "method": "GET",
+      "path": "/event-types",
+      "query": [
+        "username"
+      ]
+    }
+  ],
+  "write": [],
+  "mcp": null,
+  "docs": [
+    "https://cal.com/docs/api-reference/v2/introduction"
+  ],
+  "notes": "Reads bookings and event types for the Calendar tab. The hub never books or changes anything here.",
+  "tested": "mock; real service refused a fake key",
+  "checked": "2026-11-01"
+}

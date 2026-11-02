@@ -1,0 +1,121 @@
+{
+  "id": "vercel",
+  "name": "Vercel",
+  "category": "Cloud",
+  "auth": {
+    "type": "token",
+    "header": "Authorization",
+    "prefix": "Bearer ",
+    "fields": [
+      {
+        "name": "token",
+        "label": "Access token",
+        "secret": true,
+        "placeholder": "vcp_..."
+      },
+      {
+        "name": "teamId",
+        "label": "Team ID (optional, needed for team resources with a Full Account token)",
+        "secret": false,
+        "placeholder": "team_...",
+        "optional": true
+      }
+    ],
+    "basic": null,
+    "keyUrl": "https://vercel.com/account/tokens",
+    "keyHelp": "Pick the narrowest scope (one team or one project) and set an expiration; Vercel tokens have no read-only option.",
+    "signIn": null
+  },
+  "baseUrl": "https://api.vercel.com",
+  "headers": {},
+  "test": {
+    "method": "GET",
+    "path": "/v2/user",
+    "expect": 200,
+    "who": "user.username"
+  },
+  "read": [
+    {
+      "id": "list_projects",
+      "label": "List projects",
+      "method": "GET",
+      "path": "/v10/projects",
+      "query": [
+        "limit",
+        "search",
+        "teamId"
+      ]
+    },
+    {
+      "id": "list_deployments",
+      "label": "List deployments",
+      "method": "GET",
+      "path": "/v7/deployments",
+      "query": [
+        "projectId",
+        "limit",
+        "state",
+        "target",
+        "teamId"
+      ]
+    },
+    {
+      "id": "get_deployment",
+      "label": "Get a deployment by ID or URL",
+      "method": "GET",
+      "path": "/v13/deployments/{idOrUrl}",
+      "query": [
+        "teamId"
+      ]
+    },
+    {
+      "id": "list_domains",
+      "label": "List domains",
+      "method": "GET",
+      "path": "/v5/domains",
+      "query": [
+        "limit",
+        "teamId"
+      ]
+    },
+    {
+      "id": "list_teams",
+      "label": "List teams",
+      "method": "GET",
+      "path": "/v2/teams"
+    }
+  ],
+  "write": [
+    {
+      "id": "create_env",
+      "label": "Create a project environment variable",
+      "method": "POST",
+      "path": "/v10/projects/{idOrName}/env",
+      "body": [
+        "key",
+        "value",
+        "type",
+        "target"
+      ]
+    }
+  ],
+  "mcp": {
+    "url": "https://mcp.vercel.com",
+    "official": true,
+    "auth": "oauth",
+    "docs": "https://vercel.com/docs/mcp/vercel-mcp"
+  },
+  "docs": [
+    "https://vercel.com/kb/guide/how-do-i-use-a-vercel-api-access-token",
+    "https://vercel.com/docs/rest-api",
+    "https://vercel.com/docs/rest-api/user/get-the-user",
+    "https://vercel.com/docs/rest-api/projects/retrieve-a-list-of-projects",
+    "https://vercel.com/docs/rest-api/deployments/list-deployments",
+    "https://vercel.com/docs/rest-api/domains/list-all-the-domains",
+    "https://vercel.com/docs/rest-api/projects/create-one-or-more-environment-variables",
+    "https://vercel.com/docs/mcp/vercel-mcp"
+  ],
+  "checked": "2026-11-01",
+  "tested": "mock; real service refused a fake key",
+  "notes": "No read-only token: the only limit Vercel documents is scope (Full Account, one team, or one project), not permission level. A project-scoped token is the safest option but the KB guide says it is denied team-level and user-level resources, so GET /v2/user (the test call) and list_teams may be refused for a project-scoped token; in that case use /v10/projects as the test. That refusal behaviour is inferred from the guide's wording and was not tested. Full Account tokens need ?teamId= (or &slug=) to reach team resources; team and project tokens do not. Personal access tokens begin vcp_ per the KB guide. Tokens are created from the personal account settings page, even when scoped to a team. No API version header is used; versions are in the path (v10 projects, v7 deployments, v13 deployment by id, v5 domains, v2 user and teams), as listed on the REST API index today. The /v2/user example response nests the account under a user object with username, email, id and name. Official MCP server https://mcp.vercel.com is OAuth only and only works with Vercel-approved MCP clients per the docs. Listing a project's environment values is left out on purpose: those values would reach the assistant."
+}

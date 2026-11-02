@@ -1,0 +1,37 @@
+{
+  "id": "calendar-feed",
+  "name": "Calendar feed",
+  "category": "Calendar",
+  "auth": {
+    "type": "calendarFeed",
+    "keyUrl": "https://calendar.google.com/calendar/u/0/r/settings",
+    "keyHelp": "In your calendar’s settings, copy its secret address in iCal format. Anyone with that address can read the calendar, so it’s kept like a key.",
+    "fields": [
+      {
+        "name": "label",
+        "label": "Name",
+        "secret": false,
+        "placeholder": "Work"
+      },
+      {
+        "name": "icsUrl",
+        "label": "Secret address (.ics)",
+        "secret": true,
+        "placeholder": "https://…"
+      }
+    ]
+  },
+  "baseUrl": "",
+  "test": {
+    "kind": "ics"
+  },
+  "read": [],
+  "write": [],
+  "mcp": null,
+  "docs": [
+    "https://support.google.com/calendar/answer/37648"
+  ],
+  "notes": "Feeds the Calendar tab. Read only. One sheet per feed.",
+  "tested": "mock only",
+  "checked": "2026-11-01"
+}

@@ -79,7 +79,7 @@
   }
 
   // t1/t2/t3 are HTML (callers escape); hay is plain text for the search box.
-  function row({ name, t1, t2, t3, dot, href, visit, hay, actions, expand, details, wrap }) {
+  function row({ name, t1, t2, t3, dot, href, visit, connect, hay, actions, expand, details, wrap }) {
     const ck = reg(name, actions)
     const inner = `<span class="status" style="--c:${dot || COL.off}"><i></i></span>
       <span class="txt"><div class="t1">${t1}</div>${t2 ? `<div class="t2">${t2}</div>` : ''}${t3 ? `<div class="t2 cl-t3">${t3}</div>` : ''}</span>`
@@ -90,21 +90,20 @@
         ? `<a class="row-line tap" style="padding:0;min-height:44px" href="${esc(href)}" target="_blank" rel="noopener">${inner}</a>`
         : `<span class="row-line" style="padding:0;min-height:44px">${inner}</span>`
     return `<div class="row${isOpen ? ' open' : ''}${wrap ? ' cl-wrap' : ''}" data-menu="cloud" data-ck="${ck}" data-hay="${esc(String(hay || name).toLowerCase())}">
-      <div class="row-line">${main}${visit ? `<a class="get" href="${esc(visit)}" target="_blank" rel="noopener">Visit</a>` : ''}</div>
+      <div class="row-line">${main}${visit ? `<a class="get" href="${esc(visit)}" target="_blank" rel="noopener">Visit</a>` : ''}${connect ? `<button type="button" class="get" data-connect="${esc(connect)}">Connect</button>` : ''}</div>
       ${details ? `<div class="details">${details}</div>` : ''}</div>`
   }
 
   function connectRow(cn) {
-    const fields = cn.fields.map(f => `<code class="cl-code">${esc(f)}</code>`).join(' ')
     return row({
       name: `Connect ${cn.name}`,
       t1: `<span class="cl-blue">Connect ${esc(cn.name)}</span>`,
-      t2: `${cn.note ? `${esc(cn.note)}<br>` : ''}Fill ${fields} in secrets.json. ${esc(cn.where)}.`,
+      t2: `${cn.note ? `${esc(cn.note)}<br>` : ''}${esc(cn.where)}. It stays on this computer.`,
       dot: COL.off,
       wrap: true,
-      href: cn.url,
+      connect: cn.name.toLowerCase(),
       hay: `connect ${cn.name} ${cn.fields.join(' ')} ${cn.where}`,
-      actions: [A.open('Open Key Page', cn.url), A.copy('Copy secrets.json Path', C.s.files?.secrets, 'Path copied'), A.copy('Copy Field Names', cn.fields.join(', '))],
+      actions: [A.open('Open Key Page', cn.url)],
     })
   }
 

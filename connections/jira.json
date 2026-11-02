@@ -1,0 +1,145 @@
+{
+  "id": "jira",
+  "name": "Jira Cloud",
+  "category": "Project",
+  "auth": {
+    "type": "basic",
+    "header": "Authorization",
+    "prefix": "Basic ",
+    "fields": [
+      {
+        "name": "site",
+        "label": "Jira site address",
+        "secret": false,
+        "placeholder": "https://your-domain.atlassian.net"
+      },
+      {
+        "name": "email",
+        "label": "Atlassian account email",
+        "secret": false,
+        "placeholder": "you@company.com"
+      },
+      {
+        "name": "token",
+        "label": "API token",
+        "secret": true,
+        "placeholder": "Paste your API token"
+      }
+    ],
+    "basic": {
+      "user": "{email}",
+      "pass": "{token}"
+    },
+    "keyUrl": "https://id.atlassian.com/manage-profile/security/api-tokens",
+    "keyHelp": "Create an API token (it acts as you; read-only needs a scoped token with read:jira-work and read:jira-user).",
+    "signIn": null
+  },
+  "baseUrl": "{site}",
+  "headers": {
+    "Accept": "application/json"
+  },
+  "test": {
+    "method": "GET",
+    "path": "/rest/api/3/myself",
+    "expect": 200,
+    "who": "displayName"
+  },
+  "read": [
+    {
+      "id": "search_issues",
+      "label": "Search issues with JQL",
+      "method": "GET",
+      "path": "/rest/api/3/search/jql",
+      "query": [
+        "jql",
+        "fields",
+        "maxResults",
+        "nextPageToken"
+      ]
+    },
+    {
+      "id": "get_issue",
+      "label": "Get one issue",
+      "method": "GET",
+      "path": "/rest/api/3/issue/{issueIdOrKey}",
+      "query": [
+        "fields",
+        "expand"
+      ]
+    },
+    {
+      "id": "list_projects",
+      "label": "List projects",
+      "method": "GET",
+      "path": "/rest/api/3/project/search",
+      "query": [
+        "query",
+        "startAt",
+        "maxResults",
+        "orderBy"
+      ]
+    },
+    {
+      "id": "get_comments",
+      "label": "Get an issue's comments",
+      "method": "GET",
+      "path": "/rest/api/3/issue/{issueIdOrKey}/comment",
+      "query": [
+        "startAt",
+        "maxResults",
+        "orderBy"
+      ]
+    },
+    {
+      "id": "get_transitions",
+      "label": "List an issue's available status changes",
+      "method": "GET",
+      "path": "/rest/api/3/issue/{issueIdOrKey}/transitions"
+    }
+  ],
+  "write": [
+    {
+      "id": "create_issue",
+      "label": "Create an issue",
+      "method": "POST",
+      "path": "/rest/api/3/issue",
+      "body": [
+        "fields"
+      ]
+    },
+    {
+      "id": "add_comment",
+      "label": "Add a comment",
+      "method": "POST",
+      "path": "/rest/api/3/issue/{issueIdOrKey}/comment",
+      "body": [
+        "body"
+      ]
+    },
+    {
+      "id": "transition_issue",
+      "label": "Move an issue to another status",
+      "method": "POST",
+      "path": "/rest/api/3/issue/{issueIdOrKey}/transitions",
+      "body": [
+        "transition"
+      ]
+    }
+  ],
+  "mcp": {
+    "url": "https://mcp.atlassian.com/v2/mcp",
+    "official": true,
+    "auth": "oauth",
+    "docs": "https://support.atlassian.com/atlassian-rovo-mcp-server/docs/getting-started-with-the-atlassian-remote-mcp-server/"
+  },
+  "docs": [
+    "https://developer.atlassian.com/cloud/jira/platform/basic-auth-for-rest-apis/",
+    "https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/",
+    "https://developer.atlassian.com/cloud/jira/platform/swagger-v3.v3.json",
+    "https://support.atlassian.com/atlassian-rovo-mcp-server/docs/getting-started-with-the-atlassian-remote-mcp-server/",
+    "https://support.atlassian.com/atlassian-rovo-mcp-server/docs/configuring-authentication-via-api-token/"
+  ],
+  "checked": "2026-11-01",
+  "tested": "mock only",
+  "notes": "Paths, parameters and OAuth scopes were read from Atlassian's official OpenAPI file (swagger-v3.v3.json) because the REST doc pages are script-rendered. Basic auth: account email as username, API token as password, sent as 'Authorization: Basic base64(email:token)'. IMPORTANT: the old GET/POST /rest/api/3/search are flagged in the spec as being removed; use GET /rest/api/3/search/jql (token pagination via nextPageToken; the JQL must be bounded). Unscoped API tokens are used against the site URL ({site}). Scoped API tokens are instead called through https://api.atlassian.com/ex/jira/{cloudId}, a different baseUrl this manifest does not model; how to look up the cloudId was not in the pages read. A truly read-only key is only possible with a scoped token (spec scopes read:jira-work, read:jira-user); an unscoped token inherits all of the user's rights. Create issue needs a 'fields' object (project, summary, issuetype); comment and description bodies are Atlassian Document Format on API v3. Official Atlassian Rovo MCP server is https://mcp.atlassian.com/v2/mcp (OAuth 2.1; an org admin can enable API-token auth: Basic base64(email:token) for a personal token with scopes, or Bearer for a service-account key); it covers Jira, Confluence and more."
+}

@@ -1,0 +1,56 @@
+{
+  "id": "zapier",
+  "name": "Zapier",
+  "category": "Automation",
+  "auth": {
+    "type": "mcp",
+    "header": "Authorization",
+    "prefix": "Bearer ",
+    "fields": [
+      {
+        "name": "token",
+        "label": "MCP connection token",
+        "secret": true,
+        "placeholder": "paste the token shown once"
+      }
+    ],
+    "basic": null,
+    "keyUrl": "https://mcp.zapier.com",
+    "keyHelp": "At mcp.zapier.com click Add MCP server, choose Other, open the Settings tab and click Generate token under API token; it is shown once.",
+    "signIn": null
+  },
+  "baseUrl": "https://mcp.zapier.com/api/v1",
+  "headers": {},
+  "test": {
+    "method": "POST",
+    "path": "/connect",
+    "expect": 200,
+    "who": null,
+    "protocol": "mcp-streamable-http",
+    "jsonrpc": "initialize"
+  },
+  "read": [],
+  "write": [],
+  "mcp": {
+    "url": "https://mcp.zapier.com/api/v1/connect",
+    "official": true,
+    "auth": "bearer",
+    "docs": "https://docs.zapier.com/mcp/get-started/authentication.md"
+  },
+  "docs": [
+    "https://docs.zapier.com/",
+    "https://docs.zapier.com/llms.txt",
+    "https://docs.zapier.com/mcp/get-started/authentication.md",
+    "https://docs.zapier.com/mcp/get-started/connect/other.md",
+    "https://docs.zapier.com/mcp/get-started/quickstart.md",
+    "https://docs.zapier.com/api-reference/overview.md",
+    "https://docs.zapier.com/api-reference/actions.md",
+    "https://docs.zapier.com/api-reference/specs/actions.yaml",
+    "https://docs.zapier.com/api-reference/specs/trigger-inbox.yaml",
+    "https://docs.zapier.com/api-reference/specs/connections.yaml",
+    "https://docs.zapier.com/sdk/quickstart.md"
+  ],
+  "checked": "2026-11-01",
+  "tested": "mock; real service refused a fake key",
+  "notes": "Plain answer: the API-style connection Zapier currently offers for an outside app is Zapier MCP, one endpoint https://mcp.zapier.com/api/v1/connect over Streamable HTTP only (SSE-only clients cannot connect). Zapier docs steer agents to MCP first (or the Zapier SDK for code) and say AI Actions and Natural Language Actions (NLA) are retired; there is no simple personal API key for a plain REST call to a Zap, so read and write are empty and the Hub should talk MCP, listing tools from the server. Self-serve path exists: with a Zapier account, go to mcp.zapier.com > Add MCP server > choose Other > Settings tab > API token > Generate token, then send Authorization: Bearer <token> to the connect URL (a ?token= query form also works but the docs prefer the header because URLs leak into logs). The token is long-lived, tied to that one server, shown once, and rotating it cuts off every client using it; it lets its holder run that server tools and read their output, so it is not read-only (it grants whatever the server actions allow; limit the apps and actions enabled on the server instead). The default sign-in for supported clients such as Claude, ChatGPT and Cursor is OAuth inside the client, where Zapier makes the server; the Hub is an unlisted client, so the connection token is the path used here. Billing: each successful MCP tool call uses two tasks from the Zapier plan and failed calls are not counted. Separate from MCP, Zapier has public REST APIs on https://api.zapier.com (Actions API for stored actions at /actions/v1/stored-actions, Trigger Inbox API, Connections API for White Label partner accounts, Workflow API for embedding Zaps). Their spec files show OAuth 2.0 only, with authorization URL https://zapier.com/oauth/authorize, token URL https://zapier.com/oauth/token (authorization code and client credentials flows) and one scope named external that covers all public APIs; the overview adds that some Workflow API endpoints use Client ID auth. I did not find a page saying how an individual user obtains an OAuth client ID and secret for these, so they are not offered as a connection here. The Zapier SDK page says it authenticates with OAuth or client credentials; not read in detail. The test block is a guess at the MCP handshake: a JSON-RPC initialize POST to the connect URL as defined by the MCP standard, with the exact request headers not printed on the Zapier pages I read, so verify it before relying on it. Official MCP: yes, Zapier hosts it at https://mcp.zapier.com/api/v1/connect with Bearer connection token or OAuth."
+}

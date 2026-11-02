@@ -1,0 +1,119 @@
+{
+  "id": "coolify",
+  "name": "Coolify",
+  "category": "Cloud",
+  "auth": {
+    "type": "token",
+    "header": "Authorization",
+    "prefix": "Bearer ",
+    "fields": [
+      {
+        "name": "site",
+        "label": "Your Coolify address",
+        "secret": false,
+        "placeholder": "https://coolify.example.com"
+      },
+      {
+        "name": "token",
+        "label": "API token",
+        "secret": true,
+        "placeholder": "ID|secret, copy the whole value"
+      }
+    ],
+    "basic": null,
+    "keyUrl": "{site}",
+    "keyHelp": "In your Coolify open Keys & Tokens > API Tokens, create a token with only the read permission, and copy it at once; it is shown once.",
+    "signIn": null
+  },
+  "baseUrl": "{site}/api/v1",
+  "headers": {
+    "Accept": "application/json"
+  },
+  "test": {
+    "method": "GET",
+    "path": "/version",
+    "expect": 200,
+    "who": null
+  },
+  "read": [
+    {
+      "id": "list_servers",
+      "label": "List servers",
+      "method": "GET",
+      "path": "/servers"
+    },
+    {
+      "id": "list_applications",
+      "label": "List applications",
+      "method": "GET",
+      "path": "/applications",
+      "query": [
+        "tag"
+      ]
+    },
+    {
+      "id": "list_running_deployments",
+      "label": "List currently running deployments",
+      "method": "GET",
+      "path": "/deployments"
+    },
+    {
+      "id": "list_app_deployments",
+      "label": "List an application's deployments",
+      "method": "GET",
+      "path": "/deployments/applications/{uuid}",
+      "query": [
+        "skip",
+        "take"
+      ]
+    },
+    {
+      "id": "list_services",
+      "label": "List one-click services",
+      "method": "GET",
+      "path": "/services"
+    },
+    {
+      "id": "list_databases",
+      "label": "List databases",
+      "method": "GET",
+      "path": "/databases"
+    }
+  ],
+  "write": [],
+  "mcp": {
+    "url": "{site}/mcp",
+    "official": true,
+    "auth": "bearer",
+    "docs": "https://coolify.io/docs/mcp/setup"
+  },
+  "docs": [
+    "https://coolify.io/docs/api/overview",
+    "https://coolify.io/docs/api/authorization",
+    "https://coolify.io/docs/api/permissions",
+    "https://coolify.io/docs/api/ip-allowlist",
+    "https://coolify.io/docs/api/making-requests",
+    "https://coolify.io/docs/core/security/credentials/api-tokens",
+    "https://coolify.io/docs/api/endpoints/system/version",
+    "https://coolify.io/docs/api/endpoints/teams/get-token-team",
+    "https://coolify.io/docs/api/endpoints/servers/list-servers",
+    "https://coolify.io/docs/api/endpoints/applications/list-applications",
+    "https://coolify.io/docs/api/endpoints/deployments/list-deployments",
+    "https://coolify.io/docs/api/endpoints/deployments/list-deployments-by-app-uuid",
+    "https://coolify.io/docs/api/endpoints/deployments/deploy-by-tag-or-uuid",
+    "https://coolify.io/docs/api/endpoints/services/list-services",
+    "https://coolify.io/docs/api/endpoints/databases/list-databases",
+    "https://coolify.io/docs/mcp/setup",
+    "https://coolify.io/docs/mcp/clients/other-clients"
+  ],
+  "checked": "2026-11-01",
+  "tested": "mock only",
+  "notes": "Coolify runs on the user own host, so every URL uses {site}. Base URL is https://<your-coolify-domain>/api/v1 (Coolify Cloud is https://app.coolify.io/api/v1). Auth is Authorization: Bearer <token>; the token is shown as ID|secret and the whole value must be sent. Request JSON with Accept: application/json. The key page depends on the user host: the docs only say open Keys & Tokens in the sidebar, then API Tokens, and give no URL path, so keyUrl is just {site}. Read-only is possible: token permissions are read (list and inspect, sensitive values stay redacted), read:sensitive (secrets, logs, env values; also adds read), write, deploy (deploy, restart, stop, cancel; a deploy-only token) and root (bypasses every check). Use only read. Only team admins and owners can use tokens with read:sensitive, write, deploy or root; a plain team member can use only read tokens. A token is bound to the team that was active when it was created and cannot see another team. Self-hosted gate: an instance admin must set API access to Enabled under Settings > Advanced (API and MCP section); with it off, even a valid token gets 403; the optional Allowed API IPs list applies to every call, so the Hub host IP may need adding. Tokens can expire (7, 30, 60, 90 days, 1 year or never). Test call: GET /version needs only a valid token and returns the Coolify version as plain text, so who is null. The docs examples show GET /api/v1/teams/current for a first call, but the endpoint reference lists the team call as GET /team (Authenticated Team, returns id, name, description and members), so the two pages disagree and I did not use either as the test; if /team works it would be a better who source. Which permission GET /version needs is not stated beyond Bearer auth. POST /deploy takes uuid and tag as query parameters (comma separated lists accepted) plus force; it needs the deploy permission, so a read-only token cannot use it and the write action will fail, which is intended. GET /deployments lists only currently running deployments. Official MCP: Coolify has its own built-in MCP server on every instance at {site}/mcp, Streamable HTTP, authenticated with the same Bearer API token (no OAuth). On self-hosted it is off by default and returns 404 until an admin sets MCP server to Enabled in Settings > Advanced, and MCP must also be enabled for the team; MCP shows only the tools the token permissions allow. The docs call for a public HTTPS URL. Verify with get_current_team or get_infrastructure_overview. Deploy (POST /deploy) is left out on purpose: the Hub offers no deploy action on this service for now.",
+  "store": {
+    "key": "coolify",
+    "fields": {
+      "site": "url",
+      "token": "token"
+    }
+  }
+}

@@ -1,0 +1,105 @@
+{
+  "id": "homeassistant",
+  "name": "Home Assistant",
+  "category": "Home",
+  "auth": {
+    "type": "token",
+    "header": "Authorization",
+    "prefix": "Bearer ",
+    "fields": [
+      {
+        "name": "site",
+        "label": "Your Home Assistant address",
+        "secret": false,
+        "placeholder": "http://homeassistant.local:8123"
+      },
+      {
+        "name": "token",
+        "label": "Long-lived access token",
+        "secret": true,
+        "placeholder": "paste the token shown once"
+      }
+    ],
+    "basic": null,
+    "keyUrl": "{site}/profile/security",
+    "keyHelp": "Open your profile, choose the Security tab, scroll to Long-lived access tokens and create one; it is shown once.",
+    "signIn": null
+  },
+  "baseUrl": "{site}/api",
+  "headers": {},
+  "test": {
+    "method": "GET",
+    "path": "/",
+    "expect": 200,
+    "who": "message"
+  },
+  "read": [
+    {
+      "id": "list_states",
+      "label": "List the state of every entity",
+      "method": "GET",
+      "path": "/states"
+    },
+    {
+      "id": "get_state",
+      "label": "Get one entity state",
+      "method": "GET",
+      "path": "/states/{entity_id}"
+    },
+    {
+      "id": "get_config",
+      "label": "Get core configuration (name, location, version)",
+      "method": "GET",
+      "path": "/config"
+    },
+    {
+      "id": "list_services",
+      "label": "List available actions by domain",
+      "method": "GET",
+      "path": "/services"
+    },
+    {
+      "id": "get_history",
+      "label": "State history for entities",
+      "method": "GET",
+      "path": "/history/period/{timestamp}",
+      "query": [
+        "filter_entity_id",
+        "end_time",
+        "minimal_response",
+        "significant_changes_only"
+      ]
+    },
+    {
+      "id": "list_calendars",
+      "label": "List calendar entities",
+      "method": "GET",
+      "path": "/calendars"
+    }
+  ],
+  "write": [
+    {
+      "id": "call_service",
+      "label": "Call an action such as turn a light on",
+      "method": "POST",
+      "path": "/services/{domain}/{service}",
+      "body": [
+        "entity_id"
+      ]
+    }
+  ],
+  "mcp": {
+    "url": "{site}/api/mcp",
+    "official": true,
+    "auth": "oauth",
+    "docs": "https://www.home-assistant.io/integrations/mcp_server/"
+  },
+  "docs": [
+    "https://contributors.home-assistant.io/core/internals/rest-api/",
+    "https://www.home-assistant.io/docs/authentication/",
+    "https://www.home-assistant.io/integrations/mcp_server/"
+  ],
+  "checked": "2026-11-01",
+  "tested": "mock only",
+  "notes": "Runs on the user own host, so every URL uses {site}. The REST API shares the web UI port: 8123 by default, or 80 under the Supervisor. Every request needs the access token in the Authorization header, which the REST page words only as an access token in the Authorization header; the docs examples elsewhere use Authorization: Bearer <token>, so Bearer is used here. The base path is /api/ and the trailing slash matters on the root call. Test call: GET {site}/api/ returns a JSON message that the API is running; the REST page prints it as the message API running, so who reads the message field (it names no account). Long-lived token: create it under the user profile Security page (the authentication docs give https://my.home-assistant.io/redirect/profile_security, a redirect to the user own instance; the direct path on the instance is not printed there, so the {site}/profile/security keyUrl is my assumption from that name and was not read). The page states no expiry for long-lived tokens and does not say whether a token can be scoped or made read-only, so assume it carries the full permissions of the user who made it; for safety create it under a non-admin user. History needs filter_entity_id (required) and takes an optional start timestamp in the path, default one day ago. GET /api/error_log and POST /api/template are admin only. POST /api/services/<domain>/<service> runs an action and waits for it to finish, with the action data as the JSON body such as an entity_id, and returns changed_states; add ?return_response to also get service_response. Status codes: 401 unauthorized, 404 not found, 405 wrong method. Official MCP: Home Assistant has a built-in MCP Server integration, hosted on the user own instance at /api/mcp (the page copy shows http://homeassistant.local:8123/api/mcp; the exact URL is under Settings > System > AI). It uses OAuth 2.0 with PKCE (client details set up automatically, no client secret), the page does not describe a long-lived token as bearer for it, and the transport is plain HTTP with HTTPS required by Claude Code. By default only administrator accounts can use it, entities must be exposed to Assist to be controlled or read, and a cloud-hosted client such as claude.ai needs the instance reachable from the internet."
+}

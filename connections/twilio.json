@@ -1,0 +1,140 @@
+{
+  "id": "twilio",
+  "name": "Twilio",
+  "category": "Phone",
+  "auth": {
+    "type": "basic",
+    "header": "Authorization",
+    "prefix": "Basic ",
+    "fields": [
+      {
+        "name": "accountSid",
+        "label": "Account SID",
+        "secret": false,
+        "placeholder": "AC..."
+      },
+      {
+        "name": "username",
+        "label": "API key SID (or the Account SID if using the Auth Token)",
+        "secret": false,
+        "placeholder": "SK..."
+      },
+      {
+        "name": "secret",
+        "label": "API key secret (or the Auth Token)",
+        "secret": true,
+        "placeholder": "Paste the secret"
+      }
+    ],
+    "basic": {
+      "user": "{username}",
+      "pass": "{secret}"
+    },
+    "keyUrl": "https://1console.twilio.com/go?to=/account/__account__/settings/us1/api-keys/list",
+    "keyHelp": "Create a Standard or Restricted API key (Restricted can be limited to read-only); copy the secret when it is shown, because it cannot be viewed again.",
+    "signIn": null
+  },
+  "baseUrl": "https://api.twilio.com/2010-04-01",
+  "headers": {
+    "Accept": "application/json",
+    "Content-Type": "application/x-www-form-urlencoded"
+  },
+  "test": {
+    "method": "GET",
+    "path": "/Accounts/{accountSid}/Messages.json?PageSize=1",
+    "expect": 200,
+    "who": null
+  },
+  "read": [
+    {
+      "id": "list_messages",
+      "label": "List messages",
+      "method": "GET",
+      "path": "/Accounts/{accountSid}/Messages.json",
+      "query": [
+        "To",
+        "From",
+        "DateSent",
+        "DateSent<",
+        "DateSent>",
+        "PageSize",
+        "PageToken"
+      ]
+    },
+    {
+      "id": "get_message",
+      "label": "Get one message",
+      "method": "GET",
+      "path": "/Accounts/{accountSid}/Messages/{Sid}.json"
+    },
+    {
+      "id": "list_calls",
+      "label": "List calls",
+      "method": "GET",
+      "path": "/Accounts/{accountSid}/Calls.json",
+      "query": [
+        "To",
+        "From",
+        "Status",
+        "StartTime",
+        "StartTime<",
+        "StartTime>",
+        "PageSize",
+        "PageToken"
+      ]
+    },
+    {
+      "id": "get_call",
+      "label": "Get one call",
+      "method": "GET",
+      "path": "/Accounts/{accountSid}/Calls/{Sid}.json"
+    },
+    {
+      "id": "list_phone_numbers",
+      "label": "List my phone numbers",
+      "method": "GET",
+      "path": "/Accounts/{accountSid}/IncomingPhoneNumbers.json",
+      "query": [
+        "PhoneNumber",
+        "FriendlyName",
+        "PageSize",
+        "PageToken"
+      ]
+    }
+  ],
+  "write": [
+    {
+      "id": "send_message",
+      "label": "Send a text message",
+      "method": "POST",
+      "path": "/Accounts/{accountSid}/Messages.json",
+      "body": [
+        "To",
+        "From",
+        "MessagingServiceSid",
+        "Body",
+        "MediaUrl"
+      ]
+    }
+  ],
+  "mcp": {
+    "url": "https://mcp.twilio.com/docs",
+    "official": true,
+    "auth": "none",
+    "docs": "https://www.twilio.com/docs/ai/mcp"
+  },
+  "docs": [
+    "https://www.twilio.com/docs/usage/api",
+    "https://www.twilio.com/docs/usage/requests-to-twilio",
+    "https://www.twilio.com/docs/iam/api-keys",
+    "https://www.twilio.com/docs/iam/api-keys/keys-in-console",
+    "https://www.twilio.com/docs/usage/api/account",
+    "https://www.twilio.com/docs/messaging/api/message-resource",
+    "https://www.twilio.com/docs/voice/api/call-resource",
+    "https://www.twilio.com/docs/phone-numbers/api/incomingphonenumber-resource",
+    "https://www.twilio.com/docs/ai/mcp"
+  ],
+  "checked": "2026-11-01",
+  "tested": "mock; real service refused a fake key",
+  "notes": "HTTP Basic auth. For most requests use an API key (username = key SID starting SK, password = key secret); a few endpoints, such as the Accounts resources, need the Account SID as username and the Auth Token as password. The Account resource page's own examples use an API key, so which credential 'GET /Accounts/{Sid}' truly requires is unconfirmed; the test therefore uses the messages list with PageSize=1 (it names no account, so 'who' is null). Key types: Main (full access, console only, needed for the Accounts and Keys endpoints), Standard (everything except Accounts and Keys), Restricted (fine-grained per-resource permissions, so a read-only key is possible; created in the Console, or via the REST API for v1 only). The keyUrl is Twilio's own direct link and carries a region segment (us1); other regions would need another segment (not confirmed). POST bodies are form-encoded (application/x-www-form-urlencoded or multipart/form-data), not JSON. Base URL https://api.twilio.com/2010-04-01/ with .json suffix on resource paths. Messages: create needs To, a sender (From or MessagingServiceSid) and content (Body, MediaUrl or ContentSid); list filters To, From, DateSent (also < and > variants), PageSize (default 50, max 1000); trial accounts can only text verified numbers. Regional hosts (for example edge or region-specific API hosts) were not covered by the pages read. Twilio's official MCP server at https://mcp.twilio.com/docs is Public Beta, needs no authentication and ONLY searches and retrieves API documentation; it does NOT execute API calls, so it cannot act on a Twilio account and is of no use for this Connection beyond reading docs."
+}

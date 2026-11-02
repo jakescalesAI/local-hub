@@ -1,0 +1,99 @@
+{
+  "id": "openrouter",
+  "name": "OpenRouter",
+  "category": "AI",
+  "auth": {
+    "type": "apiKey",
+    "header": "Authorization",
+    "prefix": "Bearer ",
+    "fields": [
+      {
+        "name": "api_key",
+        "label": "OpenRouter API key",
+        "secret": true,
+        "placeholder": "sk-or-..."
+      }
+    ],
+    "basic": null,
+    "keyUrl": "https://openrouter.ai/keys",
+    "keyHelp": "Create a key and set a credit limit so a leaked key cannot spend more than that; manage or delete keys at openrouter.ai/settings/keys.",
+    "signIn": {
+      "kind": "oauth",
+      "authorizeUrl": "https://openrouter.ai/auth",
+      "tokenUrl": "https://openrouter.ai/api/v1/auth/keys",
+      "deviceUrl": null,
+      "scopes": [],
+      "pkce": true,
+      "clientHelp": null,
+      "givesKey": "api_key"
+    }
+  },
+  "baseUrl": "https://openrouter.ai/api/v1",
+  "headers": {},
+  "test": {
+    "method": "GET",
+    "path": "/key",
+    "expect": 200,
+    "who": "data.label"
+  },
+  "read": [
+    {
+      "id": "get_key",
+      "label": "Show this key's label, usage and limit",
+      "method": "GET",
+      "path": "/key",
+      "query": []
+    },
+    {
+      "id": "list_models",
+      "label": "List models and prices",
+      "method": "GET",
+      "path": "/models",
+      "query": []
+    },
+    {
+      "id": "get_credits",
+      "label": "Show account credits (needs a management key)",
+      "method": "GET",
+      "path": "/credits",
+      "query": []
+    }
+  ],
+  "write": [
+    {
+      "id": "create_chat_completion",
+      "label": "Send a chat message to a model (billed per token)",
+      "method": "POST",
+      "path": "/chat/completions",
+      "body": [
+        "model",
+        "messages"
+      ]
+    }
+  ],
+  "mcp": {
+    "url": "https://mcp.openrouter.ai/mcp",
+    "official": true,
+    "auth": "oauth",
+    "docs": "https://openrouter.ai/docs/guides/overview/mcp-server"
+  },
+  "docs": [
+    "https://openrouter.ai/docs/api-reference/authentication",
+    "https://openrouter.ai/docs/api-reference/limits",
+    "https://openrouter.ai/docs/api-reference/models/get-models",
+    "https://openrouter.ai/docs/api/api-reference/credits/get-remaining-credits.md",
+    "https://openrouter.ai/docs/api/api-reference/chat/create-a-chat-completion.md",
+    "https://openrouter.ai/docs/llms.txt",
+    "https://openrouter.ai/docs/guides/overview/mcp-server",
+    "https://openrouter.ai/docs/guides/overview/auth/oauth"
+  ],
+  "checked": "2026-11-01",
+  "tested": "mock; real service refused a fake key",
+  "notes": "Base URL https://openrouter.ai/api/v1 and Bearer auth are from the Authentication page; key creation page https://openrouter.ai/keys, manage/delete at https://openrouter.ai/settings/keys. KEY INFO: the Limits page says GET https://openrouter.ai/api/v1/key with a valid key returns data.label, limit, limit_reset, limit_remaining, include_byok_in_limit, budgets, effective_budget, usage (+ daily/weekly/monthly), byok_usage (+ periods), is_free_tier and free_model_daily_requests; rate_limit is deprecated. That page did not name the auth header (the Authentication page says Bearer). The older doc URL for the current-key endpoint returned 404 so the path /key comes from the Limits page only. data.label as 'who' is a key label, not an account name. GET /models: the OpenAPI-style page says auth is required via bearer token and returns data[], total_count and links.next (pricing as strings in USD per token). GET /credits needs a MANAGEMENT key (403 'Only management keys can perform this operation' otherwise) and returns data.total_credits and data.total_usage; a normal key will 403, so keep it out of the connection test. POST /chat/completions: the schema marks only messages as required (model optional there, but practically needed); billed against credits (402 on insufficient credits). Optional attribution headers: HTTP-Referer and X-OpenRouter-Title (the page examples use X-OpenRouter-Title, not X-Title); not set because they are the app's own choice. OAUTH: OpenRouter documents a PKCE flow that issues a normal API key without any client registration; localhost callbacks on any port are allowed (such apps get a host-and-port title and are left out of rankings). It is in signIn because it needs no client of the person's own. MCP: official remote server hosted by OpenRouter at https://mcp.openrouter.ai/mcp; OAuth with PKCE via a browser consent page which issues a dedicated key that expires in at most 7 days with a $10 starting spend cap that the person can edit. 17 tools; send-message and generate-image make billable calls, send-feedback writes feedback, the rest are read-only. A search result named other URLs (openrouter.ai/docs/_mcp/server); only the URL on the official MCP page was used. No call was made.",
+  "store": {
+    "key": "openrouter",
+    "fields": {
+      "api_key": "apiKey"
+    }
+  }
+}

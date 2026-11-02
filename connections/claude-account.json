@@ -1,0 +1,28 @@
+{
+  "id": "claude-account",
+  "name": "Another Claude account",
+  "category": "AI",
+  "auth": {
+    "type": "claudeLogin",
+    "keyHelp": "Sign in to a second Claude account. The hub shows its usage next to your first one. It needs Claude Code on this computer.",
+    "fields": [
+      {
+        "name": "label",
+        "label": "Name",
+        "secret": false,
+        "placeholder": "Second account"
+      }
+    ]
+  },
+  "baseUrl": "",
+  "test": null,
+  "read": [],
+  "write": [],
+  "mcp": null,
+  "docs": [
+    "https://code.claude.com/docs/en/authentication"
+  ],
+  "notes": "Runs the real sign-in in the account’s own folder. Its sign-in stays in that folder, never in secrets.json.",
+  "tested": "docs-only",
+  "checked": "2026-11-01"
+}

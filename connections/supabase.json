@@ -1,0 +1,90 @@
+{
+  "id": "supabase",
+  "name": "Supabase",
+  "category": "Data",
+  "auth": {
+    "type": "token",
+    "header": "Authorization",
+    "prefix": "Bearer ",
+    "fields": [
+      {
+        "name": "token",
+        "label": "Personal access token",
+        "secret": true,
+        "placeholder": "paste your token"
+      }
+    ],
+    "basic": null,
+    "keyUrl": "https://supabase.com/dashboard/account/tokens",
+    "keyHelp": "Create a scoped token limited to your organization or project with only the read permissions you need (projects_read, organizations_read, database_read, edge_functions_read); avoid the Legacy full-access type.",
+    "signIn": null
+  },
+  "baseUrl": "https://api.supabase.com",
+  "headers": {},
+  "test": {
+    "method": "GET",
+    "path": "/v1/organizations",
+    "expect": 200,
+    "who": "0.name"
+  },
+  "read": [
+    {
+      "id": "list_projects",
+      "label": "List all projects",
+      "method": "GET",
+      "path": "/v1/projects"
+    },
+    {
+      "id": "list_organizations",
+      "label": "List organizations",
+      "method": "GET",
+      "path": "/v1/organizations"
+    },
+    {
+      "id": "list_edge_functions",
+      "label": "List a project's Edge Functions",
+      "method": "GET",
+      "path": "/v1/projects/{ref}/functions"
+    },
+    {
+      "id": "run_read_only_query",
+      "label": "Run a read-only SQL query",
+      "method": "POST",
+      "path": "/v1/projects/{ref}/database/query/read-only",
+      "body": [
+        "query",
+        "parameters"
+      ]
+    }
+  ],
+  "write": [
+    {
+      "id": "run_sql",
+      "label": "Run SQL that can change data (read_only false)",
+      "method": "POST",
+      "path": "/v1/projects/{ref}/database/query",
+      "body": [
+        "query",
+        "parameters",
+        "read_only"
+      ]
+    }
+  ],
+  "mcp": {
+    "url": "https://mcp.supabase.com/mcp",
+    "official": true,
+    "auth": "oauth",
+    "docs": "https://supabase.com/docs/guides/mcp"
+  },
+  "docs": [
+    "https://supabase.com/docs/reference/api/introduction",
+    "https://supabase.com/docs/reference/api/v1-list-all-projects",
+    "https://supabase.com/docs/reference/api/v1-list-all-organizations",
+    "https://supabase.com/docs/reference/api/v1-run-a-query",
+    "https://supabase.com/docs/reference/api/v1-list-all-functions",
+    "https://supabase.com/docs/guides/mcp"
+  ],
+  "checked": "2026-11-01",
+  "tested": "mock; real service refused a fake key",
+  "notes": "Management API (api.supabase.com/v1), not the per-project data API. The intro page says to send the personal access token as a bearer token; its base URL is inferred from its example call rather than stated, and the token's visible prefix is not stated on the pages I read, so the field has no prefix hint. Scoped personal access tokens exist: a scoped token can only reach the organizations, projects and permissions picked at creation, with fine-grained permissions named in the reference pages (organizations_read, projects_read, database_read or database_write, edge_functions_read). Classic tokens, labelled Legacy in the dashboard, carry the user's full privileges, so tell the user to avoid them. A read-only key is therefore possible. The SQL query endpoint is marked experimental/Beta, accepts a read_only boolean in the body, and a token with database_read or database_write can call it (database:write OAuth scope). Whether database_read alone is rejected when read_only is false was not stated; the write action is listed but a database_read-only token might be refused or limited, so the read action uses POST /database/query/read-only, which runs as supabase_read_only_user and has no field that can turn that off. The 'who' path 0.name reads the first organization in the array returned by /v1/organizations because no endpoint here names the token owner. Rate limit is 120 requests per minute per user, project or organization and endpoint, shared across all of a user's tokens; some endpoints are stricter (30 per minute for analytics log queries). Official MCP server https://mcp.supabase.com/mcp uses OAuth by default; for CI a scoped PAT can be passed as a bearer header, and ?read_only=true and ?project_ref=<id> query parameters limit it. Not read: project-level API keys (anon/service role) which are a different credential."
+}

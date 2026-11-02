@@ -1,0 +1,97 @@
+{
+  "id": "linear",
+  "name": "Linear",
+  "category": "Project",
+  "auth": {
+    "type": "apiKey",
+    "header": "Authorization",
+    "prefix": "",
+    "fields": [
+      {
+        "name": "apiKey",
+        "label": "Personal API key",
+        "secret": true,
+        "placeholder": "lin_api_..."
+      }
+    ],
+    "basic": null,
+    "keyUrl": "https://linear.app/settings/account/security",
+    "keyHelp": "Create a key with only the Read permission for read-only use (add Create issues only if the assistant should file issues).",
+    "signIn": null
+  },
+  "baseUrl": "https://api.linear.app",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "test": {
+    "method": "POST",
+    "path": "/graphql",
+    "expect": 200,
+    "who": "data.viewer.name",
+    "graphql": "query Me { viewer { id name email } }"
+  },
+  "read": [
+    {
+      "id": "whoami",
+      "label": "Who am I",
+      "method": "POST",
+      "path": "/graphql",
+      "graphql": "query Me { viewer { id name email } }"
+    },
+    {
+      "id": "list_teams",
+      "label": "List teams",
+      "method": "POST",
+      "path": "/graphql",
+      "graphql": "query Teams { teams { nodes { id name } } }"
+    },
+    {
+      "id": "list_issues",
+      "label": "List issues",
+      "method": "POST",
+      "path": "/graphql",
+      "graphql": "query Issues { issues { nodes { id title } } }"
+    },
+    {
+      "id": "team_issues",
+      "label": "List a team's issues",
+      "method": "POST",
+      "path": "/graphql",
+      "graphql": "query Team($id: String!) { team(id: $id) { id name issues { nodes { id title description assignee { id name } createdAt archivedAt } } } }",
+      "variables": [
+        "id"
+      ]
+    }
+  ],
+  "write": [
+    {
+      "id": "create_issue",
+      "label": "Create an issue",
+      "method": "POST",
+      "path": "/graphql",
+      "graphql": "mutation IssueCreate($input: IssueCreateInput!) { issueCreate(input: $input) { success issue { id title } } }",
+      "variables": [
+        "input"
+      ],
+      "body": [
+        "teamId",
+        "title",
+        "description"
+      ]
+    }
+  ],
+  "mcp": {
+    "url": "https://mcp.linear.app/mcp",
+    "official": true,
+    "auth": "oauth",
+    "docs": "https://linear.app/docs/mcp"
+  },
+  "docs": [
+    "https://linear.app/developers/graphql",
+    "https://linear.app/developers/oauth-2-0-authentication",
+    "https://linear.app/docs/mcp"
+  ],
+  "checked": "2026-11-01",
+  "tested": "mock; real service refused a fake key",
+  "notes": "GraphQL only; one endpoint, https://api.linear.app/graphql. A personal API key is sent with NO Bearer prefix ('Authorization: <API_KEY>'); OAuth access tokens use 'Authorization: Bearer <token>'. A read-only key is possible: the MCP docs say to create a key with only the Read permission (the GraphQL page itself says nothing about key permissions). The key prefix lin_api_ is only a placeholder hint. OAuth authorize URL https://linear.app/oauth/authorize, token URL https://api.linear.app/oauth/token. The pages read do not list the required fields of IssueCreateInput beyond the example (title, teamId). 'variables' on graphql actions and 'graphql' on test are small additions beyond the draft format. Rate limits live on a separate page that was not read. Official MCP server: https://mcp.linear.app/mcp (read-write), read-only variant https://mcp.linear.app/mcp/readonly, OAuth 2.1 with dynamic client registration, or an OAuth token / API key sent as Authorization: Bearer; the /sse endpoint is deprecated."
+}

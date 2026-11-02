@@ -1,0 +1,189 @@
+{
+  "id": "azure",
+  "name": "Microsoft Azure",
+  "category": "Cloud",
+  "auth": {
+    "type": "azureClientSecret",
+    "header": "Authorization",
+    "prefix": "Bearer ",
+    "fields": [
+      {
+        "name": "tenantId",
+        "label": "Directory (tenant) ID",
+        "secret": false,
+        "placeholder": "00000000-0000-0000-0000-000000000000"
+      },
+      {
+        "name": "clientId",
+        "label": "Application (client) ID",
+        "secret": false,
+        "placeholder": "00000000-0000-0000-0000-000000000000"
+      },
+      {
+        "name": "clientSecret",
+        "label": "Client secret value",
+        "secret": true,
+        "placeholder": "paste the secret Value shown once at creation"
+      },
+      {
+        "name": "subscriptionId",
+        "label": "Subscription ID (needed for cost and resource calls)",
+        "secret": false,
+        "placeholder": "00000000-0000-0000-0000-000000000000"
+      }
+    ],
+    "basic": null,
+    "keyUrl": "https://entra.microsoft.com",
+    "keyHelp": "In Entra ID > App registrations make a new registration, copy its tenant and client IDs, then Certificates & secrets > New client secret; assign it Reader (plus Cost Management Reader for cost) on the subscription.",
+    "signIn": null,
+    "tokenUrl": "https://login.microsoftonline.com/{tenantId}/oauth2/v2.0/token",
+    "tokenRequest": {
+      "method": "POST",
+      "contentType": "application/x-www-form-urlencoded",
+      "body": {
+        "grant_type": "client_credentials",
+        "client_id": "{clientId}",
+        "client_secret": "{clientSecret}",
+        "scope": "https://management.azure.com/.default"
+      },
+      "tokenField": "access_token",
+      "expiresField": "expires_in"
+    }
+  },
+  "baseUrl": "https://management.azure.com",
+  "headers": {},
+  "test": {
+    "method": "GET",
+    "path": "/subscriptions",
+    "expect": 200,
+    "who": "value.0.displayName",
+    "fixed": {
+      "api-version": "2022-12-01"
+    }
+  },
+  "read": [
+    {
+      "id": "list_subscriptions",
+      "label": "List subscriptions the service principal can see",
+      "method": "GET",
+      "path": "/subscriptions",
+      "fixed": {
+        "api-version": "2022-12-01"
+      }
+    },
+    {
+      "id": "list_resource_groups",
+      "label": "List resource groups in the subscription",
+      "method": "GET",
+      "path": "/subscriptions/{subscriptionId}/resourcegroups",
+      "fixed": {
+        "api-version": "2021-04-01"
+      },
+      "query": [
+        "$filter",
+        "$top"
+      ]
+    },
+    {
+      "id": "list_resources",
+      "label": "List resources in the subscription",
+      "method": "GET",
+      "path": "/subscriptions/{subscriptionId}/resources",
+      "fixed": {
+        "api-version": "2021-04-01"
+      },
+      "query": [
+        "$filter",
+        "$expand",
+        "$top"
+      ]
+    },
+    {
+      "id": "cost_by_resource_group",
+      "label": "Cost for a period grouped by resource group",
+      "method": "POST",
+      "path": "/subscriptions/{subscriptionId}/providers/Microsoft.CostManagement/query",
+      "fixed": {
+        "api-version": "2026-06-01"
+      },
+      "body": [
+        "type",
+        "timeframe",
+        "timePeriod",
+        "dataset"
+      ],
+      "example": {
+        "type": "Usage",
+        "timeframe": "TheLastMonth",
+        "dataset": {
+          "granularity": "None",
+          "aggregation": {
+            "totalCost": {
+              "name": "PreTaxCost",
+              "function": "Sum"
+            }
+          },
+          "grouping": [
+            {
+              "type": "Dimension",
+              "name": "ResourceGroup"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "cost_daily",
+      "label": "Daily cost this month so far",
+      "method": "POST",
+      "path": "/subscriptions/{subscriptionId}/providers/Microsoft.CostManagement/query",
+      "fixed": {
+        "api-version": "2026-06-01"
+      },
+      "body": [
+        "type",
+        "timeframe",
+        "timePeriod",
+        "dataset"
+      ],
+      "example": {
+        "type": "Usage",
+        "timeframe": "MonthToDate",
+        "dataset": {
+          "granularity": "Daily",
+          "aggregation": {
+            "totalCost": {
+              "name": "PreTaxCost",
+              "function": "Sum"
+            }
+          }
+        }
+      }
+    }
+  ],
+  "write": [],
+  "mcp": null,
+  "docs": [
+    "https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-client-creds-grant-flow",
+    "https://learn.microsoft.com/en-us/entra/identity-platform/howto-create-service-principal-portal",
+    "https://learn.microsoft.com/en-us/rest/api/resources/subscriptions/list",
+    "https://learn.microsoft.com/en-us/rest/api/resources/resource-groups/list",
+    "https://learn.microsoft.com/en-us/rest/api/resources/resources/list",
+    "https://learn.microsoft.com/en-us/rest/api/cost-management/query/usage",
+    "https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles/general",
+    "https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles/management-and-governance",
+    "https://learn.microsoft.com/en-us/azure/developer/azure-mcp-server/overview"
+  ],
+  "checked": "2026-11-01",
+  "tested": "mock; real service refused a fake key",
+  "notes": "Two steps per session. Step 1, token: POST https://login.microsoftonline.com/{tenantId}/oauth2/v2.0/token with a form body of client_id, client_secret, grant_type=client_credentials and scope=https://management.azure.com/.default (resource URI plus .default; the docs say all scopes in one request must be for a single resource). The response has access_token, token_type Bearer and expires_in (the docs example shows 3599 seconds); no refresh token is issued with this flow, so request a new token when it expires. Step 2: send it as Authorization: Bearer <access_token> to https://management.azure.com. The auth.tokenUrl and auth.tokenRequest keys and the per-action fixed (api-version) and example keys are extras beyond FORMAT.md, because the format has no token-exchange or api-version slot. api-version is required on every call and differs per API: Subscriptions List 2022-12-01, Resource Groups List and Resources List 2021-04-01, Cost Management Query 2026-06-01, each the version shown on its page today. Test call: GET /subscriptions?api-version=2022-12-01 needs no subscription ID; it returns value[] with subscriptionId, displayName and state (Enabled, Warned, PastDue, Disabled, Deleted), and who reads the first subscription displayName. Cost: POST /subscriptions/{subscriptionId}/providers/Microsoft.CostManagement/query?api-version=2026-06-01 with a JSON body of type (Usage), timeframe (MonthToDate, TheLastMonth, WeekToDate, BillingMonthToDate, TheLastBillingMonth, TheCurrentMonth or Custom; Custom needs timePeriod from and to) and dataset (granularity None or Daily, aggregation totalCost with name PreTaxCost and function Sum, optional grouping). The only grouping example on the page uses the ResourceGroup dimension; other dimension names such as ServiceName were not confirmed. The response is columns[] and rows[][] with a nextLink for paging. It is a POST but it only reads. How to create the service principal in the portal: sign in at https://entra.microsoft.com as at least Cloud Application Administrator; Entra ID > App registrations > New registration; name it, choose Accounts in this organizational directory only, Register. The overview page shows the Directory (tenant) ID and Application (client) ID. Then Certificates & secrets > Client secrets > New client secret, add a description and duration, Add, and copy the Value at once because it is shown only once. Registering an app creates its service principal automatically. Microsoft recommends a certificate over a secret, and managed identities for code that runs on Azure; a client secret is the only form this connection uses. Read-only role: in the Azure portal open Subscriptions, pick the subscription, Access control (IAM) > Add > Add role assignment, choose Reader (role id acdd72a7-3385-48ef-bd42-f606fba81ae7, action */read on the control plane, no data actions), assign access to User, group, or service principal, find the app by name (apps are hidden from the list by default), then Review + assign. Add a second assignment of Cost Management Reader (role id 72fafb9e-0641-4937-9268-a91bfd8191a3, described as able to view cost data and configuration; its actions include Microsoft.CostManagement/*/read and Microsoft.Consumption/*/read) so cost works. Reader */read would by wildcard also cover Microsoft.CostManagement/*/read, but no page I read says Reader alone is enough for the cost query, so assign both. Which Azure role the person needs in order to create the role assignment is not stated on the pages I read. No write actions are listed on purpose, so the principal stays read-only. Billing-account scopes (EA or MCA) for cost are separate and not covered. Official MCP: Microsoft has an official Azure MCP Server, but the overview describes a developer-run server that uses Entra ID through the Azure Identity library (your user credentials or a managed identity), with guides to self-host it in Microsoft Foundry or Copilot Studio. I found no Microsoft-hosted URL for it, so mcp is null. It also says its tools are disabled by default in supported hosts and lists a GitHub Copilot subscription as a prerequisite. Separately, the Microsoft Learn docs MCP server at https://learn.microsoft.com/api/mcp is documentation search only, not account access, and it came from a search result, not a page I read.",
+  "store": {
+    "key": "azure",
+    "fields": {
+      "tenantId": "tenantId",
+      "clientId": "clientId",
+      "clientSecret": "clientSecret",
+      "subscriptionId": "subscriptionId"
+    }
+  }
+}

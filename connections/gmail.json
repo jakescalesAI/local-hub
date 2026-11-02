@@ -1,0 +1,127 @@
+{
+  "id": "gmail",
+  "name": "Gmail",
+  "category": "Google",
+  "auth": {
+    "type": "oauth",
+    "header": "Authorization",
+    "prefix": "Bearer ",
+    "fields": [
+      {
+        "name": "client_id",
+        "label": "OAuth client ID (Desktop app)",
+        "secret": false,
+        "placeholder": "123456789-abc.apps.googleusercontent.com"
+      },
+      {
+        "name": "client_secret",
+        "label": "OAuth client secret",
+        "secret": true,
+        "placeholder": "GOCSPX-..."
+      }
+    ],
+    "basic": null,
+    "keyUrl": "https://console.developers.google.com/auth/clients",
+    "keyHelp": "Create an OAuth client of type Desktop app on your own Google Cloud project, enable the Gmail API, and add gmail.readonly under Data Access.",
+    "signIn": {
+      "kind": "oauth",
+      "authorizeUrl": "https://accounts.google.com/o/oauth2/v2/auth",
+      "tokenUrl": "https://oauth2.googleapis.com/token",
+      "deviceUrl": null,
+      "scopes": [
+        "https://www.googleapis.com/auth/gmail.readonly"
+      ],
+      "pkce": true,
+      "clientHelp": "1) Create a project: https://console.cloud.google.com/projectcreate . 2) Enable the Gmail API: https://console.cloud.google.com/apis/enableflow;apiid=gmail.googleapis.com . 3) Branding, then Audience (External), then add your own Google address under Test users: https://console.developers.google.com/auth/branding and https://console.developers.google.com/auth/audience . 4) Data Access, Add or Remove Scopes, pick gmail.readonly: https://console.developers.google.com/auth/scopes . 5) Clients, Create Client, Application type Desktop app: https://console.developers.google.com/auth/clients . Redirect: use the loopback address http://127.0.0.1:PORT (the app picks the port). Device flow cannot be used for Gmail scopes."
+    }
+  },
+  "baseUrl": "https://gmail.googleapis.com",
+  "headers": {},
+  "test": {
+    "method": "GET",
+    "path": "/gmail/v1/users/me/profile",
+    "expect": 200,
+    "who": "emailAddress"
+  },
+  "read": [
+    {
+      "id": "get_profile",
+      "label": "Show mailbox profile and message counts",
+      "method": "GET",
+      "path": "/gmail/v1/users/me/profile",
+      "query": []
+    },
+    {
+      "id": "list_messages",
+      "label": "List or search messages",
+      "method": "GET",
+      "path": "/gmail/v1/users/me/messages",
+      "query": [
+        "q",
+        "maxResults",
+        "labelIds",
+        "pageToken",
+        "includeSpamTrash"
+      ]
+    },
+    {
+      "id": "get_message",
+      "label": "Read one message",
+      "method": "GET",
+      "path": "/gmail/v1/users/me/messages/{id}",
+      "query": [
+        "format",
+        "metadataHeaders"
+      ]
+    },
+    {
+      "id": "list_labels",
+      "label": "List labels",
+      "method": "GET",
+      "path": "/gmail/v1/users/me/labels",
+      "query": []
+    }
+  ],
+  "write": [
+    {
+      "id": "create_draft",
+      "label": "Create a draft (does not send)",
+      "method": "POST",
+      "path": "/gmail/v1/users/me/drafts",
+      "body": [
+        "message"
+      ]
+    }
+  ],
+  "mcp": {
+    "url": "https://gmailmcp.googleapis.com/mcp/v1",
+    "official": true,
+    "auth": "oauth",
+    "docs": "https://developers.google.com/workspace/guides/configure-mcp-servers"
+  },
+  "docs": [
+    "https://developers.google.com/identity/protocols/oauth2/limited-input-device",
+    "https://developers.google.com/identity/protocols/oauth2/native-app",
+    "https://developers.google.com/workspace/guides/create-project",
+    "https://developers.google.com/workspace/guides/enable-apis",
+    "https://developers.google.com/workspace/guides/configure-oauth-consent",
+    "https://developers.google.com/workspace/guides/create-credentials",
+    "https://developers.google.com/workspace/gmail/api/auth/scopes",
+    "https://developers.google.com/workspace/gmail/api/reference/rest/v1/users/getProfile",
+    "https://developers.google.com/workspace/gmail/api/reference/rest/v1/users.messages/list",
+    "https://developers.google.com/workspace/gmail/api/reference/rest/v1/users.messages/get",
+    "https://developers.google.com/workspace/gmail/api/reference/rest/v1/users.labels/list",
+    "https://developers.google.com/workspace/gmail/api/reference/rest/v1/users.drafts/create",
+    "https://developers.google.com/workspace/gmail/api/reference/rest/v1/users.drafts",
+    "https://developers.google.com/workspace/guides/configure-mcp-servers",
+    "https://developers.google.com/workspace/guides/configure-mcp-security",
+    "https://support.google.com/cloud/answer/15549257",
+    "https://support.google.com/cloud/answer/15549945",
+    "https://support.google.com/cloud/answer/15549135",
+    "https://support.google.com/cloud/answer/13463073",
+    "https://support.google.com/cloud/answer/7454865"
+  ],
+  "checked": "2026-11-01",
+  "tested": "mock only",
+  "notes": "DEVICE FLOW: not usable. Google's limited-input-device page lists the allowed scopes exhaustively (email, openid, profile, drive.appdata, drive.file, youtube, youtube.readonly); no Gmail scope is on it, and other client types get invalid_client there. So sign-in is authorization code + PKCE with a Desktop app client and a loopback redirect (http://127.0.0.1:port or http://[::1]:port; localhost also allowed but can hit client firewalls). The native-app page says nothing about private-network IPs (192.168.x.x, 10.x) as redirects, so do not plan on them; treat 'no private-IP redirect' as an inference, not a quote. If the app runs on a different machine than the person's browser, the browser cannot reach the loopback listener: the app must let the person paste the final URL or code back (inference; not documented on the pages read). SCOPES: gmail.readonly is classed Restricted on Google's scope page (gmail.metadata, gmail.compose, gmail.modify too). gmail.send is Sensitive, gmail.labels is Non-sensitive. There is no non-restricted way to read message bodies. Create_draft needs gmail.compose (Restricted), which is NOT in signIn.scopes: add it only if the person wants drafting. TESTING MODE: Audience page says Testing allows up to 100 test users and test-user authorizations expire seven days after consent, so a refresh token dies after 7 days and the person must sign in again. IN PRODUCTION WITHOUT VERIFICATION: the unverified-app screen shows and the app is limited to 100 new users (support answer 7454865); Restricted scopes need Google's OAuth verification (and a security assessment per the Drive page; the Gmail page was not checked for that wording) before general distribution, with annual re-verification. Whether a single owner can click through the unverified warning in production was NOT confirmed on any page read (the pages did not mention an Advanced or Go-to-app option); the 'personal use' path is therefore unconfirmed. The client_secret is optional in the token exchange for Desktop clients per the native-app page, but Google issues one anyway; keep it write-only. MCP: Google's official Gmail MCP server is in Developer Preview (needs the Workspace Developer Preview Program), uses Streamable HTTP, and needs the person's own OAuth client of type Web application with 'Use this client for an AI-powered agent' ticked; the only redirect URIs the page names are for Antigravity and claude.ai, so a self-hosted dashboard cannot use it without confirming its own redirect is accepted (unconfirmed). MCP scopes there are gmail.readonly and gmail.compose. DRAFT BODY: the drafts.create page said the body is a Draft but did not list fields; the Draft resource has id and message. Whether message.raw must be base64url RFC 2822 text is NOT confirmed on the pages read, so only 'message' is listed. messages.list maxResults default 100, max 500. No test of any call was made."
+}

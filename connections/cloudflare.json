@@ -1,0 +1,116 @@
+{
+  "id": "cloudflare",
+  "name": "Cloudflare",
+  "category": "Cloud",
+  "auth": {
+    "type": "token",
+    "header": "Authorization",
+    "prefix": "Bearer ",
+    "fields": [
+      {
+        "name": "token",
+        "label": "API token",
+        "secret": true,
+        "placeholder": "cfut_..."
+      },
+      {
+        "name": "accountId",
+        "label": "Account ID",
+        "secret": false,
+        "optional": true,
+        "placeholder": "Filled in for you if left blank"
+      }
+    ],
+    "basic": null,
+    "keyUrl": "https://dash.cloudflare.com/profile/api-tokens",
+    "keyHelp": "Choose Create Token, build a custom token, and give it only Read permissions (Zone Read, DNS Read, Workers Scripts Read) on the zones or account you want.",
+    "signIn": null
+  },
+  "baseUrl": "https://api.cloudflare.com/client/v4",
+  "headers": {},
+  "test": {
+    "method": "GET",
+    "path": "/user/tokens/verify",
+    "expect": 200,
+    "who": "result.status",
+    "fill": {
+      "accountId": {
+        "path": "/accounts",
+        "pick": "result.0.id"
+      }
+    }
+  },
+  "read": [
+    {
+      "id": "list_zones",
+      "label": "List zones (domains)",
+      "method": "GET",
+      "path": "/zones",
+      "query": [
+        "name",
+        "status",
+        "per_page",
+        "page",
+        "account.id"
+      ]
+    },
+    {
+      "id": "list_dns_records",
+      "label": "List DNS records for a zone",
+      "method": "GET",
+      "path": "/zones/{zone_id}/dns_records",
+      "query": [
+        "type",
+        "page",
+        "per_page"
+      ]
+    },
+    {
+      "id": "list_accounts",
+      "label": "List accounts",
+      "method": "GET",
+      "path": "/accounts",
+      "query": [
+        "name",
+        "page",
+        "per_page"
+      ]
+    },
+    {
+      "id": "list_workers",
+      "label": "List Workers scripts",
+      "method": "GET",
+      "path": "/accounts/{account_id}/workers/scripts"
+    }
+  ],
+  "write": [],
+  "mcp": {
+    "url": "https://mcp.cloudflare.com/mcp",
+    "official": true,
+    "auth": "oauth",
+    "docs": "https://developers.cloudflare.com/agents/model-context-protocol/mcp-servers-for-cloudflare/"
+  },
+  "docs": [
+    "https://developers.cloudflare.com/fundamentals/api/get-started/create-token/",
+    "https://developers.cloudflare.com/api/resources/user/subresources/tokens/methods/verify/",
+    "https://developers.cloudflare.com/api/resources/accounts/subresources/tokens/methods/verify/",
+    "https://developers.cloudflare.com/fundamentals/api/get-started/account-owned-tokens/",
+    "https://developers.cloudflare.com/fundamentals/api/reference/permissions/",
+    "https://developers.cloudflare.com/api/resources/zones/methods/list/",
+    "https://developers.cloudflare.com/api/resources/dns/subresources/records/methods/list/",
+    "https://developers.cloudflare.com/api/resources/dns/subresources/records/methods/create/",
+    "https://developers.cloudflare.com/api/resources/accounts/methods/list/",
+    "https://developers.cloudflare.com/api/resources/workers/subresources/scripts/methods/list/",
+    "https://developers.cloudflare.com/agents/model-context-protocol/mcp-servers-for-cloudflare/"
+  ],
+  "checked": "2026-11-01",
+  "tested": "mock; real service refused a fake key",
+  "notes": "Token verify has two forms. A user token (created under My Profile > API Tokens) verifies at GET /user/tokens/verify, which needs no permission and returns result.status of active, disabled or expired plus the token id (it does not name the account, so 'who' shows the status). An Account API token (created under Manage Account > API Tokens, no direct URL given in the docs) verifies at GET /accounts/{account_id}/tokens/verify instead; use that path if the user pastes an account token and add an Account ID field then. The Account token page also says some products do not support account tokens yet. Read-only is possible: tokens are per-permission (Read grants read and list, Edit grants full create/read/update/delete), each scoped to chosen zones or accounts. The docs show no 'read all' template, so the user must pick Read groups one by one; the permissions page names Zone Read, DNS Read, Workers Scripts Read and Account Settings Read. GET /zones needs Zone Zone Read, list DNS records needs DNS Read or DNS Write, Workers scripts list needs one of several Workers read permissions. The page for GET /accounts names no token permission and shows only legacy Global API key headers, so whether a scoped token can call it is unconfirmed; the account id is also available from the zones response (account.id filter) and the dashboard. The create-DNS-record call needs DNS Write, requires type, name and ttl (1 means automatic, otherwise 60 to 86400). Zones per_page range is 5 to 50. New tokens start with cfut_ per the docs. Official MCP servers all live at /mcp on mcp.cloudflare.com (main API server, OAuth, or an API token as a bearer header for automation) plus product servers such as docs.mcp.cloudflare.com, containers, browser, dex and casb. Creating DNS records is left out on purpose: the Hub offers no change action on this service for now.",
+  "store": {
+    "key": "cloudflare",
+    "fields": {
+      "token": "apiToken",
+      "accountId": "accountId"
+    }
+  }
+}

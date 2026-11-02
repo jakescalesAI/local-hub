@@ -165,10 +165,12 @@
     const fixRow = (title, sub) => `<div class="list"><div class="row" data-menu="ai" data-kind="fix" data-v="${esc(a.fix || '')}"><div class="row-line"><span class="status" style="--c:${STATUS_C[a.status] || 'var(--gray)'}"><i></i></span><span class="txt"><div class="t1">${esc(title)}</div><div class="t2" style="white-space:normal">${esc(sub)}</div></span></div>
       ${a.fix ? `<div class="ai-code"><div class="urls"><div class="url"><code>${esc(a.fix)}</code><button class="icon-btn" data-copy="${esc(a.fix)}" aria-label="Copy command">${ICON.copy}</button></div></div></div>` : ''}</div></div>`
     if (a.status === 'connect')
-      return `<section class="group ai-acc" data-hay="${hay}">${head}${fixRow(`Connect ${a.label}`, 'Sign in once in a terminal, then press Refresh. The hub reads its plan usage after that.')}</section>`
+      return `<section class="group ai-acc" data-hay="${hay}">${head}<div class="list"><div class="row"><div class="row-line"><span class="status" style="--c:var(--gray)"><i></i></span><span class="txt"><div class="t1">${esc(`Connect ${a.label}`)}</div><div class="t2">Sign in once. The hub reads its plan usage after that.</div></span><button type="button" class="get" data-connect="claude-account">Sign In</button></div></div></div></section>`
     const u = a.usage
     let notice = ''
-    if (a.status !== 'ok') notice = `<div style="margin-bottom:12px">${fixRow(a.message || 'Usage unavailable', a.fix ? 'Run this in a terminal to sign in again, then press Refresh.' : a.usageAt ? `Showing numbers from ${since(a.usageAt)}.` : 'Trying again in a few minutes.')}</div>`
+    if (a.status !== 'ok') notice = a.fix && !a.isDefault
+      ? `<div class="list" style="margin-bottom:12px"><div class="row"><div class="row-line"><span class="status" style="--c:${STATUS_C[a.status] || 'var(--gray)'}"><i></i></span><span class="txt"><div class="t1">${esc(a.message || 'Usage unavailable')}</div><div class="t2">Sign in again to keep reading this account’s usage.</div></span><button type="button" class="get" data-connect="claude-account">Sign In</button></div></div></div>`
+      : `<div style="margin-bottom:12px">${fixRow(a.message || 'Usage unavailable', a.fix ? 'Run this in a terminal to sign in again, then press Refresh.' : a.usageAt ? `Showing numbers from ${since(a.usageAt)}.` : 'Trying again in a few minutes.')}</div>`
     if (!u) return `<section class="group ai-acc" data-hay="${hay}">${head}${notice}</section>`
     const w = []
     if (u.fiveHour) w.push(widget('5-hour', `${pct(u.fiveHour.pct)}<small>%</small>`, esc(resets(u.fiveHour.resetsAt)), u.fiveHour.pct))
@@ -249,9 +251,9 @@
   /* ---------- other providers ---------- */
 
   function providerRows(list) {
-    return group('ai-providers', 'Other AI providers', 'Keys stay in config/secrets.json on this computer; the page only sees balances.', list.map(p => {
+    return group('ai-providers', 'Other AI providers', 'Keys stay on this computer. The page only sees balances.', list.map(p => {
       const hay = esc(`${p.name} ${p.field || ''} provider api key balance`.toLowerCase())
-      if (!p.connected) return `<div class="row" data-hay="${hay}"><div class="row-line" style="min-height:52px"><span class="status" style="--c:var(--gray)"><i></i></span><span class="txt"><div class="t1">${esc(p.name)}</div><div class="t2">Add a key to secrets.json → <span style="font-family:var(--mono);letter-spacing:0">${esc(p.field)}</span></div></span><span class="trail">Not connected</span></div></div>`
+      if (!p.connected) return `<div class="row" data-hay="${hay}"><div class="row-line" style="min-height:52px"><span class="status" style="--c:var(--gray)"><i></i></span><span class="txt"><div class="t1">${esc(p.name)}</div><div class="t2">Not connected</div></span><button type="button" class="get" data-connect="${esc(p.id)}">Connect</button></div></div>`
       let sub = '', trail = ''
       if (p.error) { sub = `Couldn’t read balance (${p.error})`; trail = '–' }
       else if (p.id === 'openrouter') {
@@ -272,7 +274,7 @@
     const d = S.data
     if (!d) return S.err ? `<div class="notice err">Can’t load AI usage: ${esc(S.err)}</div>` : '<div class="empty">Loading…</div>'
     let html = S.err ? `<div class="notice err">Couldn’t refresh: ${esc(S.err)}</div>` : ''
-    html += [...d.accounts].sort((a, b) => (a.status === 'connect') - (b.status === 'connect')).map(accountSection).join('') || '<div class="notice">No Claude accounts in secrets.json → claudeAccounts.</div>'
+    html += [...d.accounts].sort((a, b) => (a.status === 'connect') - (b.status === 'connect')).map(accountSection).join('') || '<div class="notice">No Claude account yet. <button type="button" class="get" data-connect="claude-account">Connect</button></div>'
     html += tokenSection(d.tokens)
     if (d.providers?.list?.length) html += providerRows(d.providers.list)
     queueMicrotask(restoreHover)

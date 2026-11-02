@@ -1,0 +1,111 @@
+{
+  "id": "todoist",
+  "name": "Todoist",
+  "category": "Tasks",
+  "auth": {
+    "type": "token",
+    "header": "Authorization",
+    "prefix": "Bearer ",
+    "fields": [
+      {
+        "name": "token",
+        "label": "API token",
+        "secret": true,
+        "placeholder": "Paste your API token"
+      }
+    ],
+    "basic": null,
+    "keyUrl": "https://app.todoist.com/app/settings/integrations",
+    "keyHelp": "Copy your personal API token from the Integrations settings; it has full access to your tasks and cannot be limited to read-only.",
+    "signIn": null
+  },
+  "baseUrl": "https://api.todoist.com/api/v1",
+  "headers": {},
+  "test": {
+    "method": "GET",
+    "path": "/user",
+    "expect": 200,
+    "who": "full_name"
+  },
+  "read": [
+    {
+      "id": "list_tasks",
+      "label": "List active tasks",
+      "method": "GET",
+      "path": "/tasks",
+      "query": [
+        "project_id",
+        "section_id",
+        "parent_id",
+        "label",
+        "ids",
+        "cursor",
+        "limit"
+      ]
+    },
+    {
+      "id": "tasks_by_filter",
+      "label": "List tasks matching a filter (today, overdue...)",
+      "method": "GET",
+      "path": "/tasks/filter",
+      "query": [
+        "query",
+        "lang",
+        "cursor",
+        "limit"
+      ]
+    },
+    {
+      "id": "get_task",
+      "label": "Get one task",
+      "method": "GET",
+      "path": "/tasks/{task_id}"
+    },
+    {
+      "id": "list_projects",
+      "label": "List projects",
+      "method": "GET",
+      "path": "/projects",
+      "query": [
+        "workspace_id",
+        "folder_id",
+        "cursor",
+        "limit"
+      ]
+    }
+  ],
+  "write": [
+    {
+      "id": "create_task",
+      "label": "Create a task",
+      "method": "POST",
+      "path": "/tasks",
+      "body": [
+        "content",
+        "description",
+        "project_id",
+        "section_id",
+        "parent_id",
+        "labels"
+      ]
+    },
+    {
+      "id": "close_task",
+      "label": "Complete a task",
+      "method": "POST",
+      "path": "/tasks/{task_id}/close"
+    }
+  ],
+  "mcp": {
+    "url": "https://ai.todoist.net/mcp",
+    "official": true,
+    "auth": "oauth",
+    "docs": "https://developer.todoist.com/api/v1/"
+  },
+  "docs": [
+    "https://developer.todoist.com/api/v1/"
+  ],
+  "checked": "2026-11-01",
+  "tested": "mock; real service refused a fake key",
+  "notes": "Current API is Todoist API v1 (https://api.todoist.com/api/v1/), which unifies the old Sync API v9 and REST API v2; the docs have a 'Migrating from v9' section and say endpoints are now lowercase (mixed case returns 404). The v9/v2 docs are 'still available for reference'. NOT confirmed from Todoist's own pages: shutdown dates for v9 and REST v2 (the sunset status of REST v2 was only seen in third-party material), so do not use v2. List endpoints are cursor-paginated (limit up to 200, default 50). The personal API token is found under Settings > Integrations (the page names this location; the exact tab label was not verified). A personal token cannot be limited; read-only is only possible with OAuth, whose scopes are task:add (add only), data:read (read-only), data:read_write, data:delete, project:delete, backups:read. OAuth authorize URL https://app.todoist.com/oauth/authorize and token URL https://api.todoist.com/oauth/access_token, but the user needs a registered app with a client secret, so signIn is left null. The 'who' value is full_name from GET /user. Official MCP server https://ai.todoist.net/mcp is documented with OAuth (also supports Dynamic Client Registration); a bearer-token option was not documented."
+}

@@ -1,0 +1,102 @@
+{
+  "id": "slack",
+  "name": "Slack",
+  "category": "Chat",
+  "auth": {
+    "type": "token",
+    "header": "Authorization",
+    "prefix": "Bearer ",
+    "fields": [
+      {
+        "name": "token",
+        "label": "Bot token",
+        "secret": true,
+        "placeholder": "xoxb-..."
+      }
+    ],
+    "basic": null,
+    "keyUrl": "https://api.slack.com/apps",
+    "keyHelp": "Create your own Slack app, add only the read scopes (channels:read, groups:read, channels:history, groups:history, users:read), install it to the workspace and copy the Bot User OAuth Token.",
+    "signIn": null
+  },
+  "baseUrl": "https://slack.com/api",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "test": {
+    "method": "POST",
+    "path": "/auth.test",
+    "expect": 200,
+    "who": "user",
+    "okField": "ok"
+  },
+  "read": [
+    {
+      "id": "list_channels",
+      "label": "List channels",
+      "method": "GET",
+      "path": "/conversations.list",
+      "query": [
+        "types",
+        "exclude_archived",
+        "limit",
+        "cursor"
+      ]
+    },
+    {
+      "id": "channel_history",
+      "label": "Read a channel's recent messages",
+      "method": "GET",
+      "path": "/conversations.history",
+      "query": [
+        "channel",
+        "limit",
+        "oldest",
+        "latest",
+        "cursor"
+      ]
+    },
+    {
+      "id": "list_users",
+      "label": "List people in the workspace",
+      "method": "GET",
+      "path": "/users.list",
+      "query": [
+        "limit",
+        "cursor"
+      ]
+    }
+  ],
+  "write": [
+    {
+      "id": "post_message",
+      "label": "Post a message",
+      "method": "POST",
+      "path": "/chat.postMessage",
+      "body": [
+        "channel",
+        "text",
+        "thread_ts"
+      ]
+    }
+  ],
+  "mcp": {
+    "url": "https://mcp.slack.com/mcp",
+    "official": true,
+    "auth": "oauth",
+    "docs": "https://docs.slack.dev/ai/slack-mcp-server/"
+  },
+  "docs": [
+    "https://docs.slack.dev/authentication/tokens",
+    "https://docs.slack.dev/apis/web-api/",
+    "https://docs.slack.dev/reference/methods/auth.test",
+    "https://docs.slack.dev/reference/methods/conversations.list",
+    "https://docs.slack.dev/reference/methods/conversations.history",
+    "https://docs.slack.dev/reference/methods/users.list",
+    "https://docs.slack.dev/reference/methods/chat.postMessage",
+    "https://docs.slack.dev/ai/slack-mcp-server/"
+  ],
+  "checked": "2026-11-01",
+  "tested": "mock; real service refused a fake key",
+  "notes": "Slack returns HTTP 200 for failures too: every response is JSON with ok true or false and an error code (invalid_auth, not_authed, ...), so the host must check ok, not the status. Bot tokens start with xoxb-; send them as 'Authorization: Bearer xoxb-...' and use 'Content-type: application/json' on JSON POSTs (the token must be in the header, not the JSON body). auth.test needs no scopes and returns url, team, user, team_id, user_id, bot_id. Scopes per method: conversations.list needs channels:read, groups:read, im:read, mpim:read (page does not say whether all or any one is needed); conversations.history needs the matching *:history scope; users.list needs users:read; chat.postMessage needs chat:write, and a new app can only post to channels the bot has joined unless chat:write.public is added. A read-only key is possible by installing the app with only read scopes. The method pages do not describe how the bearer header is used on the token-type page, which is why the header format comes from the Web API overview. The official Slack MCP server (https://mcp.slack.com/mcp) is NOT usable with a plain bot token: it needs a directory-published or internal Slack app using confidential OAuth with user tokens (client_id and client_secret; no Dynamic Client Registration, no SSE); unlisted apps are prohibited and workspace admins approve it."
+}

@@ -64,11 +64,15 @@
     if (META[id]) return META[id]
     const s = siteOf(id)
     if (s) return { label: s.name, icon: 'globe', tint: tintFor(s.name), site: s }
+    const p = pageOf(id)
+    if (p) return { label: p.name, icon: 'grid', tint: ['#7fdcff', '#1c8cff'], page: p }
     const g = groupOf(id)
     return g ? { label: g.name, icon: 'grid', tint: ['#a1a1aa', '#636366'], group: g } : { label: window.TABS?.[id]?.title || id, icon: 'plug', tint: ['#a1a1aa', '#636366'] }
   }
   // App groups (folders on Home), saved in settings.groups with ids group-*.
   const groupOf = id => typeof id === 'string' && id.startsWith('group-') ? (S.groups || []).find(g => g.id === id) || null : null
+  // Extra Home pages, saved in settings.pages with ids page-*.
+  const pageOf = id => typeof id === 'string' && id.startsWith('page-') ? (S.pages || []).find(p => p.id === id) || null : null
 
   /* ---------- website apps (saved in settings.sites, ids site-*) ---------- */
 
@@ -92,12 +96,14 @@
 
   const WALLS = THEME.wallpapers || []
   const ACCENTS = [['system', 'System'], ['#0a84ff', 'Blue'], ['#7a5af8', 'Purple'], ['#ff2d55', 'Pink'], ['#ff3b30', 'Red'], ['#ff9500', 'Orange'], ['#ffcc00', 'Yellow'], ['#34c759', 'Green'], ['#30b0c7', 'Teal'], ['#8e8e93', 'Graphite']]
-  const STYLE_DEFAULT = { theme: 'auto', accent: 'system', blur: 20, transparency: 30, radius: 20, shadow: 'soft', effect: 'none', widgetLook: 'glass', tabBar: 'glass', ...THEME.style }
+  const STYLE_DEFAULT = { theme: 'auto', accent: 'system', blur: 20, transparency: 30, radius: 20, shadow: 'soft', effect: 'none', widgetLook: 'glass', tabBar: 'glass', font: 'system', density: 'regular', ...THEME.style }
   const DEFAULT = {
     tabs: { order: [...BUILTIN], hidden: [] },
     apps: [...BUILTIN.filter(t => t !== 'home'), 'chat'],
     sites: [],
     groups: [],
+    pages: [],
+    files: [],
     widgets: { desktop: [], mobile: [] },
     style: STYLE_DEFAULT,
     wallpaper: { current: THEME.wallpaper || 'none', custom: [], uploads: [] },
@@ -114,6 +120,12 @@
   const CARDS = '.widget, .hw-card, .ai-card, .st-card, .st-connect, .cal-card, .cal-connect, .list, .notice'
   const css = `
 :root { --hub-radius: 20px; --hub-blur: 20px; --hub-alpha: 70%; --hub-scrim: .45; --hub-shadow: 0 0 0 .5px var(--sep); }
+:root[data-font="rounded"] { --font: var(--rounded); --display: var(--rounded); }
+:root[data-font="serif"] { --font: ui-serif, "New York", Georgia, Cambria, "Times New Roman", serif; --display: var(--font); --rounded: var(--font); }
+:root[data-font="mono"] { --font: var(--mono); --display: var(--mono); --rounded: var(--mono); }
+:root[data-density="compact"] .row-line { min-height: 50px; padding-block: 5px; }
+:root[data-density="roomy"] .row-line { min-height: 70px; padding-block: 12px; }
+a.hc-btn { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; color: inherit; }
 html[data-shadow="soft"] { --hub-shadow: 0 0 0 .5px var(--sep), 0 1px 2px rgba(0, 0, 0, .04), 0 10px 26px -14px rgba(0, 0, 0, .28); }
 html[data-shadow="deep"] { --hub-shadow: 0 0 0 .5px var(--sep), 0 2px 6px rgba(0, 0, 0, .06), 0 24px 48px -18px rgba(0, 0, 0, .55); }
 .seg button[hidden] { display: none; }
@@ -195,9 +207,7 @@ html[data-wall] .hw-bar .hw-btn:not(.solid) { background: color-mix(in srgb, var
 .hc-blocked.row p { font-size: 15px; }
 .hc-blocked.row .hc-btn { margin: 0; height: 38px; padding: 0 16px; border-radius: 10px; font-size: 15px; }
 
-/* Sheets: a centred card on desktop, slid up from the bottom on a phone. */
-.scrim.hc-scrim { z-index: 76; }
-.hc-sheet { width: min(440px, 100%); max-height: min(720px, 88vh); display: flex; flex-direction: column; border-radius: 22px; background: var(--bg); color: var(--label); box-shadow: 0 24px 70px rgba(0, 0, 0, .35); overflow: hidden; animation: rise .35s var(--ease); }
+/* The shared sheet lives in tabs/home.js (.hw-sheet). */
 .hc-head { display: flex; align-items: center; gap: 10px; padding: 16px 18px 10px; flex: none; }
 .hc-head h2 { flex: 1; margin: 0; font: 600 17px var(--display); letter-spacing: -0.022em; }
 .hc-done { color: var(--blue); font-weight: 600; font-size: 17px; padding: 4px 6px; border-radius: 8px; }
@@ -213,11 +223,15 @@ html[data-wall] .hw-bar .hw-btn:not(.solid) { background: color-mix(in srgb, var
 .hc-line.col { flex-direction: column; align-items: stretch; gap: 8px; padding: 12px 14px; }
 .hc-line.col > div:not(.seg) { display: flex; align-items: center; gap: 12px; }
 .hc-line.off { opacity: .4; pointer-events: none; }
-.hc-trow { background: var(--surface); }
-.hc-trow.drag { position: relative; z-index: 2; box-shadow: 0 12px 30px -10px rgba(0, 0, 0, .35); border-radius: 12px; }
-.hc-trow .hc-app { flex: none; width: 30px; height: 30px; border-radius: 8px; }
-.hc-grip { width: 34px; height: 40px; margin: -6px -8px -6px -6px; display: grid; place-items: center; color: var(--label-3); cursor: grab; touch-action: none; border-radius: 8px; }
+.hc-grip { flex: none; width: 34px; height: 40px; margin: -6px -6px -6px -8px; display: grid; place-items: center; color: var(--label-3); cursor: grab; touch-action: none; border-radius: 8px; }
 .hc-grip:active { cursor: grabbing; }
+.hc-grip:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
+/* Dragging to reorder: only transforms move, the lifted item follows the pointer and the rest slide aside. */
+.hc-sorting { overflow: visible !important; }
+.hc-sorting > * { transition: transform .2s var(--ease); }
+.hc-sorting > .hc-lift { transition: none; position: relative; z-index: 3; background: var(--surface); border-radius: 12px; box-shadow: 0 12px 30px -10px rgba(0, 0, 0, .45); cursor: grabbing; }
+.seg.hc-sorting .seg-thumb { opacity: 0; }
+.seg.hc-editing button { touch-action: none; cursor: grab; }
 .hc-switch { position: relative; flex: none; width: 51px; height: 31px; border-radius: 99px; background: var(--fill-2); transition: background .25s; }
 .hc-switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%; background: #fff; box-shadow: 0 3px 8px rgba(0, 0, 0, .15), 0 3px 1px rgba(0, 0, 0, .06); transition: transform .3s var(--ease); }
 .hc-switch[aria-checked="true"] { background: var(--green); }
@@ -260,11 +274,11 @@ html[data-wall] .hw-bar .hw-btn:not(.solid) { background: color-mix(in srgb, var
 
 /* The style panel sits beside the page (no dimming) so changes show live behind it. */
 .hc-panel { position: fixed; z-index: 74; top: calc(env(safe-area-inset-top) + 12px); right: 12px; bottom: 12px; width: 372px; display: flex; flex-direction: column; border-radius: 22px; background: var(--menu-bg); -webkit-backdrop-filter: saturate(180%) blur(30px); backdrop-filter: saturate(180%) blur(30px); color: var(--label); box-shadow: 0 0 0 .5px var(--sep), 0 24px 70px rgba(0, 0, 0, .3); overflow: hidden; animation: hc-in .38s var(--ease); }
+.hc-panel, .hc-panel * { scrollbar-width: none; }
+.hc-panel ::-webkit-scrollbar, .hc-panel::-webkit-scrollbar { display: none; }
 .hc-panel .hc-group { background: var(--surface); }
 @keyframes hc-in { from { transform: translateX(24px); opacity: 0; } }
 @media (max-width: 700px) {
-  .scrim.hc-scrim { place-items: end stretch; padding: 0; }
-  .hc-sheet { width: 100%; max-height: 88vh; border-radius: 22px 22px 0 0; padding-bottom: env(safe-area-inset-bottom); }
   .hc-panel { top: auto; left: 0; right: 0; bottom: 0; width: auto; height: 62vh; border-radius: 22px 22px 0 0; padding-bottom: env(safe-area-inset-bottom); animation: rise .35s var(--ease); }
   .hc-grab { display: block; width: 40px; height: 5px; border-radius: 3px; background: var(--label-3); margin: 8px auto 0; flex: none; }
   .scrim.hc-sitescrim { padding: 0; }
@@ -274,7 +288,7 @@ html[data-wall] .hw-bar .hw-btn:not(.solid) { background: color-mix(in srgb, var
   .hc-blocked:not(.row) .hc-btn { align-self: stretch; }
 }
 .hc-grab { display: none; }
-@media (prefers-reduced-motion: reduce) { .hc-panel, .hc-sheet, .hc-siteview, .hc-blocked { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .hc-panel, .hc-siteview, .hc-blocked { animation: none; } }
 `
   const style = document.createElement('style')
   style.id = 'hc-style'
@@ -316,6 +330,8 @@ html[data-wall] .hw-bar .hw-btn:not(.solid) { background: color-mix(in srgb, var
     r.dataset.shadow = st.shadow
     r.dataset.tabbar = st.tabBar
     r.dataset.effect = st.effect
+    r.dataset.font = st.font
+    r.dataset.density = st.density
     r.style.setProperty('--hub-blur', `${st.blur}px`)
     r.style.setProperty('--hub-alpha', `${100 - st.transparency}%`)
     r.style.setProperty('--hub-radius', `${st.radius}px`)
@@ -340,7 +356,7 @@ html[data-wall] .hw-bar .hw-btn:not(.solid) { background: color-mix(in srgb, var
     S = { ...DEFAULT, ...next, style: { ...STYLE_DEFAULT, ...next.style } }
     keep()
     apply()
-    const changed = ['tabs', 'apps', 'sites', 'groups', 'widgets', 'style', 'wallpaper'].filter(k => JSON.stringify(prev[k]) !== JSON.stringify(S[k]))
+    const changed = ['tabs', 'apps', 'sites', 'groups', 'pages', 'files', 'widgets', 'style', 'wallpaper'].filter(k => JSON.stringify(prev[k]) !== JSON.stringify(S[k]))
     if (!changed.length) return
     if (changed.includes('tabs') && typeof chrome === 'function') { try { chrome() } catch {} }
     if (!quiet) for (const fn of listeners) { try { fn(S, changed) } catch (e) { console.error(e) } }
@@ -357,7 +373,7 @@ html[data-wall] .hw-bar .hw-btn:not(.solid) { background: color-mix(in srgb, var
   }
   const merge = (a, b) => {
     const out = { ...a }
-    for (const [k, v] of Object.entries(b)) out[k] = k === 'style' ? { ...(a.style || {}), ...v } : v
+    for (const [k, v] of Object.entries(b)) out[k] = k === 'style' || k === 'tabs' ? { ...(a[k] || {}), ...v } : v
     return out
   }
   async function flush() {
@@ -396,15 +412,48 @@ html[data-wall] .hw-bar .hw-btn:not(.solid) { background: color-mix(in srgb, var
   const visibleTabs = () => orderOf().filter(t => t === 'home' || !S.tabs.hidden.includes(t))
   const pluginTabs = () => S.tabs.order.filter(t => !BUILTIN.includes(t) && window.TABS?.[t])
 
+  // The header holds tabs, and also websites and Chat, which open without leaving the page.
+  const isItem = id => known(id) || id === 'chat' || !!siteOf(id) || !!pageOf(id)
+  const stripOrder = () => [...S.tabs.order.filter(isItem), ...BUILTIN.filter(t => !S.tabs.order.includes(t))]
+  const headerItems = () => stripOrder().filter(id => id === 'home' || !S.tabs.hidden.includes(id))
+  const labelOf = id => S.tabs.names?.[id] || appMeta(id).label
+  // Set what shows in the header, in order. A tab left out is hidden, not lost; Home always stays.
+  function setHeader(items) {
+    const list = items.includes('home') ? items : ['home', ...items]
+    const rest = stripOrder().filter(id => known(id) && !list.includes(id))
+    const tabs = { order: [...list, ...rest], hidden: rest }
+    S = { ...S, tabs: { ...S.tabs, ...tabs } }
+    if (typeof chrome === 'function') chrome()
+    return save({ tabs })
+  }
+  function renameHeader(id, name) {
+    const names = { ...S.tabs.names }, v = String(name ?? '').trim().slice(0, 24)
+    if (!v || v === appMeta(id).label) delete names[id]
+    else names[id] = v
+    S = { ...S, tabs: { ...S.tabs, names } }
+    if (typeof chrome === 'function') chrome()
+    return save({ tabs: { names } })
+  }
+  // While Home is being edited the strip itself drags to reorder.
+  let stripEdit = false
+  function setTabsEditing(on) { stripEdit = !!on; syncTabs(typeof env === 'string' ? env : '') }
+  let stripWired = false
+  function wireStrip(seg) {
+    if (stripWired) return
+    stripWired = true
+    seg.addEventListener('click', e => { const id = e.target.closest('button[data-env]')?.dataset.env; if (id === 'home') window.HUB_OPEN_PAGE?.('main'); if (id && !known(id)) { e.stopPropagation(); openTab(id) } }, true)
+    sortable(seg, { item: 'button[data-env]:not(.hc-peek)', axis: 'x', scroller: seg.parentElement, can: () => stripEdit, onDrop: setHeader })
+  }
+
   // Put the header buttons in the saved order and hide the hidden ones. The open tab always
   // shows (dimmed when it is a hidden one), so a tab reached from an app or search has a home.
   function syncTabs(cur) {
     const seg = document.getElementById('seg')
     if (!seg) return
-    const want = orderOf()
+    wireStrip(seg)
+    seg.classList.toggle('hc-editing', stripEdit && cur === 'home')
+    const want = stripOrder()
     for (const b of seg.querySelectorAll('button[data-env]')) if (!want.includes(b.dataset.env)) b.remove()
-    const driveBtn = seg.querySelector('button[data-env="drives"]')
-    if (driveBtn) driveBtn.textContent = appMeta('drives').label
     const moved = [...seg.querySelectorAll('button[data-env]')].map(b => b.dataset.env).join() !== want.join()
     for (const id of want) {
       let b = seg.querySelector(`button[data-env="${id}"]`)
@@ -412,8 +461,11 @@ html[data-wall] .hw-bar .hw-btn:not(.solid) { background: color-mix(in srgb, var
         b = document.createElement('button')
         b.dataset.env = id
         b.setAttribute('role', 'tab')
-        b.textContent = appMeta(id).label
+        b.append('')
       }
+      // Only the name changes, so a count beside it stays.
+      const name = b.firstChild, text = labelOf(id) + (b.children.length ? ' ' : '')
+      if (name?.nodeType === 3 && name.data !== text) name.data = text
       const hidden = id !== 'home' && S.tabs.hidden.includes(id)
       b.hidden = hidden && id !== cur
       b.classList.toggle('hc-peek', hidden && id === cur)
@@ -424,7 +476,9 @@ html[data-wall] .hw-bar .hw-btn:not(.solid) { background: color-mix(in srgb, var
   function openTab(id) {
     if (id === 'chat') return window.HubChat ? window.HubChat.open() : hud?.('Chat isn’t available yet')
     if (groupOf(id)) { if (typeof setEnv === 'function' && env !== 'home') setEnv('home'); return void requestAnimationFrame(() => window.HUB_OPEN_GROUP?.(id)) }
+    if (pageOf(id)) { window.HUB_OPEN_PAGE?.(id); if (typeof setEnv === 'function' && env !== 'home') setEnv('home'); return }
     const site = siteOf(id)
+    if (site?.file) return void openSite(null, { name: site.name, icon: iconSrc(site), file: site.file })
     if (site) return site.newTab ? void window.open(site.url, '_blank', 'noopener,noreferrer') : void openSite(site.url, { name: site.name, icon: iconSrc(site) })
     if (typeof setEnv === 'function') { setEnv(id); window.scrollTo({ top: 0 }) }
   }
@@ -451,9 +505,10 @@ html[data-wall] .hw-bar .hw-btn:not(.solid) { background: color-mix(in srgb, var
     return checks.get(href)
   }
   const frameHtml = (href, name) => `<iframe class="hc-frame" src="${esc(href)}" title="${esc(name)}" sandbox="allow-scripts allow-same-origin allow-forms allow-popups" referrerpolicy="no-referrer"></iframe>`
+  const fileFrame = (href, name) => `<iframe class="hc-frame" src="${esc(href)}" title="${esc(name)}" sandbox="allow-scripts" referrerpolicy="no-referrer"></iframe>`
   const openLink = (href, cls, inner) => `<a class="${cls}" href="${esc(href)}" target="_blank" rel="noopener noreferrer" data-site="newtab">${inner}</a>`
-  const blockedHtml = (href, name, src) => `<div class="hc-blocked">${siteTile(name, src, 88, 22)}<h3>${esc(name)}</h3><p>${esc(hostOf(href))}</p><p>This site doesn’t allow previews</p>${openLink(href, 'hc-btn solid', `${icon('external', 18)}Open in New Tab`)}</div>`
-  const blockedRow = (href, name, src) => `<div class="hc-blocked row">${siteTile(name, src, 48, 12)}<div><h3>${esc(name)}</h3><p>${esc(hostOf(href))} · This site doesn’t allow previews</p></div>${openLink(href, 'hc-btn solid', `${icon('external', 16)}Open in New Tab`)}</div>`
+  const blockedHtml = (href, name, src) => `<div class="hc-blocked">${siteTile(name, src, 88, 22)}<h3>${esc(name)}</h3><p>${esc(hostOf(href))}</p>${openLink(href, 'hc-btn solid', `${icon('external', 18)}Open in New Tab`)}</div>`
+  const blockedRow = (href, name, src) => `<div class="hc-blocked row">${siteTile(name, src, 48, 12)}<div><h3>${esc(name)}</h3><p>${esc(hostOf(href))}</p></div><button type="button" class="hc-btn solid" data-site="expand">Open</button></div>`
   const loadingHtml = '<div class="hc-siteload" role="status" aria-label="Loading"><span class="hc-spin"></span></div>'
 
   let siteEl = null
@@ -469,16 +524,18 @@ html[data-wall] .hw-bar .hw-btn:not(.solid) { background: color-mix(in srgb, var
   function siteKey(e) { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeSite() } }
   // Open a site in a large sheet: a live frame when the site allows it, otherwise a card with
   // Open in New Tab. Returns false for an address that is not http or https.
-  function openSite(url, { name, icon: src } = {}) {
-    const href = webUrl(url)
+  function openSite(url, { name, icon: src, file } = {}) {
+    const href = file ? `/api/hub/custom/${encodeURIComponent(file)}` : webUrl(url)
     if (!href) { hud?.('That isn’t a web address'); return false }
+    // A website opens in the hub browser's pop-up, where a site's frame rules don't matter. A file of yours stays sandboxed here.
+    if (!file && window.HubBrowser) { window.HubBrowser.open(href, { name, icon: src }); return true }
     const focus = document.activeElement
     closeSite()
-    let label = String(name || '').trim().slice(0, 80) || hostOf(href)
-    src = src || siteIcon(href)
+    let label = String(name || '').trim().slice(0, 80) || (file ? 'Your File' : hostOf(href))
+    src = src || (file ? '' : siteIcon(href))
     const el = siteEl = document.createElement('div')
     el.className = 'scrim hc-sitescrim'
-    el.innerHTML = `<div class="hc-siteview" role="dialog" aria-modal="true" aria-label="${esc(label)}"><header class="hc-sitebar"><span data-site="fav">${siteTile(label, src, 28, 7)}</span><div class="hc-sitename"><b>${esc(label)}</b><span>${esc(hostOf(href))}</span></div><button type="button" class="hc-ibtn" data-site="reload" aria-label="Reload" title="Reload">${icon('reload', 19)}</button>${openLink(href, 'hc-pbtn', `${icon('external', 16)}<span>Open<span class="long"> in New Tab</span></span>`)}<button type="button" class="hc-ibtn" data-site="close" aria-label="Close" title="Close">${icon('close', 19)}</button></header><div class="hc-sitebody">${loadingHtml}</div></div>`
+    el.innerHTML = `<div class="hc-siteview" role="dialog" aria-modal="true" aria-label="${esc(label)}"><header class="hc-sitebar"><span data-site="fav">${siteTile(label, src, 28, 7)}</span><div class="hc-sitename"><b>${esc(label)}</b><span>${esc(file ? 'Your File' : hostOf(href))}</span></div><button type="button" class="hc-ibtn" data-site="reload" aria-label="Reload" title="Reload">${icon('reload', 19)}</button>${openLink(href, 'hc-pbtn', `${icon('external', 16)}<span>Open<span class="long"> in New Tab</span></span>`)}<button type="button" class="hc-ibtn" data-site="close" aria-label="Close" title="Close">${icon('close', 19)}</button></header><div class="hc-sitebody">${loadingHtml}</div></div>`
     el._focus = focus
     const body = el.querySelector('.hc-sitebody')
     const paint = c => {
@@ -486,14 +543,15 @@ html[data-wall] .hw-bar .hw-btn:not(.solid) { background: color-mix(in srgb, var
       if (!name && c.title) { label = c.title; el.querySelector('.hc-sitename b').textContent = label; el.firstChild.setAttribute('aria-label', label) }
       body.innerHTML = c.embeddable ? frameHtml(href, label) : blockedHtml(href, label, src)
     }
-    embedCheck(href).then(paint)
+    const load = () => { if (file) body.innerHTML = fileFrame(href, label); else embedCheck(href).then(paint) }
+    load()
     el.addEventListener('pointerdown', e => { if (e.target === el) closeSite() })
     el.addEventListener('click', e => {
       const b = e.target.closest('[data-site]')
       if (!b) return
       const act = b.dataset.site
       if (act === 'close') closeSite()
-      else if (act === 'reload') { body.innerHTML = loadingHtml; checks.delete(href); embedCheck(href).then(paint) }
+      else if (act === 'reload') { body.innerHTML = loadingHtml; checks.delete(href); load() }
       else if (act === 'newtab') setTimeout(closeSite, 0)
     })
     document.body.append(el)
@@ -512,7 +570,7 @@ html[data-wall] .hw-bar .hw-btn:not(.solid) { background: color-mix(in srgb, var
     const h = Math.max(160, Math.min(900, Number(height) || 360))
     let label = String(name || '').trim().slice(0, 80) || hostOf(href)
     src = src || siteIcon(href)
-    const bar = () => `<div class="hc-cardbar">${siteTile(label, src, 24, 6)}<b>${esc(label)}</b><span>${esc(hostOf(href))}</span><button type="button" class="hc-ibtn" data-site="expand" aria-label="Open ${esc(label)} in a large preview" title="Large preview">${icon('expand', 17)}</button>${openLink(href, 'hc-ibtn', icon('external', 17)).replace('data-site="newtab"', `data-site="newtab" aria-label="Open ${esc(label)} in a new tab" title="Open in New Tab"`)}</div>`
+    const bar = () => `<div class="hc-cardbar">${siteTile(label, src, 24, 6)}<b>${esc(label)}</b><span>${esc(hostOf(href))}</span><button type="button" class="hc-ibtn" data-site="expand" aria-label="Open ${esc(label)}" title="Open">${icon('expand', 17)}</button>${openLink(href, 'hc-ibtn', icon('external', 17)).replace('data-site="newtab"', `data-site="newtab" aria-label="Open ${esc(label)} in a new tab" title="Open in New Tab"`)}</div>`
     el.innerHTML = `${bar()}<div class="hc-cardbody" style="height:${h}px">${loadingHtml}</div>`
     embedCheck(href).then(c => {
       if (!name && c.title) label = c.title
@@ -522,87 +580,81 @@ html[data-wall] .hw-bar .hw-btn:not(.solid) { background: color-mix(in srgb, var
     return el
   }
 
-  /* ---------- sheets ---------- */
+  /* ---------- reordering ---------- */
 
-  let sheetEl = null
-  function closeSheet() { sheetEl?.remove(); sheetEl = null; document.removeEventListener('keydown', sheetKey, true) }
-  function sheetKey(e) { if (e.key === 'Escape') { e.stopPropagation(); closeSheet() } }
-  function openSheet(title, body, onReady) {
-    closeSheet()
-    sheetEl = document.createElement('div')
-    sheetEl.className = 'scrim hc-scrim'
-    sheetEl.innerHTML = `<div class="hc-sheet" role="dialog" aria-modal="true" aria-label="${esc(title)}"><div class="hc-grab"></div><div class="hc-head"><h2>${esc(title)}</h2><button class="hc-done" data-hc="close">Done</button></div><div class="hc-body">${body}</div></div>`
-    sheetEl.addEventListener('pointerdown', e => { if (e.target === sheetEl) closeSheet() })
-    sheetEl.addEventListener('click', e => { if (e.target.closest('[data-hc="close"]')) closeSheet() })
-    document.body.append(sheetEl)
-    document.addEventListener('keydown', sheetKey, true)
-    onReady?.(sheetEl.querySelector('.hc-sheet'))
-  }
-
-  // Edit tabs: a switch and a drag handle per tab. Home always shows.
-  function openTabs() {
-    const rows = () => orderOf().map(id => {
-      const on = id === 'home' || !S.tabs.hidden.includes(id)
-      return `<div class="hc-line hc-trow" data-id="${id}"><span class="hc-grip" title="Drag to reorder" aria-label="Reorder ${esc(appMeta(id).label)}">${icon('grip', 18)}</span>${tile(id)}<span>${esc(appMeta(id).label)}</span><button class="hc-switch" role="switch" aria-label="Show ${esc(appMeta(id).label)}" aria-checked="${on}" data-tab="${id}" ${id === 'home' ? 'disabled' : ''}></button></div>`
-    }).join('')
-    const addons = Object.entries(CONF.addons || {}).filter(([, a]) => a.available).map(([id, a]) => `<div class="hc-line"><span>${esc(a.label)}<small style="display:block;font-size:13px;color:var(--text-2)">${esc(!a.on && a.how ? a.how : a.what)}</small></span><button type="button" class="hc-switch" role="switch" aria-label="${esc(a.label)}" aria-checked="${a.on}" data-addon="${id}"></button></div>`).join('')
-    openSheet('Edit Tabs', `<div class="hc-sec"><h3>Header tabs</h3><div class="hc-group" id="hc-tabs">${rows()}</div></div><div class="hc-sec"><h3>Add-ons</h3><div class="hc-group">${addons}</div></div><div class="hc-mbtns"><button class="hc-btn" data-hc="tabs-reset">${icon('reset', 17)}Show All in Default Order</button></div>`, sh => {
-      const list = sh.querySelector('#hc-tabs')
-      const order = () => [...list.children].map(r => r.dataset.id)
-      sh.addEventListener('click', e => {
-        const addon = e.target.closest('[data-addon]')
-        if (addon) return void api('/api/hub/addons', { id: addon.dataset.addon, on: addon.getAttribute('aria-checked') !== 'true' }).then(() => location.reload(), err => hud?.(err.message))
-        const sw = e.target.closest('.hc-switch')
-        if (sw && !sw.disabled) {
-          const on = sw.getAttribute('aria-checked') !== 'true'
-          sw.setAttribute('aria-checked', String(on))
-          const hidden = [...list.querySelectorAll('.hc-switch')].filter(s => s.getAttribute('aria-checked') !== 'true').map(s => s.dataset.tab)
-          S = { ...S, tabs: { ...S.tabs, hidden } }
-          if (typeof chrome === 'function') chrome()
-          save({ tabs: { hidden } })
+  // Drag to reorder, by mouse or touch. The item follows the pointer by transform, the others slide out of its
+  // way, and the DOM changes only on drop, so the browser never loses the pointer mid-drag.
+  function sortable(list, { item, handle = item, axis = 'y', scroller, can, onDrop }) {
+    const Y = axis === 'y', move = d => (Y ? `translateY(${d}px)` : `translateX(${d}px)`)
+    list.addEventListener('pointerdown', e => {
+      if (e.button) return
+      const el = e.target.closest(handle)?.closest(item)
+      if (!el || !list.contains(el) || (can && !can(el))) return
+      if (e.pointerType === 'mouse') e.preventDefault()
+      const at = ev => (Y ? ev.clientY : ev.clientX), scrolled = () => (scroller ? (Y ? scroller.scrollTop : scroller.scrollLeft) : 0)
+      const startAt = at(e), startX = e.clientX, startY = e.clientY, scroll0 = scrolled()
+      let items, starts, mids, size, from, to, box, on = false, raf = 0, last = e, offset = 0
+      const begin = () => {
+        on = true
+        items = [...list.querySelectorAll(item)].filter(x => x.offsetParent !== null)
+        const rects = items.map(x => x.getBoundingClientRect())
+        starts = rects.map(r => (Y ? r.top : r.left))
+        mids = rects.map(r => (Y ? r.top + r.height / 2 : r.left + r.width / 2))
+        from = to = items.indexOf(el)
+        size = items.length > 1 ? Math.abs(starts[1] - starts[0]) : 0
+        box = scroller?.getBoundingClientRect()
+        list.classList.add('hc-sorting')
+        el.classList.add('hc-lift')
+      }
+      const frame = () => {
+        raf = 0
+        offset = at(last) - startAt + scrolled() - scroll0
+        el.style.transform = move(offset)
+        const mid = mids[from] + offset
+        let t = from
+        for (let i = from + 1; i < items.length; i++) if (mid > mids[i]) t = i
+        for (let i = from - 1; i >= 0; i--) if (mid < mids[i]) t = i
+        if (t !== to) {
+          to = t
+          items.forEach((x, i) => { if (x !== el) x.style.transform = i > from && i <= to ? move(-size) : i < from && i >= to ? move(size) : '' })
         }
-        if (e.target.closest('[data-hc="tabs-reset"]')) {
-          api('/api/hub/settings', { reset: ['tabs'] }).then(s => { accept(s); list.innerHTML = rows() }, err => hud?.(err.message))
+        if (box) {
+          const p = at(last), v = p < (Y ? box.top : box.left) + 36 ? -7 : p > (Y ? box.bottom : box.right) - 36 ? 7 : 0
+          if (v) { scroller[Y ? 'scrollTop' : 'scrollLeft'] += v; raf = requestAnimationFrame(frame) }
         }
-      })
-      list.addEventListener('pointerdown', e => {
-        const grip = e.target.closest('.hc-grip')
-        if (!grip) return
-        e.preventDefault()
-        const row = grip.closest('.hc-trow')
-        const before = order().join()
-        row.classList.add('drag')
-        grip.setPointerCapture(e.pointerId)
-        const move = ev => {
-          const after = [...list.children].filter(r => r !== row).find(r => { const b = r.getBoundingClientRect(); return ev.clientY < b.top + b.height / 2 })
-          after ? list.insertBefore(row, after) : list.append(row)
-        }
-        const up = () => {
-          grip.removeEventListener('pointermove', move)
-          row.classList.remove('drag')
-          if (order().join() === before) return
-          S = { ...S, tabs: { ...S.tabs, order: order() } }
-          if (typeof chrome === 'function') chrome()
-          save({ tabs: { order: order() } })
-        }
-        grip.addEventListener('pointermove', move)
-        grip.addEventListener('pointerup', up, { once: true })
-        grip.addEventListener('pointercancel', up, { once: true })
-      })
-      list.addEventListener('keydown', e => {
-        const row = e.target.closest?.('.hc-trow')
-        if (!row || !e.target.classList.contains('hc-grip') || !['ArrowUp', 'ArrowDown'].includes(e.key)) return
-        e.preventDefault()
-        if (e.key === 'ArrowUp' && row.previousElementSibling) list.insertBefore(row, row.previousElementSibling)
-        if (e.key === 'ArrowDown' && row.nextElementSibling) list.insertBefore(row.nextElementSibling, row)
-        e.target.focus()
-        S = { ...S, tabs: { ...S.tabs, order: order() } }
-        if (typeof chrome === 'function') chrome()
-        save({ tabs: { order: order() } }, { wait: 400 })
-      })
-      list.querySelectorAll('.hc-grip').forEach(g => g.setAttribute('tabindex', '0'))
+      }
+      const moved = ev => {
+        last = ev
+        if (!on && Math.hypot(ev.clientX - startX, ev.clientY - startY) < 4) return
+        if (!on) begin()
+        ev.preventDefault()
+        if (!raf) raf = requestAnimationFrame(frame)
+      }
+      const end = ev => {
+        document.removeEventListener('pointermove', moved)
+        document.removeEventListener('pointerup', end)
+        document.removeEventListener('pointercancel', end)
+        cancelAnimationFrame(raf)
+        if (!on) return
+        const eat = c => { c.stopPropagation(); c.preventDefault() }
+        document.addEventListener('click', eat, { capture: true, once: true })
+        setTimeout(() => document.removeEventListener('click', eat, true), 60)
+        el.classList.remove('hc-lift')
+        list.classList.remove('hc-sorting')
+        items.forEach(x => (x.style.transform = ''))
+        if (ev.type === 'pointercancel' || to === from) return
+        list.insertBefore(el, to > from ? items[to].nextSibling : items[to])
+        if (!matchMedia('(prefers-reduced-motion: reduce)').matches) el.animate([{ transform: move(offset - (to - from) * size) }, { transform: 'none' }], { duration: 180, easing: 'cubic-bezier(.2,.8,.2,1)' })
+        onDrop([...list.querySelectorAll(item)].filter(x => x.offsetParent !== null).map(x => x.dataset.id || x.dataset.env))
+      }
+      document.addEventListener('pointermove', moved, { passive: false })
+      document.addEventListener('pointerup', end)
+      document.addEventListener('pointercancel', end)
     })
   }
+
+  // Edit Tabs is the same sheet as Add to Home, opened on the header.
+  const openTabs = () => window.HUB_OPEN_PICKER?.('header')
 
   /* ---------- style panel ---------- */
 
@@ -634,6 +686,10 @@ html[data-wall] .hw-bar .hw-btn:not(.solid) { background: color-mix(in srgb, var
 <div class="hc-body">
   <div class="hc-sec" data-sec="theme"><h3>Theme</h3><div class="hc-group">${themeList.map(t => `<div class="hc-line"><span style="flex:1">${esc(t.name)}</span><a class="hc-link" href="/api/hub/themes/${esc(t.id)}.json" download>Export</a><button class="hc-link" data-hc="theme-apply" data-id="${esc(t.id)}">Apply</button></div>`).join('')}</div><div class="hc-mbtns"><button class="hc-btn" data-hc="theme-import">Import a Theme File</button></div></div>
   <div class="hc-sec" data-sec="look"><h3>Appearance</h3><div class="hc-group"><div class="hc-line">${seg('theme', [['auto', 'Auto'], ['light', 'Light'], ['dark', 'Dark']], st.theme)}</div></div></div>
+  <div class="hc-sec" data-sec="text"><h3>Text and Spacing</h3><div class="hc-group">
+    <div class="hc-line col"><span>Font</span>${seg('font', [['system', 'System'], ['rounded', 'Rounded'], ['serif', 'Serif'], ['mono', 'Mono']], st.font)}</div>
+    <div class="hc-line col"><span>Spacing</span>${seg('density', [['compact', 'Compact'], ['regular', 'Regular'], ['roomy', 'Roomy']], st.density)}</div>
+  </div></div>
   <div class="hc-sec"><h3>Accent</h3><div class="hc-group"><div class="hc-swatches">${ACCENTS.map(([v, l]) => `<button class="hc-sw${v === 'system' ? ' sys' : ''}${st.accent === v ? ' on' : ''}" style="--c:${v === 'system' ? 'var(--label-3)' : v}" data-hc-set="accent" data-v="${v}" title="${l}" aria-label="${l}"></button>`).join('')}<label class="hc-sw pick${custom ? ' on' : ''}" style="--c:${custom ? st.accent : '#0a84ff'}" title="Custom colour"><input type="color" value="${custom ? st.accent : '#0a84ff'}" data-hc-color="accent" aria-label="Custom accent colour"></label></div></div></div>
   <div class="hc-sec"><h3>Widgets</h3><div class="hc-group">
     <div class="hc-line">${seg('widgetLook', [['solid', 'Solid'], ['glass', 'Glass'], ['outline', 'Outline']], st.widgetLook)}</div>
@@ -645,6 +701,8 @@ html[data-wall] .hw-bar .hw-btn:not(.solid) { background: color-mix(in srgb, var
   <div class="hc-sec"><h3>Tab bar</h3><div class="hc-group"><div class="hc-line">${seg('tabBar', [['solid', 'Solid'], ['glass', 'Glass']], st.tabBar)}</div></div></div>
   <div class="hc-sec"><h3>Effects</h3><div class="hc-group"><div class="hc-line">${seg('effect', [['none', 'None'], ['grain', 'Grain'], ['glow', 'Glow']], st.effect)}</div></div></div>
   <div class="hc-sec" data-sec="wallpaper"><h3>Wallpaper</h3><div class="hc-group"><div class="hc-walls">${walls}</div>${makerHtml}</div></div>
+  <div class="hc-sec" data-sec="connections"><h3>Connections</h3><div class="hc-mbtns"><button class="hc-btn" data-hc="connections">Connect a Service…</button></div></div>
+  <div class="hc-sec" data-sec="yours"><h3>Your Settings</h3><div class="hc-mbtns"><button class="hc-btn" data-hc="undo">Undo</button><a class="hc-btn" href="/api/hub/settings/export" download>Export</a><button class="hc-btn" data-hc="settings-import">Import</button></div></div>
 </div>`
   }
 
@@ -722,8 +780,27 @@ html[data-wall] .hw-bar .hw-btn:not(.solid) { background: color-mix(in srgb, var
         }
         return pick.click()
       }
+      if (act === 'connections') { closePanel(); return window.HUB_CONNECTIONS?.() }
+      if (act === 'undo') {
+        try { await undo(); hud?.('Undone') } catch (err) { hud?.(err.message) }
+        return paintPanel()
+      }
+      if (act === 'settings-import') {
+        const pick = document.createElement('input')
+        pick.type = 'file'
+        pick.accept = '.json,application/json'
+        pick.onchange = async () => {
+          let file
+          try { file = JSON.parse(await pick.files[0].text()) } catch { return hud?.('That file isn’t a settings file') }
+          const ok = await alertBox({ title: 'Import Settings?', message: 'Your tabs, Home, pages, files and style are replaced by the ones in this file. Undo brings them back.', ok: 'Import', danger: true })
+          if (!ok) return
+          try { accept(await api('/api/hub/settings/import', file)); window.HUB_HOME_RELOAD?.(); hud?.('Settings imported') } catch (err) { hud?.(err.message) }
+          paintPanel()
+        }
+        return pick.click()
+      }
       if (act === 'style-reset') {
-        const ok = await alertBox({ title: 'Reset Style?', message: 'Theme, accent, widget look, tab bar and effects go back to the default. Your wallpapers stay.', ok: 'Reset', danger: true })
+        const ok = await alertBox({ title: 'Reset Style?', message: 'Theme, accent, font, spacing, widget look, tab bar and effects go back to the default. Your wallpapers stay.', ok: 'Reset', danger: true })
         if (!ok) return
         try { accept(await api('/api/hub/settings', { reset: ['style'] })) } catch (err) { hud?.(err.message) }
         return paintPanel()
@@ -786,7 +863,7 @@ html[data-wall] .hw-bar .hw-btn:not(.solid) { background: color-mix(in srgb, var
     if (soft) { const p = panel?.querySelector('.hc-mprev'); if (p) p.style.background = gradCss(g) }
     else paintPanel()
   }
-  document.addEventListener('keydown', e => { if (e.key === 'Escape' && panel && !sheetEl && !document.querySelector('.scrim, .menu')) closePanel() })
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && panel && !document.querySelector('.scrim, .menu')) closePanel() })
 
   /* ---------- menus and search ---------- */
 
@@ -801,7 +878,7 @@ html[data-wall] .hw-bar .hw-btn:not(.solid) { background: color-mix(in srgb, var
     if (!target.closest?.('#seg')) return false
     const id = target.closest('button[data-env]')?.dataset.env
     const items = [{ label: 'Edit Tabs…', icon: icon('tabs', 16), run: openTabs }]
-    if (id && id !== 'home') items.push({ label: `Hide ${appMeta(id).label}`, icon: icon('hide', 16), run: () => { const hidden = [...new Set([...S.tabs.hidden, id])]; S = { ...S, tabs: { ...S.tabs, hidden } }; if (typeof chrome === 'function') chrome(); save({ tabs: { hide: [id] } }) } })
+    if (id && id !== 'home') items.push({ label: `Hide ${labelOf(id)}`, icon: icon('hide', 16), run: () => setHeader(headerItems().filter(x => x !== id)) })
     items.push('-', { label: 'Edit Style…', icon: icon('palette', 16), run: () => openStyle() })
     showMenu(x, y, 'Tabs', items)
     return true
@@ -850,13 +927,49 @@ html[data-wall] .hw-bar .hw-btn:not(.solid) { background: color-mix(in srgb, var
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wireSearch)
   else wireSearch()
 
+  async function undo() {
+    await flush()
+    accept(await api('/api/hub/settings', { undo: true }))
+    window.HUB_HOME_RELOAD?.()
+  }
+  // Your own file: one HTML file, kept by the hub and always shown sandboxed. Resolves { id, site } or null.
+  const addFile = () => new Promise(res => {
+    const pick = document.createElement('input')
+    pick.type = 'file'
+    pick.accept = '.html,.htm,text/html'
+    pick.onchange = async () => {
+      const f = pick.files?.[0]
+      if (!f) return res(null)
+      if (f.size > 512 * 1024) { hud?.('That file is over 512 KB'); return res(null) }
+      try {
+        const r = await fetch('/api/hub/custom', { method: 'POST', headers: { 'content-type': 'text/html', 'x-hub': '1', 'x-name': encodeURIComponent(f.name) }, body: f })
+        const j = await r.json().catch(() => ({}))
+        if (!r.ok) throw new Error(j.error || 'That file couldn’t be added')
+        accept(j.settings)
+        res(j)
+      } catch (err) { hud?.(err.message); res(null) }
+    }
+    pick.click()
+  })
+  async function removeFile(id) {
+    await flush()
+    accept(await api('/api/hub/custom/remove', { id }))
+    window.HUB_HOME_RELOAD?.()
+  }
+  // Which header button lights up: a page on the strip stands for Home while that page is showing.
+  function headerOn(cur) {
+    const p = cur === 'home' ? window.HUB_PAGE?.() : null
+    return p && p !== 'main' && headerItems().includes(p) ? p : cur
+  }
+
   window.HUB = {
     get settings() { return S },
     save, flush, refresh, on: fn => (listeners.add(fn), () => listeners.delete(fn)),
     // Send a patch now (after anything queued) and take the hub's answer; throws its error.
     patch: async body => { await flush(); accept(await api('/api/hub/settings', body)); return S },
-    visibleTabs, pluginTabs, syncTabs, orderOf,
+    visibleTabs, pluginTabs, syncTabs, orderOf, headerItems, setHeader, renameHeader, labelOf, setTabsEditing, sortable,
     apps: () => S.apps.filter(id => id === 'chat' || known(id) || !!siteOf(id) || !!groupOf(id)),
+    pages: () => S.pages || [], pageOf, files: () => S.files || [], addFile, removeFile, undo, headerOn,
     groups: () => S.groups || [], groupOf,
     allApps: () => [...orderOf().filter(t => t !== 'home'), 'chat', ...(S.sites || []).map(x => x.id)],
     appMeta, openApp: openTab, tile, icon,
