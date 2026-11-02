@@ -28,7 +28,21 @@ const HUB_NAME = 'My Hub'
 const FAKE_REPLY = 'You have two things on today: the dentist at 3, and the garden notes you wanted to finish.'
 const sleep = ms => new Promise(r => setTimeout(r, ms))
 
-const adb = (...args) => execFileSync('adb', args, { encoding: 'utf8', timeout: 90000, stdio: ['ignore', 'pipe', 'pipe'] })
+const runAdb = (...args) => execFileSync('adb', args, { encoding: 'utf8', timeout: 90000, stdio: ['ignore', 'pipe', 'pipe'] })
+
+// adb's link to the emulator drops now and then on these runners. That's the link, not the app, so it's
+// logged and tried again once. If the emulator itself is gone, this fails.
+function adb(...args) {
+  try {
+    return runAdb(...args)
+  } catch (e) {
+    if (!/device offline|error: closed|no devices|not found/.test(`${e.stderr}${e.message}`)) throw e
+    console.log(`    adb dropped during "${args.join(' ').slice(0, 60)}": reconnecting`)
+    execFileSync('adb', ['reconnect', 'offline'], { stdio: 'ignore', timeout: 30000 })
+    execFileSync('adb', ['wait-for-device'], { stdio: 'ignore', timeout: 120000 })
+    return runAdb(...args)
+  }
+}
 const sh = command => adb('shell', command)
 const finger = id => adb('emu', 'finger', 'touch', String(id))
 const key = code => sh(`input keyevent ${code}`)

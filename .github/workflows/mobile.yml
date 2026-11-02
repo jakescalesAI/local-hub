@@ -195,6 +195,11 @@ jobs:
         if: failure()
         run: |
           mkdir -p test/device/out
+          free -m
+          df -h "$HOME" | tail -1
+          pgrep -a emulator | cut -c1-80 || echo "The emulator is gone."
+          adb devices
+          tail -60 "$RUNNER_TEMP/emulator.log" | tee test/device/out/emulator.log
           timeout 60 adb logcat -d | grep -E "ActivityTaskManager|Fingerprint|Biometric|ConfirmDevice|ConfirmLock|LockSettings|E AndroidRuntime|FATAL" | grep -v CoreBackPreview | tail -600 > test/device/out/system.log || true
       - name: Keep the emulator's screenshots
         if: always()
