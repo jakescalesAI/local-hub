@@ -22,12 +22,23 @@ public class HubNativePlugin extends Plugin {
 
     private static final int MAX_SHARE_CHARS = 8000;
     private String pendingShare;
+    private HubLock lock;
 
     @Override
     public void load() {
+        lock = new HubLock(getActivity(), foreground -> {
+            JSObject event = new JSObject();
+            event.put("foreground", foreground);
+            notifyListeners("locked", event, true);
+        });
         Intent intent = getActivity().getIntent();
         pendingShare = shareText(intent);
         if (pendingShare != null) consume(intent);
+    }
+
+    @Override
+    protected void handleOnDestroy() {
+        lock.destroy();
     }
 
     @Override
@@ -63,6 +74,36 @@ public class HubNativePlugin extends Plugin {
                 call.resolve();
             });
         });
+    }
+
+    @PluginMethod
+    public void lockStatus(PluginCall call) {
+        lock.status(call::resolve);
+    }
+
+    @PluginMethod
+    public void lockEnable(PluginCall call) {
+        String token = call.getString("token");
+        if (token == null || token.isEmpty()) {
+            call.reject("no token");
+            return;
+        }
+        lock.enable(token, call::resolve);
+    }
+
+    @PluginMethod
+    public void lockUnlock(PluginCall call) {
+        lock.unlock(call::resolve);
+    }
+
+    @PluginMethod
+    public void lockClear(PluginCall call) {
+        lock.clear(call::resolve);
+    }
+
+    @PluginMethod
+    public void lockShown(PluginCall call) {
+        lock.shown(call::resolve);
     }
 
     @PluginMethod

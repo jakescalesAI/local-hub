@@ -23,6 +23,17 @@ export function createConnectionStore({ secure, prefs }) {
         return null
       }
     },
+    // The connection without its token, which is all that's readable while the lock is on.
+    async loadInfo() {
+      const { value } = await prefs.get({ key: CONN_KEY })
+      if (!value) return null
+      try {
+        return JSON.parse(value)
+      } catch {
+        return null
+      }
+    },
+    removeToken: () => secure.remove(),
     async clear() {
       await secure.remove()
       await prefs.remove({ key: CONN_KEY })

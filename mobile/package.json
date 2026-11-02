@@ -1,6 +1,7 @@
 {
   "name": "local-hub-mobile",
   "version": "0.1.0",
+  "buildNumber": 1,
   "private": true,
   "description": "iPhone, iPad and Android client for your own Local Hub.",
   "license": "MIT",
@@ -12,7 +13,8 @@
     "test": "node --test test/*.test.mjs hub-changes/test/*.test.mjs",
     "test:ui": "node test/ui/run.mjs",
     "mock-hub": "node dev/mock-hub.mjs",
-    "licenses": "node scripts/check-licenses.mjs"
+    "licenses": "node scripts/check-licenses.mjs",
+    "version:set": "node scripts/set-version.mjs"
   },
   "dependencies": {
     "@aparajita/capacitor-secure-storage": "8.0.1",

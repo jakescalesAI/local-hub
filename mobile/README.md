@@ -50,6 +50,15 @@ npm run build && npx cap sync
 cd android && ./gradlew assembleDebug
 ```
 
+To change the version, `npm run version:set -- 1.2.3 4` sets it everywhere. Stores refuse a build number
+they have seen.
+
+A release build needs your own signing, and it shrinks the app's code:
+
+```bash
+cd android && ./gradlew assembleRelease
+```
+
 **iOS** needs macOS and Xcode. A simulator build needs no signing and no account:
 
 ```bash

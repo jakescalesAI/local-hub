@@ -50,6 +50,19 @@
             android:screenOrientation="fullSensor"
             tools:replace="android:screenOrientation" />
 
+        <!-- Three shortcuts into the app, through the lock. It shows and stores nothing. -->
+        <receiver
+            android:name=".HubWidgetProvider"
+            android:label="@string/app_name"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/hub_widget_info" />
+        </receiver>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

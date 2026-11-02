@@ -6,6 +6,8 @@ import { classify, STATES } from '../src/lib/status.js'
 import { HUB_NAME_REFUSAL, MAX_HUB_NAME, createClient } from '../src/lib/client.js'
 import { createConnectionStore } from '../src/lib/store.js'
 import { createQueue, MAX_QUEUE } from '../src/lib/queue.js'
+import { parseQuickAction } from '../src/lib/actions.js'
+import { lockName, lockUnavailable, unlockMessage } from '../src/lib/lock.js'
 
 test('addresses: release builds take HTTPS only', () => {
   assert.deepEqual(normalizeAddress('hub.example.test'), { ok: true, url: 'https://hub.example.test' })
@@ -311,4 +313,38 @@ test('queue: survives a restart, a corrupt file, and a full queue', async () => 
   for (let i = 0; i < MAX_QUEUE; i++) assert.equal((await full.add(`m${i}`)).ok, true)
   assert.equal((await full.add('one too many')).ok, false)
   assert.equal((await full.list()).length, MAX_QUEUE)
+})
+
+test('quick actions: only three, only choosing a screen, and nothing can ride along', () => {
+  for (const name of ['open', 'compose', 'status']) assert.equal(parseQuickAction(`localhub://action/${name}`), name)
+  for (const bad of [
+    'localhub://action/publish', 'localhub://action/edit', 'localhub://action/delete', 'localhub://action/render', 'localhub://action/send',
+    'localhub://action/', 'localhub://action', 'localhub://action/open/', 'localhub://action/open/x', 'localhub://action/open?text=x', 'localhub://action/open#x',
+    'localhub://user:pw@action/open', 'localhub://action:1/open', 'localhub://pair/open', 'https://action/open', 'LOCALHUB-other://action/open', '', null, undefined, 42,
+  ]) assert.equal(parseQuickAction(bad), null, String(bad))
+})
+
+test('the lock\'s words: a cancel says nothing, and nothing suggests it opened', () => {
+  assert.equal(lockName('face'), 'Face ID')
+  assert.equal(lockName('touch'), 'Touch ID')
+  assert.equal(lockName('anything'), 'your fingerprint or face')
+  assert.equal(unlockMessage({ cancelled: true }, 'Face ID'), '')
+  assert.match(unlockMessage({ lockedOut: true }, 'Face ID'), /Too many tries/)
+  assert.match(unlockMessage({ failed: true }, 'Face ID'), /didn't match/)
+  assert.match(unlockMessage({ unavailable: true }, 'your fingerprint or face'), /^Your fingerprint or face isn't available right now\. Local Hub stays locked/)
+  for (const reason of ['notEnrolled', 'noPasscode', 'denied', 'noHardware', 'other', '']) assert.ok(lockUnavailable(reason, 'Face ID').length > 10, reason)
+  assert.match(lockUnavailable('denied', 'your fingerprint or face'), /^Your fingerprint or face is turned off/)
+})
+
+test('connection store: the details can be read and the token removed on its own', async () => {
+  const { secure, prefs } = fakeStores()
+  const store = createConnectionStore({ secure, prefs })
+  await store.save({ address: 'https://hub.example.test', hubName: 'Hub' }, 'THE-TOKEN')
+  await store.removeToken()
+  assert.equal(secure.value, null)
+  assert.equal((await store.loadInfo()).address, 'https://hub.example.test')
+  assert.equal(await store.load(), null, 'no token, no connection')
+  for (const value of prefs.entries.values()) assert.ok(!value.includes('THE-TOKEN'))
+  prefs.entries.clear()
+  assert.equal(await store.loadInfo(), null)
 })

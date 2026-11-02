@@ -53,9 +53,9 @@ features that "elevate it beyond a repackaged website". Our answer:
 | Native status screen: offline, computer asleep, Hub stopped, phone removed | First build | Works when the Hub cannot be reached |
 | Share sheet into Hub chat, with a queue while the computer sleeps | First build | Android complete. iOS extension in `ios/`, see section 5 |
 | Built-in demo mode | First build | Also how reviewers test it |
-| Face ID or fingerprint lock | Before submitting | Small |
-| Home Screen widget with Hub status, and quick actions | Before submitting | Native targets. The widget shows the last check |
-| iPad layout pass | Before submitting | |
+| Face ID or fingerprint lock | Built, see "The lock" in section 3 | Optional, off by default |
+| Home Screen widget with quick actions | Built | Native targets. Three fixed links and no Hub status, because it shows outside the lock |
+| iPad layout pass | Built | Portrait, landscape, Split View width. Side by side from 900 px |
 | Snippets keyboard | Later | [4.4.1](https://developer.apple.com/app-store/review/guidelines/) has extra rules, and it needs network access to reach the Hub |
 | Notifications | Later, and limited | See below |
 
@@ -130,18 +130,38 @@ that we will pass.
    must be answered with the assistant in mind.
 5. **Upload blocks.** [Xcode 26 and the iOS 26 SDK](https://developer.apple.com/news/upcoming-requirements/)
    have been required since 2026-04-28. These fail at upload, not review.
+6. **Google's [AI-Generated Content policy](https://support.google.com/googleplay/android-developer/answer/14094294?hl=en).**
+   It covers apps where a text chatbot is a central feature, and its
+   [developer policy](https://support.google.com/googleplay/android-developer/answer/13985936?hl=en)
+   asks for in-app reporting of offensive content to the developer. Here the replies come from the
+   person's own assistant on their own computer, and there is no backend to report to. I read that as a
+   real difference, but chat is part of the app, so expect the question on the Play form. It may need
+   a report route, such as a link to the public repo's issues. Open until Google's answer is known.
 
 ### To settle before a store build
 
-- **Android `minifyEnabled false`.** The release build isn't shrunk, so the APK is larger than it has
-  to be and its code is easier to read. Fine for debug CI, but turn it on and test it before a store
-  build. R8 can strip what plugins reach by reflection, so Capacitor's bridge will need keep rules, and
-  there is no release build or device here to prove them.
+- **Android minify.** Settled. Release shrinks code and resources, with keep rules for the in-app
+  browser's options, which it reads by field name. CI runs the same shrinking in a `minified` build on an
+  emulator against the real Hub. That build differs from release in three ways: it is debug-signed, it
+  may use plain HTTP to the emulator's host, and its bundle accepts `http://`. Test hooks are checked
+  to be absent from both.
+- **Widget on iOS.** It has no App Group and no entitlements of its own, so it needs its own bundle ID
+  when the real one is chosen, and it needs that added to the signing setup.
 - **File provider.** It now covers the app's own external files and its cache, not all external
   storage. Capacitor's and the in-app browser's camera files use those two places. Photo and video
   capture through the Hub page hasn't been run on a device.
-- **Share extension privacy manifest.** It's there and CI checks that it lands in the extension. Apple's
-  reading of it is only known at upload.
+- **Privacy manifests.** Both extensions have one and CI checks that they land inside the app. Apple's
+  reading of them is only known at upload.
+- **Share extension scope.** Settled. It accepts text and one web link, which is what goes to chat, and a
+  test fails if the rule widens.
+- **Version and build number.** Settled. `package.json` holds `version` and `buildNumber`, and
+  `npm run version:set -- 1.2.3 4` writes them to Xcode, for the app and both extensions, and to
+  Gradle. It refuses a build number that isn't higher, because stores reject a repeat, and a test fails
+  if any copy differs.
+- **Local network prompt.** The app takes any HTTPS address, which can be a local one, and
+  [Apple says](https://developer.apple.com/forums/thread/663775) an app like that should carry
+  `NSLocalNetworkUsageDescription`. It does now. Whether the prompt appears, and whether the Hub page's
+  web view triggers it, hasn't been run. A device has to show that.
 
 ## 3. Connection and security
 
@@ -208,6 +228,49 @@ it stays this way unless review or a user asks.
 Forgetting a Hub clears the web view's cookies, so its 365-day sign-in cookie doesn't outlive the
 device. If the Hub can't be reached then, the app says the device stays on the Hub's list until removed
 there. The Hub page's own browser storage isn't cleared. Neither native call has run on a device yet.
+
+### The lock
+
+Optional and off by default. When it is on, the token is sealed under a key that only a current
+biometric can release, so a yes from the prompt isn't enough on its own.
+
+| | iOS | Android |
+| --- | --- | --- |
+| What holds the token | Keychain item with `.biometryCurrentSet`, on this device only, only while a passcode is set | Ciphertext in the app's preferences, under a Keystore key bound to strong biometrics |
+| New fingerprint or face enrolled, or all removed | The item becomes unreadable | The key is invalidated |
+| Passcode as a fallback | No | No |
+| Hides the screen from the app switcher | A cover window as the app goes inactive | `FLAG_SECURE` on every window, plus a cover view. Screenshots are blocked too |
+| When it locks | Going to the background | No activity of the app left started |
+
+Locking closes the Hub page and clears the web view's cookies, because the Hub's sign-in cookie is the
+device token. Unlocking opens the page again and signs in with the token.
+
+| What happens | What the app does |
+| --- | --- |
+| Nothing enrolled, no passcode, permission denied, no sensor | The lock can't be turned on, and the app says why |
+| Enrolment removed while on | Stays locked. It says to set one up again, or to forget this Hub |
+| Cancelled | Stays locked, with no second prompt on its own |
+| Too many failures | Stays locked until the system allows another try |
+| Enrolment changed | The token can't be read. The only way forward is to pair again |
+| JavaScript never answers | The native cover stays up |
+
+**Three things the biometric doesn't protect.** The Hub's address and name and any text waiting to
+send are ordinary app data, as above. The web view's disk cache may hold pages from the Hub. Someone
+who can read the app's files, which takes a jailbreak, root or a device backup, could read those.
+
+**One known limit on Android.** With the lock on, a system file picker or camera opened from the Hub
+page counts as leaving the app, so the app locks and the page closes. Uploading from the Hub page
+doesn't work on Android with the lock on. iOS pickers run inside the app, so I expect them to be
+unaffected, but that hasn't been run either. A grace period would fix this and would also open a
+window where the app is unlocked in the background, so that is left as the owner's call.
+
+### The widget
+
+It shows outside the lock, so it shows nothing about the Hub: no name, address, status or token, and it
+stores nothing. It doesn't share an App Group with the app and it makes no network calls. It holds
+three links: open the Hub, write a message, check the connection. Each goes through the lock first,
+and each only picks a screen. No link can carry text or start anything, so publish, edit, delete and
+render aren't reachable from it, and an unknown action does nothing.
 
 ### States the app must tell apart
 
@@ -279,10 +342,21 @@ on a real device. The first APK also showed that a plugin adds microphone and lo
 The app uses neither, so the manifest removes them and the workflow fails if they return. The latest
 APK lists only internet, network state, camera and Android's own receiver permission.
 
+### Signed builds
+
+Not set up. When it is, Codemagic does the signed build only, so no signing secret sits in a repo meant
+to go public, and GitHub Actions stays the unsigned CI. The Hub gets its own Codemagic app and its own
+secrets group, shared with nothing else, and it runs on a tag only. Anyone building their own copy
+chooses their own route. The repo holds no team ID, certificate, profile or key.
+
 These runs used `.github/workflows/mobile.yml`, the one file outside `mobile/`, and need no signing or
 secrets. The Android job also runs
 the UI test in headless Edge. `hub-changes/test/real-hub.mjs` stays out of CI because it only runs on
 Windows, so run it by hand when the Hub moves.
+
+`android-device` runs `test/device/android-e2e.mjs`: the shrunk build on an emulator, against the real
+Hub with a fake assistant, using the system's real prompt, Keystore and the emulator's fingerprint
+sensor. That shows Android behaviour on an emulator. It is not hardware, and it shows nothing about iOS.
 
 ## 5. What the owner has to do
 
@@ -293,9 +367,13 @@ Nothing here is done or started.
 | Apple Developer Program | [US$99 a year](https://developer.apple.com/programs/whats-included/) | Decide personal or organization |
 | Google Play developer account | US$25 once | ID and a physical Android device. Organization accounts skip the 12-tester rule |
 | Choose the app ID, bundle ID, URL scheme and store name | | The repo uses `com.example.localhub` on purpose: it cannot be uploaded until replaced |
-| iOS signing and an App Store Connect API key, kept in the CI's secret store | | Never in the repo |
+| App Group, in the developer portal | | Portal only: create it, attach it to the app's ID and the share extension's, then regenerate their profiles. A signed build fails on the entitlement without it. The widget uses no group |
+| Three signed targets, each with its own ID and profile | | The app, `.share` and `.widget`, as the project sets them |
+| A signing certificate for this app only | | Not one shared with other apps, so revoking it touches nothing else. Apple limits how many a team can have |
+| An App Store Connect API key for this app only, kept in Codemagic | | The lowest role that can upload: [Developer can](https://developer.apple.com/help/app-store-connect/manage-builds/upload-builds/). Saved once, since Apple offers the file only once, and revoked when idle. [A team key reaches every app on the team](https://developer.apple.com/help/app-store-connect/get-started/app-store-connect-api/) and can't be limited. An individual key follows one user's app access, but can't use the provisioning endpoints. Never in the repo |
 | Android upload key, kept outside the repo | | Losing it is a real problem, so use Play App Signing |
 | Privacy policy page | | A plain page in the public repo works |
-| Store listings, screenshots, age rating, Data safety and App Privacy answers | | |
+| Support URL | | App Store Connect requires one. It has to be this project's own page, and the same public page can do both |
+| Store listings, screenshots, age rating, Data safety and App Privacy answers | | The app runs on iPad, so [an iPad screenshot set is needed too](https://developer.apple.com/help/app-store-connect/reference/screenshot-specifications/) |
 | 12 testers for 14 days on Google Play | | Only for a personal account |
 | turn on HTTPS for the Tailscale network, run `tailscale serve` and put its address in `url` | | Each person who uses the app does this for their own Hub |

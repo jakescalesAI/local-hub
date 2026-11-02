@@ -27,7 +27,7 @@ jobs:
   android:
     if: github.event_name == 'push' || inputs.platform == 'android'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     defaults:
       run:
         working-directory: mobile
@@ -71,6 +71,98 @@ jobs:
           name: android-debug-apk
           path: mobile/android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 3
+      # Unsigned and kept here: this checks R8 and what ships. It isn't uploaded anywhere.
+      - name: Build the shrunk release APK, unsigned
+        working-directory: mobile/android
+        run: sh ./gradlew assembleRelease --no-daemon --stacktrace
+      - name: Check what the release APK carries
+        working-directory: mobile/android/app/build/outputs/apk/release
+        run: |
+          ls -l
+          apk=app-release-unsigned.apk
+          aapt="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/aapt2"
+          "$aapt" dump badging "$apk" | grep -E "uses-permission" | tee "$RUNNER_TEMP/release.txt"
+          ! grep -E "RECORD_AUDIO|MODIFY_AUDIO_SETTINGS|ACCESS_(COARSE|FINE)_LOCATION" "$RUNNER_TEMP/release.txt"
+          "$aapt" dump xmltree --file AndroidManifest.xml "$apk" | grep -E "debuggable|HubWidgetProvider" | tee "$RUNNER_TEMP/manifest.txt"
+          grep -q HubWidgetProvider "$RUNNER_TEMP/manifest.txt"
+          ! grep -E 'debuggable.*(true|0xffffffff)' "$RUNNER_TEMP/manifest.txt"
+          unzip -p "$apk" assets/public/app.js > "$RUNNER_TEMP/app.js"
+          test -s "$RUNNER_TEMP/app.js"
+          ! grep -E "__hubTest|__testScan|__testLock|__hubOpened|__hubClosed|__DEV__|__LOCAL_HTTP__" "$RUNNER_TEMP/app.js"
+          unzip -p "$apk" res/xml/network_security_config.xml | strings | { ! grep -q "10.0.2.2"; }
+
+  # The minified build on an emulator, against the real Hub, with real biometric prompts. It proves
+  # Android behaviour on an emulator: not hardware, and nothing about iOS.
+  android-device:
+    if: github.event_name == 'push' || inputs.platform == 'android'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Let the emulator use KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - run: npm ci
+      - name: Build the debuggable APK, for reading the app's files at the end
+        run: |
+          npm run build
+          npx cap sync android
+          (cd android && sh ./gradlew assembleDebug --no-daemon --stacktrace)
+          cp android/app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/app-debug.apk"
+      - name: Build the minified APK, able to reach the emulator's host
+        run: |
+          node build.mjs --local-http
+          npx cap sync android
+          (cd android && sh ./gradlew assembleMinified --no-daemon --stacktrace)
+          apk=android/app/build/outputs/apk/minified/app-minified.apk
+          unzip -p "$apk" assets/public/app.js > "$RUNNER_TEMP/app.js"
+          ! grep -E "__hubTest|__testScan|__testLock|__hubOpened|__hubClosed|__DEV__|__LOCAL_HTTP__" "$RUNNER_TEMP/app.js"
+      - name: Install the emulator
+        run: |
+          echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
+          echo "$ANDROID_HOME/emulator" >> "$GITHUB_PATH"
+          manager="$ANDROID_HOME/cmdline-tools/latest/bin"
+          yes | "$manager/sdkmanager" --licenses > /dev/null || true
+          "$manager/sdkmanager" --install platform-tools emulator "system-images;android-33;google_apis;x86_64" > /dev/null
+          echo no | "$manager/avdmanager" create avd -n hub -k "system-images;android-33;google_apis;x86_64" -d pixel_5
+      - name: Start the emulator
+        run: |
+          nohup emulator -avd hub -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect > "$RUNNER_TEMP/emulator.log" 2>&1 &
+          adb wait-for-device
+          timeout 420 sh -c 'until [ "$(adb shell getprop sys.boot_completed | tr -d "\r")" = "1" ]; do sleep 5; done'
+          adb shell settings put global window_animation_scale 0
+          adb shell settings put global transition_animation_scale 0
+          adb shell settings put global animator_duration_scale 0
+          adb shell svc power stayon true
+          adb shell input keyevent KEYCODE_WAKEUP
+          adb shell wm dismiss-keyguard
+      - name: Run the app against the real Hub
+        run: |
+          adb install android/app/build/outputs/apk/minified/app-minified.apk
+          adb logcat -c
+          node test/device/android-e2e.mjs .. "$RUNNER_TEMP/app-debug.apk" test/device/out
+      - name: Keep the emulator's screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-emulator-run
+          path: mobile/test/device/out
+          retention-days: 3
+          if-no-files-found: warn
 
   ios:
     if: github.event_name == 'workflow_dispatch' && inputs.platform == 'ios'
@@ -101,7 +193,17 @@ jobs:
           du -sh "$app"
           test -d "$app/PlugIns/ShareExtension.appex"
           test -f "$app/PlugIns/ShareExtension.appex/PrivacyInfo.xcprivacy"
-          plutil -p "$app/Info.plist" | grep -E "CFBundleIdentifier|CFBundleURLSchemes|NSCameraUsageDescription"
+          plutil -p "$app/Info.plist" | grep -E "CFBundleIdentifier|CFBundleURLSchemes"
+          for key in NSCameraUsageDescription NSFaceIDUsageDescription NSLocalNetworkUsageDescription; do
+            plutil -p "$app/Info.plist" | grep "$key"
+          done
+          test -f "$app/PlugIns/HubWidget.appex/PrivacyInfo.xcprivacy"
+          plutil -p "$app/PlugIns/HubWidget.appex/Info.plist" | grep "CFBundleIdentifier"
+          plutil -p "$app/PlugIns/HubWidget.appex/Info.plist" | grep "com.apple.widgetkit-extension"
+          for bundle in "$app" "$app/PlugIns/ShareExtension.appex" "$app/PlugIns/HubWidget.appex"; do
+            plutil -p "$bundle/Info.plist" | grep -E "CFBundle(ShortVersionString|Version)"
+          done
+          ! grep -E "__hubTest|__testScan|__testLock|__hubOpened|__hubClosed|__DEV__|__LOCAL_HTTP__" "$app/public/app.js"
       # Reported on its own: a failure here does not undo the build result above.
       - name: Launch it once and take a screenshot
         continue-on-error: true
@@ -118,10 +220,31 @@ jobs:
           sleep 20
           xcrun simctl spawn "$device" launchctl list | grep com.example.localhub
           xcrun simctl io "$device" screenshot launch.png
+      # Reported on its own too. A simulator launch shows the layout, not what a real iPad does.
+      - name: Launch it on an iPad simulator and take a screenshot
+        continue-on-error: true
+        timeout-minutes: 8
+        run: |
+          device=$(xcrun simctl list devices available -j | node -e "
+            const all = JSON.parse(require('fs').readFileSync(0, 'utf8')).devices
+            const ios = Object.keys(all).filter(k => k.includes('iOS')).sort().reverse()
+            console.log(ios.flatMap(k => all[k]).find(d => d.name.startsWith('iPad')).udid)")
+          xcrun simctl boot "$device"
+          xcrun simctl bootstatus "$device" -b
+          xcrun simctl install "$device" build/Build/Products/Debug-iphonesimulator/App.app
+          xcrun simctl launch "$device" com.example.localhub
+          sleep 20
+          xcrun simctl io "$device" screenshot launch-ipad.png
+          xcrun simctl openurl "$device" localhub://action/status
+          sleep 5
+          xcrun simctl io "$device" screenshot action-ipad.png
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: ios-simulator-launch
-          path: mobile/launch.png
+          path: |
+            mobile/launch.png
+            mobile/launch-ipad.png
+            mobile/action-ipad.png
           if-no-files-found: warn
           retention-days: 3

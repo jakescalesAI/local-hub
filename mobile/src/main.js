@@ -2,12 +2,14 @@
 // with no bridge, so nothing on that page can reach native code or the token.
 import { DEMO_ADDRESS, DEMO_CODE, cleanCode, isCode, normalizeAddress, parsePairLink, showCode } from './lib/address.js'
 import { MAX_SHARE_CHARS, createClient } from './lib/client.js'
+import { parseQuickAction } from './lib/actions.js'
+import { lockName, lockUnavailable, unlockMessage } from './lib/lock.js'
 import { createQueue } from './lib/queue.js'
 import { STATES, classify } from './lib/status.js'
 import * as native from './lib/native.js'
 import { h } from './lib/dom.js'
 
-const DEV = __DEV__
+const LOCAL_HTTP = __DEV__ || __LOCAL_HTTP__
 const CHECK_EVERY_MS = 30_000
 const DEMO_STATES = [['ok', 'Connected'], ['asleep', 'Asleep'], ['stopped', 'Stopped'], ['offline', 'Offline'], ['removed', 'Removed']]
 
@@ -32,6 +34,15 @@ const app = {
   busy: false,
   demoState: 'ok',
   demoSent: [],
+  lock: { enabled: false, available: false, reason: '', kind: '' },
+  locked: null, // { message, changed, forgetting } while locked. Every screen but the lock's is off.
+  unlocking: false,
+  lockNote: '',
+  hubOpen: false,
+  hubWasOpen: false,
+  openWhenChecked: false,
+  deferredLink: '',
+  deferredShare: '',
 }
 
 // --- Hubs: a real one over the network, or the built-in demo
@@ -60,7 +71,8 @@ function demoHub() {
 function connect(conn, hub, storage) {
   app.conn = conn
   app.hub = hub
-  app.queue = createQueue({ storage, send: text => app.hub.send(text) })
+  // With the lock on there's no hub until it's unlocked, so nothing can go out.
+  app.queue = createQueue({ storage, send: async text => (app.hub ? app.hub.send(text) : { result: 'stopped' }) })
   app.state = 'checking'
   app.notice = ''
 }
@@ -96,6 +108,8 @@ async function pair() {
   }
   const conn = { address, hubName: r.hub.name, hubId: r.hub.id, deviceId: r.deviceId, lastSeen: Date.now() }
   try {
+    // A demo's lock has nothing to do with a real Hub.
+    if (app.conn?.demo && app.lock.enabled) await clearLock()
     await native.saveConnection(conn, r.token)
   } catch {
     app.error = 'This device couldn\'t store the connection securely. Nothing was saved.'
@@ -110,17 +124,20 @@ async function pair() {
 
 async function forget() {
   const { demo } = app.conn
+  const { hub } = app
   app.busy = true
   render()
   let removed = true
   let cleared = true
+  if (app.lock.enabled) await clearLock()
   if (!demo) {
-    removed = await app.hub.forget()
+    removed = await hub.forget()
     await native.clearConnection()
     await app.queue.clear()
     cleared = await native.clearHubCookies()
   }
   app.busy = false
+  app.locked = null
   app.conn = app.hub = app.queue = null
   app.waiting = []
   app.draft = ''
@@ -147,6 +164,9 @@ async function refresh() {
   }
   app.waiting = await app.queue.list()
   render()
+  const open = app.openWhenChecked && !app.locked && STATES[app.state].canOpen
+  app.openWhenChecked = false
+  if (open) native.closeHub().then(() => { if (!app.locked) openPage() })
 }
 
 // --- Sharing into chat
@@ -187,8 +207,15 @@ function receiveShare(text) {
 }
 
 function receivePairLink(link) {
-  const parsed = parsePairLink(link, { dev: DEV })
+  const parsed = parsePairLink(link, { dev: LOCAL_HTTP })
   if (!parsed) return false
+  // A link can't swap this device onto another computer. Forgetting is a choice made in Settings.
+  if (app.conn && !app.conn.demo) {
+    app.notice = 'This device is already paired. To pair with another Hub, forget this one in Settings first.'
+    if (app.screen !== 'share') show('home')
+    refresh()
+    return true
+  }
   app.pairing = parsed
   app.error = ''
   show('confirm')
@@ -205,6 +232,222 @@ async function scan() {
   }
 }
 
+// --- Links from outside the app: pairing, and the widget's quick actions
+
+function handleLink(link) {
+  if (!parseQuickAction(link) && !parsePairLink(link, { dev: LOCAL_HTTP })) return false
+  // Nothing from outside acts while locked. It waits in memory until the person has unlocked.
+  if (app.locked) {
+    app.deferredLink = link
+    return true
+  }
+  const action = parseQuickAction(link)
+  if (action) return runQuickAction(action), true
+  return receivePairLink(link)
+}
+
+function runQuickAction(action) {
+  if (!app.conn) {
+    app.notice = 'Pair with your Hub first.'
+    return show('welcome')
+  }
+  // A message someone is reading before sending stays on screen.
+  if (app.screen === 'share' || app.busy) return refresh()
+  show('home')
+  if (action === 'compose') root.querySelector('#draft')?.focus()
+  app.openWhenChecked = action === 'open'
+  refresh()
+}
+
+function openPage() {
+  app.hubOpen = !app.conn.demo
+  return app.hub.open().then(
+    () => { if (app.locked) native.closeHub() }, // locked while it was opening
+    () => { app.hubOpen = false },
+  )
+}
+
+// --- Lock
+
+let lockEpoch = 0
+let autoPrompted = false
+
+const lockedState = () => ({ message: '', changed: false, forgetting: false })
+
+// Drops everything that can reach the Hub. Safe to call again, and it can't be undone from here: the
+// only way back is the OS opening the token in unlock().
+function lockNow() {
+  if (!app.conn) return Promise.resolve()
+  if (!app.locked) {
+    app.hubWasOpen = app.hubWasOpen || app.hubOpen
+    app.locked = lockedState()
+  }
+  app.hubOpen = false
+  app.openWhenChecked = false
+  app.hub = null
+  checkSeq++
+  render()
+  return Promise.all([native.closeHub(), native.clearHubCookies()])
+}
+
+async function onLockEvent({ foreground }) {
+  app.lock.enabled = true
+  if (!foreground) {
+    lockEpoch++ // a prompt still open can't unlock a lock that came after it
+    autoPrompted = false
+  }
+  await lockNow()
+  const { active } = await native.lockShown()
+  if (active && foreground) promptOnce()
+}
+
+// Asks once each time the app comes back. After a cancel it waits for the Unlock button.
+function promptOnce() {
+  if (autoPrompted || !app.locked) return
+  autoPrompted = true
+  unlock()
+}
+
+async function unlock() {
+  if (!app.locked || app.locked.changed || app.unlocking) return
+  const epoch = lockEpoch
+  app.unlocking = true
+  app.locked.message = ''
+  render()
+  const r = await native.lockUnlock()
+  app.unlocking = false
+  if (!app.locked) return
+  if (r.token && epoch === lockEpoch) return finishUnlock(r.token)
+  if (r.changed) app.locked.changed = true
+  app.locked.message = unlockMessage(r, lockName(app.lock.kind))
+  render()
+}
+
+async function finishUnlock(token) {
+  app.hub = app.conn.demo ? demoHub() : realHub(app.conn, token)
+  app.locked = null
+  app.waiting = await app.queue.list()
+  if (app.locked) return // locked again while that was read
+  const wasOpen = app.hubWasOpen
+  const link = app.deferredLink
+  const share = app.deferredShare
+  app.hubWasOpen = false
+  app.deferredLink = ''
+  app.deferredShare = ''
+  render({ focusTitle: true })
+  receiveShare(share || (await native.takeShare()))
+  if (app.locked) return
+  if (link) handleLink(link)
+  else if (wasOpen) runQuickAction('open')
+  else refresh()
+}
+
+// The lock's own way out: for a key that can't be opened any more, or someone who can't unlock. No
+// token is available, so the Hub can't be told, and the screen says so.
+async function forgetFromLock() {
+  app.unlocking = true
+  render()
+  try {
+    await clearLock()
+    await native.clearConnection()
+    await app.queue.clear()
+    await native.clearHubCookies()
+  } catch {
+    app.unlocking = false
+    app.locked.message = 'That didn\'t work. Restart the device and try again.'
+    return render()
+  }
+  app.unlocking = false
+  app.locked = null
+  app.conn = app.hub = app.queue = null
+  app.waiting = []
+  app.draft = ''
+  app.deferredLink = ''
+  app.deferredShare = ''
+  app.hubWasOpen = false
+  app.notice = 'This device is forgotten here. It stays on your Hub\'s list until you remove it there.'
+  show('welcome')
+}
+
+async function clearLock() {
+  await native.lockClear()
+  app.lock = { ...app.lock, enabled: false }
+}
+
+async function refreshLockStatus() {
+  try {
+    app.lock = await native.lockStatus()
+  } catch {
+    app.lock = { ...app.lock, available: false, reason: '' }
+  }
+  if (!app.locked && app.screen === 'settings') render()
+}
+
+function openSettings() {
+  app.lockNote = ''
+  show('settings')
+  refreshLockStatus()
+}
+
+async function turnLockOn() {
+  app.busy = true
+  app.lockNote = ''
+  render()
+  try {
+    const token = app.conn.demo ? 'demo' : (await native.loadConnection())?.token
+    if (!token) throw new Error('no token')
+    const r = await native.lockEnable(token)
+    if (r.enabled) {
+      // The token now lives in one place only. If the old copy can't go, the lock isn't really on.
+      if (!app.conn.demo) {
+        try {
+          await native.removePlainToken()
+        } catch (e) {
+          await native.lockClear()
+          throw e
+        }
+        await native.clearHubCookies()
+      }
+      app.lock = { ...app.lock, enabled: true }
+    } else if (!r.cancelled) {
+      app.lockNote = unlockMessage(r, lockName(app.lock.kind)) || 'The lock couldn\'t be turned on. Nothing changed.'
+    }
+  } catch {
+    app.lockNote = 'The lock couldn\'t be turned on. Nothing changed.'
+  }
+  app.busy = false
+  await refreshLockStatus()
+  render()
+}
+
+async function turnLockOff() {
+  const epoch = lockEpoch
+  app.busy = true
+  app.lockNote = ''
+  render()
+  const r = await native.lockUnlock()
+  app.busy = false
+  if (app.locked) return render()
+  if (r.changed) {
+    lockNow()
+    app.locked.changed = true
+    return render()
+  }
+  if (r.token && epoch === lockEpoch) {
+    try {
+      if (!app.conn.demo) await native.saveConnection(app.conn, r.token)
+      await clearLock()
+    } catch {
+      await native.removePlainToken().catch(() => {})
+      app.lockNote = 'The lock couldn\'t be turned off. It stays on.'
+    }
+  } else {
+    app.lockNote = unlockMessage(r, lockName(app.lock.kind))
+  }
+  await refreshLockStatus()
+  render()
+}
+
 // --- Rendering
 
 function show(screen) {
@@ -215,7 +458,7 @@ function show(screen) {
 function render({ focusTitle = false } = {}) {
   const active = document.activeElement
   const keep = active?.dataset?.keep ? { key: active.dataset.keep, start: active.selectionStart, end: active.selectionEnd } : null
-  root.replaceChildren(SCREENS[app.screen]())
+  root.replaceChildren(SCREENS[app.locked ? 'locked' : app.screen]())
   if (focusTitle) root.querySelector('h1')?.focus({ preventScroll: true })
   else if (keep) {
     const el = root.querySelector(`[data-keep="${keep.key}"]`)
@@ -230,6 +473,10 @@ const button = (label, onclick, { kind = 'plain', disabled = false, test } = {})
 const errorLine = text => h('p', { class: 'error', role: 'alert' }, text)
 const noticeLine = () => (app.notice ? h('p', { class: 'notice', role: 'status', 'data-test': 'notice' }, app.notice) : null)
 const back = (to, label = 'Back') => h('button', { class: 'link back', type: 'button', onclick: () => ((app.error = ''), show(to)) }, label)
+
+// Not `button`: these stay live whatever else is still finishing behind the lock.
+const lockButton = (label, onclick, { kind = 'plain', test } = {}) =>
+  h('button', { class: `btn ${kind}`, type: 'button', onclick, disabled: app.unlocking, 'data-test': test }, label)
 
 function when(at) {
   if (!at) return ''
@@ -258,7 +505,7 @@ const SCREENS = {
   pair: () => {
     const submit = e => {
       e.preventDefault()
-      const address = normalizeAddress(app.pairForm.address, { dev: DEV })
+      const address = normalizeAddress(app.pairForm.address, { dev: LOCAL_HTTP })
       if (!address.ok) return ((app.error = address.error), render())
       const code = cleanCode(app.pairForm.code)
       if (!isCode(code)) return ((app.error = 'The code has 8 letters and numbers.'), render())
@@ -283,7 +530,7 @@ const SCREENS = {
   // the phone to someone else's server without the person seeing where it goes.
   confirm: () =>
     h('main', { class: 'screen' },
-      back('welcome', 'Cancel'),
+      back(app.conn ? 'home' : 'welcome', 'Cancel'),
       title('Connect to this computer?'),
       h('div', { class: 'card rows' },
         h('div', { class: 'row' }, h('span', {}, 'Address'), h('strong', { 'data-test': 'confirm-address' }, app.pairing?.address)),
@@ -294,27 +541,30 @@ const SCREENS = {
 
   home: () => {
     const s = STATES[app.state]
-    return h('main', { class: 'screen' },
-      h('div', { class: 'topbar' }, h('button', { class: 'link', type: 'button', onclick: () => show('settings'), 'data-test': 'settings' }, 'Settings')),
+    return h('main', { class: 'screen home' },
+      h('div', { class: 'topbar' }, h('button', { class: 'link', type: 'button', onclick: openSettings, 'data-test': 'settings' }, 'Settings')),
       title(app.conn.hubName),
       app.conn.demo ? h('p', { class: 'demo-note' }, 'Demo: sample data. Nothing leaves this device.') : null,
-      h('section', { class: `card status ${s.tone}`, 'aria-live': 'polite', 'data-test': 'status', 'data-state': app.state },
-        h('div', { class: 'status-line' }, h('span', { class: 'dot', 'aria-hidden': 'true' }), h('strong', {}, s.title)),
-        s.body ? h('p', {}, s.body) : null,
-        app.state !== 'ok' && app.conn.lastSeen ? h('p', { class: 'seen' }, `Last connected ${when(app.conn.lastSeen)}`) : null,
-        s.canRetry ? button('Try again', refresh, { test: 'retry' }) : null,
-        app.state === 'removed' ? button('Pair again', () => forgetLocal(), { kind: 'tinted', test: 'pair-again' }) : null),
-      app.conn.demo
-        ? h('div', { class: 'segments', role: 'group', 'aria-label': 'Show a state' },
-            ...DEMO_STATES.map(([key, label]) => h('button', { type: 'button', class: key === app.demoState ? 'on' : '', 'aria-pressed': String(key === app.demoState), 'data-test': `demo-${key}`, onclick: () => ((app.demoState = key), refresh()) }, label)))
-        : null,
-      button('Open Hub', () => app.hub.open(), { kind: 'primary', disabled: !s.canOpen, test: 'open' }),
-      noticeLine(),
-      h('section', { class: 'card compose' },
-        h('label', { for: 'draft' }, 'Send to Hub chat'),
-        h('textarea', { id: 'draft', 'data-keep': 'draft', rows: '3', maxlength: String(MAX_SHARE_CHARS), placeholder: 'Message your Hub\'s assistant', value: app.draft, oninput: e => (app.draft = e.target.value) }),
-        button(app.state === 'ok' ? 'Send' : 'Send when reachable', () => sendText(app.draft, () => (app.draft = '')), { kind: 'tinted', test: 'send' })),
-      waitingList())
+      h('div', { class: 'panes' },
+        h('div', { class: 'pane', 'data-test': 'pane-status' },
+          h('section', { class: `card status ${s.tone}`, 'aria-live': 'polite', 'data-test': 'status', 'data-state': app.state },
+            h('div', { class: 'status-line' }, h('span', { class: 'dot', 'aria-hidden': 'true' }), h('strong', {}, s.title)),
+            s.body ? h('p', {}, s.body) : null,
+            app.state !== 'ok' && app.conn.lastSeen ? h('p', { class: 'seen' }, `Last connected ${when(app.conn.lastSeen)}`) : null,
+            s.canRetry ? button('Try again', refresh, { test: 'retry' }) : null,
+            app.state === 'removed' ? button('Pair again', () => forgetLocal(), { kind: 'tinted', test: 'pair-again' }) : null),
+          app.conn.demo
+            ? h('div', { class: 'segments', role: 'group', 'aria-label': 'Show a state' },
+                ...DEMO_STATES.map(([key, label]) => h('button', { type: 'button', class: key === app.demoState ? 'on' : '', 'aria-pressed': String(key === app.demoState), 'data-test': `demo-${key}`, onclick: () => ((app.demoState = key), refresh()) }, label)))
+            : null,
+          button('Open Hub', openPage, { kind: 'primary', disabled: !s.canOpen, test: 'open' }),
+          noticeLine()),
+        h('div', { class: 'pane', 'data-test': 'pane-compose' },
+          h('section', { class: 'card compose' },
+            h('label', { for: 'draft' }, 'Send to Hub chat'),
+            h('textarea', { id: 'draft', 'data-keep': 'draft', rows: '3', maxlength: String(MAX_SHARE_CHARS), placeholder: 'Message your Hub\'s assistant', value: app.draft, oninput: e => (app.draft = e.target.value) }),
+            button(app.state === 'ok' ? 'Send' : 'Send when reachable', () => sendText(app.draft, () => (app.draft = '')), { kind: 'tinted', test: 'send' })),
+          waitingList())))
   },
 
   share: () =>
@@ -329,18 +579,20 @@ const SCREENS = {
         button(app.state === 'ok' ? 'Send' : 'Send when reachable', () => sendText(app.shareDraft, () => { app.shareDraft = ''; show('home') }), { kind: 'primary', test: 'share-send' }))),
 
   settings: () =>
-    h('main', { class: 'screen' },
+    h('main', { class: 'screen wide' },
       back('home'),
       title('Settings'),
       h('div', { class: 'card rows' },
         h('div', { class: 'row' }, h('span', {}, 'Hub'), h('strong', {}, app.conn.hubName)),
         h('div', { class: 'row' }, h('span', {}, 'Address'), h('strong', {}, app.conn.demo ? 'Built-in demo' : app.conn.address)),
         h('div', { class: 'row' }, h('span', {}, 'Version'), h('strong', {}, __VERSION__))),
+      h('h2', {}, 'Lock'),
+      lockCard(),
       h('h2', {}, 'Your data'),
       h('div', { class: 'card prose' },
         h('p', {}, 'This app has no account, no analytics and no server of its own. Everything you send goes only to the Hub address above.'),
-        h('p', {}, 'The key that connects this device is kept in the system\'s secure storage. It isn\'t backed up and it never appears in a web page.'),
-        h('p', {}, 'Your Hub\'s address and any text waiting to send are ordinary app data. On iPhone and iPad, a device backup such as iCloud Backup can include them. On Android they\'re left out of backups.'),
+        h('p', {}, 'The key that connects this device is kept in the system\'s secure storage. It isn\'t backed up and it never appears in a web page. With the lock on, the system only opens it after a biometric check.'),
+        h('p', {}, 'Your Hub\'s address and any text waiting to send are ordinary app data, with or without the lock. On iPhone and iPad, a device backup such as iCloud Backup can include them. On Android they\'re left out of backups.'),
         h('p', {}, 'Hub chat runs on your computer, using the AI login you set up there. What you send to chat goes wherever that assistant sends it.')),
       h('div', { class: 'stack' }, button(app.conn.demo ? 'Leave the demo' : 'Forget this Hub', () => (app.conn.demo ? forget() : show('forget')), { kind: 'danger', test: 'forget' }))),
 
@@ -350,6 +602,38 @@ const SCREENS = {
       title('Forget this Hub?'),
       h('p', { class: 'sub' }, `This device disconnects from ${app.conn.hubName}. Messages still waiting here are deleted. To connect again, you'll need a new code.`),
       h('div', { class: 'stack' }, button(app.busy ? 'Forgetting' : 'Forget this Hub', forget, { kind: 'danger', test: 'forget-confirm' }))),
+
+  // Says nothing about the Hub: anyone holding the device can see this screen.
+  locked: () => {
+    const l = app.locked
+    const name = lockName(app.lock.kind)
+    if (l.forgetting) {
+      return h('main', { class: 'screen', 'data-test': 'lock-forget' },
+        h('button', { class: 'link back', type: 'button', onclick: () => ((l.forgetting = false), render({ focusTitle: true })), 'data-test': 'lock-forget-cancel' }, 'Cancel'),
+        title('Forget this Hub here?'),
+        h('p', { class: 'sub' }, 'The key on this device is deleted and the app starts over. It doesn\'t open anything. Messages still waiting here are deleted. To connect again, you\'ll need a new code.'),
+        h('p', { class: 'sub' }, 'This device stays on your Hub\'s list until you remove it there.'),
+        l.message ? errorLine(l.message) : null,
+        h('div', { class: 'stack' }, lockButton('Forget this Hub', forgetFromLock, { kind: 'danger', test: 'lock-forget-confirm' })))
+    }
+    if (l.changed) {
+      return h('main', { class: 'screen center', 'data-test': 'lock-changed' },
+        h('img', { class: 'logo', src: 'icon.png', alt: '', width: '72', height: '72' }),
+        title('Pair this device again'),
+        h('p', { class: 'lead' }, 'The biometrics on this device changed, or the app was moved to a new device, so the system won\'t open the key that connects it. That\'s on purpose: someone who added a fingerprint or face can\'t get in with it.'),
+        h('p', { class: 'foot' }, 'Nothing was deleted yet. Pairing again forgets this Hub here and needs a new code. This device stays on your Hub\'s list until you remove it there.'),
+        l.message ? errorLine(l.message) : null,
+        h('div', { class: 'stack' }, lockButton('Pair again', forgetFromLock, { kind: 'primary', test: 'lock-pair-again' })))
+    }
+    return h('main', { class: 'screen center', 'data-test': 'locked' },
+      h('img', { class: 'logo', src: 'icon.png', alt: '', width: '72', height: '72' }),
+      title('Local Hub is locked'),
+      h('p', { class: 'lead' }, `Unlock with ${name} to continue.`),
+      l.message ? h('p', { class: 'error', role: 'alert', 'data-test': 'lock-message' }, l.message) : null,
+      h('div', { class: 'stack' },
+        lockButton(app.unlocking ? 'Waiting' : 'Unlock', unlock, { kind: 'primary', test: 'unlock' }),
+        lockButton('Can\'t unlock?', () => ((l.forgetting = true), render({ focusTitle: true })), { test: 'lock-cant' })))
+  },
 
   startFailed: () =>
     h('main', { class: 'screen center' },
@@ -366,6 +650,28 @@ const SCREENS = {
     h('main', { class: 'hubview' },
       h('div', { class: 'hubbar' }, h('button', { class: 'link', type: 'button', onclick: () => show('home'), 'data-test': 'demo-done' }, 'Done'), h('span', {}, 'Demo Hub')),
       h('iframe', { src: 'demo-hub.html', title: 'Demo Hub', sandbox: '' })),
+}
+
+function lockCard() {
+  const name = lockName(app.lock.kind)
+  const note = app.lockNote ? h('p', { class: 'error', role: 'alert', 'data-test': 'lock-note' }, app.lockNote) : null
+  if (app.lock.enabled) {
+    return h('div', { class: 'card prose', 'data-test': 'lock-card', 'data-lock': 'on' },
+      h('p', {}, `On. Local Hub locks as soon as you leave it, and only ${name} unlocks it. The device passcode doesn't.`),
+      h('p', {}, 'If your biometrics change, you\'ll need to pair again. That\'s on purpose.'),
+      note,
+      button('Turn off', turnLockOff, { test: 'lock-off' }))
+  }
+  if (!app.lock.available) {
+    return h('div', { class: 'card prose', 'data-test': 'lock-card', 'data-lock': 'unavailable' },
+      h('p', {}, lockUnavailable(app.lock.reason, name)),
+      note,
+      button('Turn on', () => {}, { disabled: true, test: 'lock-on' }))
+  }
+  return h('div', { class: 'card prose', 'data-test': 'lock-card', 'data-lock': 'off' },
+    h('p', {}, `Require ${name} each time you come back to this app. The app switcher stops showing its screen, and on Android screenshots of it are blocked too.`),
+    note,
+    button('Turn on', turnLockOn, { kind: 'tinted', test: 'lock-on' }))
 }
 
 function waitingList() {
@@ -395,6 +701,7 @@ async function discard(id) {
 
 // This device was removed on the Hub: its key is useless, so drop it and start over.
 async function forgetLocal() {
+  if (app.lock.enabled) await clearLock()
   if (!app.conn.demo) {
     await native.clearConnection()
     await native.clearHubCookies()
@@ -411,6 +718,7 @@ async function forgetAndRestart() {
   app.busy = true
   render()
   try {
+    await native.lockClear()
     await native.clearConnection()
     await createQueue({ storage: native.queueStorage, send: async () => {} }).clear()
     await native.clearHubCookies()
@@ -423,19 +731,35 @@ async function forgetAndRestart() {
 }
 
 async function start() {
+  native.onLocked(onLockEvent)
   try {
     await native.prepareStorage()
-    const saved = await native.loadConnection()
-    if (saved) {
-      connect(saved.conn, realHub(saved.conn, saved.token), native.queueStorage)
-      app.waiting = await app.queue.list()
+    // Asked first, and a failure lands on the screen below: unknown never means unlocked.
+    app.lock = await native.lockStatus()
+    const conn = app.lock.enabled ? await native.loadConnectionInfo() : null
+    if (conn) {
+      // Only the OS's copy counts. A plain one could be left by a crash while the lock was turned on or off.
+      await native.removePlainToken()
+      await native.clearHubCookies()
+      connect(conn, null, native.queueStorage)
       app.screen = 'home'
+      app.locked = lockedState()
+    } else {
+      if (app.lock.enabled) await clearLock() // nothing to protect: a demo's lock
+      const saved = await native.loadConnection()
+      if (saved) {
+        connect(saved.conn, realHub(saved.conn, saved.token), native.queueStorage)
+        app.waiting = await app.queue.list()
+        app.screen = 'home'
+      }
     }
   } catch {
     app.screen = 'startFailed'
-    return render()
+    render()
+    return native.lockShown()
   }
   render()
+  const { active } = await native.lockShown()
 
   app.online = await native.isOnline()
   native.onOnlineChange(online => {
@@ -443,14 +767,30 @@ async function start() {
     refresh()
   })
   native.onResume(async () => {
+    if (app.locked) return
+    app.hubOpen = false // this screen is back on top
+    if (app.screen === 'settings') refreshLockStatus()
     receiveShare(await native.takeShare())
     refresh()
   })
-  native.onHubClosed(refresh)
-  native.onShare(receiveShare)
-  native.onLink(receivePairLink)
+  native.onHubClosed(() => {
+    app.hubOpen = false
+    refresh()
+  })
+  native.onShare(text => {
+    if (app.locked) app.deferredShare = text
+    else receiveShare(text)
+  })
+  native.onLink(handleLink)
   native.onBack(() => {
-    const parent = { pair: 'welcome', confirm: 'welcome', settings: 'home', forget: 'settings', share: 'home', demoHub: 'home' }[app.screen]
+    if (app.locked) {
+      if (app.locked.forgetting) {
+        app.locked.forgetting = false
+        return render({ focusTitle: true })
+      }
+      return native.minimize()
+    }
+    const parent = { pair: 'welcome', confirm: app.conn ? 'home' : 'welcome', settings: 'home', forget: 'settings', share: 'home', demoHub: 'home' }[app.screen]
     if (parent) show(parent)
     else native.minimize()
   })
@@ -459,11 +799,23 @@ async function start() {
   }, CHECK_EVERY_MS)
 
   const link = await native.launchLink()
-  if (link) receivePairLink(link)
-  receiveShare(await native.takeShare())
-  refresh()
+  if (app.locked) {
+    if (link) handleLink(link)
+    if (active) promptOnce()
+  } else {
+    if (link) handleLink(link)
+    receiveShare(await native.takeShare())
+    refresh()
+  }
 
-  if (__DEV__) window.__hubTest = { share: receiveShare, link: receivePairLink, refresh }
+  if (__DEV__) {
+    window.__hubTest = {
+      share: text => (app.locked ? (app.deferredShare = text) : receiveShare(text)),
+      link: handleLink,
+      refresh,
+      locked: onLockEvent,
+    }
+  }
 }
 
 start()
