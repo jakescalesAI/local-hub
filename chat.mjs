@@ -33,7 +33,7 @@ import path from 'node:path'
 import os from 'node:os'
 import crypto from 'node:crypto'
 import { HERE, PORT, configPath, hubConfig, secrets, secretValues, scrubSecrets, enabledTabs, addonOn, ownerNotes, ownerInstructions } from './config.mjs'
-import { OS_NAME, TRASH_NAME } from './platform.mjs'
+import { OS_NAME, TRASH_NAME, moveToTrash } from './platform.mjs'
 import { RUN_DIRS, RUN_EXTS, RUN_FILES, holdsKeys } from './files.mjs'
 
 const TIMEOUT_MS = 6 * 60e3 // one reply, start to finish
@@ -54,8 +54,10 @@ const defaultModel = () => {
 }
 const EFFORTS = [['', 'Auto'], ['low', 'Low'], ['medium', 'Medium'], ['high', 'High'], ['xhigh', 'Extra high'], ['max', 'Max']]
 const MODES = [['auto', 'Auto', 'Does the work. Asks before sending, posting, buying or deleting.'], ['plan', 'Plan', 'Looks, reads and plans. Changes nothing.']]
-// The assistant's own folder: what it writes, and attachments under uploads/<run>/, named in the prompt so Read can open them.
+// The assistant's own folder: what it writes, and attachments under uploads/<chat>-<run>/, named in the prompt so Read can open them. Test chats keep theirs in uploads-test/.
 const WORK_DIR = path.join(HERE, 'workspace')
+const UPLOADS = 'uploads'
+const UPLOADS_TEST = 'uploads-test'
 const MAX_FILES = 5
 const MAX_FILE_BYTES = 10 * 1024 * 1024
 const MAX_BODY = (MAX_FILES * MAX_FILE_BYTES * 4) / 3 + 256 * 1024 // base64 plus the rest of the message
@@ -112,12 +114,19 @@ const heldFiles = new Map()
 export function holdChatFile(name, data) {
   const f = storeChatFile(name, data)
   heldFiles.set(f.id, f)
-  if (heldFiles.size > 50) heldFiles.delete(heldFiles.keys().next().value)
+  if (heldFiles.size > 50) {
+    // Never shown in a chat, and only a copy: the file it came from is still where it was.
+    const old = heldFiles.keys().next().value
+    heldFiles.delete(old)
+    try { fs.unlinkSync(path.join(FILES_DIR, old)) } catch {}
+  }
   return f
 }
 const CLAUDE_DIR = path.join(os.homedir(), '.claude').toLowerCase() // Read's rules refuse all of it, so nothing else may hand it over
 const inClaudeDir = p => { const r = path.resolve(String(p || '')).toLowerCase(); return r === CLAUDE_DIR || r.startsWith(CLAUDE_DIR + path.sep) }
-export const deniedToAgent = p => /::|:\$|~\d/.test(String(p || '')) || inClaudeDir(p) || holdsKeys(p) || KEY_FILE_NAMES.test(String(p || '').split(/[\\/]+/).filter(Boolean).at(-1) || '')
+export const deniedToAgent = p => /::|:\$|~\d/.test(String(p || '')) || inClaudeDir(p) || holdsKeys(p) || KEY_FILE_NAMES.test((String(p || '').split(/[\\/]+/).filter(Boolean).at(-1) || '').replace(/[. ]+$/, ''))
+// A test chat can't look at what real chats were given.
+const REAL_UPLOADS_DENY = ['Read', 'Grep', 'Glob', 'Edit', 'Write'].flatMap(t => [`workspace/${UPLOADS}/**`, `${ruleDir(HERE)}/workspace/${UPLOADS}/**`].map(k => `${t}(${k})`))
 function denyList() {
   const conf = hubConfig()
   const keys = [...KEY_FILES.map(f => `//**/${f}`), ...[...KEY_DIRS, ...conf.keyDirs].map(d => `//**/${d}/**`), ...conf.keyPairs.flatMap(([a, b]) => [`//**/${a}/${b}`, `//**/${a}/${b}/**`]),
@@ -571,7 +580,7 @@ export function create({ run, sshHost, here }) {
     let saved = []
     let atts = []
     if (att.files.length) {
-      const dir = path.join(WORK_DIR, 'uploads', `${conv.id}-${Date.now().toString(36)}`)
+      const dir = path.join(WORK_DIR, conv.test ? UPLOADS_TEST : UPLOADS, `${conv.id}-${Date.now().toString(36)}`)
       try {
         fs.mkdirSync(dir, { recursive: true })
         saved = att.files.map(f => { const p = path.join(dir, f.name); fs.writeFileSync(p, f.data); return { name: f.name, path: p } })
@@ -615,7 +624,7 @@ export function create({ run, sshHost, here }) {
           ...readFolders().flatMap(f => ['--add-dir', f]),
           '--tools', ...tools.TOOLS,
           '--allowedTools', ...tools.ALLOW,
-          '--disallowedTools', ...tools.DENY,
+          '--disallowedTools', ...tools.DENY, ...(conv.test ? REAL_UPLOADS_DENY : []),
           '--append-system-prompt-file', systemPromptFile(),
         ]
         if (model) args.push('--model', model)
@@ -833,10 +842,24 @@ export function create({ run, sshHost, here }) {
     return meta
   }
 
+  const filesOf = conv => (conv?.items || []).flatMap(i => (i.kind === 'attachment' ? [i] : i.kind === 'user' && Array.isArray(i.atts) ? i.atts : []))
+
+  // A deleted chat takes its files with it, to the Recycle Bin or Trash, so no later chat can open them. Answers '' or what went wrong.
+  async function trashChatFiles(conv) {
+    const items = filesOf(conv).map(f => String(f.id)).filter(id => /^[0-9a-f]{24}$/.test(id)).map(id => path.join(FILES_DIR, id)).filter(p => fs.existsSync(p))
+    for (const folder of [UPLOADS, UPLOADS_TEST]) {
+      const dir = path.join(WORK_DIR, folder)
+      let names = []
+      try { names = fs.readdirSync(dir, { withFileTypes: true }) } catch {}
+      for (const d of names) if (d.isDirectory() && d.name.startsWith(`${conv.id}-`)) items.push(path.join(dir, d.name))
+    }
+    return items.length ? moveToTrash(run, items) : ''
+  }
+
   // Sends one attachment of one chat. The file is found by an id listed in that chat, so a request can't name a path.
   // Only real pictures and text read as plain text show in the page, and the rest always downloads, html and svg included.
   function sendFile(conv, id, url, res, send) {
-    const f = (conv?.items || []).flatMap(i => (i.kind === 'attachment' ? [i] : i.kind === 'user' && Array.isArray(i.atts) ? i.atts : [])).find(x => x.id === id)
+    const f = filesOf(conv).find(x => x.id === id)
     if (!f) return send(res, 404, { error: 'No such file.' })
     if (deniedToAgent(f.name)) return send(res, 403, { error: 'This holds keys, so the hub won’t show it.' })
     const file = path.join(FILES_DIR, id)
@@ -894,6 +917,8 @@ export function create({ run, sshHost, here }) {
         if (m[2] === 'delete' && req.method === 'POST') {
           const r = running.get(id)
           if (r) { r.killed = 'stop'; killTree(r.proc) }
+          const error = await trashChatFiles(conv)
+          if (error) return send(res, 500, { error: `The chat wasn’t deleted, because its files couldn’t go to the ${TRASH_NAME}: ${error}` }), true
           try { fs.unlinkSync(file(id, conv.test)) } catch {}
           return send(res, 200, { ok: true }), true
         }

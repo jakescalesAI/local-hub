@@ -93,7 +93,7 @@ const SECRET_SHAPES = /\b(?:sk-ant-[\w-]{16,}|sk-or-[\w-]{16,}|sk-[A-Za-z0-9_-]{
 // A secret named in running text. The name stays so the message still reads. Each one starts at one fixed spot, so long text can't slow it down.
 const SECRET_NAMED = [
   // Only what's shaped like a key body goes, so words after a header still show on a card. One unbroken base64 word of 16 or more can't be told from a key.
-  [/-----BEGIN [A-Z ]{0,40}PRIVATE KEY-----(?:(?:\s|\\[nr])*(?:Proc-Type: 4,ENCRYPTED|DEK-Info: [A-Z0-9-]{1,40},[0-9A-Fa-f]{1,64}))*(?:(?:\s|\\[nr])*[A-Za-z0-9+/=]{16,})*(?:(?:\s|\\[nr])*[A-Za-z0-9+/=]{1,15}(?=(?:\s|\\[nr])*-----END))?(?:\s|\\[nr])*(?:-----END [A-Z ]{0,40}PRIVATE KEY-----)?/g, '[hidden]'],
+  [/-----BEGIN [A-Z ]{0,40}PRIVATE KEY-----(?:(?:\s|\\[nr])*Proc-Type: 4,ENCRYPTED(?:\s|\\[nr])*DEK-Info: (?:(?:AES|CAMELLIA|ARIA)-(?:128|192|256)-CBC|DES-EDE3-CBC|DES-CBC|(?:SEED|BF|IDEA|RC2|CAST5)-CBC),(?:[0-9A-Fa-f]{32}|[0-9A-Fa-f]{16})(?![0-9A-Fa-f]))?(?:(?:\s|\\[nr])*[A-Za-z0-9+/=]{16,})*(?:(?:\s|\\[nr])*[A-Za-z0-9+/=]{1,15}(?=(?:\s|\\[nr])*-----END))?(?:\s|\\[nr])*(?:-----END [A-Z ]{0,40}PRIVATE KEY-----)?/g, '[hidden]'],
   [/(:\/\/[^\s/:@]{0,256}:)[^\s/@]{1,512}@/g, '$1[hidden]@'],
   [/([?&](?!(?:next|page|prev|continuation|sync)_?token=)\w*(?:token|secret|password|passwd|key|sig|signature)=)[^&#\s"']+/gi, '$1[hidden]'],
   [/\b(Authorization\s*:\s*(?:Bearer|Basic|Token)\s+)[^\s"',;]+/gi, '$1[hidden]'],

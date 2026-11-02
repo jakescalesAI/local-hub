@@ -1731,6 +1731,15 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
   const eachView = fn => { for (const v of views) fn(v) }
 
   // q: a queued item, which brings its own files and reply quote and leaves the composer alone.
+  // A send that never arrived: chips, words and the reply go back where they were, ahead of anything added since.
+  function putBack(text, files, reply) {
+    S.files = [...files, ...S.files]
+    renderAtts()
+    if (!S.reply) { S.reply = reply; renderReply() }
+    const now = (S.full ? fta : bta).value
+    for (const [t, p] of [[bta, barPill], [fta, fPill]]) { t.value = text && now ? `${text}\n${now}` : text || now; grow(t, p) }
+  }
+
   async function send(text, q) {
     text = String(text || '').trim()
     let attached = q ? q.files : S.files
@@ -1768,6 +1777,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
     syncSend()
     const ctrl = (S.ctrl = new AbortController())
     let finished = false
+    let accepted = false // once it has, the words are in the chat and don't come back
     try {
       const files = await Promise.all(attached.map(async f => ({ name: f.name, data: await b64(f.file) })))
       const res = await fetch('/api/chat/send', {
@@ -1780,6 +1790,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
         const j = await res.json().catch(() => ({}))
         throw new Error(j.error || `The hub answered ${res.status}`)
       }
+      accepted = true
       const reader = res.body.getReader()
       const dec = new TextDecoder()
       let buf = ''
@@ -1799,7 +1810,11 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
       }
       if (!finished && gen === S.gen) eachView(v => v.addError('The connection closed before the reply finished.'))
     } catch (e) {
-      if (e && e.name !== 'AbortError' && gen === S.gen) eachView(v => v.addError(e.message || 'Could not reach the hub.'))
+      if (e && e.name !== 'AbortError' && gen === S.gen) {
+        if (!accepted && !q) putBack(text, attached, reply)
+        const said = accepted ? 'The connection closed before the reply finished.' : e instanceof TypeError ? 'The hub didn’t answer, so that wasn’t sent.' : e.message || 'Could not reach the hub.'
+        eachView(v => v.addError(said))
+      }
     } finally {
       if (gen === S.gen) {
         eachView(v => { v.hidePending(); v.finishCur(); v.endBrowser() })
@@ -2014,7 +2029,14 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
         return
       }
       clearTimeout(armed)
-      try { await fetch(`/api/chat/sessions/${encodeURIComponent(s.id)}/delete`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: '{}' }) } catch {}
+      armed = 0
+      del.className = 'rb'; del.innerHTML = IC.trash
+      let r = null
+      try { r = await fetch(`/api/chat/sessions/${encodeURIComponent(s.id)}/delete`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: '{}' }) } catch {}
+      if (!r || (!r.ok && r.status !== 404)) {
+        const j = r ? await r.json().catch(() => ({})) : {}
+        return flash(j.error || 'The hub didn’t answer, so that chat is still here.')
+      }
       const wasCurrent = s.id === S.conv
       row.remove()
       if (wasCurrent) { const keep = S.hist; newChat(); if (keep) toggleHist(true) }
