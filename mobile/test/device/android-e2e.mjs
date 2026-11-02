@@ -235,14 +235,12 @@ async function enroll(id) {
   throw new Error(`Enrolling a fingerprint timed out after ${touches} touches. On screen:\n${screenText(dump())}`)
 }
 
-// --- Pictures of the main screens, made up data only. A failure here is logged and doesn't fail the run.
+// --- Pictures of the main screens, with made-up data. Only when asked: PICTURES=1 stops after these.
 
 async function pictures(mode, name) {
   const dir = path.join(out, 'screens')
   fs.mkdirSync(dir, { recursive: true })
   const picture = n => fs.writeFileSync(path.join(dir, `${n}-${name}.png`), shot('latest-picture'))
-  const onPage = () => screenText(dump()).replace(/^\s+$/gm, '').replace(/\n+/g, ' | ').slice(0, 1500)
-  const hideKeyboard = () => { if (/mInputShown=true/.test(sh('dumpsys input_method'))) key('KEYCODE_BACK') }
   sh(`cmd uimode night ${mode}`)
   sh(`am force-stop ${APP}`)
   await sleep(1000)
@@ -252,49 +250,39 @@ async function pictures(mode, name) {
   await sleep(1500)
   picture('app-home')
   await tapOn(/^\s*Open Hub\s*$/)
-  await waitFor(/^\s*Done\s*$/)
-  await sleep(6000)
+  await waitFor(/Clock & date/, 60000)
+  await sleep(2000)
   picture('hub-home')
-  console.log(`    Hub page: ${onPage()}`)
   // A web page's placeholder text isn't in the dump, so they go by position: search on top, chat at the bottom.
   const fields = () => dump().filter(n => n.cls.includes('EditText')).sort((a, b) => a.y - b.y)
-  const [search] = fields()
-  if (search) {
-    tap(search)
-    await sleep(800)
-    sh('input text "clock"')
-    await sleep(1500)
-    hideKeyboard()
-    await sleep(1500)
-    picture('hub-search')
-    console.log(`    searching: ${onPage()}`)
-    tap(search)
-    await sleep(800)
-    for (let i = 0; i < 5; i++) key('KEYCODE_DEL')
-    await sleep(800)
-    hideKeyboard()
-    await sleep(800)
-  } else console.log('    no search box on the Hub page')
-  const ask = fields().at(-1)
-  if (ask && ask.y !== search?.y) {
-    tap(ask)
-    await sleep(800)
-    sh('input text "What%sis%son%stoday?"')
-    await sleep(800)
-    const send = dump().find(n => /^\s*Send\s*$/.test(label(n)))
-    if (send) tap(send)
-    else key('KEYCODE_ENTER')
-    await sleep(6000)
-    hideKeyboard()
-    await sleep(1000)
-    picture('hub-chat')
-    console.log(`    chat: ${onPage()}`)
-  } else console.log('    no chat bar on the Hub page')
+  const search = fields()[0]
+  tap(search)
+  await sleep(800)
+  sh('input text "clock"')
+  await sleep(2500)
+  picture('hub-search')
+  tap(search)
+  await sleep(800)
+  for (let i = 0; i < 5; i++) key('KEYCODE_DEL')
+  await sleep(1500)
+  tap(fields().at(-1))
+  await sleep(800)
+  sh('input text "What%sis%son%stoday?"')
+  await sleep(1000)
+  await tapOn(/^\s*Send\s*$/)
+  await waitFor(/dentist/, 40000)
+  await sleep(1500)
+  picture('hub-chat')
+  await tapOn(/Open the full chat/)
+  await sleep(2500)
+  picture('hub-chat-full')
   sh(`am force-stop ${APP}`)
 }
 
 let passed = 0
+let stopping = false
 async function step(name, fn) {
+  if (stopping) return
   await fn()
   passed++
   console.log(`ok  ${name}`)
@@ -347,18 +335,11 @@ try {
     await waitFor(CONNECTED)
   })
 
-  for (const [mode, name] of [['yes', 'dark'], ['no', 'light']]) {
-    try {
-      await pictures(mode, name)
-    } catch (e) {
-      console.log(`    pictures (${name}) stopped: ${e.message}`)
-    }
+  if (process.env.PICTURES) {
+    await pictures('yes', 'dark')
+    await pictures('no', 'light')
+    stopping = true
   }
-  sh('cmd uimode night no')
-  sh(`am force-stop ${APP}`)
-  await sleep(1000)
-  open()
-  await waitFor(CONNECTED, 40000)
 
   await step('with no fingerprint enrolled the lock can\'t be turned on, and says so', async () => {
     await tapOn(/^\s*Settings\s*$/)
@@ -555,7 +536,11 @@ try {
   console.log(`\n${passed} of ${passed} emulator checks passed on the minified build against the real Hub`)
 } catch (e) {
   failure = e
-  shot('failed')
+  try {
+    shot('failed')
+  } catch {
+    console.error('The emulator would not give a screenshot.')
+  }
   console.error(`FAILED after ${passed} checks: ${e.stack}`)
 } finally {
   child?.kill()
