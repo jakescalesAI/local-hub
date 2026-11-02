@@ -708,8 +708,8 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
           const ta = activeTa()
           ta.value = ta.value.trim() ? `${it.text}\n${ta.value}` : it.text
           grow(ta, ta === fta ? fPill : barPill)
-          if (it.files.length) { S.files = it.files.concat(S.files).slice(0, MAX_FILES()); renderAtts() }
-          if (it.reply && !S.reply) { S.reply = it.reply; renderReply() }
+          if (it.files.length) { S.files = it.files.concat(S.files); renderAtts() }
+          takeReply(it.reply, ta)
           syncSend()
           ta.focus({ preventScroll: true })
         })
@@ -1730,20 +1730,31 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
 
   const eachView = fn => { for (const v of views) fn(v) }
 
+  // The composer holds one quote. If it already has a different one, this one goes in as a quoted line, so neither is lost.
+  function takeReply(reply, ta) {
+    if (!reply || reply === S.reply) return
+    if (!S.reply) { S.reply = reply; renderReply(); return }
+    for (const [t, p] of [[bta, barPill], [fta, fPill]]) { t.value = `> ${reply}\n${ta.value}`.trimEnd(); grow(t, p) }
+  }
+
   // q: a queued item, which brings its own files and reply quote and leaves the composer alone.
   // A send that never arrived: chips, words and the reply go back where they were, ahead of anything added since.
   function putBack(text, files, reply) {
     S.files = [...files, ...S.files]
     renderAtts()
-    if (!S.reply) { S.reply = reply; renderReply() }
     const now = (S.full ? fta : bta).value
     for (const [t, p] of [[bta, barPill], [fta, fPill]]) { t.value = text && now ? `${text}\n${now}` : text || now; grow(t, p) }
+    takeReply(reply, S.full ? fta : bta)
   }
 
   async function send(text, q) {
     text = String(text || '').trim()
     let attached = q ? q.files : S.files
-    if ((!text && !attached.length) || S.busy) return
+    if (!text && !attached.length) return
+    if (S.busy) {
+      if (q) { S.queue.unshift(q); renderQueue() }
+      return
+    }
     // Typed up to here without a paste: it still goes in full.
     if (text.length > LONG_TEXT()) {
       if (attached.length >= MAX_FILES()) {
