@@ -73,7 +73,8 @@ ul { list-style: none; }
 .steps li::before { content: counter(step); color: var(--label-2); font: 500 14px/1 var(--mono); }
 .steps h3 { margin: 0; font-size: 19px; font-weight: 600; letter-spacing: -0.02em; }
 .steps p { grid-column: 2; color: var(--label-2); font-size: 15px; line-height: 1.4; letter-spacing: -0.012em; text-wrap: pretty; }
-.steps a { display: inline-block; margin-top: 18px; padding-block: 10px; color: var(--blue); font-weight: 500; }
+.steps a { display: inline-block; margin-top: 18px; padding-block: 10px; font-weight: 500; color: var(--label); text-decoration: underline 1px rgba(255, 255, 255, .45); text-underline-offset: 3px; }
+.steps a:hover { text-decoration-color: currentColor; }
 .steps a:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; border-radius: 4px; }
 @media (max-width: 719px) { .steps ol { grid-template-columns: minmax(0, 1fr); gap: 14px; } }
 
