@@ -61,15 +61,55 @@
     </div>
   </section>
 
-  <section class="demo page" aria-label="The app">
-    <div class="stage">
-      <picture class="stage-home">
-        <img src="assets/shots/home-dark.webp" width="2080" height="1447" fetchpriority="high" alt="The LocalHub Home screen: a clock, the next event, today’s calendar and a world clock as glass widgets on a soft wallpaper, with an Ask anything box along the bottom.">
-      </picture>
-      <picture class="stage-bar">
-        <source media="(max-width: 639px)" srcset="assets/shots/bar-small-dark.webp" width="920" height="880">
-        <img src="assets/shots/bar-dark.webp" width="1278" height="892" alt="The LocalHub search bar with “lis” typed in. The results are a saved link called Trip to Lisbon, two actions, an option to ask the chat, and matching files and folders.">
-      </picture>
+  <section class="demo page" aria-labelledby="demo-title">
+    <h2 id="demo-title" class="demo-title">One search bar. Everything behind it.</h2>
+    <div class="tour">
+      <input class="tour-input" type="radio" name="tour" id="tour-search" aria-label="Search" checked>
+      <input class="tour-input" type="radio" name="tour" id="tour-home" aria-label="Home">
+      <input class="tour-input" type="radio" name="tour" id="tour-files" aria-label="Files">
+      <input class="tour-input" type="radio" name="tour" id="tour-calendar" aria-label="Calendar">
+      <input class="tour-input" type="radio" name="tour" id="tour-assistant" aria-label="Assistant">
+      <input class="tour-input" type="radio" name="tour" id="tour-browser" aria-label="Browser">
+      <input class="tour-input" type="radio" name="tour" id="tour-look" aria-label="Your look">
+      <div class="tour-tabs" aria-hidden="true">
+        <label for="tour-search">Search</label>
+        <label for="tour-home">Home</label>
+        <label for="tour-files">Files</label>
+        <label for="tour-calendar">Calendar</label>
+        <label for="tour-assistant">Assistant</label>
+        <label for="tour-browser">Browser</label>
+        <label for="tour-look">Your look</label>
+      </div>
+      <div class="tour-panels">
+        <figure class="tour-panel tour-search">
+          <figcaption>Type a few letters. Links, snippets, files, folders, actions and the assistant all answer in one list.</figcaption>
+          <img src="assets/shots/tour-search.webp" width="1760" height="1100" fetchpriority="high" alt="The search bar open over Home with “lis” typed in. It lists a saved link called Trip to Lisbon, two actions, an option to ask the chat, and matching files and folders.">
+        </figure>
+        <figure class="tour-panel tour-home">
+          <figcaption>Your own start page: apps and widgets for the time, the date and your calendar, on the wallpaper you pick.</figcaption>
+          <img src="assets/shots/tour-home.webp" width="1760" height="1100" loading="lazy" alt="The Home screen in dark mode on a purple and orange wallpaper, with app icons and widgets showing the clock, the date, today’s events, this week, the next event and a world clock.">
+        </figure>
+        <figure class="tour-panel tour-files">
+          <figcaption>Browse the folders on your PC. Open, rename, move or download from the same window.</figcaption>
+          <img src="assets/shots/tour-files.webp" width="1760" height="1100" loading="lazy" alt="The Files tab showing a folder called Trip to Lisbon, with a right-click menu open on itinerary.md: Open, Open in New Tab, Download, Rename, Move to, Copy Path and Move to Recycle Bin.">
+        </figure>
+        <figure class="tour-panel tour-calendar">
+          <figcaption>Month, week and agenda views. The assistant can keep it for you when you ask.</figcaption>
+          <img src="assets/shots/tour-calendar.webp" width="1760" height="1100" loading="lazy" alt="The Calendar tab in light mode on the week of November 1, with events such as Design review, Lunch with Alex and Dentist.">
+        </figure>
+        <figure class="tour-panel tour-assistant">
+          <figcaption>Ask in plain words. It reads your files, answers, and shows you each step it took.</figcaption>
+          <img src="assets/shots/tour-assistant.webp" width="1760" height="1100" loading="lazy" alt="A chat with the assistant. Asked what is saved for a trip to Lisbon, it reads two files and lists what is still missing, then adds travel adapters to a copy of the packing list.">
+        </figure>
+        <figure class="tour-panel tour-browser">
+          <figcaption>It works in a real Chrome you can watch and take over, with a log of every step.</figcaption>
+          <img src="assets/shots/tour-browser.webp" width="1760" height="1100" loading="lazy" alt="The browser pop-up showing a made-up stays website searched for Lisbon. Beside it, an Activity list shows the assistant’s steps with a small screenshot of each: open, type and click.">
+        </figure>
+        <figure class="tour-panel tour-look">
+          <figcaption>Themes, accent colours, fonts, widget styles and wallpapers, including your own.</figcaption>
+          <img src="assets/shots/tour-look.webp" width="1760" height="1099" loading="lazy" alt="The Style panel open beside Home, showing depth, tab bar and effects options and a grid of wallpapers, with Gradient and Upload buttons.">
+        </figure>
+      </div>
     </div>
   </section>
 
