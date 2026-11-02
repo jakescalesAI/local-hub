@@ -90,6 +90,17 @@ async function waitFor(pattern, ms = 30000) {
 }
 
 const tap = n => sh(`input tap ${n.x} ${n.y}`)
+
+async function textField(ms = 30000) {
+  const end = Date.now() + ms
+  while (Date.now() < end) {
+    const field = dump().find(n => n.cls.includes('EditText'))
+    if (field) return field
+    await sleep(800)
+  }
+  shot('missing-text-field')
+  throw new Error(`Never saw a text field. On screen:\n${screenText(dump())}`)
+}
 const tapOn = async (pattern, ms) => tap(await waitFor(pattern, ms))
 
 async function gone(pattern, ms = 20000) {
@@ -243,7 +254,7 @@ try {
   })
 
   await step('a message goes through to the real Hub\'s chat', async () => {
-    await tap(dump().find(n => n.cls.includes('EditText')))
+    tap(await textField())
     await sleep(700)
     sh('input text "hello%sfrom%sthe%semulator"')
     if (/mInputShown=true/.test(sh('dumpsys input_method'))) key('KEYCODE_BACK') // only the keyboard, never the screen
