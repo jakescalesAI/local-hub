@@ -75,11 +75,11 @@ finish with a built-in Hub and under a second with an attached one. On a compute
 - The Hub never outlasts the app. If `taskkill` needs more than the 15 seconds, anything the Hub started
   (a browser, a tunnel) stays behind.
 
-With the app on two cores shared with four busy programs, the app was gone 9 to 12 seconds after Quit in
-all 16 quits measured, and the last of its processes by 14. The Hub went after 3 to 6 seconds, and
-Electron used up its 5 seconds and was ended. The longest case is a Hub that really needs the whole 15
-seconds. Then it's 15 and 5 seconds plus the time the outside process needs to act, which came to 21 to
-23 seconds under the same load.
+With the app on two cores shared with four busy programs, the app was gone 9 to 15 seconds after Quit in
+all 19 quits measured, and most often 9 to 12. The Hub went after 3 to 7 seconds, and Electron used up
+its 5 seconds and was ended. These times move with how busy the computer is. The longest case is a Hub
+that really needs the whole 15 seconds. Then it's 15 and 5 seconds plus the time the outside process
+needs to act, which came to 21 to 23 seconds under the same load.
 
 When the app starts at login it waits 10 seconds before starting its own Hub, in case one started some
 other way is about to answer.
