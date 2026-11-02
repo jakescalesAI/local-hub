@@ -1746,7 +1746,10 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
     if ((!text && !attached.length) || S.busy) return
     // Typed up to here without a paste: it still goes in full.
     if (text.length > LONG_TEXT()) {
-      if (attached.length >= MAX_FILES()) return flash(`That message is too long to send, and only ${MAX_FILES()} files fit in one message.`)
+      if (attached.length >= MAX_FILES()) {
+        if (q) { S.queue.unshift(q); renderQueue() }
+        return flash(`That message is too long to send, and only ${MAX_FILES()} files fit in one message.`)
+      }
       attached = [...attached, textFile(text)]
       text = ''
     }
@@ -1811,7 +1814,8 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
       if (!finished && gen === S.gen) eachView(v => v.addError('The connection closed before the reply finished.'))
     } catch (e) {
       if (e && e.name !== 'AbortError' && gen === S.gen) {
-        if (!accepted && !q) putBack(text, attached, reply)
+        // A queued message comes back too, and the ones behind it wait so nothing goes out of order.
+        if (!accepted) { putBack(text, attached, reply); if (q) S.stopped = true }
         const said = accepted ? 'The connection closed before the reply finished.' : e instanceof TypeError ? 'The hub didn’t answer, so that wasn’t sent.' : e.message || 'Could not reach the hub.'
         eachView(v => v.addError(said))
       }

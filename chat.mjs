@@ -853,6 +853,11 @@ export function create({ run, sshHost, here }) {
       try { names = fs.readdirSync(dir, { withFileTypes: true }) } catch {}
       for (const d of names) if (d.isDirectory() && d.name.startsWith(`${conv.id}-`)) items.push(path.join(dir, d.name))
     }
+    // All or nothing: a file another program holds open can't be renamed either, so this finds out before any of them go.
+    for (const p of items) {
+      try { fs.renameSync(p, `${p}.check`); fs.renameSync(`${p}.check`, p) }
+      catch { return 'another program has one of them open. Close it and try again.' }
+    }
     return items.length ? moveToTrash(run, items) : ''
   }
 
@@ -918,7 +923,7 @@ export function create({ run, sshHost, here }) {
           const r = running.get(id)
           if (r) { r.killed = 'stop'; killTree(r.proc) }
           const error = await trashChatFiles(conv)
-          if (error) return send(res, 500, { error: `The chat wasn’t deleted, because its files couldn’t go to the ${TRASH_NAME}: ${error}` }), true
+          if (error) return send(res, 500, { error: `The chat wasn’t deleted, because its files couldn’t go to ${TRASH_NAME}: ${error}` }), true
           try { fs.unlinkSync(file(id, conv.test)) } catch {}
           return send(res, 200, { ok: true }), true
         }
