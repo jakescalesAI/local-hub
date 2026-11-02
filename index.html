@@ -838,10 +838,14 @@ async function editFile(root, p) {
   const ta = scrim.querySelector('textarea')
   const saveBtn = scrim.querySelector('[data-a=save]')
   const line = scrim.querySelector('.status-line')
+  // A text box turns every line ending into \n. So compare what it holds, and put the file's own ending back for its size and on save. A file with mixed endings saves with its most common one.
+  const count = re => (doc.text.match(re) || []).length
+  const eol = [['\r\n', count(/\r\n/g)], ['\r', count(/\r(?!\n)/g)], ['\n', count(/(?<!\r)\n/g)]].reduce((a, b) => (b[1] > a[1] ? b : a), ['\n', 0])[0]
+  const onDisk = () => ta.value.replace(/\n/g, eol)
   ta.value = doc.text
-  let saved = doc.text
+  let saved = ta.value
   const where = fullPath(root, p)
-  const setLine = msg => { line.textContent = msg || `${where} · ${size(new Blob([ta.value]).size)}${ta.value !== saved ? ' · edited' : ''}` }
+  const setLine = msg => { line.textContent = msg || `${where} · ${size(new Blob([onDisk()]).size)}${ta.value !== saved ? ' · edited' : ''}` }
   const dirty = () => ta.value !== saved
   setLine()
   ta.focus()
@@ -852,7 +856,7 @@ async function editFile(root, p) {
   async function save() {
     if (!dirty()) return
     try {
-      const r = await filesPost(root, 'write', { path: p, text: ta.value, mtime: doc.mtime })
+      const r = await filesPost(root, 'write', { path: p, text: onDisk(), mtime: doc.mtime })
       doc.mtime = r.mtime
       saved = ta.value
       saveBtn.disabled = true
