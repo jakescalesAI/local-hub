@@ -7,6 +7,7 @@
 //   system_info     { folder? }     memory, top programs, or one folder's size
 //   git_read        { repo, op, .. } git status, log or diff of a repo. Key files are left out.
 //   file_op         { op, from, to } move, copy, rename or trash a file. Trash waits for a card.
+//   attach_file     { path, name? } puts a copy of a file in the reply, for the user to open and save. Key files are refused.
 //   hub_action      { name, args }  one of the hub's named actions. Some wait for a card.
 //   connections_list {}             the services in the hub and what each one can do. Never a key.
 //   connection_call { connection, action, params }  runs one action here, with the key added here. A write waits for a card.
@@ -88,6 +89,19 @@ TOOLS.push(
 )
 
 TOOLS.push(
+  {
+    name: 'attach_file',
+    description: 'Put a file into your reply: a picture shows in the chat, and anything else shows as a chip the user can open and save. Use it whenever they ask for a file or you made one they will want, and don\'t paste its contents too. It takes a copy, so the original stays where it is. It works on any file you can read, up to 25 MB. Key files are refused, and so is any file holding a stored key.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'A full path, one starting with ~, or one relative to the hub folder such as workspace/report.pdf' },
+        name: { type: 'string', description: 'The name to show and save it under, if not its own. Keep the extension.' },
+      },
+      required: ['path'],
+      additionalProperties: false,
+    },
+  },
   {
     name: 'file_op',
     description: 'Move, copy, rename or trash a file or folder. Moves, renames and trash work inside workspace/ and assistant.writeFolders. Copies can come from any folder you can read and land in those. Nothing is overwritten, and a move can\'t cross drives. Key files, folders holding one, links, and places where files run as code (.git, .claude, startup folders, shell profiles) are refused. Trash waits for a card the user answers.',
@@ -177,6 +191,7 @@ async function hubRead({ path } = {}) {
   // Snippets can hold personal text or tokens, so the user's own library stays theirs to open.
   if (/^\/api\/launcher\//i.test(plain)) return text('Saved links and snippets don\'t go through hub_read. They are the user\'s own, so ask them for what you need.', true)
   // Past chats live in data/, which Read refuses, and anything pasted into one stays there.
+  if (/^\/api\/chat\/file/i.test(plain)) return text('Chat attachments don\'t go through hub_read. Read the file itself, or ask the user for it.', true)
   if (/^\/api\/chat\/sessions/i.test(plain)) return text('Past chats don\'t go through hub_read. Ask the user to paste what you need from one.', true)
   if (/^\/api\/pair\//i.test(plain)) return text('Paired devices don\'t go through hub_read. Pairing is for the user to do at /pair/new on this computer.', true)
   // Exports and sign-in replies stay on the page. connections_list is the agent's way in.
@@ -247,6 +262,12 @@ async function acted(pathname, body) {
 }
 const fileOp = args => acted('/api/agent/file', args || {})
 const hubAction = args => acted('/api/agent/action', args || {})
+// The last line tells the chat which file to show. The chat only takes it from this tool.
+async function attachFile({ path, name } = {}) {
+  const { status, body } = await hub('/api/agent/attach', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ path, name }) })
+  if (status !== 200) return text(body?.error || `HTTP ${status}`, true)
+  return text(`Attached ${body.name}. It shows in your reply, so the user can open and save it.\n[attached:${body.id}]`)
+}
 const connectionsList = async () => {
   const { status, body } = await hub('/api/connections/agent')
   return status === 200 ? text(JSON.stringify(body)) : text(body?.error || `HTTP ${status}`, true)
@@ -254,7 +275,7 @@ const connectionsList = async () => {
 const connectionCall = ({ connection, action, params } = {}) => acted('/api/connections/call', { connection, action, params })
 const connectionOffer = ({ id } = {}) => (/^[a-z0-9-]{1,40}$/.test(String(id)) ? text(`The card is on screen. The user connects it there.\n[connect:${id}]`) : text('id must come from connections_list.', true))
 
-const HANDLERS = { connections_list: connectionsList, connection_call: connectionCall, connection_offer: connectionOffer, hub_read: hubRead, settings_update: settingsUpdate, show_site: showSite, system_info: systemInfo, git_read: gitRead, file_op: fileOp, hub_action: hubAction }
+const HANDLERS = { attach_file: attachFile, connections_list: connectionsList, connection_call: connectionCall, connection_offer: connectionOffer, hub_read: hubRead, settings_update: settingsUpdate, show_site: showSite, system_info: systemInfo, git_read: gitRead, file_op: fileOp, hub_action: hubAction }
 
 function reply(id, result, error) {
   process.stdout.write(JSON.stringify({ jsonrpc: '2.0', id, ...(error ? { error } : { result }) }) + '\n')

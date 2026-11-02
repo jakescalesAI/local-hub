@@ -140,9 +140,10 @@ Three more read-only routes stand in for a shell. The assistant has them as the 
 | `/api/system/size?path=` | A folder's size and largest items. Key folders are left out and counted as `refused`. It stops after 20 seconds or 200,000 items, and says `capped` |
 | `/api/git/status?repo=`, `/api/git/log?repo=&ref=&n=&path=`, `/api/git/diff?repo=&ref=&staged=1&path=` | Git, read-only. Folders must be in `assistant.readFolders` or the hub folder. Key files are left out of a diff, and a repo with settings in its own config that the hub doesn't know to be harmless gets a 403 |
 
-Two tools change things, through routes that keep the same refusals:
+These tools act on things, through routes that keep the same refusals:
 
 - `file_op` (`POST /api/agent/file`) moves, copies, renames and trashes. Moves, renames and trash work inside `workspace/` and `assistant.writeFolders`, and copies can come from any folder the assistant can read. It refuses key files, a folder with a key file or a link anywhere inside, and places where files run as code (`.git`, `.claude`, `.vscode`, startup folders, shell profiles, `CLAUDE.md`). It also refuses a file with a second hard link and Windows device names such as `NUL`. Nothing is overwritten, and operations run one at a time. Trash waits for a card, and the file goes to the bin or trash, where you can restore it. If what the card showed changes before the yes, nothing moves.
+- `attach_file` (`POST /api/agent/attach`) puts a copy of a readable file in the reply as a picture or a chip the user can open and save, up to 25 MB. Key files, links, files with a second name and files holding a stored key are refused. Copies live in `data/chat-files/`, and `GET /api/chat/file/<chat>/<id>` serves only ids listed in that chat.
 - `hub_action` (`POST /api/agent/action`) runs a named action, and nothing else: `refresh`, `refresh_ai`, `refresh_cloud`, `refresh_stripe`, `refresh_calendar`, `calendar_add`, `calendar_update`, `calendar_delete`, `calendar_quick`. The last two wait for a card. The refreshes only read Cloud and Stripe again. No action changes `writeFolders`, `assistant.approvals`, deny lists, keys or `laptop.probe`, and `assistant.tools.actions: false` turns the tool off.
 
 A card's Allow is the only yes. The agent can't answer one or pass a flag instead, and the hub does the step itself once you allow it. `GET /api/agent/log` lists each of these, newest first, in `data/agent-actions.log`.
@@ -678,7 +679,7 @@ Everything personal lives in `config/` and `data/`, which git ignores. `config.e
   - `{"type": "custom", "baseUrl": "https://..."}`: `assistantKey` against any Anthropic-compatible provider.
   - `{"type": "env"}`: whatever the hub's environment already sets.
 - `env`: extra environment for the CLI, for example `{"CLAUDE_CODE_USE_BEDROCK": "1"}`. Keys don't go here.
-- `models`: the Model menu, as `["model-id"]` or `[["model-id", "Label"]]`. `defaultModel` is the one it starts on.
+- `models`: the Model pop-out in the + menu, as `["model-id"]` or `[["model-id", "Label"]]`. `defaultModel` is the one it starts on. Model, Effort and Mode are picked per device in the + menu and stay after a reload. Mode is Auto, which does the work and asks first as `approvals` says, or Plan, which takes away every tool that changes something for that message. No mode loosens a rule.
 - `tools`: switches `web`, `files`, `browser`, `settings` and `sites` on or off.
 - `readFolders`: folders it may read, your home folder by default. `writeFolders`: folders it may write to, besides `workspace/`, never inside the hub folder.
 - `mcpServers`: your own tools, see "Extending the hub".
