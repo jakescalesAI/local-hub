@@ -1,4 +1,4 @@
-// Local Hub: one page for your computer, your files, your chat and browser, and any services you add.
+// LocalHub: one page for your computer, your files, your chat and browser, and any services you add.
 // Laptop listeners come from Get-NetTCPConnection; server listeners from server-probe.py
 // over ssh. Server dev and session ports are kept tunnelled to this computer (loopback and
 // the Tailscale address), so every URL also works from your tailnet devices.

@@ -243,6 +243,6 @@ function newCodePage(name) {
   return `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Pair a phone</title><style>${PAGE_CSS}</style>
 <main><h1>Pair a phone</h1><p>Connect a device to ${esc(name)}. This code works once and lasts 5 minutes.</p><div id="o"></div><button id="n">Make a new code</button></main>
 <script>async function go(){const r=await fetch('/api/pair/start',{method:'POST',headers:{'x-hub':'1'}});const d=await r.json();
-o.innerHTML=(d.qrSvg?'<div class="qr">'+d.qrSvg+'</div><p>Scan this with the Local Hub app, or type:</p><p class="addr" id="a"></p>':'<p class="err">This hub has no HTTPS address yet. Run <b>tailscale serve --bg http://127.0.0.1:3100</b>, then put the https address in <b>url</b> in config/hub.json.</p>')+'<div class="code" id="k"></div>';
+o.innerHTML=(d.qrSvg?'<div class="qr">'+d.qrSvg+'</div><p>Scan this with the LocalHub app, or type:</p><p class="addr" id="a"></p>':'<p class="err">This hub has no HTTPS address yet. Run <b>tailscale serve --bg http://127.0.0.1:3100</b>, then put the https address in <b>url</b> in config/hub.json.</p>')+'<div class="code" id="k"></div>';
 k.textContent=d.code.replace(/(.{4})/,'$1 ');if(d.address)a.textContent=d.address}n.onclick=go;go()</script></html>`
 }

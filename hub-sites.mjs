@@ -208,7 +208,7 @@ export function create({ here }) {
       const href = webUrl(url.searchParams.get('url') || '')
       if (!href) return send(res, 400, { error: 'url must be an http or https address of up to 500 characters' }), true
       const u = new URL(href)
-      if (ownPage(u, req)) return send(res, 200, { embeddable: true, title: 'Local Hub', favicon: null }), true
+      if (ownPage(u, req)) return send(res, 200, { embeddable: true, title: 'LocalHub', favicon: null }), true
       const c = await check(href)
       return send(res, 200, httpsPage(req) && u.protocol === 'http:' ? { ...c, embeddable: false } : c), true
     }

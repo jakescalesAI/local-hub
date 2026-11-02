@@ -1200,7 +1200,7 @@ export function create({ here, run } = {}) {
     return { format: 'local-hub-connections', version: 1, connections: custom }
   }
   async function importFile(body, opts) {
-    if (body?.format !== 'local-hub-connections' || !Array.isArray(body.connections)) throw fail('That isn’t a Local Hub connections file')
+    if (body?.format !== 'local-hub-connections' || !Array.isArray(body.connections)) throw fail('That isn’t a LocalHub connections file')
     const before = readState().custom
     const added = []
     try {

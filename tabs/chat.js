@@ -1125,7 +1125,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
 
   function updateSub() {
     const t = curTitle()
-    const text = window.HubBrowser?.isOpen?.() ? 'Looking at the browser' : t ? `Looking at the ${t} tab` : (window.HUB_CONF?.name || 'Local Hub')
+    const text = window.HubBrowser?.isOpen?.() ? 'Looking at the browser' : t ? `Looking at the ${t} tab` : (window.HUB_CONF?.name || 'LocalHub')
     ctxEls.forEach(el => { if (el.textContent !== text) el.textContent = text })
   }
   setInterval(() => { if (S.cardOn && !S.full) updateSub() }, 1500)

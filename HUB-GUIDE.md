@@ -1,4 +1,4 @@
-# Local Hub guide
+# LocalHub guide
 
 This is everything the assistant knows about the hub. It was written from the hub's own code. If a live endpoint disagrees with this guide, trust the endpoint and say so.
 

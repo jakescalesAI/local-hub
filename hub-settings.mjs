@@ -747,7 +747,7 @@ export function create({ here }) {
       }
       if (p === '/api/hub/settings/import' && req.method === 'POST') {
         const b = await readJson(req, MAX_IMPORT)
-        if (b?.format !== EXPORT_FORMAT) return send(res, 400, { error: 'that isn’t a Local Hub settings file' }), true
+        if (b?.format !== EXPORT_FORMAT) return send(res, 400, { error: 'that isn’t a LocalHub settings file' }), true
         // A wrong type refuses the whole file, so a bad one can't quietly empty a part of the hub.
         const isList = (o, k) => o?.[k] == null || Array.isArray(o[k])
         const isObject = k => b[k] == null || (typeof b[k] === 'object' && !Array.isArray(b[k]))

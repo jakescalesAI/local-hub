@@ -17,7 +17,7 @@ export const PORT = Number(process.env.HUB_PORT || savedPort() || 3100)
 const SECRETS_FILE = configPath('secrets.json')
 
 const NEUTRAL = {
-  name: 'Local Hub',
+  name: 'LocalHub',
   owner: '',
   access: 'localhost', // or "tailnet"
   passcodeRequired: true, // other devices need the passcode (npm run passcode); this computer never does
