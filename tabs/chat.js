@@ -628,7 +628,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
 
   /* ---------- state ---------- */
 
-  const S = { busy: false, conv: '', info: null, ctrl: null, cardOn: false, full: false, hist: false, poll: 0, ctxTimer: 0, gen: 0, model: '', files: [], rec: null, noteTimer: 0, reply: '', queue: [], qid: 0, stopped: false }
+  const S = { busy: false, conv: '', info: null, ctrl: null, cardOn: false, full: false, hist: false, poll: 0, ctxTimer: 0, gen: 0, model: '', files: [], rec: null, noteTimer: 0, reply: '', queue: [], forced: null, stopping: null, qid: 0, stopped: false }
 
   const copyText = async t => {
     try { await navigator.clipboard.writeText(t) } catch {
@@ -678,6 +678,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
 
   // The queue: what the user sends while a reply is still coming. Each one runs in turn when the reply
   // before it finishes. Edit puts it back in the composer, x drops it. After Stop the queue waits.
+  // The arrow sends one now: it stops the reply, keeps what that wrote, and the rest stay queued in order.
   function enqueue(text) {
     text = String(text || '').trim()
     if (!text && !S.files.length) return
@@ -693,16 +694,29 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
     if (!keep) for (const f of item.files) if (f.url) URL.revokeObjectURL(f.url)
     renderQueue()
   }
-  function clearQueue() { for (const it of [...S.queue]) dropQueued(it) }
+  function clearQueue() {
+    const forced = S.forced
+    S.forced = null
+    for (const it of [...S.queue, ...(forced ? [forced] : [])]) dropQueued(it)
+  }
+  function sendNow(it) {
+    if (S.forced || !S.queue.includes(it)) return
+    if (!S.busy) { dropQueued(it, true); return send(it.text, it) }
+    S.queue = S.queue.filter(x => x !== it)
+    S.forced = it
+    S.stopping = stop()
+    renderQueue()
+  }
   function renderQueue() {
     for (const box of quEls) {
-      box.replaceChildren(...S.queue.map((it, i) => {
+      box.replaceChildren(...[...(S.forced ? [S.forced] : []), ...S.queue].map(it => {
         const row = document.createElement('div'); row.className = 'qi'
-        const n = document.createElement('span'); n.className = 'qn'; n.textContent = S.busy ? 'Queued' : 'Paused'
+        const n = document.createElement('span'); n.className = 'qn'; n.textContent = it === S.forced ? 'Sending' : S.busy ? 'Queued' : 'Paused'
         const t = document.createElement('span'); t.className = 'qt'
         t.textContent = it.text || `${it.files.length} file${it.files.length === 1 ? '' : 's'}`
         t.title = it.text
         const btn = (cls, html, label, fn) => { const b = document.createElement('button'); b.type = 'button'; if (cls) b.className = cls; b.innerHTML = html; b.setAttribute('aria-label', label); b.title = label; b.addEventListener('click', fn); return b }
+        if (it === S.forced) { row.append(n, t); return row }
         const edit = btn('', IC.pencil, 'Edit this queued message', () => {
           dropQueued(it, true)
           const ta = activeTa()
@@ -715,7 +729,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
         })
         const del = btn('', IC.x14, 'Remove this queued message', () => dropQueued(it))
         row.append(n, t, edit, del)
-        if (!S.busy && i === 0) row.insertBefore(btn('go', IC.up, 'Send this now', () => { dropQueued(it, true); send(it.text, it) }), edit)
+        if (!S.forced) row.insertBefore(btn('go', IC.up, S.busy ? 'Stop this reply and send this now' : 'Send this now', () => sendNow(it)), edit)
         return row
       }))
     }
@@ -1838,7 +1852,11 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
         syncSend()
         if (!PHONE.matches) (S.full ? fta : bta).focus({ preventScroll: true })
         // Next in the queue, unless the user pressed Stop (then the queue waits with a send-now button).
-        if (S.queue.length && !S.stopped) { const n = S.queue.shift(); setTimeout(() => send(n.text, n), 60) }
+        if (S.forced) {
+          // Only once the hub has had the stop, so it can't land on this message's own run.
+          const n = S.forced, heard = Promise.race([S.stopping, new Promise(r => setTimeout(r, 3000))])
+          setTimeout(async () => { await heard; if (S.forced !== n) return; S.forced = null; send(n.text, n) }, 60)
+        } else if (S.queue.length && !S.stopped) { const n = S.queue.shift(); setTimeout(() => send(n.text, n), 60) }
         else if (S.queue.length) flash('Queue paused. Tap the arrow on a queued message to send it.')
         renderQueue()
       }
