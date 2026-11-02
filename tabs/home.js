@@ -2554,18 +2554,21 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     document.addEventListener('pointerup', off)
     document.addEventListener('pointercancel', off)
   }
+  // Letting go opens nothing: the click that ends this press is not a tap.
+  function eatReleaseClick() {
+    const eat = c => { c.stopPropagation(); c.preventDefault() }
+    document.addEventListener('pointerup', () => {
+      document.addEventListener('click', eat, { capture: true, once: true })
+      setTimeout(() => document.removeEventListener('click', eat, true), 60)
+    }, { once: true, capture: true })
+  }
   function holdFire() {
     const h = hold
     hold = null
     if (!h || S.editing) return
     const at = h.key && S.root?.querySelector(`.hw-cell[data-hw-key="${CSS.escape(h.key)}"]`)?.getBoundingClientRect().top
     toggleEdit()
-    // Letting go opens nothing: the click that ends this press is not a tap.
-    const eat = c => { c.stopPropagation(); c.preventDefault() }
-    document.addEventListener('pointerup', () => {
-      document.addEventListener('click', eat, { capture: true, once: true })
-      setTimeout(() => document.removeEventListener('click', eat, true), 60)
-    }, { once: true, capture: true })
+    eatReleaseClick()
     const cell = h.key && S.root?.querySelector(`.hw-cell[data-hw-key="${CSS.escape(h.key)}"]`)
     if (!cell) return
     if (at != null) { const v = view(); v.by((cell.getBoundingClientRect().top - at) / v.k) }
@@ -2599,6 +2602,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     d.ox = vx(d) + d.px - d.nat.left
     d.oy = vy(d) + d.py - d.nat.top
     d.order = [...d.cell.parentElement.querySelectorAll('.hw-cell')]
+    d.was = [...d.order]
     d.cell.classList.add('hw-dragging')
     d.app = d.isApp ? d.cell.querySelector(':scope > .hw-app') : null
     d.app?.classList.add('drag')
@@ -2807,6 +2811,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     d.on = true
     d.el.getAnimations?.().forEach(a => a.cancel())
     d.tx = d.ty = 0
+    d.was = [...d.box.children]
     appMeasure(d)
     d.ox = d.x - d.nat.left
     d.oy = d.y - d.nat.top
@@ -2929,6 +2934,26 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
   }
   document.addEventListener('pointerup', appRelease)
   document.addEventListener('pointercancel', appRelease)
+  // Escape puts everything back and drops nothing, so letting go afterwards does nothing either.
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape' || (!S.drag?.on && !appDrag?.on)) return
+    e.preventDefault()
+    e.stopImmediatePropagation()
+    eatReleaseClick()
+    if (S.drag?.on) {
+      const d = S.drag, grid = d.cell.parentElement, before = rectMap(grid)
+      setMerge(d, null)
+      d.order = d.was
+      place(grid, d.was)
+      playFlip(grid, before, d.cell)
+      dragEnd()
+    } else {
+      const d = appDrag
+      appMerge(d, null)
+      d.was.forEach(c => d.box.append(c))
+      appRelease({ pointerId: d.pid })
+    }
+  }, true)
 
   /* ---------- groups: folders of apps on Home, saved in hub settings ---------- */
 

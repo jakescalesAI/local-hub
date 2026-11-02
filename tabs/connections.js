@@ -174,7 +174,7 @@
     body.onchange = async e => {
       const p = e.target.dataset?.perm
       if (!p) return
-      try { const r = await post(`/${c.id}/permission`, { [p]: e.target.value }); swap(r.connection) } catch (err) { message(body, 'bad', err.message) }
+      try { const r = await post(`/${c.id}/permission`, { [p]: e.target.value }); swap(r.connection) } catch (err) { e.target.value = c.permissions[p]; message(body, 'bad', err.message) }
     }
     const swap = next => { if (next) { Object.assign(c, next); const at = S.list.findIndex(x => x.id === c.id); if (at >= 0) S.list[at] = c } }
     body.onclick = async e => {

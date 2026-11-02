@@ -417,7 +417,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
 @keyframes spin { to { transform: rotate(360deg); } }
 .confirm { align-self: stretch; display: grid; gap: 6px; padding: 12px; border-radius: 14px; font-size: 14px; background: var(--fill, rgba(120,120,128,.12)); }
 .confirm-what { font-weight: 600; }
-.confirm-on { color: var(--label-2, #6b6b72); overflow-wrap: anywhere; max-height: 40vh; overflow-y: auto; }
+.confirm-on { color: var(--label-2, #6b6b72); overflow-wrap: anywhere; max-height: 40vh; overflow-y: auto; overscroll-behavior-y: contain; }
 .confirm-row { display: flex; gap: 8px; margin-top: 4px; }
 .confirm-row button { flex: 1; min-height: 36px; border: 0; border-radius: 10px; font: inherit; font-weight: 600; cursor: pointer; color: var(--label, #111); background: var(--fill, rgba(120,120,128,.16)); }
 .confirm-row button.yes { color: #fff; background: var(--blue, #007aff); }
@@ -950,6 +950,23 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
       row.append(yes, no)
       el.append(h, ...(d.textContent ? [d] : []), row)
       log.append(el)
+      // Anything can sit below the fold of a long card, so Allow waits until its end has been on screen. A hidden tab measures 0, so it waits for that too.
+      if (d.textContent && !answered) {
+        let read = false
+        const check = () => {
+          if (read || !d.clientHeight || !yes.isConnected) return
+          read = d.scrollHeight - d.scrollTop - d.clientHeight <= 4
+          yes.disabled = !read
+          yes.textContent = read ? 'Allow' : 'Scroll to read all'
+          d.tabIndex = read ? -1 : 0
+          if (read) { d.removeEventListener('scroll', check); seen.disconnect() }
+        }
+        const seen = new ResizeObserver(check)
+        yes.disabled = true
+        d.addEventListener('scroll', check, { passive: true })
+        seen.observe(d)
+        check()
+      }
       if (answered) settleConfirm(c.id, 'Answered')
       v.scrollEnd(true)
     }
