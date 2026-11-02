@@ -422,10 +422,12 @@ try {
     await sleep(32000) // the sensor's own timeout
   })
 
-  await step('the right finger opens it, and the home screen comes back connected', async () => {
+  await step('the right finger opens it where it was left, and the home screen comes back connected', async () => {
     await tapOn(/^\s*Unlock\s*$/)
     await sleep(2500)
     finger(ENROLLED)
+    await waitFor(/^\s*Turn off\s*$/)
+    await tapOn(/^\s*Back\s*$/)
     await waitFor(CONNECTED)
     await waitFor(new RegExp(HUB_NAME))
   })
