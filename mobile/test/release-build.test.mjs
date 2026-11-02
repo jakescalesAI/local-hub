@@ -20,6 +20,12 @@ test('the release bundle carries no test hooks or debug addresses', () => {
   assert.ok(!js.includes('console.log('), 'no logging in app code paths')
 })
 
+test('the demo page is sample data that reaches for nothing', () => {
+  const page = www('demo-hub.html')
+  assert.ok(!/<script|<link|<img|<iframe|https?:|url\(/i.test(page))
+  assert.match(page, /Sample data/)
+})
+
 test('the emulator test\'s build differs by the plain-HTTP allowance alone', () => {
   execFileSync(process.execPath, ['build.mjs', '--local-http'], { cwd: ROOT, stdio: 'pipe' })
   try {
