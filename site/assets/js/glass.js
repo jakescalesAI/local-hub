@@ -583,8 +583,9 @@ function frameAt(T, P) {
   var release = spring(T - tx - 0.05, 0.65, 1)
   var dome = 0.15 * P.bulge * (1 - smooth(0.4, 0.95, grow))
   var view = (1 + (P.startZoom - 1) * (1 - zoomIn)) * (1 - 0.045 * settle) * mix(1, P.finalScale, exit)
-  var bandW = mix(P.bevelWidth, Math.max(P.bevelWidth, 0.4), drop)
+  var bandW = mix(P.bevelWidth, Math.max(P.bevelWidth, P.fitLogo ? 0.26 : 0.4), drop)
   var plateScale = mix(P.startSize, 1, grow) * (1 + drift) * (1 + 0.14 * release * (1 - keep)) * (1 - keep * 0.03 * release)
+  var fit = P.fitLogo ? mix(P.startSize, 1, grow) * mix(0.66, 1, spring(T - tm, 1.0, 1)) : 1 // the mark grows with the droplet and stays clear of its wide rim, so the glass never cuts it
   var bg = hexToRgb(P.background)
   return {
     uPlateScale: plateScale,
@@ -592,8 +593,8 @@ function frameAt(T, P) {
     uCornerN: P.corner,
     uOptics: 1 - smooth(0.55, 1, release),
     uPlateAlpha: keep ? appear : appear * (1 - smooth(0.45, 1, release)),
-    uLogoHalf: P.logoScale * view,
-    uLogoOff: [P.logoOffset[0] * view, P.logoOffset[1] * view],
+    uLogoHalf: P.logoScale * view * fit,
+    uLogoOff: [P.logoOffset[0] * view * fit, P.logoOffset[1] * view * fit],
     uKeep: keep,
     uSheen: P.sheen,
     uSweep: mix(-1.6, 1.6, smoother(0.9, tx - 0.1, T)),

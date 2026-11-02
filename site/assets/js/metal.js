@@ -1,9 +1,9 @@
 /*
  * Liquid metal on the download buttons. Each button stays a plain link with a CSS metal background;
  * this only lays a moving canvas behind its label, and only while the button is on screen.
- * After the liquid-metal component's chrome. Its noise surface read as clouds at button size, so this draws
- * one smooth chrome horizon from sine waves instead, and LIFT raises the dark end, so the dark label keeps
- * at least 4.5:1 over every part of the metal.
+ * After the liquid-metal component's chrome, polished: its noise surface read as dirt at button size, so this
+ * draws the same bands as the CSS background (site.css), with a slow bend through the horizon and a slow sheen.
+ * Nothing here is darker than the CSS bands' darkest stop, so the label's contrast holds in every frame.
  */
 (function () {
   "use strict"
@@ -12,8 +12,7 @@
   var MAX_FRAME_DELTA = 1 / 20
   var POINTER_EASE = 0.08
   var POINTER_RANGE = 2
-  var START = 4 // seconds into the flow, so the first frame already looks like metal
-
+  
   var VERTEX_SHADER = `#version 300 es
 in vec2 a;
 void main(){ gl_Position = vec4(a, 0.0, 1.0); }`
@@ -23,32 +22,33 @@ precision highp float;
 out vec4 fragColor;
 uniform vec2 uRes;
 uniform float uTime;
-uniform vec2 uPointer;
+uniform float uPointer;
+uniform float uHover;
 
-const float LIFT = 0.48;
+// Bottom to top, the same stops as .download's background in site.css.
+vec3 chrome(float y){
+  vec3 c = mix(vec3(0.894, 0.906, 0.925), vec3(0.706, 0.729, 0.761), smoothstep(0.0, 0.28, y));
+  c = mix(c, vec3(0.553, 0.580, 0.620), smoothstep(0.28, 0.40, y));
+  c = mix(c, vec3(0.827, 0.843, 0.867), smoothstep(0.40, 0.52, y));
+  c = mix(c, vec3(0.945, 0.953, 0.965), smoothstep(0.52, 0.82, y));
+  return mix(c, vec3(1.0), smoothstep(0.82, 1.0, y));
+}
 
 void main(){
   vec2 uv = gl_FragCoord.xy / uRes;
-  float x = (uv.x - 0.5) * uRes.x / uRes.y * 2.2 + uPointer.x * 0.5;
+  float x = (uv.x - 0.5) * uRes.x / uRes.y;
   float t = uTime;
 
-  // Noise reads as clouds at button size, so the surface is built from slow sine waves: smooth by construction.
-  float bend = 0.17 * sin(x * 1.1 + t * 0.31 + 1.0)
-             + 0.08 * sin(x * 2.3 - t * 0.23 + uv.y * 2.0)
-             + 0.04 * sin(x * 4.1 + t * 0.19 + uv.y * 3.0);
-  float s = fract(uv.y * 0.85 + bend + uPointer.y * 0.06 + t * 0.025);
+  float bend = 0.030 * sin(x * 0.9 + t * 0.20) + 0.014 * sin(x * 1.9 - t * 0.14);
+  vec3 col = chrome(clamp(uv.y + bend, 0.0, 1.0));
 
-  // One chrome horizon: sky fading to steel, a sharp dark line, then ground rising back to bright.
-  vec3 sky = vec3(0.97, 0.98, 1.0);
-  vec3 steel = vec3(0.50, 0.57, 0.68);
-  vec3 line = vec3(0.04, 0.05, 0.07);
-  vec3 col = mix(sky, steel, smoothstep(0.0, 0.46, s));
-  col = mix(col, line, smoothstep(0.455, 0.49, s));
-  col = mix(col, sky, pow(smoothstep(0.49, 1.0, s), 1.4));
-  col += 0.5 * smoothstep(0.025, 0.0, abs(s - 0.53));
+  // A wide band of light crosses every 12 seconds or so, leaning like the light on a pill.
+  float span = uRes.x / uRes.y * 0.5 + 1.2;
+  float at = mod(t * 0.5, span * 2.0 + 2.0) - span + uPointer * 0.5;
+  float d = (x + (uv.y - 0.5) * 0.7 - at) / 0.75;
+  col += exp(-d * d) * (0.12 + 0.12 * uHover);
 
-  col = clamp(col, 0.0, 1.0);
-  fragColor = vec4(LIFT + (1.0 - LIFT) * col, 1.0);
+  fragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
 }`
 
   function compile(gl, type, source) {
@@ -80,13 +80,14 @@ void main(){
     var uRes = gl.getUniformLocation(program, "uRes")
     var uTime = gl.getUniformLocation(program, "uTime")
     var uPointer = gl.getUniformLocation(program, "uPointer")
+    var uHover = gl.getUniformLocation(program, "uHover")
 
-    var elapsed = START
+    var elapsed = 0
     var last = 0
     var raf = 0
-    var pointerX = 0, pointerY = 0, targetX = 0, targetY = 0
+    var pointer = 0, hover = 0, targetPointer = 0, targetHover = 0
 
-    function draw(time, px, py) {
+    function draw(time, x, lit) {
       var rect = canvas.getBoundingClientRect()
       var dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR)
       var w = Math.max(1, Math.round(rect.width * dpr))
@@ -98,16 +99,17 @@ void main(){
       gl.viewport(0, 0, w, h)
       gl.uniform2f(uRes, w, h)
       gl.uniform1f(uTime, time)
-      gl.uniform2f(uPointer, px, py)
+      gl.uniform1f(uPointer, x)
+      gl.uniform1f(uHover, Math.max(lit, 0))
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
     }
 
     function tick(now) {
       elapsed += Math.min((now - last) / 1000, MAX_FRAME_DELTA)
       last = now
-      pointerX += (targetX - pointerX) * POINTER_EASE
-      pointerY += (targetY - pointerY) * POINTER_EASE
-      draw(elapsed, pointerX, pointerY)
+      pointer += (targetPointer - pointer) * POINTER_EASE
+      hover += (targetHover - hover) * POINTER_EASE
+      draw(elapsed, pointer, hover)
       raf = requestAnimationFrame(tick)
     }
 
@@ -122,7 +124,7 @@ void main(){
         last = performance.now()
         raf = requestAnimationFrame(tick)
       },
-      point: function (x, y) { targetX = x; targetY = y },
+      point: function (x, lit) { targetPointer = x; targetHover = lit },
     }
   }
 
@@ -150,7 +152,7 @@ void main(){
     if (matchMedia("(hover: hover) and (pointer: fine)").matches) {
       button.addEventListener("pointermove", function (e) {
         var r = button.getBoundingClientRect()
-        metal.point(((e.clientX - r.left) / r.width - 0.5) * POINTER_RANGE, (0.5 - (e.clientY - r.top) / r.height) * POINTER_RANGE)
+        metal.point(((e.clientX - r.left) / r.width - 0.5) * POINTER_RANGE, 1)
       })
       button.addEventListener("pointerleave", function () { metal.point(0, 0) })
     }
