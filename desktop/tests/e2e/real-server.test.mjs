@@ -10,8 +10,9 @@ import path from 'node:path'
 import { describe, test } from 'node:test'
 
 import { APP_NAME } from '../../src/app-name.js'
+import { BUNDLE_MARKER } from '../../src/as-node.js'
 import {
-  PACKAGED_EXE, REPO, cleanup, copyHub, evalIn, freePort, getJson, launch, makeUserData, ping, processAlive, quit, removeUserData,
+  APP_DIR, PACKAGED_EXE, REPO, cleanup, copyHub, evalIn, freePort, getJson, launch, makeUserData, ping, processAlive, quit, removeUserData,
   sleep, trayItem, waitFor, waitForUrl, windows,
 } from '../helpers.mjs'
 

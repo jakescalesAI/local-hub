@@ -266,14 +266,13 @@ test('each try at starting gets twice as long, then it stops trying and says so 
 })
 
 test('a slow start that answers on a later try is kept, and later trouble gets all three tries again', async () => {
-  let port = 'none'
-  const { connection, spawned, stopped } = setup({ answers: () => port, startTimeoutMs: 60 })
+  // The second child answers from the moment it exists, so a stall here can't run out its time as well.
+  let trouble = false
+  const { connection, spawned, stopped } = setup({ answers: () => (!trouble && spawned.length === 2 ? 'hub' : 'none'), startTimeoutMs: 60 })
   await connection.start()
-  await waitFor(() => spawned.length === 2, 'a second try', 3000)
-  port = 'hub'
-  await waitFor(() => connection.state.status === 'online', 'online', 2000)
+  await waitFor(() => connection.state.status === 'online', 'online on the second try', 5000)
   assert.deepEqual(stopped, [1000])
-  port = 'none'
+  trouble = true
   await waitFor(() => spawned.length === 3, 'a third child', 3000)
   await waitFor(() => spawned.length === 4, 'a fourth, because the count started over', 6000)
   await connection.stop()
@@ -312,12 +311,16 @@ test('listenersIn reads netstat, by the foreign port so any language works, on l
 })
 
 test('a child that never answers is stopped after the timeout and a new one starts', async () => {
-  const { connection, spawned, stopped } = setup({ startTimeoutMs: 400 })
+  const { connection, spawned, stopped } = setup({ startTimeoutMs: 60 })
+  // Under load a short sleep can come back after the timeout, so this times the stop itself.
+  const stopTree = connection.stopTree
+  let stoppedAt
+  connection.stopTree = pid => { stoppedAt ??= Date.now(); return stopTree(pid) }
+  const startedAt = Date.now()
   await connection.start()
   assert.equal(spawned.length, 1)
-  await sleep(20)
-  assert.deepEqual(stopped, [], 'not before the timeout')
   await waitFor(() => stopped.includes(1000), 'the quiet child to be stopped', 2000)
+  assert.ok(stoppedAt - startedAt >= 60, `not before the timeout, but it came at ${stoppedAt - startedAt} ms`)
   await waitFor(() => spawned.length === 2, 'a new child after the backoff', 3000)
   await connection.stop()
 })
