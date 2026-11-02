@@ -135,6 +135,12 @@ jobs:
         run: |
           echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
           echo "$ANDROID_HOME/emulator" >> "$GITHUB_PATH"
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libpulse0 > /dev/null
+          # The runner's XDG_CONFIG_HOME sends avdmanager and the emulator to different folders.
+          export ANDROID_AVD_HOME="$HOME/.android/avd"
+          mkdir -p "$ANDROID_AVD_HOME"
+          echo "ANDROID_AVD_HOME=$ANDROID_AVD_HOME" >> "$GITHUB_ENV"
           manager="$ANDROID_HOME/cmdline-tools/latest/bin"
           yes | "$manager/sdkmanager" --licenses > /dev/null || true
           "$manager/sdkmanager" --install platform-tools emulator "system-images;android-33;google_apis;x86_64" > /dev/null
@@ -142,7 +148,7 @@ jobs:
       - name: Start the emulator
         run: |
           ls -l /dev/kvm
-          emulator -version | head -1
+          emulator -list-avds
           nohup emulator -avd hub -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect > "$RUNNER_TEMP/emulator.log" 2>&1 &
           emulator_pid=$!
           booted=""
