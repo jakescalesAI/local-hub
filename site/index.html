@@ -1,17 +1,17 @@
 <!doctype html>
 <!--
-  LocalHub landing page. Plain static files: no build step, no JavaScript, no trackers, no third-party requests.
+  LocalHub landing page. Plain static files: no build step, no framework, no trackers, no third-party requests.
+  The page is complete without script. The files in assets/js only add motion, and each one falls back to the still page.
 
-  At release, change one line: the href on the line under DOWNLOAD_URL below. It is the only download link on the page.
+  At release, set the installer's address on the two lines marked DOWNLOAD_URL (the hero button and the closing button).
   Later pages go in their own folders (privacy/index.html, support/index.html) and share assets/site.css.
 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="color-scheme" content="light dark">
-<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f2f2f7">
-<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#000000">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#000000">
 <title>LocalHub: a home page for your computer</title>
 <meta name="description" content="LocalHub puts your links, snippets, files and an AI assistant behind one search bar, and runs on your own PC. Windows only for now.">
 <link rel="canonical" href="https://trylocalhub.com/">
@@ -29,39 +29,49 @@
 <meta property="og:image:alt" content="The LocalHub search bar over its Home screen, with the words: A home page for your computer.">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="assets/site.css">
+<link rel="preload" href="assets/hub-tile.webp" as="image">
+<script>
+  // Decided before first paint, so the page never flashes. See assets/js/hero.js.
+  if (window.WebGL2RenderingContext && matchMedia("(prefers-reduced-motion: no-preference)").matches && !scrollY) document.documentElement.classList.add("intro")
+</script>
+<script src="assets/js/glass.js" defer></script>
+<script src="assets/js/hero.js" defer></script>
 </head>
 <body>
 
-<header class="brand page">
-  <img src="icons/hub.svg" width="32" height="32" alt="">
-  <span>LocalHub</span>
-</header>
-
 <main>
-  <section class="hero page" aria-labelledby="hero-title">
-    <h1 id="hero-title">A home page for your computer.</h1>
-    <p class="lede">LocalHub puts your links, snippets, files and an AI assistant behind one search bar, and runs on your own PC.</p>
+  <section class="hero" aria-labelledby="hero-title">
+    <!-- Empty for now. A background video or image can go here, under the words; it would fade in once the tile has reached the title. -->
+    <div class="hero-media" aria-hidden="true"></div>
 
-    <div class="get">
-      <!-- DOWNLOAD_URL: at release, replace "#not-yet" on the next line with the installer's address. -->
-      <a class="download" href="#not-yet">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="m7 10.5 5 5 5-5"/><path d="M5 20h14"/></svg>
-        Download for Windows
-      </a>
-      <p class="platform">Windows only for now. The installer isn’t signed yet, so Windows may warn you first: choose <b>More info</b>, then <b>Run anyway</b>.</p>
-      <p class="not-yet" id="not-yet">The installer isn’t published yet. This button will download it once it is.</p>
+    <div class="hero-body page">
+      <p class="pill arrive">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M2 4.6 10.2 3.5v8H2zM11.2 3.3 22 2v9.5H11.2zM2 12.5h8.2v8L2 19.4zM11.2 12.5H22V22l-10.8-1.5z"/></svg>
+        Windows only for now
+      </p>
+      <h1 id="hero-title" class="wordmark"><span class="word word-l">Local</span><img class="tile" src="assets/hub-tile.webp" width="652" height="652" alt=""><span class="word word-r">Hub</span></h1>
+      <p class="lede arrive">Your links, snippets, files and an AI assistant behind one search bar, on your own PC.</p>
+
+      <div class="get arrive">
+        <!-- DOWNLOAD_URL: at release, replace "#not-yet" on the next line with the installer's address. The closing button has the same line. -->
+        <a class="download" href="#not-yet">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="m7 10.5 5 5 5-5"/><path d="M5 20h14"/></svg>
+          <span>Download for Windows</span>
+        </a>
+        <p class="platform">The installer isn’t signed yet, so Windows may warn you first: choose <b>More info</b>, then <b>Run anyway</b>.</p>
+        <p class="not-yet" id="not-yet">The installer isn’t published yet. This button will download it once it is.</p>
+      </div>
     </div>
+  </section>
 
+  <section class="demo page" aria-label="The app">
     <div class="stage">
       <picture class="stage-home">
-        <source media="(prefers-color-scheme: dark)" srcset="assets/shots/home-dark.webp">
-        <img src="assets/shots/home-light.webp" width="2080" height="1447" fetchpriority="high" alt="The LocalHub Home screen: a clock, the next event, today’s calendar and a world clock as glass widgets on a soft wallpaper, with an Ask anything box along the bottom.">
+        <img src="assets/shots/home-dark.webp" width="2080" height="1447" fetchpriority="high" alt="The LocalHub Home screen: a clock, the next event, today’s calendar and a world clock as glass widgets on a soft wallpaper, with an Ask anything box along the bottom.">
       </picture>
       <picture class="stage-bar">
-        <source media="(max-width: 639px) and (prefers-color-scheme: dark)" srcset="assets/shots/bar-small-dark.webp" width="920" height="880">
-        <source media="(max-width: 639px)" srcset="assets/shots/bar-small-light.webp" width="920" height="880">
-        <source media="(prefers-color-scheme: dark)" srcset="assets/shots/bar-dark.webp" width="1278" height="892">
-        <img src="assets/shots/bar-light.webp" width="1278" height="892" alt="The LocalHub search bar with “lis” typed in. The results are a saved link called Trip to Lisbon, two actions, an option to ask the chat, and matching files and folders.">
+        <source media="(max-width: 639px)" srcset="assets/shots/bar-small-dark.webp" width="920" height="880">
+        <img src="assets/shots/bar-dark.webp" width="1278" height="892" alt="The LocalHub search bar with “lis” typed in. The results are a saved link called Trip to Lisbon, two actions, an option to ask the chat, and matching files and folders.">
       </picture>
     </div>
   </section>
@@ -81,8 +91,7 @@
       <h2>Save it once.</h2>
       <p>Keep web links, folders and Obsidian notes, plus any text you retype. Press Enter to open a link or copy a snippet. Export the lot as one file whenever you like.</p>
       <picture class="rows">
-        <source media="(prefers-color-scheme: dark)" srcset="assets/shots/rows-dark.webp">
-        <img src="assets/shots/rows-light.webp" width="920" height="352" loading="lazy" alt="Three rows from the search bar: a link called Team wiki, a snippet called Out of office with the keyword ooo, and a link called Tracker.">
+        <img src="assets/shots/rows-dark.webp" width="920" height="352" loading="lazy" alt="Three rows from the search bar: a link called Team wiki, a snippet called Out of office with the keyword ooo, and a link called Tracker.">
       </picture>
     </article>
 
@@ -94,10 +103,8 @@
         <p>Out of the box, it asks before it sends, posts, buys or deletes anything. It runs on your own Claude login or an API key you add.</p>
       </div>
       <picture class="chat-shot">
-        <source media="(max-width: 639px) and (prefers-color-scheme: dark)" srcset="assets/shots/chat-small-dark.webp" width="830" height="1220">
-        <source media="(max-width: 639px)" srcset="assets/shots/chat-small-light.webp" width="830" height="1220">
-        <source media="(prefers-color-scheme: dark)" srcset="assets/shots/chat-dark.webp" width="1504" height="1192">
-        <img src="assets/shots/chat-light.webp" width="1504" height="1192" loading="lazy" alt="A conversation with the assistant. Asked what is saved for a trip to Lisbon, it reads two files, lists what is still missing, then adds travel adapters to a copy of the packing list.">
+        <source media="(max-width: 639px)" srcset="assets/shots/chat-small-dark.webp" width="830" height="1220">
+        <img src="assets/shots/chat-dark.webp" width="1504" height="1192" loading="lazy" alt="A conversation with the assistant. Asked what is saved for a trip to Lisbon, it reads two files, lists what is still missing, then adds travel adapters to a copy of the packing list.">
       </picture>
     </article>
 
@@ -123,6 +130,15 @@
         <li><img src="assets/wallpapers/sand.svg" width="160" height="100" loading="lazy" alt=""><span>Sand</span></li>
       </ul>
     </article>
+  </section>
+<section class="closing page" aria-label="Download">
+    <h2>Your computer, one search away.</h2>
+    <!-- DOWNLOAD_URL: at release, replace "#not-yet" on the next line with the installer's address. The hero button has the same line. -->
+    <a class="download" href="#not-yet">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="m7 10.5 5 5 5-5"/><path d="M5 20h14"/></svg>
+      <span>Download for Windows</span>
+    </a>
+    <p class="platform">Windows only for now.</p>
   </section>
 </main>
 
