@@ -19,6 +19,14 @@ const WIDGET_SOURCES = [
   'ios/App/HubWidget/Info.plist',
 ]
 
+// aapt2 refuses a bare apostrophe or quote in a string, and CI is the first place that compiles it.
+test('Android strings have no bare apostrophes or quotes', () => {
+  const strings = read('android/app/src/main/res/values/strings.xml')
+  for (const [, name, value] of strings.matchAll(/<string name="([^"]+)">([^<]*)<\/string>/g)) {
+    assert.ok(!/(^|[^\\])['"]/.test(value), name)
+  }
+})
+
 test('the widget reads, stores and fetches nothing', () => {
   for (const rel of WIDGET_SOURCES) {
     const text = code(read(rel))

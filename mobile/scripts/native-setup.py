@@ -558,7 +558,7 @@ edit(
         '    <string name="widget_open">Open Hub</string>\n'
         '    <string name="widget_compose">Message</string>\n'
         '    <string name="widget_status">Status</string>\n'
-        '    <string name="widget_description">Shortcuts into Local Hub. They go through the lock if it\'s on.</string>\n'
+        '    <string name="widget_description">Shortcuts into Local Hub. They go through the lock when it is on.</string>\n'
         "</resources>",
     ),
 )

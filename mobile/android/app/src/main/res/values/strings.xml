@@ -7,5 +7,5 @@
     <string name="widget_open">Open Hub</string>
     <string name="widget_compose">Message</string>
     <string name="widget_status">Status</string>
-    <string name="widget_description">Shortcuts into Local Hub. They go through the lock if it's on.</string>
+    <string name="widget_description">Shortcuts into Local Hub. They go through the lock when it is on.</string>
 </resources>
