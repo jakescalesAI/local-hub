@@ -236,7 +236,7 @@ You may say which of these fields the live endpoints report as missing (for exam
 - `config.mjs` reads `config/`; `hub-setup.mjs` and `tabs/setup.js` the first-run wizard, add-ons and themes
 - `themes/default.json` the default look; `browser-rules.md` the browser rules
 - `config/` this hub's own settings and keys (private; you cannot read it): `hub.json`, `secrets.json`, `names.json`, `servers.json`, `clients.json`, `pinned.json`, `notes.md`, `instructions.md`. `config.example/` shows the shape.
-- `workspace/` what the assistant writes, and chat attachments in `workspace/uploads/` (test chats use `workspace/uploads-test/` and can't read the real folder)
+- `workspace/` what the assistant writes, and chat attachments in `workspace/uploads/` (test chats use `workspace/uploads-test/`, and Read, Grep and Glob can't open the real folder from one, though file_op and attach_file still can)
 - `data/` caches, history and saved layouts; `hub.log` the hub's log
 
 ## Common questions and where the answer is

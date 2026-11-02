@@ -838,10 +838,10 @@ async function editFile(root, p) {
   const ta = scrim.querySelector('textarea')
   const saveBtn = scrim.querySelector('[data-a=save]')
   const line = scrim.querySelector('.status-line')
-  // A text box turns every line ending into \n. So compare what it holds, and put the file's own ending back for its size and on save. A file with mixed endings saves with its most common one.
+  // A text box turns every line ending into \n. So compare what it holds, and put the file's own ending and any byte-order mark back for its size and on save. A file with mixed endings saves with its most common one.
   const count = re => (doc.text.match(re) || []).length
   const eol = [['\r\n', count(/\r\n/g)], ['\r', count(/\r(?!\n)/g)], ['\n', count(/(?<!\r)\n/g)]].reduce((a, b) => (b[1] > a[1] ? b : a), ['\n', 0])[0]
-  const onDisk = () => ta.value.replace(/\n/g, eol)
+  const onDisk = () => (doc.bom ? '\ufeff' : '') + ta.value.replace(/\n/g, eol)
   ta.value = doc.text
   let saved = ta.value
   const where = fullPath(root, p)

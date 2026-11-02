@@ -181,7 +181,7 @@ function localProvider(root, { run, label }) {
       const buf = await readFile(p)
       if (buf.includes(0)) throw fail('Not a text file')
       const text = new TextDecoder('utf-8', { fatal: true }).decode(buf)
-      return { text, mtime: st.mtimeMs, size: st.size }
+      return { text, mtime: st.mtimeMs, size: st.size, bom: buf[0] === 0xEF && buf[1] === 0xBB && buf[2] === 0xBF }
     },
     async write({ path: r, text, mtime }) {
       const p = await guard(item(r))
