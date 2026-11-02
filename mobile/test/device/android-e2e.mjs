@@ -136,6 +136,10 @@ const secureFlagged = () => {
 }
 
 const LOCKED = /Local Hub is locked/
+// The system prompt comes up on top of the lock screen as soon as the app comes back, and hides it from the dump.
+const PROMPT = /Unlock Local Hub/
+const LOCKING = /Local Hub is locked|Unlock Local Hub/
+const resumed = () => sh('dumpsys activity activities | grep -E "topResumedActivity|mResumedActivity" || true').trim()
 const CONNECTED = /^\s*Connected\b/
 const open = () => sh(`am start -n ${APP}/.MainActivity`)
 const viaLink = link => sh(`am start -a android.intent.action.VIEW -n ${APP}/.MainActivity -d '${link}'`)
@@ -206,7 +210,7 @@ async function enroll(id) {
   const end = Date.now() + 150000
   let touches = 0
   let seen = ''
-  let pictures = 0
+  let screens = 0
   while (Date.now() < end) {
     await sleep(1200)
     const nodes = dump()
@@ -214,7 +218,7 @@ async function enroll(id) {
     const now = `${focus().replace(/.*\//, '').replace(/\}.*/, '')}: ${nodes.map(n => n.text).filter(Boolean).slice(0, 4).join(' | ').slice(0, 160)}`
     if (now !== seen) {
       console.log(`    enrol: ${(seen = now)}`)
-      shot(`enrol-${id}-${String(++pictures).padStart(2, '0')}`)
+      shot(`enrol-${id}-${String(++screens).padStart(2, '0')}`)
     }
     if (/com\.example\.localhub/.test(focus())) throw new Error('Enrolment closed and left the app on top.')
     const button = pattern => nodes.find(n => pattern.test(n.text) && !/\bfinger/i.test(n.text))
@@ -388,7 +392,7 @@ try {
 
   await step('leaving locks it: the lock screen shows and says nothing about the Hub', async () => {
     await leaveAndComeBack()
-    await waitFor(LOCKED)
+    await waitFor(LOCKING)
     await sleep(1000)
     const text = screenText(dump())
     for (const word of [HUB_NAME, '10.0.2.2', 'Connected', 'Open Hub']) assert.ok(!text.includes(word), `${word} shows on the lock screen`)
@@ -399,7 +403,7 @@ try {
     key('KEYCODE_BACK')
     await sleep(2500)
     await waitFor(LOCKED)
-    await neverShows(/Open Hub|Settings|10\.0\.2\.2/, 3000)
+    await neverShows(/Open Hub|Settings|10\.0\.2\.2|Connected|Unlock Local Hub/, 3000)
     finger(ENROLLED) // a finger with no prompt up opens nothing
     await neverShows(/Open Hub|Settings/, 3000)
     await waitFor(LOCKED)
@@ -430,7 +434,7 @@ try {
     sh(`am force-stop ${APP}`)
     await sleep(800)
     open()
-    await waitFor(LOCKED, 40000)
+    await waitFor(LOCKING, 40000)
     key('KEYCODE_BACK')
     await sleep(1500)
     await waitFor(LOCKED)
@@ -447,8 +451,8 @@ try {
     assert.ok(secureFlagged(), 'the Hub page\'s own window is secure too')
     shot('06-hub-page-locked-on')
     await leaveAndComeBack()
-    await waitFor(LOCKED)
-    assert.match(focus(), /MainActivity/, 'the Hub page is gone from on top')
+    await waitFor(PROMPT)
+    assert.match(resumed(), /MainActivity/, 'the Hub page is gone from on top')
     await neverShows(/^\s*Done\s*$/, 2000)
     finger(ENROLLED)
     await waitFor(/^\s*Done\s*$/)
@@ -472,14 +476,14 @@ try {
   await step('a quick action waits for the lock, and an unknown one does nothing', async () => {
     const before = fs.statSync(marker).mtimeMs
     viaLink('localhub://action/compose')
-    await waitFor(LOCKED)
+    await waitFor(PROMPT)
     await neverShows(/Send to Hub chat/, 2000)
     finger(ENROLLED)
     await waitFor(/Send to Hub chat/)
     await waitFor(CONNECTED)
 
     await leaveAndComeBack()
-    await waitFor(LOCKED)
+    await waitFor(PROMPT)
     finger(ENROLLED)
     await waitFor(CONNECTED)
     for (const bad of ['publish', 'delete', 'render', 'open?x=1']) {
@@ -502,7 +506,7 @@ try {
     await sleep(500)
     await enroll(STRANGER)
     open()
-    await waitFor(LOCKED)
+    await waitFor(/Local Hub is locked|Unlock Local Hub|Pair this device again/)
     await sleep(1000)
     const prompted = /Pair this device again/.test(screenText(dump()))
     if (!prompted) {
