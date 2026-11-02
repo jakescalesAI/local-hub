@@ -1,0 +1,171 @@
+<!doctype html>
+<!--
+  LocalHub setup guide, served at /setup. Plain static page: no script, no build step, no third-party requests.
+  Every step here was checked against the Hub's code. Links to Tailscale and Anthropic are plain outbound links.
+  The download address lives only on the home page (the lines marked DOWNLOAD_URL), so this page links there.
+  Comments marked SIGNING, ACCESS_LATER, ASSISTANT_KEY and SETUP_PHONE sit on text that will change.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#000000">
+<title>Set up LocalHub</title>
+<meta name="description" content="How to install LocalHub on a Windows PC, go through first-run setup, connect the assistant, use the launcher and reach it from your other devices.">
+<link rel="canonical" href="https://trylocalhub.com/setup">
+<link rel="icon" href="icons/hub.svg" type="image/svg+xml">
+<link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="LocalHub">
+<meta property="og:title" content="Set up LocalHub">
+<meta property="og:description" content="Install it, go through first-run setup, connect the assistant and reach it from your other devices.">
+<meta property="og:url" content="https://trylocalhub.com/setup">
+<meta property="og:image" content="https://trylocalhub.com/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="assets/site.css">
+<link rel="stylesheet" href="assets/setup.css">
+</head>
+<body>
+
+<header class="guide-bar page">
+  <a class="foot-name" href="index.html"><img src="icons/hub.svg" width="20" height="20" alt="">LocalHub</a>
+</header>
+
+<main class="guide page">
+  <header class="guide-head">
+    <h1>Set up LocalHub</h1>
+    <p>Parts 1 and 2 get it running. The rest are for Chat, the launcher and your other devices.</p>
+    <p class="for-phone">You’ll do this on your Windows PC.</p>
+  </header>
+
+  <nav class="guide-toc" aria-label="Parts of this guide">
+    <ol>
+      <li><a href="#install">Install</a></li>
+      <li><a href="#first-run">First run</a></li>
+      <li><a href="#assistant">The assistant</a></li>
+      <li><a href="#launcher">The launcher</a></li>
+      <li><a href="#devices">Your other devices</a></li>
+      <li><a href="#phone">Phone and iPad</a></li>
+    </ol>
+  </nav>
+
+  <aside class="guide-note">
+    <h2>Before you start</h2>
+    <p>LocalHub doesn’t install anything else for you. Chat needs Claude Code, and reaching LocalHub from other devices needs Tailscale. You get both from their own sites.</p>
+    <p>If you want other devices, <a href="#devices">install Tailscale first</a>. You choose who can reach LocalHub during setup.</p>
+  </aside>
+
+  <section class="part" id="install" aria-labelledby="install-title">
+    <h2 id="install-title"><span class="part-num">1</span>Install</h2>
+    <p>LocalHub’s desktop app is for Windows only for now.</p>
+    <ol class="how">
+      <li>Get the installer from the <a href="index.html">home page</a>.</li>
+      <li>Open the file you downloaded. It installs for your Windows user, with no admin prompt.</li>
+      <!-- SIGNING: remove this step once the installer is signed. The home page's hero has the same warning. -->
+      <li>The installer isn’t signed yet, so Windows SmartScreen may warn you. Choose <b>More info</b>, then <b>Run anyway</b>.</li>
+      <li>LocalHub opens when it’s done. If it doesn’t, open it from the Start menu.</li>
+    </ol>
+    <p class="aside">Closing the window keeps LocalHub running, with an icon in the tray by the clock. To stop it, click that icon and choose <b>Quit</b>. Uninstalling leaves your settings and keys on the computer.</p>
+  </section>
+
+  <section class="part" id="first-run" aria-labelledby="first-run-title">
+    <h2 id="first-run-title"><span class="part-num">2</span>First run</h2>
+    <p>The first time it opens, LocalHub asks four things.</p>
+
+    <div class="part-split">
+      <div>
+        <h3>A name</h3>
+        <p>Call your hub anything, or keep “LocalHub”.</p>
+        <h3>Who can reach it</h3>
+        <p><b>Only this computer</b> is the safe default. Nothing else can open LocalHub.</p>
+        <p><b>My tailnet</b> also lets your own devices on Tailscale open it, with a passcode. A tailnet is your private Tailscale network. This option stays grey until Tailscale is installed on this computer. <a href="#devices">Part 5</a> has the steps.</p>
+        <!-- ACCESS_LATER: changing this after setup means editing a file today, so it isn't documented here. When the Hub has a screen for it, say where. The wizard's own text says "You can widen this later". -->
+        <p>The screen says you can widen this later, but there’s no screen for changing it after setup yet, so choose with that in mind.</p>
+      </div>
+      <figure class="shot">
+        <img src="assets/shots/setup/reach-grey.webp" width="760" height="623" loading="lazy" alt="The setup screen titled Who can reach it. Only this computer is selected. My tailnet is grey, with the note that Tailscale isn’t installed on this computer.">
+      </figure>
+    </div>
+
+    <div class="part-split">
+      <div>
+        <h3>Connect Claude</h3>
+        <p>This screen tells you whether Claude Code is installed and signed in. If it isn’t, you can still finish. Chat waits until it is, and <a href="#assistant">part 3</a> shows how. Leave <b>Claude folder</b> empty.</p>
+        <h3>Optional keys</h3>
+        <p>You can skip all of these and press <b>Finish</b>. Each one turns on an extra tab, and none of them are needed for Chat. They stay on this computer.</p>
+        <dl class="list">
+          <div><dt>OpenRouter, DeepSeek</dt><dd>AI tab: your balances</dd></div>
+          <div><dt>Stripe</dt><dd>Stripe tab: read-only</dd></div>
+          <div><dt>Coolify, Cloudflare</dt><dd>Cloud tab: read-only</dd></div>
+          <div><dt>Calendar link</dt><dd>Calendar tab</dd></div>
+        </dl>
+      </div>
+      <figure class="shot">
+        <img src="assets/shots/setup/claude-missing.webp" width="760" height="645" loading="lazy" alt="The setup screen titled Connect Claude, saying Claude Code isn’t installed yet and that you can finish setup now and install it later.">
+      </figure>
+    </div>
+  </section>
+
+  <section class="part" id="assistant" aria-labelledby="assistant-title">
+    <h2 id="assistant-title"><span class="part-num">3</span>The assistant</h2>
+    <p>Chat runs through Claude Code, Anthropic’s own program, on your computer and with your own account. LocalHub never sees your password.</p>
+    <p>Anthropic says its free plan doesn’t include Claude Code, so you’ll need a paid Claude plan or an Anthropic Console account.</p>
+    <ol class="how">
+      <li>Install Claude Code by following <a href="https://code.claude.com/docs/en/quickstart">Anthropic’s install page</a>.</li>
+      <li>Open a terminal, which is a window where you type commands. Press the <kbd>Windows</kbd> key, type <b>PowerShell</b> and press <kbd>Enter</kbd>.</li>
+      <li>Type <code>claude</code> and press <kbd>Enter</kbd>. Your browser opens so you can sign in.</li>
+      <li>Close the terminal and go back to LocalHub’s Chat tab.</li>
+    </ol>
+    <!-- ASSISTANT_KEY: Chat can use an Anthropic API key, set by hand in the Hub's config files, and it still needs Claude Code. When the Hub has a screen for the key, say where. -->
+    <p class="aside">LocalHub can run Chat on an Anthropic API key instead of a login, but Claude Code still has to be installed, and there’s no screen for adding that key yet. The OpenRouter and DeepSeek keys in setup don’t run Chat.</p>
+  </section>
+
+  <section class="part" id="launcher" aria-labelledby="launcher-title">
+    <h2 id="launcher-title"><span class="part-num">4</span>The launcher</h2>
+    <p>Press <kbd>Ctrl</kbd> <kbd>Alt</kbd> <kbd>Space</kbd> anywhere in Windows and a small search bar opens over whatever you’re doing. Press <kbd>Esc</kbd> or click away to close it. Inside LocalHub’s own window, the search bar is <kbd>Ctrl</kbd> <kbd>K</kbd>.</p>
+    <p>To use different keys, click the tray icon and choose <b>Settings</b>, click in the <b>Launcher hotkey</b> box, press the keys you want and choose <b>Save</b>.</p>
+    <p class="aside">The launcher only works while LocalHub is running. To have it ready after a restart, turn on <b>Start at login</b> in the tray menu. It’s off until you do.</p>
+  </section>
+
+  <section class="part" id="devices" aria-labelledby="devices-title">
+    <h2 id="devices-title"><span class="part-num">5</span>Your other devices</h2>
+    <p>Tailscale is a separate service that puts your own devices on one private network, and it has a free personal plan. LocalHub uses it to reach your PC from your other devices.</p>
+    <div class="part-split">
+      <ol class="how">
+        <li><a href="https://tailscale.com/download/windows">Install Tailscale on this PC</a> and sign in.</li>
+        <li><a href="https://tailscale.com/download">Install Tailscale on the other device</a> and sign in with the same account.</li>
+        <li>In LocalHub’s first-run setup, choose <b>My tailnet</b> and set a passcode of at least 8 characters. If the option is still grey, quit LocalHub from the tray and open it again.</li>
+        <li>Find this PC’s Tailscale address on the <a href="https://console.tailscale.com/admin/machines">Machines page</a> of Tailscale’s admin console. It looks like <code>100.x.y.z</code>.</li>
+        <li>On the other device, open a browser and go to <code>http://100.x.y.z:3100</code> with your own address in it. Enter your passcode. That browser stays signed in for 30 days.</li>
+      </ol>
+      <figure class="shot">
+        <img src="assets/shots/setup/reach-tailnet.webp" width="760" height="771" loading="lazy" alt="The setup screen titled Who can reach it, with My tailnet selected and a field for a passcode of at least 8 characters.">
+      </figure>
+    </div>
+    <aside class="guide-note guide-warn">
+      <h3>Keep it off the open internet</h3>
+      <p>Never use Tailscale Funnel with LocalHub, and never put LocalHub on the open internet in any other way. Funnel opens a service on your computer to the wider internet, and LocalHub can see your files and act in your browser.</p>
+    </aside>
+    <!-- ACCESS_LATER: same note as in part 2. -->
+    <p class="aside">Already finished setup with <b>Only this computer</b>? There’s no screen for changing it yet.</p>
+  </section>
+
+  <section class="part" id="phone" aria-labelledby="phone-title">
+    <h2 id="phone-title"><span class="part-num">6</span>Phone and iPad</h2>
+    <!-- SETUP_PHONE: the steps go here once the Hub's "Connect a device" screen exists. Until then, only the idea. -->
+    <p class="coming">Coming soon</p>
+    <p>You’ll pair the app with your PC using a one-time code.</p>
+  </section>
+</main>
+
+<footer class="foot page">
+  <p class="foot-name"><img src="icons/hub.svg" width="20" height="20" alt="">LocalHub</p>
+  <p>Screens show LocalHub’s real setup, with made-up content. This page has no trackers, analytics or cookies.</p>
+</footer>
+
+</body>
+</html>

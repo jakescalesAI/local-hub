@@ -1,0 +1,55 @@
+/* The setup guide. Tokens, type, kbd, .list and .foot come from site.css. */
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+.guide-bar { padding-block: 22px 0; }
+.guide-bar a { display: inline-flex; color: var(--label); text-decoration: none; }
+.guide a:focus-visible, .guide-bar a:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; border-radius: 4px; }
+
+.guide { padding-top: clamp(36px, 7vw, 76px); font-size: 17px; line-height: 1.45; letter-spacing: -0.016em; }
+.guide a { color: var(--blue); text-underline-offset: 2px; }
+.guide b { font-weight: 600; }
+.guide code { padding: .08em .34em .1em; border-radius: .26em; background: var(--fill-2); font: 500 .86em/1.2 var(--mono); letter-spacing: -0.02em; overflow-wrap: anywhere; }
+.guide h2, .guide h3 { margin: 0; text-wrap: balance; }
+.guide p { text-wrap: pretty; }
+
+.guide-head h1 { font-size: clamp(38px, 7vw, 68px); font-weight: 600; line-height: 1.05; letter-spacing: -0.04em; }
+.guide-head p { max-width: 34em; margin-top: 12px; color: var(--label-2); font-size: clamp(17px, 2vw, 21px); line-height: 1.35; }
+
+.guide-toc { margin-top: clamp(26px, 4vw, 40px); }
+.guide-toc ol { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 0 24px; margin: 0; padding: 0; list-style: none; counter-reset: part; }
+.guide-toc li { counter-increment: part; box-shadow: 0 .5px 0 var(--sep); }
+.guide-toc a { display: flex; align-items: baseline; gap: 10px; min-height: 44px; padding-block: 11px; color: var(--label); font-weight: 500; text-decoration: none; }
+.guide-toc a::before { content: counter(part); color: var(--label-2); font: 500 14px/1 var(--mono); }
+.guide-toc a:hover { color: var(--blue); }
+
+.guide-note { margin-top: clamp(26px, 4vw, 40px); padding: clamp(16px, 2.4vw, 22px); border-radius: 16px; background: var(--surface); }
+.guide-note h2, .guide-note h3 { font-size: 17px; font-weight: 600; letter-spacing: -0.015em; }
+.guide-note p { max-width: 42em; margin-top: 6px; color: var(--label-2); }
+.guide-warn { background: color-mix(in srgb, var(--orange) 14%, var(--surface)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--orange) 45%, transparent); }
+.guide-warn p { color: var(--label); }
+
+.part { margin-top: clamp(48px, 8vw, 84px); scroll-margin-top: 20px; }
+.part > h2 { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; font-size: clamp(25px, 3.6vw, 34px); font-weight: 600; line-height: 1.12; letter-spacing: -0.03em; }
+.part-num { flex: none; display: grid; place-items: center; width: 1.3em; height: 1.3em; border-radius: 50%; background: var(--fill-2); font: 600 .62em/1 var(--mono); letter-spacing: 0; }
+.part > p, .part-split p { max-width: 38em; }
+.part p + p { margin-top: 10px; }
+.part .aside { margin-top: 16px; color: var(--label-2); font-size: 15px; line-height: 1.42; }
+
+.part-split { display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; margin-top: 22px; }
+.part-split h3 { margin-top: 24px; margin-bottom: 4px; font-size: 19px; font-weight: 600; letter-spacing: -0.02em; }
+.part-split h3:first-child { margin-top: 0; }
+.part-split .how { margin-top: 0; }
+.part-split .list { margin-top: 14px; }
+@media (min-width: 860px) { .part-split { grid-template-columns: minmax(0, 1fr) 360px; gap: 44px; align-items: start; } }
+
+.how { margin: 18px 0 0; padding: 0; max-width: 38em; list-style: none; counter-reset: how; }
+.how li { position: relative; padding-left: 36px; counter-increment: how; }
+.how li + li { margin-top: 12px; }
+.how li::before { content: counter(how); position: absolute; left: 0; top: .08em; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; box-shadow: inset 0 0 0 1px var(--sep); color: var(--label-2); font: 600 12px/1 var(--mono); letter-spacing: 0; }
+
+.shot { margin: 0; }
+.shot img { display: block; width: 100%; max-width: 380px; height: auto; margin-inline: auto; }
+
+.part .coming { margin-bottom: 6px; }
+.guide + .foot { margin-top: clamp(30px, 5vw, 50px); }

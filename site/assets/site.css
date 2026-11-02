@@ -56,14 +56,26 @@ ul { list-style: none; }
 /* The opening, driven by assets/js/hero.js. Only opacity and transform, so the layout never moves. */
 .reveal { position: fixed; inset: 0; z-index: 50; width: 100%; height: 100%; display: block; background: var(--bg); }
 .intro { overflow: hidden; }
-.intro .tile, .intro .word, .intro .arrive, .intro .demo, .intro .wall, .intro .features, .intro .closing, .intro .foot { opacity: 0; animation: hero-failsafe 0s linear 7s forwards; }
+.intro .tile, .intro .word, .intro .arrive, .intro .demo, .intro .wall, .intro .features, .intro .steps, .intro .closing, .intro .foot { opacity: 0; animation: hero-failsafe 0s linear 7s forwards; }
 .intro .word-l { transform: translateX(.2em); }
 .intro .word-r { transform: translateX(-.2em); }
 .intro .arrive, .intro .demo { transform: translateY(14px); }
 .intro-move .tile { opacity: 1; animation: none; }
 .intro-words .word { opacity: 1; transform: none; animation: none; transition: opacity .45s var(--ease), transform .7s var(--ease); }
-.intro-rest .arrive, .intro-rest .demo, .intro-rest .wall, .intro-rest .features, .intro-rest .closing, .intro-rest .foot { opacity: 1; transform: none; animation: none; transition: opacity .5s var(--ease), transform .7s var(--ease); }
+.intro-rest .arrive, .intro-rest .demo, .intro-rest .wall, .intro-rest .features, .intro-rest .steps, .intro-rest .closing, .intro-rest .foot { opacity: 1; transform: none; animation: none; transition: opacity .5s var(--ease), transform .7s var(--ease); }
 @keyframes hero-failsafe { to { opacity: 1; transform: none; } }
+
+/* Three steps, linking to the setup guide */
+.steps { padding-top: clamp(56px, 8vw, 90px); }
+.steps h2 { font-size: clamp(25px, 3.6vw, 34px); font-weight: 600; letter-spacing: -0.03em; }
+.steps ol { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; margin: 22px 0 0; padding: 0; list-style: none; counter-reset: step; }
+.steps li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 3px 10px; align-items: baseline; counter-increment: step; padding-top: 12px; box-shadow: 0 -.5px 0 var(--sep); }
+.steps li::before { content: counter(step); color: var(--label-2); font: 500 14px/1 var(--mono); }
+.steps h3 { margin: 0; font-size: 19px; font-weight: 600; letter-spacing: -0.02em; }
+.steps p { grid-column: 2; color: var(--label-2); font-size: 15px; line-height: 1.4; letter-spacing: -0.012em; text-wrap: pretty; }
+.steps a { display: inline-block; margin-top: 18px; padding-block: 10px; color: var(--blue); font-weight: 500; }
+.steps a:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; border-radius: 4px; }
+@media (max-width: 719px) { .steps ol { grid-template-columns: minmax(0, 1fr); gap: 14px; } }
 
 /* Closing download */
 .closing { display: flex; flex-direction: column; align-items: center; text-align: center; padding-block: clamp(70px, 10vw, 120px) 8px; }
