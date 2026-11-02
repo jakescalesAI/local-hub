@@ -35,15 +35,13 @@
   if (window.WebGL2RenderingContext && matchMedia("(prefers-reduced-motion: no-preference)").matches && !scrollY) document.documentElement.classList.add("intro")
 </script>
 <script src="assets/js/glass.js" defer></script>
+<script src="assets/js/metal.js" defer></script>
 <script src="assets/js/hero.js" defer></script>
 </head>
 <body>
 
 <main>
   <section class="hero" aria-labelledby="hero-title">
-    <!-- Empty for now. A background video or image can go here, under the words; it would fade in once the tile has reached the title. -->
-    <div class="hero-media" aria-hidden="true"></div>
-
     <div class="hero-body page">
       <p class="pill arrive">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M2 4.6 10.2 3.5v8H2zM11.2 3.3 22 2v9.5H11.2zM2 12.5h8.2v8L2 19.4zM11.2 12.5H22V22l-10.8-1.5z"/></svg>
@@ -131,7 +129,7 @@
       </ul>
     </article>
   </section>
-<section class="closing page" aria-label="Download">
+  <section class="closing page" aria-label="Download">
     <h2>Your computer, one search away.</h2>
     <!-- DOWNLOAD_URL: at release, replace "#not-yet" on the next line with the installer's address. The hero button has the same line. -->
     <a class="download" href="#not-yet">
