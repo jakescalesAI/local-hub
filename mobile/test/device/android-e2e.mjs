@@ -39,11 +39,22 @@ function shot(name) {
 
 // --- Reading the screen
 
+// CI's emulator is slow enough for Android to call its own parts stuck. That's waited out and logged. If it
+// names this app, it stays on screen and fails the run.
+const OTHER_STUCK = /^\s*(?!Local Hub\b).*isn't responding/
+
 function dump() {
   for (let i = 0; i < 6; i++) {
     try {
       const said = sh('uiautomator dump /sdcard/ui.xml')
-      if (said.includes('dumped')) return parse(sh('cat /sdcard/ui.xml'))
+      if (said.includes('dumped')) {
+        const nodes = parse(sh('cat /sdcard/ui.xml'))
+        const stuck = nodes.find(n => OTHER_STUCK.test(label(n)))
+        const wait = stuck && nodes.find(n => /^\s*Wait\s*$/.test(label(n)))
+        if (!wait) return nodes
+        console.log(`    waited out: ${label(stuck).trim()}`)
+        tap(wait)
+      }
     } catch {
       // It refuses while the screen is still moving.
     }
