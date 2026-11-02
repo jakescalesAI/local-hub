@@ -201,16 +201,22 @@ const pairingLink = c => `localhub://pair?u=${encodeURIComponent(`http://10.0.2.
 
 async function enroll(id) {
   console.log(`    sensor: ${sh('pm list features | grep -i fingerprint || echo none').trim()}`)
-  sh('am start -a android.settings.FINGERPRINT_ENROLL')
+  // The newer entry point confirms the PIN first and hands the result to the enrolment screens.
+  sh('am start -a android.settings.BIOMETRIC_ENROLL --ei android.provider.extra.BIOMETRIC_AUTHENTICATORS_ALLOWED 15')
   const end = Date.now() + 150000
   let touches = 0
   let seen = ''
+  let pictures = 0
   while (Date.now() < end) {
     await sleep(1200)
     const nodes = dump()
     const text = screenText(nodes)
     const now = `${focus().replace(/.*\//, '').replace(/\}.*/, '')}: ${nodes.map(n => n.text).filter(Boolean).slice(0, 4).join(' | ').slice(0, 160)}`
-    if (now !== seen) console.log(`    enrol: ${(seen = now)}`)
+    if (now !== seen) {
+      console.log(`    enrol: ${(seen = now)}`)
+      shot(`enrol-${id}-${String(++pictures).padStart(2, '0')}`)
+    }
+    if (/com\.example\.localhub/.test(focus())) throw new Error('Enrolment closed and left the app on top.')
     const button = pattern => nodes.find(n => pattern.test(n.text) && !/\bfinger/i.test(n.text))
     if (/Fingerprint added/i.test(text) || /Done/.test(button(/^done$/i)?.text ?? '')) {
       tap(button(/^done$/i))

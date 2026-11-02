@@ -188,13 +188,14 @@ jobs:
             [ "$try" != 3 ] || exit 1
             sleep 30
           done
+          adb logcat -G 8M
           adb logcat -c
           node test/device/android-e2e.mjs .. "$RUNNER_TEMP/app-debug.apk" test/device/out
       - name: Note what the system did, if the run failed
         if: failure()
         run: |
           mkdir -p test/device/out
-          timeout 60 adb logcat -d | grep -E "ActivityTaskManager|Fingerprint|Biometric|AndroidRuntime|FATAL" | tail -300 > test/device/out/system.log || true
+          timeout 60 adb logcat -d | grep -E "ActivityTaskManager|Fingerprint|Biometric|ConfirmDevice|ConfirmLock|LockSettings|E AndroidRuntime|FATAL" | grep -v CoreBackPreview | tail -600 > test/device/out/system.log || true
       - name: Keep the emulator's screenshots
         if: always()
         uses: actions/upload-artifact@v4
