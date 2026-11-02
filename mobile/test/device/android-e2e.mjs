@@ -317,6 +317,42 @@ try {
   await startHub()
   let firstCode
 
+  await step('the demo a reviewer would use runs from the first screen, with no Hub', async () => {
+    open()
+    await tapOn(/^\s*Try the demo\s*$/, 60000)
+    await waitFor(/Demo: sample data/)
+    shot('00-demo-home')
+    await tapOn(/^\s*Open Hub\s*$/)
+    await waitFor(/^\s*Done\s*$/)
+    await sleep(2500)
+    shot('00-demo-hub')
+    await waitFor(/Sample web server/)
+    await tapOn(/^\s*Done\s*$/)
+    await waitFor(/Demo: sample data/)
+    await tapOn(/^\s*Settings\s*$/)
+    await tapOn(/Leave the demo/)
+    await waitFor(/Try the demo/)
+  })
+
+  await step('so does the sample code in the review notes, typed in by hand', async () => {
+    await tapOn(/^\s*Enter by hand\s*$/)
+    await textField()
+    const [address, code] = dump().filter(n => n.cls.includes('EditText')).sort((a, b) => a.y - b.y)
+    tap(address)
+    await sleep(700)
+    sh('input text "https://demo.invalid"')
+    tap(code)
+    await sleep(700)
+    sh('input text "DEMO2026"')
+    await sleep(700)
+    await tapOn(/^\s*Continue\s*$/)
+    await tapOn(/^\s*Connect\s*$/)
+    await waitFor(/Demo: sample data/)
+    await tapOn(/^\s*Settings\s*$/)
+    await tapOn(/Leave the demo/)
+    await waitFor(/Try the demo/)
+  })
+
   await step('the minified app pairs with the real Hub', async () => {
     firstCode = await pairingCode()
     viaLink(pairingLink(firstCode))

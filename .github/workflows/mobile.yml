@@ -146,7 +146,9 @@ jobs:
           echo "ANDROID_AVD_HOME=$ANDROID_AVD_HOME" >> "$GITHUB_ENV"
           manager="$ANDROID_HOME/cmdline-tools/latest/bin"
           yes | "$manager/sdkmanager" --licenses > /dev/null || true
-          "$manager/sdkmanager" --install platform-tools emulator "system-images;android-33;default;x86_64" > /dev/null
+          # A download comes back corrupt now and then. That's the mirror, so it gets one more try.
+          packages='platform-tools emulator system-images;android-33;default;x86_64'
+          "$manager/sdkmanager" --install $packages > /dev/null || "$manager/sdkmanager" --install $packages > /dev/null
           echo no | "$manager/avdmanager" create avd -n hub -k "system-images;android-33;default;x86_64" -d pixel_5
           echo "disk.dataPartition.size=3G" >> "$ANDROID_AVD_HOME/hub.avd/config.ini"
           # No on-screen keyboard: nothing here needs one, and drawing it wedged these runners.
