@@ -1,0 +1,155 @@
+/* LocalHub site. Colors, type, radii and glass come from the app's index.html and tabs/custom.js.
+   The one change: secondary text is stronger here than in the app, and --on-wall is added, so text stays readable on the wallpaper. */
+
+@font-face { font-family: Inter; src: url("fonts/inter-400.woff2") format("woff2"); font-weight: 400 500; font-style: normal; font-display: swap; }
+@font-face { font-family: Inter; src: url("fonts/inter-600.woff2") format("woff2"); font-weight: 600 700; font-style: normal; font-display: swap; }
+
+:root {
+  --bg: #f2f2f7; --surface: #ffffff; --surface-2: #f2f2f7;
+  --label: #000000; --label-2: rgba(60, 60, 67, .86); --on-wall: rgba(0, 0, 0, .78);
+  --sep: rgba(60, 60, 67, .18); --fill: rgba(118, 118, 128, .12); --fill-2: rgba(118, 118, 128, .2);
+  --blue: #007aff; --green: #34c759; --orange: #ff9500; --red: #ff3b30; --indigo: #5856d6;
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, "Segoe UI", system-ui, sans-serif;
+  --display: -apple-system, BlinkMacSystemFont, "SF Pro Display", Inter, "Segoe UI", system-ui, sans-serif;
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  --ease: cubic-bezier(.32, .72, 0, 1);
+  --glass: color-mix(in srgb, var(--surface) 70%, transparent);
+  --scrim: .62;
+  --lift: 0 24px 70px rgba(0, 0, 0, .28);
+  --ring: 0 0 0 .5px var(--sep);
+  --gap: 22px;
+  --gutter: 20px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #000000; --surface: #1c1c1e; --surface-2: #2c2c2e;
+    --label: #ffffff; --label-2: rgba(235, 235, 245, .8); --on-wall: rgba(255, 255, 255, .94);
+    --sep: rgba(84, 84, 88, .6); --fill: rgba(118, 118, 128, .24); --fill-2: rgba(118, 118, 128, .32);
+    --blue: #0a84ff; --green: #30d158; --orange: #ff9f0a; --red: #ff453a; --indigo: #5e5ce6;
+    --scrim: .42;
+    --lift: 0 24px 70px rgba(0, 0, 0, .55);
+  }
+}
+
+* { box-sizing: border-box; }
+html { background: var(--bg); -webkit-text-size-adjust: 100%; }
+body { margin: 0; min-height: 100vh; color: var(--label); font: 17px/1.35 var(--font); letter-spacing: -0.022em; -webkit-font-smoothing: antialiased; overflow-x: clip; }
+img, svg { display: block; }
+img { max-width: 100%; height: auto; }
+h1, h2, p, dl, dd, ul { margin: 0; padding: 0; }
+ul { list-style: none; }
+
+/* The app's Aurora wallpaper with its tint of the page colour, fixed behind everything. */
+body::before, body::after { content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none; }
+body::before { background: url("wallpapers/aurora.svg") center / cover no-repeat; }
+body::after { background: var(--bg); opacity: var(--scrim); }
+
+.page { width: 100%; max-width: calc(1040px + 2 * var(--gutter)); margin-inline: auto; padding-inline: max(var(--gutter), env(safe-area-inset-left)) max(var(--gutter), env(safe-area-inset-right)); }
+
+.brand { display: flex; align-items: center; gap: 10px; padding-block: 22px 0; font: 600 17px var(--display); }
+.brand img { border-radius: 7px; }
+
+/* Hero */
+.hero { padding-top: clamp(44px, 8vw, 92px); }
+h1 { font: 700 clamp(44px, 9.2vw, 104px)/1.02 var(--display); letter-spacing: -0.03em; max-width: 11em; text-wrap: balance; }
+.lede { margin-top: clamp(16px, 2.4vw, 24px); max-width: 33em; font-size: clamp(19px, 2.2vw, 24px); line-height: 1.3; letter-spacing: -0.024em; color: var(--on-wall); text-wrap: pretty; }
+.get { margin-top: clamp(24px, 3.4vw, 34px); }
+.download { display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 56px; padding: 0 26px 0 20px; border-radius: 28px; background: var(--blue); color: #fff; font: 700 19px/1 var(--font); letter-spacing: -0.02em; text-decoration: none; transition: opacity .2s var(--ease); -webkit-tap-highlight-color: transparent; }
+.download:hover { opacity: .88; }
+.download:active { opacity: .35; }
+.download:focus-visible { outline: 3px solid var(--label); outline-offset: 3px; }
+.platform { margin-top: 14px; max-width: 34em; font-size: 15px; line-height: 1.35; letter-spacing: -0.01em; color: var(--on-wall); text-wrap: pretty; }
+.platform b { font-weight: 600; color: var(--label); }
+.not-yet { display: none; width: fit-content; max-width: 100%; margin-top: 12px; padding: 9px 15px; border-radius: 18px; background: var(--glass); box-shadow: var(--ring); font-size: 15px; font-weight: 600; letter-spacing: -0.01em; -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px); }
+.not-yet:target { display: block; scroll-margin-top: 20px; }
+
+/* The real app: Home, with the real search panel floating over its empty corner. */
+.stage { position: relative; margin-top: clamp(40px, 6vw, 68px); }
+.stage picture { display: block; }
+.stage img { width: 100%; }
+.stage-home img { border-radius: 20px; box-shadow: var(--ring), var(--lift); }
+.stage-bar { position: absolute; right: -14px; bottom: -44px; width: 50%; }
+.stage-bar img { border-radius: 2.4% / 3.4%; box-shadow: var(--lift); }
+
+/* Features: the app's Home widgets, in its grid, radius and glass. */
+.features { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--gap); margin-top: 110px; }
+.card { min-width: 0; padding: 22px 24px 24px; border-radius: 20px; background: var(--surface); box-shadow: var(--ring), 0 8px 30px rgba(0, 0, 0, .1); }
+@supports (background: color-mix(in srgb, red, blue)) {
+  .card { background: var(--glass); -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px); }
+}
+.card-search, .card-snippets, .card-local, .card-look { grid-column: span 3; }
+.card-chat { grid-column: span 6; }
+.label { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; letter-spacing: -0.006em; color: var(--label-2); }
+.label i { width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
+h2 { margin-top: 12px; font: 700 clamp(25px, 3vw, 30px)/1.14 var(--display); letter-spacing: -0.02em; text-wrap: balance; }
+.card > p:not(.label), .chat-copy > p:not(.label) { margin-top: 10px; color: var(--label-2); text-wrap: pretty; }
+kbd { display: inline-block; padding: .05em .34em .08em; border-radius: .26em; background: var(--fill-2); box-shadow: inset 0 0 0 .5px var(--sep); font: 600 .78em/1.2 var(--mono); letter-spacing: -0.02em; vertical-align: .08em; }
+
+.card-search { display: flex; flex-direction: column; }
+.kinds { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; padding-top: 18px; }
+.kinds li { padding: 5px 11px; border-radius: 13px; background: var(--fill); font-size: 13px; font-weight: 600; letter-spacing: -0.006em; color: var(--label-2); }
+.card-search h2 { font-size: clamp(30px, 4vw, 42px); line-height: 1.12; }
+
+.rows { display: block; margin: 18px -8px -8px; overflow: hidden; border-radius: 14px; box-shadow: var(--ring); }
+
+.card-chat { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 32px; padding-bottom: 0; overflow: hidden; }
+.chat-copy { padding-bottom: 28px; align-self: center; }
+.chat-copy h2 { font-size: clamp(30px, 4vw, 42px); line-height: 1.12; }
+.chat-shot { display: block; align-self: end; margin: 6px 0 0; }
+.chat-shot img { width: 100%; border-radius: 16px 16px 0 0; box-shadow: var(--ring), 0 14px 50px rgba(0, 0, 0, .2); }
+
+/* The app's inset grouped list, with hairlines that start under the text. */
+.list { margin-top: 16px; }
+.list div { padding: 11px 0; box-shadow: 0 .5px 0 var(--sep); }
+.list div:last-child { box-shadow: none; padding-bottom: 0; }
+.list dt { font-size: 13px; font-weight: 600; letter-spacing: -0.006em; color: var(--label-2); }
+.list dd { margin-top: 2px; font-weight: 500; }
+
+.card-look { display: flex; flex-direction: column; }
+.walls { flex: 1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 18px; }
+.walls li { display: flex; flex-direction: column; }
+.walls img { flex: 1 1 0; width: 100%; height: 0; min-height: 76px; object-fit: cover; border-radius: 10px; box-shadow: var(--ring); }
+.walls span { display: block; margin-top: 6px; font-size: 13px; letter-spacing: -0.006em; color: var(--label-2); }
+
+.foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 24px; padding-block: 44px max(36px, env(safe-area-inset-bottom)); font-size: 13px; letter-spacing: -0.006em; color: var(--on-wall); }
+.foot-name { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; color: var(--label); }
+.foot-name img { border-radius: 5px; }
+.foot a { color: var(--blue); }
+.foot a:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; border-radius: 4px; }
+
+/* Tablet and small laptop */
+@media (max-width: 899px) {
+  :root { --gap: 16px; }
+  .stage-bar { right: -8px; bottom: -32px; width: 54%; }
+  .features { margin-top: 84px; }
+  .card-chat { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  .chat-copy { padding-bottom: 0; }
+  .chat-shot { margin-inline: auto; width: min(100%, 560px); }
+}
+
+/* Phone: Home becomes a cropped backdrop and the small-window search takes the front. */
+@media (max-width: 639px) {
+  :root { --gap: 12px; }
+  .download { width: 100%; }
+  .stage { margin-top: 34px; }
+  .stage-home img { height: 340px; object-fit: cover; object-position: left top; }
+  .stage-bar { position: relative; right: auto; bottom: auto; width: auto; margin: -170px 10px 0; }
+  .stage-bar img { border-radius: 14px; box-shadow: var(--ring), var(--lift); }
+  .features { grid-template-columns: minmax(0, 1fr); margin-top: 34px; }
+  .card-search, .card-snippets, .card-chat, .card-local, .card-look { grid-column: auto; }
+  .card { padding: 18px 18px 20px; }
+  .card-chat { padding-bottom: 0; }
+  .walls { gap: 8px; }
+  .foot { flex-direction: column; align-items: flex-start; }
+}
+
+/* One easing and short times, as in the app. CSS only, so nothing depends on script. */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes rise { from { opacity: 0; transform: translateY(12px); } }
+  @keyframes pop { from { opacity: 0; transform: scale(.94); } }
+  h1, .lede, .get, .stage-home { animation: rise .35s var(--ease) both; }
+  .lede { animation-delay: 50ms; }
+  .get { animation-delay: 100ms; }
+  .stage-home { animation-delay: 150ms; }
+  .stage-bar { animation: pop .35s var(--ease) 320ms both; transform-origin: 70% 30%; }
+}

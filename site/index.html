@@ -1,0 +1,137 @@
+<!doctype html>
+<!--
+  LocalHub landing page. Plain static files: no build step, no JavaScript, no trackers, no third-party requests.
+
+  At release, change one line: the href on the line under DOWNLOAD_URL below. It is the only download link on the page.
+  Later pages go in their own folders (privacy/index.html, support/index.html) and share assets/site.css.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f2f2f7">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#000000">
+<title>LocalHub: a home page for your computer</title>
+<meta name="description" content="LocalHub puts your links, snippets, files and an AI assistant behind one search bar, and runs on your own PC. Windows only for now.">
+<link rel="canonical" href="https://trylocalhub.com/">
+<link rel="icon" href="icons/hub.svg" type="image/svg+xml">
+<link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="LocalHub">
+<meta property="og:title" content="LocalHub: a home page for your computer">
+<meta property="og:description" content="Your links, snippets, files and an AI assistant behind one search bar, running on your own PC.">
+<meta property="og:url" content="https://trylocalhub.com/">
+<meta property="og:image" content="https://trylocalhub.com/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="The LocalHub search bar over its Home screen, with the words: A home page for your computer.">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+
+<header class="brand page">
+  <img src="icons/hub.svg" width="32" height="32" alt="">
+  <span>LocalHub</span>
+</header>
+
+<main>
+  <section class="hero page" aria-labelledby="hero-title">
+    <h1 id="hero-title">A home page for your computer.</h1>
+    <p class="lede">LocalHub puts your links, snippets, files and an AI assistant behind one search bar, and runs on your own PC.</p>
+
+    <div class="get">
+      <!-- DOWNLOAD_URL: at release, replace "#not-yet" on the next line with the installer's address. -->
+      <a class="download" href="#not-yet">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="m7 10.5 5 5 5-5"/><path d="M5 20h14"/></svg>
+        Download for Windows
+      </a>
+      <p class="platform">Windows only for now. The installer isn’t signed yet, so Windows may warn you first: choose <b>More info</b>, then <b>Run anyway</b>.</p>
+      <p class="not-yet" id="not-yet">The installer isn’t published yet. This button will download it once it is.</p>
+    </div>
+
+    <div class="stage">
+      <picture class="stage-home">
+        <source media="(prefers-color-scheme: dark)" srcset="assets/shots/home-dark.webp">
+        <img src="assets/shots/home-light.webp" width="2080" height="1447" fetchpriority="high" alt="The LocalHub Home screen: a clock, the next event, today’s calendar and a world clock as glass widgets on a soft wallpaper, with an Ask anything box along the bottom.">
+      </picture>
+      <picture class="stage-bar">
+        <source media="(max-width: 639px) and (prefers-color-scheme: dark)" srcset="assets/shots/bar-small-dark.webp" width="920" height="880">
+        <source media="(max-width: 639px)" srcset="assets/shots/bar-small-light.webp" width="920" height="880">
+        <source media="(prefers-color-scheme: dark)" srcset="assets/shots/bar-dark.webp" width="1278" height="892">
+        <img src="assets/shots/bar-light.webp" width="1278" height="892" alt="The LocalHub search bar with “lis” typed in. The results are a saved link called Trip to Lisbon, two actions, an option to ask the chat, and matching files and folders.">
+      </picture>
+    </div>
+  </section>
+
+  <section class="features page" aria-label="Features">
+    <article class="card card-search">
+      <p class="label"><i style="--c: var(--blue)"></i>Search</p>
+      <h2>Press <kbd>Ctrl</kbd> <kbd>K</kbd> and start typing.</h2>
+      <p>One bar finds your links, your snippets, the files in your home folder, and LocalHub’s own tabs and actions. What you use most comes first, and anything else can go straight to the chat.</p>
+      <ul class="kinds" aria-label="What the bar finds">
+        <li>Link</li><li>Snippet</li><li>File</li><li>Folder</li><li>Tab</li><li>Action</li><li>Chat</li>
+      </ul>
+    </article>
+
+    <article class="card card-snippets">
+      <p class="label"><i style="--c: var(--orange)"></i>Links and snippets</p>
+      <h2>Save it once.</h2>
+      <p>Keep web links, folders and Obsidian notes, plus any text you retype. Press Enter to open a link or copy a snippet. Export the lot as one file whenever you like.</p>
+      <picture class="rows">
+        <source media="(prefers-color-scheme: dark)" srcset="assets/shots/rows-dark.webp">
+        <img src="assets/shots/rows-light.webp" width="920" height="352" loading="lazy" alt="Three rows from the search bar: a link called Team wiki, a snippet called Out of office with the keyword ooo, and a link called Tracker.">
+      </picture>
+    </article>
+
+    <article class="card card-chat">
+      <div class="chat-copy">
+        <p class="label"><i style="--c: var(--indigo)"></i>Assistant</p>
+        <h2>Ask in plain words.</h2>
+        <p>It answers questions, reads your files, searches the web, keeps your calendar, and works in a real browser you can watch and take over.</p>
+        <p>Out of the box, it asks before it sends, posts, buys or deletes anything. It runs on your own Claude login or an API key you add.</p>
+      </div>
+      <picture class="chat-shot">
+        <source media="(max-width: 639px) and (prefers-color-scheme: dark)" srcset="assets/shots/chat-small-dark.webp" width="830" height="1220">
+        <source media="(max-width: 639px)" srcset="assets/shots/chat-small-light.webp" width="830" height="1220">
+        <source media="(prefers-color-scheme: dark)" srcset="assets/shots/chat-dark.webp" width="1504" height="1192">
+        <img src="assets/shots/chat-light.webp" width="1504" height="1192" loading="lazy" alt="A conversation with the assistant. Asked what is saved for a trip to Lisbon, it reads two files, lists what is still missing, then adds travel adapters to a copy of the packing list.">
+      </picture>
+    </article>
+
+    <article class="card card-local">
+      <p class="label"><i style="--c: var(--green)"></i>Your machine</p>
+      <h2>It runs on your PC.</h2>
+      <dl class="list">
+        <div><dt>Account</dt><dd>None needed</dd></div>
+        <div><dt>Who can reach it</dt><dd>This PC, until you change that</dd></div>
+        <div><dt>Your links, chats and settings</dt><dd>Files on your PC</dd></div>
+        <div><dt>What you ask the assistant</dt><dd>Goes to the AI you connect</dd></div>
+      </dl>
+    </article>
+
+    <article class="card card-look">
+      <p class="label"><i style="--c: var(--red)"></i>Your look</p>
+      <h2>Make it yours.</h2>
+      <p>Light or dark, your wallpaper, and your choice of widgets in the order you want them on Home.</p>
+      <ul class="walls" aria-label="Some of the wallpapers it comes with">
+        <li><img src="assets/wallpapers/aurora.svg" width="160" height="100" loading="lazy" alt=""><span>Aurora</span></li>
+        <li><img src="assets/wallpapers/dusk.svg" width="160" height="100" loading="lazy" alt=""><span>Dusk</span></li>
+        <li><img src="assets/wallpapers/ocean.svg" width="160" height="100" loading="lazy" alt=""><span>Ocean</span></li>
+        <li><img src="assets/wallpapers/sand.svg" width="160" height="100" loading="lazy" alt=""><span>Sand</span></li>
+      </ul>
+    </article>
+  </section>
+</main>
+
+<footer class="foot page">
+  <p class="foot-name"><img src="icons/hub.svg" width="20" height="20" alt="">LocalHub</p>
+  <p>Screenshots use made-up sample content. This page has no trackers, analytics or cookies.</p>
+  <!-- GITHUB_URL: off until the repo is public. To turn it on, uncomment this and set the href. -->
+  <!-- <p><a href="GITHUB_URL">Source on GitHub</a></p> -->
+</footer>
+
+</body>
+</html>
