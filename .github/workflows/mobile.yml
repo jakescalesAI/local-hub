@@ -96,7 +96,7 @@ jobs:
   android-device:
     if: github.event_name == 'push' || inputs.platform == 'android'
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 60
     defaults:
       run:
         working-directory: mobile
@@ -156,7 +156,8 @@ jobs:
           nohup emulator -avd hub -no-window -no-audio -no-boot-anim -no-snapshot -partition-size 3072 -gpu swiftshader_indirect > "$RUNNER_TEMP/emulator.log" 2>&1 &
           emulator_pid=$!
           booted=""
-          for _ in $(seq 1 96); do
+          # Booting took from under 6 minutes to over 8 on these two-core runners.
+          for _ in $(seq 1 180); do
             booted=$(timeout 20 adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)
             [ "$booted" = "1" ] && break
             kill -0 "$emulator_pid" 2>/dev/null || { echo "The emulator exited."; break; }
