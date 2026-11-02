@@ -1009,7 +1009,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
       if (d.textContent && !answered) {
         let read = false
         const check = () => {
-          if (read || !d.clientHeight || !yes.isConnected) return
+          if (read || !d.clientHeight || !yes.isConnected || no.disabled) return // Don't is on its way, so Allow stays off
           read = d.scrollHeight - d.scrollTop - d.clientHeight <= 4
           yes.disabled = !read
           yes.textContent = read ? 'Allow' : 'Scroll to read all'
