@@ -89,7 +89,14 @@ export const needsSetup = () => !fs.existsSync(HUB_FILE)
 
 // Takes known key values and key-shaped text out of anything headed for the page, the agent or a log.
 const SECRET_KEY = /key|token|secret|password|passwd/i
-const SECRET_SHAPES = /\b(?:sk-ant-[\w-]{16,}|sk-or-[\w-]{16,}|sk-[A-Za-z0-9_-]{24,}|[sr]k_(?:live|test)_[A-Za-z0-9]{12,}|AKIA[0-9A-Z]{16}|eyJ[\w-]{16,}\.[\w-]{8,}\.[\w-]{8,})/g
+const SECRET_SHAPES = /\b(?:sk-ant-[\w-]{16,}|sk-or-[\w-]{16,}|sk-[A-Za-z0-9_-]{24,}|[sr]k_(?:live|test)_[A-Za-z0-9]{12,}|AKIA[0-9A-Z]{16}|eyJ[\w-]{16,1024}\.[\w-]{8,}\.[\w-]{8,}|gh[pousr]_[A-Za-z0-9]{20,}|github_pat_\w{20,}|xox[abeoprs]-[\w-]{10,}|glpat-[\w-]{16,}|SG\.[\w-]{16,}\.[\w-]{16,}|AIza[\w-]{30,})/g
+// A secret named in running text. The name stays so the message still reads. Each one starts at one fixed spot, so long text can't slow it down.
+const SECRET_NAMED = [
+  [/(:\/\/[^\s/:@]{0,256}:)[^\s/@]{1,512}@/g, '$1[hidden]@'],
+  [/([?&](?!(?:next|page|prev|continuation|sync)_?token=)\w*(?:token|secret|password|passwd|key|sig|signature)=)[^&#\s"']+/gi, '$1[hidden]'],
+  [/\b(Authorization\s*:\s*(?:Bearer|Basic|Token)\s+)[^\s"',;]+/gi, '$1[hidden]'],
+  [/\b(\w*(?:PASSWORD|PASSWD|PASSPHRASE|SECRET|TOKEN|API_?KEY|ACCESS_?KEY|_PWD)=["']?)[^\s"',;&]+/g, '$1[hidden]'],
+]
 let secretCache = { at: 0, values: [] }
 export function secretValues() {
   if (Date.now() - secretCache.at < 20e3) return secretCache.values
@@ -109,7 +116,9 @@ export function secretValues() {
 export const scrubSecrets = s => {
   let t = String(s ?? '')
   for (const v of secretValues()) if (t.includes(v)) t = t.split(v).join('[hidden]')
-  return t.replace(SECRET_SHAPES, '[hidden]')
+  t = t.replace(SECRET_SHAPES, '[hidden]')
+  for (const [find, keep] of SECRET_NAMED) t = t.replace(find, keep)
+  return t
 }
 
 function writeJson(file, value) {

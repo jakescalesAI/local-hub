@@ -12,6 +12,7 @@ import { readFile, writeFile, mkdir, rename, stat } from 'node:fs/promises'
 import path from 'node:path'
 import crypto from 'node:crypto'
 import { configPath, hubConfig } from './config.mjs'
+import { fetchOutside, readCapped } from './connections.mjs'
 
 const DAY = 86_400_000
 const FEED_TTL = 10 * 60_000 // a feed is reused this long
@@ -703,11 +704,11 @@ export function create({ here, run, sshHost }) {
     const secretsToScrub = [cal.url, cal.icsUrl, (() => { try { return new URL(cal.url).pathname } catch { return '' } })()].filter(s => s && s.length > 6)
     try {
       if (!cal.url) throw new Error('Not a valid http(s) or webcal address')
-      const res = await fetch(cal.url, { signal: AbortSignal.timeout(FEED_TIMEOUT), headers: { 'user-agent': 'LocalHub/1 (calendar)', accept: 'text/calendar, text/plain, */*' }, redirect: 'follow' })
+      const res = await fetchOutside(cal.url, { signal: AbortSignal.timeout(FEED_TIMEOUT), headers: { 'user-agent': 'LocalHub/1 (calendar)', accept: 'text/calendar, text/plain, */*' } })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       if (Number(res.headers.get('content-length')) > FEED_MAX_BYTES) throw new Error('calendar is too large')
-      const text = await res.text()
-      if (text.length > FEED_MAX_BYTES) throw new Error('calendar is too large')
+      const { text, over } = await readCapped(res, FEED_MAX_BYTES)
+      if (over) throw new Error('calendar is too large')
       if (!/BEGIN:VCALENDAR/i.test(text)) throw new Error('not an ICS calendar (check the secret address)')
       f.raw = parseIcs(text)
       f.error = ''

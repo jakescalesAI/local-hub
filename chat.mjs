@@ -654,7 +654,7 @@ export function create({ run, sshHost, here }) {
                   .then(r => (r.ok ? r.json() : null))
                   .then(c => {
                     if (!c) return
-                    const card = { kind: 'confirm', id: want[1], via, what: scrub(trim(c.what, 200)), label: scrub(trim(c.label, 300)), url: scrub(trim(c.url, 200)), at: Date.now() }
+                    const card = { kind: 'confirm', id: want[1], via, what: scrub(trim(c.what, 200)), label: scrub(trim(c.label, 40000)), url: scrub(trim(c.url, 200)), at: Date.now() }
                     conv.items.push(card); save(conv)
                     emit({ type: 'confirm', id: card.id, via, what: card.what, label: card.label, url: card.url })
                   }, () => {})

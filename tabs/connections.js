@@ -115,7 +115,7 @@
     if (!S.list || !byId(id)) await load(true)
     const c = byId(id)
     if (!c) return hud('That connection isn’t in the list')
-    const sheet = window.HUB_SHEET({ title: c.name, onClose: () => { stopPoll(); if (env === 'connections') render() } })
+    const sheet = window.HUB_SHEET({ title: c.name, onClose: () => { stopPoll(); if (env === 'connections') render(); reloadIfTabsMoved() } })
     paint(sheet, c, false)
   }
 
@@ -140,12 +140,15 @@
     const { body, foot } = sheet
     stopPoll()
     const lists = c.auth === 'calendarFeed' ? c.feeds : c.auth === 'claudeLogin' ? c.accounts : null
-    const showForm = !c.connected || replacing || lists
+    // A program on the hub's computer can't be started from another device, only removed.
+    const away = c.runsHere && !S.localCommands
+    const showForm = !away && (!c.connected || replacing || lists)
     const signInOnly = c.signIn && !c.signIn.givesKey
     const parts = []
     for (const w of c.warn || []) parts.push(`<div class="cn-msg warn">${esc(w)}</div>`)
     if (c.connected && !lists) parts.push(`<div class="cn-msg good cn-status" role="status">${esc(stateText(c))}</div>`)
     if (lists?.length) parts.push(listRows(c, lists))
+    if (away) parts.push('<p class="cn-help">This runs a program on the hub’s computer, so it can only be tested or given a key from that computer.</p>')
     parts.push('<div class="cn-msg-slot"></div>')
     if (showForm) {
       parts.push(`<div class="cn-form">`)
@@ -158,7 +161,9 @@
     if (c.connected && !lists) parts.push(permRow(c))
     if (c.mcp?.auth === 'bearer' && !c.connected) parts.push(`<section class="hw-dsec"><h3>Official MCP server</h3><div class="hw-dlist"><div class="hw-row"><span class="t ell">${esc(c.mcp.url)}</span></div></div></section>`)
     body.innerHTML = parts.join('')
-    foot.innerHTML = showForm
+    foot.innerHTML = away
+      ? `${c.connected ? '<button type="button" class="hw-btn red" data-do="disconnect">Disconnect</button>' : ''}${c.custom ? '<button type="button" class="hw-btn red" data-do="remove">Remove</button>' : ''}`
+      : showForm
       ? `${c.signIn ? `<button type="button" class="hw-btn ${signInOnly ? 'solid' : 'tint'}" data-do="signin">Sign In</button>` : ''}${signInOnly || c.auth === 'claudeLogin' ? '' : `<button type="button" class="hw-btn solid" data-do="save">${c.connected && !lists ? 'Save New Key' : 'Connect'}</button>`}${replacing ? '<button type="button" class="hw-btn" data-do="back">Cancel</button>' : ''}`
       : `<button type="button" class="hw-btn" data-do="replace">${signInOnly ? 'Sign In Again' : 'Replace Key'}</button><button type="button" class="hw-btn" data-do="test">Test Again</button><button type="button" class="hw-btn red" data-do="disconnect">Disconnect</button>${c.custom ? '<button type="button" class="hw-btn red" data-do="remove">Remove</button>' : ''}`
     foot.hidden = !foot.innerHTML
@@ -203,7 +208,7 @@
           paint(sheet, c, false)
           message(body, r.ok ? 'good' : 'bad', r.message)
         } else if (what === 'disconnect') {
-          const ok = await alertBox({ title: `Disconnect ${c.name}?`, message: 'The key is removed from this computer. Nothing changes on the service itself.', ok: 'Disconnect', danger: true })
+          const ok = await alertBox({ title: `Disconnect ${c.name}?`, message: c.many ? `Every ${c.name} account saved here is removed from this computer. Nothing changes on the service itself.` : 'The key is removed from this computer. Nothing changes on the service itself.', ok: 'Disconnect', danger: true })
           if (!ok) return
           const r = await post(`/${c.id}/disconnect`)
           swap(r.connection)
@@ -344,6 +349,17 @@
     }
     input.click()
   }
+
+  // A first key turns its tab on and the last one turns it off, and the page fixes its tabs at load. An add-on's switch reloads too.
+  let keysMoved = false
+  async function reloadIfTabsMoved() {
+    if (!keysMoved) return
+    keysMoved = false
+    const now = await fetch('/hub-config.js').then(r => r.text()).catch(() => '')
+    const tabs = /"tabs":(\[[^\]]*\])/.exec(now)?.[1]
+    if (tabs && tabs !== JSON.stringify(HUB_CONF.tabs)) location.reload()
+  }
+  document.addEventListener('hub-connection', () => { keysMoved = true })
 
   window.HUB_CONNECT = openSheet
   // A tab that said "not connected" shows the service as soon as it is. Home and this page repaint themselves.

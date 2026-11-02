@@ -213,7 +213,7 @@ html[data-wall] .hw-bar .hw-btn:not(.solid) { background: color-mix(in srgb, var
 .hc-done { color: var(--blue); font-weight: 600; font-size: 17px; padding: 4px 6px; border-radius: 8px; }
 .hc-link { color: var(--blue); font-size: 15px; padding: 4px 6px; border-radius: 8px; }
 .hc-link:active, .hc-done:active { opacity: .4; }
-.hc-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 4px 18px 22px; display: flex; flex-direction: column; gap: 22px; }
+.hc-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior-y: contain; padding: 4px 18px 22px; display: flex; flex-direction: column; gap: 22px; }
 .hc-sec h3 { margin: 0 0 8px; padding: 0 4px; font-size: 13px; font-weight: 400; text-transform: uppercase; letter-spacing: -0.006em; color: var(--label-2); }
 .hc-group { background: var(--surface); border-radius: 12px; overflow: hidden; }
 .hc-line { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 8px 14px; font-size: 16px; letter-spacing: -0.02em; }

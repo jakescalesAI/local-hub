@@ -748,6 +748,11 @@ export function create({ here }) {
       if (p === '/api/hub/settings/import' && req.method === 'POST') {
         const b = await readJson(req, MAX_IMPORT)
         if (b?.format !== EXPORT_FORMAT) return send(res, 400, { error: 'that isn’t a Local Hub settings file' }), true
+        // A wrong type refuses the whole file, so a bad one can't quietly empty a part of the hub.
+        const isList = (o, k) => o?.[k] == null || Array.isArray(o[k])
+        const isObject = k => b[k] == null || (typeof b[k] === 'object' && !Array.isArray(b[k]))
+        const lists = [[b, 'apps'], [b, 'groups'], [b, 'sites'], [b, 'pages'], [b, 'files'], [b.tabs, 'order'], [b.tabs, 'hidden'], [b.wallpaper, 'custom']]
+        if (!lists.every(([o, k]) => isList(o, k)) || !['tabs', 'widgets', 'style', 'wallpaper'].every(isObject)) return send(res, 400, { error: 'that settings file has the wrong shape' }), true
         const cur = stripMeta(st.get())
         const files = (Array.isArray(b.files) ? b.files : []).filter(f => f && FILE_ID_RE.test(f.id) && typeof f.html === 'string' && Buffer.byteLength(f.html) <= MAX_FILE).slice(0, MAX_FILES)
         const have = new Set(files.map(f => f.id))

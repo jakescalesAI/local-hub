@@ -153,7 +153,7 @@
 /* iPad and Mobile on a bigger screen: a device drawn at scale, whose content scrolls inside it. */
 .hw-root[data-framed="1"] .hw-stage { display: block; position: relative; height: calc((var(--fh) + 2 * var(--fb)) * var(--fk)); }
 .hw-root[data-framed="1"] .hw-device { display: block; position: absolute; left: 50%; top: calc(var(--fb) * var(--fk)); width: var(--fw); height: var(--fh); margin-left: calc(var(--fw) / -2); transform: scale(var(--fk)); transform-origin: top center; border-radius: var(--fr); overflow: hidden; box-shadow: 0 0 0 1px rgba(255, 255, 255, .14), 0 0 0 var(--fb) #101012, 0 0 0 calc(var(--fb) + 1px) rgba(255, 255, 255, .16), 0 18px 60px rgba(0, 0, 0, .4); }
-.hw-root[data-framed="1"] .hw-frame { width: 100%; height: 100%; padding: var(--fpt) var(--fpx) 30px; overflow: hidden auto; overscroll-behavior: contain; scrollbar-width: none; }
+.hw-root[data-framed="1"] .hw-frame { width: 100%; height: 100%; padding: var(--fpt) var(--fpx) 30px; overflow: hidden auto; overscroll-behavior-y: contain; scrollbar-width: none; }
 .hw-root[data-framed="1"] .hw-frame::-webkit-scrollbar { display: none; }
 .hw-root[data-framed="1"][data-view="mobile"] .hw-device::before { content: ""; position: absolute; z-index: 3; top: 11px; left: 50%; width: 112px; height: 32px; margin-left: -56px; border-radius: 99px; background: #101012; pointer-events: none; }
 .hw-root[data-framed="1"] .hw-device::after { content: ""; position: absolute; z-index: 3; bottom: 8px; left: 50%; width: 134px; height: 5px; margin-left: -67px; border-radius: 99px; background: var(--label); opacity: .35; pointer-events: none; }
@@ -309,7 +309,7 @@ html.hw-drag-on[data-effect="grain"] body::after { opacity: 0; }
 .hw-sh-head .hw-tile { width: 26px; height: 26px; border-radius: 8px; }
 .hw-x { width: 32px; height: 32px; border-radius: 50%; background: var(--fill-2); color: var(--label-2); display: grid; place-items: center; flex: none; }
 .hw-done { color: var(--blue); font-weight: 600; font-size: 17px; padding: 4px 0 4px 6px; }
-.hw-sh-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; display: flex; flex-direction: column; gap: 20px; padding: 8px 20px 24px; -webkit-mask-image: linear-gradient(transparent, #000 8px, #000 calc(100% - 20px), transparent); mask-image: linear-gradient(transparent, #000 8px, #000 calc(100% - 20px), transparent); }
+.hw-sh-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior-y: contain; scrollbar-width: none; display: flex; flex-direction: column; gap: 20px; padding: 8px 20px 24px; -webkit-mask-image: linear-gradient(transparent, #000 8px, #000 calc(100% - 20px), transparent); mask-image: linear-gradient(transparent, #000 8px, #000 calc(100% - 20px), transparent); }
 .hw-sh-body::-webkit-scrollbar { display: none; }
 .hw-sh-body > * { flex: none; }
 .hw-sh-foot { flex: none; display: flex; flex-wrap: wrap; gap: 10px; padding: 12px 20px calc(16px + env(safe-area-inset-bottom)); border-top: .5px solid var(--sep); }
@@ -2612,6 +2612,12 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     const loop = () => { d.raf = requestAnimationFrame(loop); dragFrame(d) }
     loop()
   }
+  // Still closing in on a cell's middle isn't a swap yet, however slow the drag.
+  const settling = (d, hit, x, y, now) => {
+    const off = Math.hypot(x - (hit.left + hit.right) / 2, y - (hit.top + hit.bottom) / 2)
+    if (off < (d.hover.off ?? Infinity) - 1.5) { d.hover.off = off; d.hover.at = now }
+    return now - d.hover.at < 150
+  }
   function dragFrame(d) {
     let dy = 0
     const v = d.v, py = vy(d)
@@ -2638,7 +2644,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
       }
       d.hover.mid = 0
       setMerge(d, null)
-      if (now - d.hover.at < 140) return
+      if (settling(d, hit, x, y, now)) return
     }
     // Held over the middle of a widget it can stack with, the card stacks on drop; near the edge it swaps.
     if (d.hover.stack) {
@@ -2650,7 +2656,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
       }
       d.hover.mid = 0
       setMerge(d, null)
-      if (now - d.hover.at < 150) return
+      if (settling(d, hit, x, y, now)) return
     }
     if (now - d.swapAt < 170) return
     // After a swap the grid reflows under the finger; wait for real movement before swapping again.

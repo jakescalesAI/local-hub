@@ -45,7 +45,7 @@
     () => `<h1>Connect Claude</h1><p>The Chat tab uses your own Claude Code login on this computer. Your hub never sees your password.</p>
       <div class="hs-status">${!status.claude.installed ? 'Claude Code isn’t installed yet. You can finish setup now and install it later; Chat waits until then.' : status.claude.signedIn ? 'Claude Code is installed and signed in.' : status.claude.signedIn === null ? 'Claude Code is installed. If Chat asks, run <code>claude</code> in a terminal once to sign in.' : 'Claude Code is installed. Run <code>claude</code> in a terminal once to sign in.'}</div>
       ${field('claudeConfigDir', 'Claude folder (optional)', 'text', answers.claudeConfigDir, 'Leave empty to use your usual login')}`,
-    () => `<h1>Optional keys</h1><p>Each one turns on a tab. Skip them all if you like. They stay in <code>config/secrets.json</code> on this computer and are never sent to this page.</p>
+    () => `<h1>Optional keys</h1><p>Each one turns on a tab. Skip them all if you like, and connect them later in the hub. They stay on this computer and are never sent back to this page.</p>
       ${KEYS.map(([k, l, t]) => field(`key.${k}`, l, t, answers.keys[k] || '')).join('')}`,
   ]
 
