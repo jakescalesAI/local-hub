@@ -187,7 +187,10 @@ const pairingLink = c => `localhub://pair?u=${encodeURIComponent(`http://10.0.2.
 // --- Fingerprints, through the real Settings screens
 
 async function enroll(id) {
-  sh('am start -a android.settings.FINGERPRINT_ENROLL')
+  console.log(`    sensor: ${sh('pm list features | grep -i fingerprint || echo none').trim()}`)
+  console.log(`    ${sh('am start -W -a android.settings.FINGERPRINT_ENROLL 2>&1').trim().replace(/\s*\n\s*/g, ' | ')}`)
+  await sleep(1500)
+  console.log(`    on top: ${focus()}`)
   const end = Date.now() + 150000
   let touches = 0
   while (Date.now() < end) {
