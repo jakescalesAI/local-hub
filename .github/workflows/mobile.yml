@@ -4,7 +4,7 @@ name: Mobile
 
 on:
   push:
-    branches: [claude/mobile-app]
+    branches: [claude/mobile-app, lh/lh-mobile/store]
     paths:
       - 'mobile/**'
       - '.github/workflows/mobile.yml'
@@ -91,6 +91,21 @@ jobs:
           test -s "$RUNNER_TEMP/app.js"
           ! grep -E "__hubTest|__testScan|__testLock|__hubOpened|__hubClosed|__DEV__|__LOCAL_HTTP__" "$RUNNER_TEMP/app.js"
           unzip -p "$apk" res/xml/network_security_config.xml | strings | { ! grep -q "10.0.2.2"; }
+      # The bundle Play takes. Unsigned here: the signed one is built where the upload key lives, never in this repo.
+      - name: Build the release bundle, unsigned
+        working-directory: mobile/android
+        run: sh ./gradlew bundleRelease --no-daemon --stacktrace
+      - name: Check what the bundle carries
+        working-directory: mobile/android/app/build/outputs/bundle/release
+        run: |
+          ls -l
+          aab=app-release.aab
+          unzip -l "$aab" | grep -q "base/manifest/AndroidManifest.xml"
+          unzip -l "$aab" | grep -q "base/assets/public/index.html"
+          ! unzip -l "$aab" | grep -q "META-INF/.*\.\(RSA\|EC\|DSA\)$"
+          unzip -p "$aab" base/assets/public/app.js > "$RUNNER_TEMP/aab-app.js"
+          test -s "$RUNNER_TEMP/aab-app.js"
+          ! grep -E "__hubTest|__testScan|__testLock|__hubOpened|__hubClosed|__DEV__|__LOCAL_HTTP__" "$RUNNER_TEMP/aab-app.js"
 
   # The minified build on an emulator, against the real Hub, with real biometric prompts. It proves
   # Android behaviour on an emulator: not hardware, and nothing about iOS.
@@ -213,8 +228,9 @@ jobs:
           retention-days: 3
           if-no-files-found: warn
 
+  # A push to the store branch runs this too, so its iOS build doesn't wait on a dispatch.
   ios:
-    if: github.event_name == 'workflow_dispatch' && inputs.platform == 'ios'
+    if: (github.event_name == 'push' && github.ref_name == 'lh/lh-mobile/store') || (github.event_name == 'workflow_dispatch' && inputs.platform == 'ios')
     runs-on: macos-26
     timeout-minutes: 20
     defaults:
@@ -235,6 +251,12 @@ jobs:
         run: >-
           xcodebuild -project ios/App/App.xcodeproj -scheme App -sdk iphonesimulator
           -destination 'generic/platform=iOS Simulator' -derivedDataPath build
+          CODE_SIGNING_ALLOWED=NO build
+      # The App Store build is for devices, which compile a little differently from the simulator.
+      - name: Build for a device, unsigned
+        run: >-
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release -sdk iphoneos
+          -destination 'generic/platform=iOS' -derivedDataPath build-device
           CODE_SIGNING_ALLOWED=NO build
       - name: Check the share extension is inside the app
         run: |

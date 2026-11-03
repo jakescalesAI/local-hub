@@ -53,7 +53,8 @@ test('no team ID, certificate, profile or key is in the repo', () => {
   assert.ok(!/DEVELOPMENT_TEAM = "?[A-Z0-9]+/.test(pbx), 'team ID')
   assert.ok(!/PROVISIONING_PROFILE(_SPECIFIER)? = "?[A-Za-z0-9]/.test(pbx), 'profile')
   const gradle = fs.readFileSync(path.join(ROOT, ANDROID_FILES[0]), 'utf8')
-  assert.ok(!/storePassword|keyPassword/.test(gradle), 'signing password')
+  // The signed build reads these from the build machine. None of them is ever written here.
+  assert.ok(!/(storePassword|keyPassword|keyAlias)\s*=?\s*['"]/.test(gradle), 'signing password')
 })
 
 // A copy of just the files the script reads and writes.

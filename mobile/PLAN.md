@@ -344,10 +344,14 @@ APK lists only internet, network state, camera and Android's own receiver permis
 
 ### Signed builds
 
-Not set up. When it is, Codemagic does the signed build only, so no signing secret sits in a repo meant
-to go public, and GitHub Actions stays the unsigned CI. The Hub gets its own Codemagic app and its own
-secrets group, shared with nothing else, and it runs on a tag only. Anyone building their own copy
-chooses their own route. The repo holds no team ID, certificate, profile or key.
+Written, not yet run: `codemagic.yaml` at the repo root. Codemagic does the signed build only, so no signing
+secret sits in a repo meant to go public, and GitHub Actions stays the unsigned CI (it builds the release
+APK and the Play bundle unsigned, and checks what they carry). The Hub gets its own Codemagic app and its
+own secrets group, shared with nothing else, and it runs on a `mobile-v*` tag only. It builds a signed IPA
+and a signed bundle and uploads nothing. The release build signs only when the build machine hands it the
+upload key (`CM_KEYSTORE_*`); otherwise it stays unsigned. Anyone building their own copy chooses their own
+route. The repo holds no team ID, certificate, profile or key: the team comes from the profiles the
+signing step fetches.
 
 These runs used `.github/workflows/mobile.yml`, the one file outside `mobile/`, and need no signing or
 secrets. The Android job also runs

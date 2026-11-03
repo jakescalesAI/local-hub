@@ -197,3 +197,12 @@ test('no plist says the same key twice in one dict', () => {
     }
   }
 })
+
+test('a store build signs only with the upload key from the build machine, never the debug key', () => {
+  const gradle = read('android/app/build.gradle')
+  const release = gradle.slice(gradle.indexOf('release {'), gradle.indexOf('minified {'))
+  assert.match(release, /if \(System\.getenv\('CM_KEYSTORE_PATH'\)\) signingConfig = signingConfigs\.upload/)
+  assert.ok(!release.includes('signingConfigs.debug'), 'a store build never signs with the debug key')
+  const upload = gradle.slice(gradle.indexOf('upload {'), gradle.indexOf('buildTypes {'))
+  for (const name of ['CM_KEYSTORE_PATH', 'CM_KEYSTORE_PASSWORD', 'CM_KEY_ALIAS', 'CM_KEY_PASSWORD']) assert.ok(upload.includes(`System.getenv('${name}')`), name)
+})

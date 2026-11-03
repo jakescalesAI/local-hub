@@ -16,11 +16,23 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // The Play upload key never lives in this repo. A signed build reads it from the build machine, where
+    // Codemagic sets these four from its keystore list. Without them the release build stays unsigned.
+    signingConfigs {
+        upload {
+            def keystore = System.getenv('CM_KEYSTORE_PATH')
+            storeFile = keystore ? file(keystore) : null
+            storePassword = System.getenv('CM_KEYSTORE_PASSWORD')
+            keyAlias = System.getenv('CM_KEY_ALIAS')
+            keyPassword = System.getenv('CM_KEY_PASSWORD')
+        }
+    }
     buildTypes {
         release {
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (System.getenv('CM_KEYSTORE_PATH')) signingConfig = signingConfigs.upload
         }
         // For the emulator test in CI: release code and rules, the debug key, and HTTP to the emulator's host.
         minified {

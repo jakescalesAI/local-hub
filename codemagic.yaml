@@ -1,0 +1,68 @@
+# Signed store builds of the phone app in mobile/, and nothing else. GitHub Actions (.github/workflows/mobile.yml)
+# stays the unsigned CI. These run only on a tag the owner pushes, and they only build: nothing here uploads
+# to a store. Every key stays in Codemagic, never in this repo:
+#   - iOS: the environment group "localhub_ios" holds APP_STORE_CONNECT_ISSUER_ID,
+#     APP_STORE_CONNECT_KEY_IDENTIFIER, APP_STORE_CONNECT_PRIVATE_KEY (an App Store Connect API key for this
+#     app only) and CERTIFICATE_PRIVATE_KEY (the distribution certificate's private key).
+#   - Android: the Play upload keystore, saved in Codemagic's keystore list as "localhub_upload". Codemagic
+#     hands it to android/app/build.gradle through the CM_KEYSTORE_* and CM_KEY_* variables.
+# Set the version first with `node mobile/scripts/set-version.mjs <version> <build>`, then tag mobile-v<version>.
+workflows:
+  ios-store:
+    name: iOS store build, signed
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    environment:
+      groups:
+        - localhub_ios
+      vars:
+        BUNDLE_ID: com.forgeitsolutions.localhub
+      node: 22
+      xcode: latest
+    triggering:
+      events:
+        - tag
+      tag_patterns:
+        - pattern: 'mobile-v*'
+    scripts:
+      - name: Install and test
+        script: cd mobile && npm ci && npm test
+      - name: Build the web part and copy it into the iOS project
+        script: cd mobile && npm run build && npx cap sync ios
+      # The app, the share extension and the widget each have their own id and profile.
+      - name: Signing files
+        script: |
+          keychain initialize
+          for id in "$BUNDLE_ID" "$BUNDLE_ID.share" "$BUNDLE_ID.widget"; do
+            app-store-connect fetch-signing-files "$id" --type IOS_APP_STORE
+          done
+          keychain add-certificates
+          xcode-project use-profiles --project mobile/ios/App/App.xcodeproj
+      - name: Build the IPA
+        script: xcode-project build-ipa --project mobile/ios/App/App.xcodeproj --scheme App
+    artifacts:
+      - build/ios/ipa/*.ipa
+
+  android-store:
+    name: Android store bundle, signed
+    instance_type: linux_x2
+    max_build_duration: 60
+    environment:
+      android_signing:
+        - localhub_upload
+      node: 22
+      java: 21
+    triggering:
+      events:
+        - tag
+      tag_patterns:
+        - pattern: 'mobile-v*'
+    scripts:
+      - name: Install and test
+        script: cd mobile && npm ci && npm test
+      - name: Build the web part and copy it into the Android project
+        script: cd mobile && npm run build && npx cap sync android
+      - name: Build the signed bundle
+        script: cd mobile/android && sh ./gradlew bundleRelease --no-daemon
+    artifacts:
+      - mobile/android/app/build/outputs/bundle/release/*.aab
