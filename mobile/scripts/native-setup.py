@@ -4,12 +4,14 @@ The projects are tracked, so this does not need running again. It is kept to sho
 from the Capacitor templates, and every step fails loudly if a template line has moved. Version numbers
 come from scripts/set-version.mjs, which is run after this.
 """
+import json
 import pathlib
 import re
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-GROUP = "group.com.example.localhub"
+IDS = json.loads((ROOT / "app-ids.json").read_text(encoding="utf8"))
+GROUP = f"group.{IDS['ios']}"
 
 
 def edit(rel, *pairs):
@@ -262,7 +264,7 @@ def ext_config(ident, name, debug):
         '					"@executable_path/../../Frameworks",\n'
         "				);\n"
         "				MARKETING_VERSION = 1.0;\n"
-        "				PRODUCT_BUNDLE_IDENTIFIER = com.example.localhub.share;\n"
+        f"				PRODUCT_BUNDLE_IDENTIFIER = {IDS['ios']}.share;\n"
         '				PRODUCT_NAME = "$(TARGET_NAME)";\n'
         "				SKIP_INSTALL = YES;\n"
         f"{debug_only}"
@@ -671,7 +673,7 @@ def widget_config(ident, name, debug):
         '					"@executable_path/../../Frameworks",\n'
         "				);\n"
         "				MARKETING_VERSION = 1.0;\n"
-        "				PRODUCT_BUNDLE_IDENTIFIER = com.example.localhub.widget;\n"
+        f"				PRODUCT_BUNDLE_IDENTIFIER = {IDS['ios']}.widget;\n"
         '				PRODUCT_NAME = "$(TARGET_NAME)";\n'
         "				SKIP_INSTALL = YES;\n"
         f"				SWIFT_ACTIVE_COMPILATION_CONDITIONS = {'DEBUG' if debug else chr(34) * 2};\n"

@@ -21,7 +21,7 @@ public class HubNativePlugin: CAPPlugin, CAPBridgedPlugin {
     ]
 
     // Must match ShareViewController and both entitlements files.
-    private static let appGroup = "group.com.example.localhub"
+    private static let appGroup = "group.com.forgeitsolutions.localhub"
     private static let pendingKey = "pending-shares"
 
     override public func load() {

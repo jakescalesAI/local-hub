@@ -18,7 +18,9 @@ if (!repo || !debugApk || !out) {
 }
 fs.mkdirSync(out, { recursive: true })
 
-const APP = 'com.example.localhub'
+const APP = JSON.parse(fs.readFileSync(new URL('../../app-ids.json', import.meta.url), 'utf8')).android
+// The Java package stays put when someone sets their own id, so the class is named in full.
+const ACTIVITY = `${APP}/com.example.localhub.MainActivity`
 const PIN = '1111'
 const PORT = 3171
 const ENROLLED = 1
@@ -138,13 +140,13 @@ async function neverShows(pattern, ms = 4000) {
   }
 }
 
-const inApp = () => /mCurrentFocus=.*com\.example\.localhub/.test(sh('dumpsys window | grep mCurrentFocus || true'))
+const inApp = () => sh('dumpsys window | grep mCurrentFocus || true').includes(APP)
 const focus = () => sh('dumpsys window | grep mCurrentFocus || true').trim()
 
 // The app's windows, as the window manager has them.
 const secureFlagged = () => {
   const text = sh('dumpsys window windows')
-  const mine = text.split(/\n(?=\s*Window #)/).filter(w => /Window\{[^}]*com\.example\.localhub/.test(w.split('\n')[0]))
+  const mine = text.split(/\n(?=\s*Window #)/).filter(w => /Window\{/.test(w.split('\n')[0]) && w.split('\n')[0].includes(APP))
   assert.ok(mine.length, 'the app has a window')
   return mine.every(w => /\bSECURE\b/.test(w))
 }
@@ -155,8 +157,8 @@ const PROMPT = /Unlock Local Hub/
 const LOCKING = /Local Hub is locked|Unlock Local Hub/
 const resumed = () => sh('dumpsys activity activities | grep -E "topResumedActivity|mResumedActivity" || true').trim()
 const CONNECTED = /^\s*Connected\b/
-const open = () => sh(`am start -n ${APP}/.MainActivity`)
-const viaLink = link => sh(`am start -a android.intent.action.VIEW -n ${APP}/.MainActivity -d '${link}'`)
+const open = () => sh(`am start -n ${ACTIVITY}`)
+const viaLink = link => sh(`am start -a android.intent.action.VIEW -n ${ACTIVITY} -d '${link}'`)
 const home = () => key('KEYCODE_HOME')
 const leaveAndComeBack = async () => {
   home()
@@ -378,8 +380,8 @@ try {
     await tapOn(/^\s*Open Hub\s*$/)
     await waitFor(/^\s*Done\s*$/)
     await sleep(3000)
-    assert.match(focus(), /com\.example\.localhub/)
-    assert.ok(!/com\.example\.localhub\/\.MainActivity/.test(focus()), `the browser should be on top: ${focus()}`)
+    assert.ok(focus().includes(APP), focus())
+    assert.ok(!/MainActivity/.test(focus()), `the browser should be on top: ${focus()}`)
     shot('02-hub-page')
     await tapOn(/^\s*Done\s*$/)
     await waitFor(CONNECTED)
@@ -387,7 +389,7 @@ try {
 
   await step('a shared link fills the composer and sends nothing', async () => {
     const before = fs.statSync(marker).mtimeMs
-    sh(`am start -a android.intent.action.SEND -t text/plain --es android.intent.extra.TEXT 'Shared%20text' -n ${APP}/.MainActivity`)
+    sh(`am start -a android.intent.action.SEND -t text/plain --es android.intent.extra.TEXT 'Shared%20text' -n ${ACTIVITY}`)
     await waitFor(/Read it first/)
     await sleep(3000)
     assert.equal(fs.statSync(marker).mtimeMs, before)
@@ -549,7 +551,8 @@ try {
 
   await step('the widget is registered with the system, with no configuration or data of its own', async () => {
     const widgets = sh('dumpsys appwidget')
-    assert.match(widgets, /com\.example\.localhub\/\.HubWidgetProvider/)
+    assert.match(widgets, /HubWidgetProvider/)
+    assert.ok(widgets.includes(APP), widgets)
     assert.match(sh(`dumpsys package ${APP} | grep -A2 HubWidgetProvider || true`), /HubWidgetProvider/)
   })
 
