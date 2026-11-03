@@ -74,6 +74,15 @@ async function step(name, fn) {
   console.log(`ok  ${name}`)
 }
 
+// The lock stand-in's settings, which have to last through a reload.
+await page.addInitScript(() => {
+  try {
+    window.__testLock = JSON.parse(sessionStorage.getItem('__testLockSet')) ?? {}
+  } catch {
+    // A sandboxed frame has no storage.
+  }
+})
+
 // Writes to localStorage, sessionStorage, cookies and IndexedDB, so a token that is saved and later
 // overwritten still shows. The Cache API isn't watched, and nothing here can see native storage.
 const storageWrites = []
@@ -504,8 +513,401 @@ try {
     await T('scan').waitFor()
   })
 
+  // --- The lock. The browser build stands in for the OS, so this proves the app's side of it: what shows,
+  // what waits, and that no answer other than a token opens anything. The OS's side needs a device.
+  const setLock = o => page.evaluate(v => {
+    window.__testLock = v
+    sessionStorage.setItem('__testLockSet', JSON.stringify(v))
+  }, o)
+  const started = () => page.waitForFunction(() => window.__hubTest)
+  const fireLock = (foreground = false) => page.evaluate(f => window.__hubTest.locked({ foreground: f }), foreground)
+  const prompts = () => page.evaluate(() => window.__testLockPrompts ?? 0)
+  const plainToken = () => page.evaluate(() => localStorage.getItem('localhub_device-token'))
+  const lockedToken = () => page.evaluate(() => localStorage.getItem('__testLockToken'))
+  const link = l => page.evaluate(v => window.__hubTest.link(v), l)
+  const lockCard = state => page.locator(`[data-test="lock-card"][data-lock="${state}"]`).waitFor()
+  const settle = () => page.waitForTimeout(150)
+  const hubRequests = []
+  page.on('request', r => { if (r.url().startsWith(hub.base)) hubRequests.push(r.url()) })
+  const assertLocked = async () => {
+    await T('locked').waitFor()
+    for (const name of ['status', 'settings', 'open', 'send', 'pane-status', 'share-text']) assert.equal(await T(name).count(), 0, `${name} shows behind the lock`)
+    assert.equal(await page.locator('#draft').count(), 0, 'the composer shows behind the lock')
+  }
+  const turnOn = async () => {
+    await T('settings').click()
+    await lockCard('off')
+    await T('lock-on').click()
+    await lockCard('on')
+  }
+  const backHome = () => page.getByRole('button', { name: 'Back' }).click()
+
+  await step('the lock can\'t be turned on until biometrics are set up, and says what to do', async () => {
+    await pairByLink()
+    await setLock({ reason: 'notEnrolled' })
+    await T('settings').click()
+    await lockCard('unavailable')
+    assert.ok(await T('lock-on').isDisabled())
+    assert.match(await T('lock-card').textContent(), /Set up Face ID in your device's settings first/)
+    assert.ok(await plainToken(), 'nothing moved')
+    await shot('20-lock-not-enrolled')
+  })
+
+  await step('a cancelled or failed turn-on changes nothing', async () => {
+    await setLock({})
+    await page.reload()
+    await stateIs('ok')
+    await T('settings').click()
+    await lockCard('off')
+    await setLock({ result: 'cancelled' })
+    await T('lock-on').click()
+    await lockCard('off')
+    await settle()
+    assert.equal(await T('lock-note').count(), 0, 'a cancel says nothing')
+    await setLock({ result: 'unavailable' })
+    await T('lock-on').click()
+    await T('lock-note').waitFor()
+    await lockCard('off')
+    assert.ok(await plainToken(), 'the token stays where it was')
+    assert.equal(await lockedToken(), null)
+    await backHome()
+  })
+
+  await step('turning it on leaves no plain copy of the token, and drops the Hub page\'s sign-in', async () => {
+    await setLock({})
+    const before = await cookiesCleared()
+    await turnOn()
+    assert.equal(await plainToken(), null, 'plain copy gone')
+    assert.ok(await lockedToken(), 'held by the OS stand-in')
+    assert.ok(await cookiesCleared() > before, 'the cookie is also a copy of the token')
+    await shot('21-lock-on')
+  })
+
+  await step('a restart shows only the lock screen, says nothing about the Hub, and calls nothing', async () => {
+    await setLock({ result: 'cancelled' })
+    hubRequests.length = 0
+    await page.reload()
+    await started()
+    await assertLocked()
+    const secret = await lockedToken()
+    const html = await page.content()
+    for (const word of ['Test &lt;b&gt;', 'Test <b>', `localhost:${HUB_PORT}`, secret]) assert.ok(!html.includes(word), `lock screen shows ${word}`)
+    await page.evaluate(() => window.__hubTest.refresh())
+    await settle()
+    assert.deepEqual(hubRequests, [], 'no call to the Hub while locked')
+    assert.equal(await prompts(), 1, 'asked once on the way in')
+    await shot('22-locked')
+  })
+
+  await step('cancel, a miss, lockout, unavailable and an empty answer all stay locked', async () => {
+    for (const [result, text] of [['cancelled', null], ['failed', /didn't match/], ['lockedOut', /Too many tries/], ['unavailable', /isn't available right now/]]) {
+      await setLock({ result })
+      await T('unlock').click()
+      await settle()
+      await assertLocked()
+      if (text) assert.match(await T('lock-message').textContent(), text)
+      else assert.equal(await T('lock-message').count(), 0)
+    }
+    const secret = await lockedToken()
+    await page.evaluate(() => localStorage.removeItem('__testLockToken'))
+    await setLock({})
+    await T('unlock').click()
+    await settle()
+    await assertLocked()
+    await page.evaluate(v => localStorage.setItem('__testLockToken', v), secret)
+    await setLock({ result: 'cancelled' })
+  })
+
+  await step('a plain token left beside the lock is removed at start and opens nothing', async () => {
+    await page.evaluate(() => localStorage.setItem('localhub_device-token', '"left-behind"'))
+    await page.reload()
+    await started()
+    await assertLocked()
+    assert.equal(await plainToken(), null)
+  })
+
+  await step('links, shares and quick actions wait behind the lock, and only known actions are taken', async () => {
+    const sends = (await mock({})).sends.length
+    await page.evaluate(() => { window.__hubOpened = null })
+    assert.equal(await link('localhub://action/compose'), true)
+    await page.evaluate(() => window.__hubTest.share('Shared while locked'))
+    for (const bad of ['localhub://action/publish', 'localhub://action/delete', 'localhub://action/render', 'localhub://action/compose?text=x', 'localhub://action/open#x', 'localhub://action/open/x', 'https://action/open', 'localhub://other/open']) {
+      assert.equal(await link(bad), false, bad)
+    }
+    await assertLocked()
+    assert.equal(await page.evaluate(() => window.__hubOpened), null)
+    await setLock({})
+    await T('unlock').click()
+    await T('share-text').waitFor()
+    assert.equal(await T('share-text').inputValue(), 'Shared while locked')
+    await settle()
+    assert.equal((await mock({})).sends.length, sends, 'nothing sent until the person says so')
+    await T('share-cancel').click()
+    await stateIs('ok')
+
+    await fireLock()
+    await assertLocked()
+    assert.equal(await link('localhub://action/compose'), true)
+    await T('unlock').click()
+    await page.waitForFunction(() => document.activeElement?.id === 'draft')
+    await stateIs('ok')
+
+    await fireLock()
+    await assertLocked()
+    assert.equal(await link('localhub://action/open'), true)
+    await settle()
+    assert.equal(await page.evaluate(() => window.__hubOpened), null)
+    await T('unlock').click()
+    await page.waitForFunction(() => window.__hubOpened)
+  })
+
+  await step('locking closes the Hub page and clears its sign-in, and unlocking opens it again', async () => {
+    await stateIs('ok')
+    await T('open').click()
+    await page.evaluate(() => { window.__hubOpened = null })
+    const closed = await page.evaluate(() => window.__hubClosed ?? 0)
+    const cookies = await cookiesCleared()
+    await fireLock()
+    await assertLocked()
+    assert.ok(await page.evaluate(() => window.__hubClosed) > closed, 'page closed')
+    assert.ok(await cookiesCleared() > cookies, 'sign-in cleared')
+    await settle()
+    assert.equal(await page.evaluate(() => window.__hubOpened), null)
+    await T('unlock').click()
+    await page.waitForFunction(() => window.__hubOpened)
+    assert.deepEqual(await page.evaluate(() => window.__hubOpened), { url: `http://localhost:${HUB_PORT}/`, hasAuth: true })
+  })
+
+  await step('a check or a send in flight can\'t bring anything back over the lock', async () => {
+    await stateIs('ok')
+    let release
+    const gate = new Promise(r => { release = r })
+    await page.route(`${hub.base}/api/**`, async route => {
+      await gate
+      await route.continue().catch(() => {})
+    })
+    const check = page.evaluate(() => window.__hubTest.refresh())
+    await page.locator('#draft').fill('Sent as it locked')
+    await T('send').click()
+    await settle()
+    await fireLock()
+    await assertLocked()
+    release()
+    await check
+    await settle()
+    await assertLocked()
+    await page.unroute(`${hub.base}/api/**`)
+    await T('unlock').click()
+    await stateIs('ok')
+  })
+
+  await step('text waiting to send stays put while locked, and sends once after unlocking', async () => {
+    await mock({ down: true })
+    await recheck()
+    await page.locator('#draft').fill('Waiting behind the lock')
+    await T('send').click()
+    await T('waiting').waitFor()
+    const before = (await mock({})).sends.length
+    await fireLock()
+    await assertLocked()
+    assert.ok(!(await page.content()).includes('Waiting behind the lock'), 'waiting text behind the lock')
+    await mock({ down: false })
+    await page.evaluate(() => window.__hubTest.refresh())
+    await settle()
+    assert.equal((await mock({})).sends.length, before, 'no send while locked')
+    await T('unlock').click()
+    await stateIs('ok')
+    await page.waitForFunction(() => !document.querySelector('[data-test="waiting"]'))
+    const { sends } = await mock({})
+    assert.equal(sends.length, before + 1)
+    assert.equal(sends.at(-1).text, 'Waiting behind the lock')
+  })
+
+  await step('a prompt still open when the app is left can\'t open the lock that came after it', async () => {
+    await fireLock()
+    await setLock({ hold: true })
+    const asked = await prompts()
+    await T('unlock').click()
+    await page.waitForFunction(n => window.__testLockPrompts > n, asked)
+    await fireLock()
+    await page.evaluate(() => window.__testLockRelease())
+    await settle()
+    await assertLocked()
+    await setLock({})
+  })
+
+  await step('coming back asks once, and after a cancel waits for the button', async () => {
+    await setLock({ result: 'cancelled' })
+    await fireLock()
+    const asked = await prompts()
+    await fireLock(true)
+    await settle()
+    assert.equal(await prompts(), asked + 1)
+    await fireLock(true)
+    await settle()
+    assert.equal(await prompts(), asked + 1, 'no loop of prompts')
+    await assertLocked()
+  })
+
+  await step('changed biometrics can only pair again, which needs a new code', async () => {
+    await setLock({ result: 'changed' })
+    await T('unlock').click()
+    await T('lock-changed').waitFor()
+    await shot('23-lock-changed')
+    assert.equal(await T('unlock').count(), 0, 'no way past it but pairing again')
+    assert.equal(await T('status').count(), 0)
+    await T('lock-pair-again').click()
+    await T('scan').waitFor()
+    assert.match(await page.locator('body').innerText(), /stays on your Hub's list/)
+    assert.equal(await plainToken(), null)
+    assert.equal(await lockedToken(), null)
+    await setLock({})
+    await page.reload()
+    await T('scan').waitFor()
+  })
+
+  await step('someone who can\'t unlock can only start over, and that opens nothing', async () => {
+    await pairByLink()
+    await turnOn()
+    await setLock({ result: 'cancelled' })
+    await fireLock()
+    await T('lock-cant').click()
+    await T('lock-forget').waitFor()
+    await shot('24-lock-forget')
+    await T('lock-forget-cancel').click()
+    await assertLocked()
+    await T('lock-cant').click()
+    await T('lock-forget-confirm').click()
+    await T('scan').waitFor()
+    assert.equal(await plainToken(), null)
+    assert.equal(await lockedToken(), null)
+    await setLock({})
+  })
+
+  await step('if the lock can\'t be asked about, the app doesn\'t open', async () => {
+    await pairByLink()
+    await turnOn()
+    await setLock({ statusFails: true })
+    await page.reload()
+    await page.getByText('Local Hub couldn\'t start').waitFor()
+    for (const name of ['status', 'settings', 'open', 'send']) assert.equal(await T(name).count(), 0, name)
+    await setLock({})
+    await T('start-retry').click()
+    await stateIs('ok')
+  })
+
+  await step('turning it off needs the same check, and puts the token back only then', async () => {
+    await T('settings').click()
+    await lockCard('on')
+    await setLock({ result: 'cancelled' })
+    await T('lock-off').click()
+    await settle()
+    await lockCard('on')
+    assert.equal(await plainToken(), null)
+    await setLock({ result: 'failed' })
+    await T('lock-off').click()
+    await T('lock-note').waitFor()
+    await lockCard('on')
+    assert.equal(await plainToken(), null)
+    // The check passed but the lock couldn't be cleared: it stays on, with no plain copy left behind.
+    await setLock({ clearFails: true })
+    await T('lock-off').click()
+    await page.locator('[data-test="lock-note"]', { hasText: 'It stays on' }).waitFor()
+    await lockCard('on')
+    assert.equal(await plainToken(), null)
+    assert.ok(await lockedToken())
+    await setLock({})
+    await T('lock-off').click()
+    await lockCard('off')
+    assert.ok(await plainToken())
+    assert.equal(await lockedToken(), null)
+    await backHome()
+  })
+
+  await step('quick actions only choose a screen: nothing sent, filled in or changed', async () => {
+    await stateIs('ok')
+    const sends = (await mock({})).sends.length
+    await T('settings').click()
+    await link('localhub://action/compose')
+    await page.locator('#draft').waitFor()
+    assert.equal(await page.evaluate(() => document.activeElement?.id), 'draft')
+    assert.equal(await page.locator('#draft').inputValue(), '')
+    await T('settings').click()
+    await link('localhub://action/status')
+    await stateIs('ok')
+    await page.evaluate(() => { window.__hubOpened = null })
+    await link('localhub://action/open')
+    await page.waitForFunction(() => window.__hubOpened)
+    await settle()
+    assert.equal((await mock({})).sends.length, sends)
+  })
+
+  await step('a pairing link can\'t replace the Hub this device is paired with', async () => {
+    const c = await code()
+    await page.evaluate(l => window.__hubTest.link(l), `localhub://pair?u=${encodeURIComponent(`http://localhost:${HUB_PORT}`)}&c=${c}`)
+    await settle()
+    assert.equal(await T('pair-confirm').count(), 0)
+    await stateIs('ok')
+  })
+
+  await step('with nothing paired a quick action just asks you to pair', async () => {
+    await openForget()
+    await link('localhub://action/open')
+    await page.getByText('Pair with your Hub first.').waitFor()
+    await T('scan').waitFor()
+  })
+
+  await step('iPad sizes, in both orientations and split view, hold together', async () => {
+    await pairByLink()
+    const tappable = async label => {
+      const small = await page.evaluate(() => [...document.querySelectorAll('button:not(:disabled)')]
+        .map(b => ({ text: b.textContent, height: b.getBoundingClientRect().height }))
+        .filter(b => b.height > 0 && b.height < 44))
+      assert.deepEqual(small, [], `${label}: tap targets under 44pt`)
+    }
+    for (const [width, height, name] of [[768, 1024, 'ipad-portrait'], [1024, 768, 'ipad-landscape'], [1366, 1024, 'ipad-large'], [507, 1024, 'ipad-split']]) {
+      await page.setViewportSize({ width, height })
+      await noSideScroll(`home at ${name}`)
+      await tappable(`home at ${name}`)
+      const status = await T('pane-status').boundingBox()
+      const compose = await T('pane-compose').boundingBox()
+      if (width >= 900) {
+        assert.ok(status.x + status.width <= compose.x, `${name}: panes side by side`)
+        assert.equal(Math.round(status.y), Math.round(compose.y), `${name}: panes start level`)
+      } else {
+        assert.ok(status.y + status.height <= compose.y, `${name}: panes stacked`)
+      }
+      const main = await page.locator('main').boundingBox()
+      assert.ok(Math.abs(main.x - (width - main.x - main.width)) <= 1, `${name}: centred`)
+      await shot(`25-${name}-home`)
+      await T('settings').click()
+      await lockCard('off')
+      await noSideScroll(`settings at ${name}`)
+      await tappable(`settings at ${name}`)
+      await shot(`25-${name}-settings`)
+      await backHome()
+      await stateIs('ok')
+    }
+    await page.setViewportSize({ width: 1024, height: 768 })
+    await turnOn()
+    await fireLock()
+    await assertLocked()
+    await noSideScroll('locked on a tablet')
+    await tappable('locked on a tablet')
+    await shot('25-ipad-locked')
+    await T('unlock').click()
+    await stateIs('ok')
+    await T('settings').click()
+    await T('lock-off').click()
+    await lockCard('off')
+    await backHome()
+    await page.setViewportSize({ width: 390, height: 844 })
+    await openForget()
+  })
+
   await step('no token was ever written anywhere but secure storage', async () => {
-    const isToken = ([key]) => key === 'localhub_device-token'
+    // __testLockToken is the dev build's stand-in for the OS's storage.
+    const isToken = ([key]) => key === 'localhub_device-token' || key === '__testLockToken'
     const tokens = storageWrites.filter(isToken).map(([, value]) => value.replace(/"/g, ''))
     assert.ok(tokens.length >= 3, 'several pairings were watched')
     for (const [key, value] of storageWrites.filter(w => !isToken(w))) {

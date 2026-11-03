@@ -4,4 +4,8 @@
     <string name="title_activity_main">Local Hub</string>
     <string name="package_name">com.example.localhub</string>
     <string name="custom_url_scheme">com.example.localhub</string>
+    <string name="widget_open">Open Hub</string>
+    <string name="widget_compose">Message</string>
+    <string name="widget_status">Status</string>
+    <string name="widget_description">Shortcuts into Local Hub. They go through the lock when it is on.</string>
 </resources>

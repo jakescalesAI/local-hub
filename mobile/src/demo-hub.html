@@ -20,19 +20,45 @@
       p { color: var(--label-2); font-size: 15px; }
       .bubble { margin: 8px 0; padding: 10px 14px; border-radius: 18px; background: var(--surface); }
       .mine { margin-left: 48px; background: var(--blue); color: #fff; }
+      .search { padding: 10px 14px; border-radius: 12px; background: var(--surface); color: var(--label-2); }
+      code { font: 15px/1.4 ui-monospace, Menlo, Consolas, monospace; }
     </style>
   </head>
   <body>
     <h1>Demo Hub</h1>
-    <p>Sample data. A real Hub shows your own computer here.</p>
+    <p>Sample data. A real Hub shows your own computer here. On a real Hub, this page is live: you can search, open things and chat.</p>
+    <div class="search">Search links, snippets and files</div>
+    <h2>Today</h2>
+    <ul>
+      <li><span>Tuesday, 14 April</span><span>9:41</span></li>
+      <li><span>Dentist</span><span>3:00 PM</span></li>
+      <li><span>Finish the garden notes</span><span>Note</span></li>
+    </ul>
     <h2>This computer</h2>
     <ul>
       <li><span class="up">Sample web server</span><span>Port 8080</span></li>
       <li><span class="up">Sample database</span><span>Port 5432</span></li>
       <li><span>Disk</span><span>212 GB free</span></li>
     </ul>
+    <h2>Links</h2>
+    <ul>
+      <li><span>Recipe to try</span><span>example.com</span></li>
+      <li><span>Bike repair guide</span><span>example.org</span></li>
+    </ul>
+    <h2>Snippets</h2>
+    <ul>
+      <li><span>Packing list</span><span>Text</span></li>
+      <li><span><code>git status --short</code></span><span>Command</span></li>
+    </ul>
+    <h2>Files</h2>
+    <ul>
+      <li><span>Garden notes.txt</span><span>4 KB</span></li>
+      <li><span>Holiday photos</span><span>Folder</span></li>
+    </ul>
     <h2>Chat</h2>
     <div class="bubble mine">Is the sample web server still running?</div>
     <div class="bubble">Yes, it has been up for 3 hours on port 8080.</div>
+    <div class="bubble mine">What is on today?</div>
+    <div class="bubble">The dentist at 3, and the garden notes you wanted to finish.</div>
   </body>
 </html>

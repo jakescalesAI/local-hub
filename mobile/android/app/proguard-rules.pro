@@ -19,3 +19,8 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# The in-app browser plugin reads its options with Gson, by field name.
+-keep class com.capacitorjs.osinappbrowser.** { *; }
+-keep class com.outsystems.plugins.inappbrowser.osinappbrowserlib.** { *; }
+-keepattributes Signature,*Annotation*,InnerClasses,EnclosingMethod

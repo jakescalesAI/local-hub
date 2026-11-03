@@ -16,8 +16,25 @@ before(() => {
 
 test('the release bundle carries no test hooks or debug addresses', () => {
   const js = www('app.js')
-  for (const hook of ['__hubTest', '__testScan', '__hubOpened', '__hubCookiesCleared', '__testCookiesFail', '__testStorageFails', '__testTokenReadFails', '__testClearFails', '__DEV__']) assert.ok(!js.includes(hook), hook)
+  for (const hook of ['__hubTest', '__testScan', '__hubOpened', '__hubCookiesCleared', '__testCookiesFail', '__testStorageFails', '__testTokenReadFails', '__testClearFails', '__testLock', '__hubClosed', '__DEV__', '__LOCAL_HTTP__']) assert.ok(!js.includes(hook), hook)
   assert.ok(!js.includes('console.log('), 'no logging in app code paths')
+})
+
+test('the demo page is sample data that reaches for nothing', () => {
+  const page = www('demo-hub.html')
+  assert.ok(!/<script|<link|<img|<iframe|https?:|url\(/i.test(page))
+  assert.match(page, /Sample data/)
+})
+
+test('the emulator test\'s build differs by the plain-HTTP allowance alone', () => {
+  execFileSync(process.execPath, ['build.mjs', '--local-http'], { cwd: ROOT, stdio: 'pipe' })
+  try {
+    const js = www('app.js')
+    for (const hook of ['__hubTest', '__testScan', '__hubOpened', '__testLock', '__hubClosed', '__DEV__', '__LOCAL_HTTP__']) assert.ok(!js.includes(hook), hook)
+    assert.match(www('index.html'), /connect-src 'self';/)
+  } finally {
+    execFileSync(process.execPath, ['build.mjs'], { cwd: ROOT, stdio: 'pipe' })
+  }
 })
 
 test('the release page allows only its own files', () => {

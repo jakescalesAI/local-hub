@@ -12,12 +12,50 @@ public class HubNativePlugin: CAPPlugin, CAPBridgedPlugin {
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "scanQr", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "takeShare", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "clearCookies", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "clearCookies", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "lockStatus", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "lockEnable", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "lockUnlock", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "lockClear", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "lockShown", returnType: CAPPluginReturnPromise)
     ]
 
     // Must match ShareViewController and both entitlements files.
     private static let appGroup = "group.com.example.localhub"
     private static let pendingKey = "pending-shares"
+
+    override public func load() {
+        HubLock.shared.onLocked = { [weak self] foreground in
+            self?.notifyListeners("locked", data: ["foreground": foreground], retainUntilConsumed: true)
+        }
+    }
+
+    @objc func lockStatus(_ call: CAPPluginCall) {
+        DispatchQueue.main.async { call.resolve(HubLock.shared.status()) }
+    }
+
+    @objc func lockEnable(_ call: CAPPluginCall) {
+        guard let token = call.getString("token"), !token.isEmpty else {
+            call.reject("no token")
+            return
+        }
+        DispatchQueue.main.async { HubLock.shared.enable(token: token) { call.resolve($0) } }
+    }
+
+    @objc func lockUnlock(_ call: CAPPluginCall) {
+        DispatchQueue.main.async { HubLock.shared.unlock { call.resolve($0) } }
+    }
+
+    @objc func lockClear(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            HubLock.shared.clear()
+            call.resolve()
+        }
+    }
+
+    @objc func lockShown(_ call: CAPPluginCall) {
+        DispatchQueue.main.async { call.resolve(["active": HubLock.shared.shown()]) }
+    }
 
     @objc func takeShare(_ call: CAPPluginCall) {
         guard let shared = UserDefaults(suiteName: Self.appGroup),
@@ -155,9 +193,29 @@ final class QrScannerViewController: UIViewController, AVCaptureMetadataOutputOb
         if cameraFailed { finish(nil) }
     }
 
+    // The lock can dismiss this. The call still needs its answer.
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        finish(nil)
+    }
+
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
-        view.layer.sublayers?.compactMap { $0 as? AVCaptureVideoPreviewLayer }.forEach { $0.frame = view.bounds }
+        view.layer.sublayers?.compactMap { $0 as? AVCaptureVideoPreviewLayer }.forEach { layer in
+            layer.frame = view.bounds
+            turn(layer)
+        }
+    }
+
+    // On an iPad the app turns with the device, so the camera picture has to as well.
+    private func turn(_ layer: AVCaptureVideoPreviewLayer) {
+        guard let connection = layer.connection, connection.isVideoOrientationSupported else { return }
+        switch view.window?.windowScene?.interfaceOrientation {
+        case .portraitUpsideDown: connection.videoOrientation = .portraitUpsideDown
+        case .landscapeLeft: connection.videoOrientation = .landscapeLeft
+        case .landscapeRight: connection.videoOrientation = .landscapeRight
+        default: connection.videoOrientation = .portrait
+        }
     }
 
     func metadataOutput(_ output: AVCaptureMetadataOutput, didOutput metadataObjects: [AVMetadataObject], from connection: AVCaptureConnection) {

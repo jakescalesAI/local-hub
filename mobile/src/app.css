@@ -346,6 +346,39 @@ textarea {
   font-size: 15px;
 }
 
+.panes,
+.pane {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* By width, not by device: an iPad in Split View is a phone-sized window. */
+@media (min-width: 700px) {
+  .screen {
+    max-width: 620px;
+    padding-left: max(32px, env(safe-area-inset-left));
+    padding-right: max(32px, env(safe-area-inset-right));
+  }
+  .screen.center {
+    max-width: 480px;
+  }
+  .screen.wide {
+    max-width: 720px;
+  }
+}
+@media (min-width: 900px) {
+  .screen.home {
+    max-width: 1040px;
+  }
+  .panes {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+    gap: 24px;
+  }
+}
+
 .hubview {
   display: flex;
   flex-direction: column;
