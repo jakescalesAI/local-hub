@@ -180,3 +180,20 @@ test('iOS says why it needs Face ID, the camera and the local network', () => {
   }
   assert.ok(!plist.includes('NSBonjourServices'), 'the app looks nothing up on the network')
 })
+
+test('no plist says the same key twice in one dict', () => {
+  // Xcode keeps the last copy without a word, so a second copy can quietly undo the first.
+  const plists = fs.readdirSync(path.join(ROOT, 'ios/App'), { recursive: true }).filter(f => /\.(plist|entitlements|xcprivacy)$/.test(f))
+  assert.ok(plists.length >= 6, plists.join())
+  for (const rel of plists) {
+    const stack = []
+    for (const [tag, key] of read(`ios/App/${rel}`).matchAll(/<\/?dict>|<key>([^<]*)<\/key>/g)) {
+      if (tag === '<dict>') stack.push(new Set())
+      else if (tag === '</dict>') stack.pop()
+      else {
+        assert.ok(!stack.at(-1).has(key), `${rel}: ${key} twice`)
+        stack.at(-1).add(key)
+      }
+    }
+  }
+})
