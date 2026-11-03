@@ -2,8 +2,8 @@
 <resources>
     <string name="app_name">LocalHub</string>
     <string name="title_activity_main">LocalHub</string>
-    <string name="package_name">com.example.localhub</string>
-    <string name="custom_url_scheme">com.example.localhub</string>
+    <string name="package_name">com.forgeitsolutions.localhub</string>
+    <string name="custom_url_scheme">com.forgeitsolutions.localhub</string>
     <string name="widget_open">Open Hub</string>
     <string name="widget_compose">Message</string>
     <string name="widget_status">Status</string>

@@ -35,7 +35,7 @@ test('the widget is in no App Group, so only the app and the share extension nee
 })
 
 test('the maintainers\' id appears only as that exact id, and only where it is needed', { skip: !isMaintainers }, () => {
-  const allowed = new Set([...IOS_FILES, 'app-ids.json', 'PLAN.md', 'README.md'].map(rel => `mobile/${rel}`))
+  const allowed = new Set([...IOS_FILES, ...ANDROID_FILES, 'app-ids.json', 'PLAN.md', 'README.md'].map(rel => `mobile/${rel}`))
   const exact = new RegExp(`(group\\.)?${ids.ios.replace(/\./g, '\\.')}(\\.share|\\.widget)?`, 'g')
   for (const rel of tracked()) {
     const full = path.join(ROOT, '..', rel)

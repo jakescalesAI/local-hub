@@ -12,7 +12,7 @@ import { h } from './lib/dom.js'
 
 const LOCAL_HTTP = __DEV__ || __LOCAL_HTTP__
 const CHECK_EVERY_MS = 30_000
-const DEMO_STATES = [['ok', 'Connected'], ['asleep', 'Asleep'], ['stopped', 'Stopped'], ['offline', 'Offline'], ['removed', 'Removed']]
+const DEMO_STATES = __DEV__ ? [['ok', 'Connected'], ['asleep', 'Asleep'], ['stopped', 'Stopped'], ['offline', 'Offline'], ['removed', 'Removed']] : []
 
 const client = createClient({ http: native.http })
 const root = document.getElementById('app')
@@ -566,7 +566,8 @@ const SCREENS = {
             s.canRetry ? button('Try again', refresh, { test: 'retry' }) : null,
             app.state === 'removed' ? button('Pair again', () => forgetLocal(), { kind: 'tinted', test: 'pair-again' }) : null,
             s.canRetry ? setupLink() : null),
-          app.conn.demo
+          // Stepping the demo through each state is for testing the screens, so only dev builds have it.
+          __DEV__ && app.conn.demo
             ? h('div', { class: 'segments', role: 'group', 'aria-label': 'Show a state' },
                 ...DEMO_STATES.map(([key, label]) => h('button', { type: 'button', class: key === app.demoState ? 'on' : '', 'aria-pressed': String(key === app.demoState), 'data-test': `demo-${key}`, onclick: () => ((app.demoState = key), refresh()) }, label)))
             : null,

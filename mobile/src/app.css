@@ -396,6 +396,83 @@ textarea {
   }
 }
 
+/* A whole iPad screen in either orientation, not a Split View window: bigger type and controls, and wider
+   columns, so each screen uses the space instead of sitting small in a corner of it. */
+@media (min-width: 740px) and (min-height: 740px) {
+  body {
+    font-size: 21px;
+  }
+  .screen {
+    gap: 24px;
+    padding-top: max(40px, env(safe-area-inset-top));
+  }
+  .screen.center {
+    max-width: 640px;
+  }
+  .screen.wide {
+    max-width: 880px;
+  }
+  .screen.home {
+    max-width: 1200px;
+  }
+  .logo {
+    width: 104px;
+    height: 104px;
+    border-radius: 24px;
+  }
+  h1 {
+    font-size: 48px;
+  }
+  h2,
+  .foot,
+  .seen,
+  label,
+  .segments button {
+    font-size: 17px;
+  }
+  .needs,
+  .demo-note,
+  .prose,
+  .row-actions .btn {
+    font-size: 19px;
+  }
+  .card {
+    padding: 24px;
+    border-radius: 20px;
+  }
+  .rows,
+  .waiting {
+    padding: 0 24px;
+  }
+  .row,
+  .waiting li {
+    padding: 16px 0;
+  }
+  .stack {
+    gap: 12px;
+  }
+  .btn {
+    min-height: 60px;
+    padding: 16px 20px;
+    border-radius: 14px;
+  }
+  .status .btn,
+  .compose .btn {
+    min-height: 56px;
+  }
+  textarea {
+    padding: 14px 16px;
+    border-radius: 12px;
+  }
+  .dot {
+    width: 12px;
+    height: 12px;
+  }
+  .panes {
+    gap: 32px;
+  }
+}
+
 .hubview {
   display: flex;
   flex-direction: column;

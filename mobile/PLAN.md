@@ -371,7 +371,7 @@ Nothing here is done or started.
 | Apple Developer Program | [US$99 a year](https://developer.apple.com/programs/whats-included/) | Decide personal or organization |
 | Google Play developer account | US$25 once | ID and a physical Android device. Organization accounts skip the 12-tester rule |
 | Register the iOS IDs under the Apple team | | `com.forgeitsolutions.localhub`, with `.share`, `.widget` and `group.` forms. They are in the repo, and nothing is registered yet |
-| Choose the Android package and Play account | | Open decision. Android stays on `com.example.localhub`, which can't be uploaded until replaced. `node scripts/set-app-id.mjs --android <id>` changes it. The two platforms having different ids breaks nothing, in the projects or CI |
+| Choose the Android package and Play account | | Android now defaults to `com.forgeitsolutions.localhub`, the same as iOS. The owner confirms it before the first upload, because Play never lets a package name change after that. `node scripts/set-app-id.mjs --android <id>` changes it. The Java package stays `com.example.localhub`, which users never see |
 | Claim the store name | | The product is LocalHub, one word. Nothing is claimed, and whether either store has it free hasn't been checked |
 | App Group, in the developer portal | | Portal only: create it, attach it to the app's ID and the share extension's, then regenerate their profiles. A signed build fails on the entitlement without it. The widget uses no group |
 | Three signed targets, each with its own ID and profile | | The app, `.share` and `.widget`, as the project sets them |

@@ -902,7 +902,7 @@ try {
         .filter(b => b.height > 0 && b.height < 44))
       assert.deepEqual(small, [], `${label}: tap targets under 44pt`)
     }
-    for (const [width, height, name] of [[768, 1024, 'ipad-portrait'], [1024, 768, 'ipad-landscape'], [1366, 1024, 'ipad-large'], [507, 1024, 'ipad-split']]) {
+    for (const [width, height, name] of [[768, 1024, 'ipad-portrait'], [1024, 768, 'ipad-landscape'], [1366, 1024, 'ipad-large'], [1032, 1376, 'ipad-13'], [507, 1024, 'ipad-split']]) {
       await page.setViewportSize({ width, height })
       await noSideScroll(`home at ${name}`)
       await tappable(`home at ${name}`)
@@ -916,6 +916,14 @@ try {
       }
       const main = await page.locator('main').boundingBox()
       assert.ok(Math.abs(main.x - (width - main.x - main.width)) <= 1, `${name}: centred`)
+      // A whole iPad screen gets bigger type and the full width; a Split View window stays phone-sized.
+      const heading = await page.evaluate(() => parseFloat(getComputedStyle(document.querySelector('h1')).fontSize))
+      if (width >= 740 && height >= 740) {
+        assert.ok(heading >= 44, `${name}: heading is ${heading}px`)
+        assert.ok(main.width >= Math.min(width, 1200) - 1, `${name}: home is ${main.width}px wide of ${width}`)
+      } else {
+        assert.equal(heading, 34, `${name}: heading`)
+      }
       await shot(`25-${name}-home`)
       await T('settings').click()
       await lockCard('off')

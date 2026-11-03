@@ -18,6 +18,8 @@ test('the release bundle carries no test hooks or debug addresses', () => {
   const js = www('app.js')
   for (const hook of ['__hubTest', '__testScan', '__hubOpened', '__hubCookiesCleared', '__testCookiesFail', '__testStorageFails', '__testTokenReadFails', '__testClearFails', '__testLock', '__hubClosed', '__DEV__', '__LOCAL_HTTP__']) assert.ok(!js.includes(hook), hook)
   assert.ok(!js.includes('console.log('), 'no logging in app code paths')
+  // The demo's state switcher is a test control: a store build shows the demo as connected, nothing to switch.
+  assert.ok(!js.includes('Show a state'), 'demo state switcher')
 })
 
 test('the demo page is sample data that reaches for nothing', () => {

@@ -22,6 +22,8 @@
       .mine { margin-left: 48px; background: var(--blue); color: #fff; }
       .search { padding: 10px 14px; border-radius: 12px; background: var(--surface); color: var(--label-2); }
       code { font: 15px/1.4 ui-monospace, Menlo, Consolas, monospace; }
+      /* A whole iPad screen: the same page, larger, so it fills the space. */
+      @media (min-width: 740px) and (min-height: 740px) { body { padding: 32px 40px; font-size: 21px; } h1 { font-size: 48px; } h2 { font-size: 17px; } p, code { font-size: 19px; } ul { padding: 0 24px; border-radius: 20px; } li { padding: 16px 0; } .search, .bubble { padding: 14px 20px; } }
     </style>
   </head>
   <body>

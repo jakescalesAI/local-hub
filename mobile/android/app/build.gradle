@@ -4,7 +4,7 @@ android {
     namespace = "com.example.localhub"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.example.localhub"
+        applicationId "com.forgeitsolutions.localhub"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
