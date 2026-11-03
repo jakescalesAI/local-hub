@@ -2,6 +2,7 @@
 // quietly breaks a promise. They don't show the code works: only a device can show that.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -18,6 +19,26 @@ const WIDGET_SOURCES = [
   'ios/App/HubWidget/HubWidget.swift',
   'ios/App/HubWidget/Info.plist',
 ]
+
+test('where a pairing code comes from is written in one place', () => {
+  const src = path.join(ROOT, 'src')
+  const files = fs.readdirSync(src, { recursive: true }).filter(f => /\.(js|html)$/.test(f))
+  const naming = files.filter(f => fs.readFileSync(path.join(src, f), 'utf8').includes('/pair/new'))
+  assert.deepEqual(naming.map(f => f.replace(/\\/g, '/')), ['lib/setup.js'])
+})
+
+test('the product is LocalHub, one word, wherever people see it', () => {
+  assert.equal(JSON.parse(read('capacitor.config.json')).appName, 'LocalHub')
+  for (const rel of ['ios/App/App/Info.plist', 'ios/App/ShareExtension/Info.plist', 'ios/App/HubWidget/Info.plist']) {
+    assert.match(read(rel), /<key>CFBundleDisplayName<\/key>\s*<string>LocalHub<\/string>/, rel)
+  }
+  assert.match(read('android/app/src/main/res/values/strings.xml'), /name="app_name">LocalHub</)
+  assert.match(read('ios/App/HubWidget/HubWidget.swift'), /configurationDisplayName\("LocalHub"\)/)
+  // The licence line is the repo's own, and the slugs and ids aren't display text.
+  const tracked = execFileSync('git', ['ls-files', '.'], { cwd: ROOT, encoding: 'utf8' }).split('\n').filter(f => f && f !== 'LICENSE' && !/\.(png|jpg|jar|ico)$/.test(f))
+  for (const rel of tracked) assert.ok(!/Local[ ]Hub/i.test(read(rel)), rel)
+  assert.equal(JSON.parse(read('package.json')).name, 'local-hub-mobile')
+})
 
 // aapt2 refuses a bare apostrophe or quote in a string, and CI is the first place that compiles it.
 test('Android strings have no bare apostrophes or quotes', () => {

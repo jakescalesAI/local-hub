@@ -1,11 +1,10 @@
-# Local Hub mobile app
+# LocalHub mobile app
 
 An iPhone, iPad and Android client for your own Hub. The computer does the work: the app pairs with
 it, stores one key, and shows the Hub's own mobile page. MIT. No telemetry, no hosted backend and no
 account with us.
 
-**Status: first build, not released.** See [What is not proven](#what-is-not-proven). The app and
-bundle IDs are `com.example.localhub` placeholders, so it can't be uploaded to a store as it is.
+**Status: first build, not released.** See [What is not proven](#what-is-not-proven).
 
 ## What's here
 
@@ -15,7 +14,7 @@ bundle IDs are `com.example.localhub` placeholders, so it can't be uploaded to a
 | `src/` | The shell: pairing, stored connection, status screens, share composer |
 | `android/`, `ios/` | Native projects, including the `HubNative` plugin and the iOS share extension |
 | `hub-changes/` | How pairing works on the Hub, and its tests |
-| `dev/mock-hub.mjs` | A local Hub stand-in that runs the real pairing module |
+| `dev/mock-hub.mjs` | A stand-in for your Hub that runs the real pairing module |
 | `scripts/native-setup.py` | Every change made to the Capacitor templates, written out |
 | `scripts/make-icons.mjs` | Draws the icons and launch screens from the Hub's own icon |
 
@@ -37,6 +36,23 @@ node hub-changes/test/real-hub.mjs <path-to-hub-checkout>
 ```
 
 ## Build
+
+### Building your own copy: set your own ids first
+
+The iOS id in this repo, `com.forgeitsolutions.localhub`, belongs to this project's maintainers, and only
+their Apple team can sign with it. Android still has a placeholder, and stores refuse that. Set yours
+before anything else:
+
+```bash
+node scripts/set-app-id.mjs --ios org.example.myhub --android org.example.myhub
+```
+
+That changes every copy, including the share extension (`.share`), the widget (`.widget`) and the App
+Group (`group.<id>`). `node scripts/check-app-ids.mjs` checks that they all match. The two ids may
+differ. `app-ids.json` holds them. Running `cap add` again rewrites the ids, so set them again after it.
+Register the ids under your own accounts, with your own signing. None of that is in this repo.
+
+### Build the app
 
 Always rebuild the release bundle before a native build. A dev bundle carries test hooks.
 

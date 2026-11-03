@@ -81,6 +81,7 @@ jobs:
           ls -l
           apk=app-release-unsigned.apk
           aapt="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/aapt2"
+          "$aapt" dump badging "$apk" | grep "package: name='$(node -p "require(process.env.GITHUB_WORKSPACE + '/mobile/app-ids.json').android")'"
           "$aapt" dump badging "$apk" | grep -E "uses-permission" | tee "$RUNNER_TEMP/release.txt"
           ! grep -E "RECORD_AUDIO|MODIFY_AUDIO_SETTINGS|ACCESS_(COARSE|FINE)_LOCATION" "$RUNNER_TEMP/release.txt"
           "$aapt" dump xmltree --file AndroidManifest.xml "$apk" | grep -E "debuggable|HubWidgetProvider" | tee "$RUNNER_TEMP/manifest.txt"
@@ -242,6 +243,10 @@ jobs:
           test -d "$app/PlugIns/ShareExtension.appex"
           test -f "$app/PlugIns/ShareExtension.appex/PrivacyInfo.xcprivacy"
           plutil -p "$app/Info.plist" | grep -E "CFBundleIdentifier|CFBundleURLSchemes"
+          id=$(node -p "require('./app-ids.json').ios")
+          test "$(plutil -extract CFBundleIdentifier raw "$app/Info.plist")" = "$id"
+          test "$(plutil -extract CFBundleIdentifier raw "$app/PlugIns/ShareExtension.appex/Info.plist")" = "$id.share"
+          test "$(plutil -extract CFBundleIdentifier raw "$app/PlugIns/HubWidget.appex/Info.plist")" = "$id.widget"
           for key in NSCameraUsageDescription NSFaceIDUsageDescription NSLocalNetworkUsageDescription; do
             plutil -p "$app/Info.plist" | grep "$key"
           done
@@ -264,9 +269,9 @@ jobs:
           xcrun simctl boot "$device"
           xcrun simctl bootstatus "$device" -b
           xcrun simctl install "$device" build/Build/Products/Debug-iphonesimulator/App.app
-          xcrun simctl launch "$device" com.example.localhub
+          xcrun simctl launch "$device" "$(node -p "require('./app-ids.json').ios")"
           sleep 20
-          xcrun simctl spawn "$device" launchctl list | grep com.example.localhub
+          xcrun simctl spawn "$device" launchctl list | grep "$(node -p "require('./app-ids.json').ios")"
           xcrun simctl io "$device" screenshot launch.png
       # Reported on its own too. A simulator launch shows the layout, not what a real iPad does.
       - name: Launch it on an iPad simulator and take a screenshot
@@ -280,7 +285,7 @@ jobs:
           xcrun simctl boot "$device"
           xcrun simctl bootstatus "$device" -b
           xcrun simctl install "$device" build/Build/Products/Debug-iphonesimulator/App.app
-          xcrun simctl launch "$device" com.example.localhub
+          xcrun simctl launch "$device" "$(node -p "require('./app-ids.json').ios")"
           sleep 20
           xcrun simctl io "$device" screenshot launch-ipad.png
           xcrun simctl openurl "$device" localhub://action/status

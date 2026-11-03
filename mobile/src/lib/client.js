@@ -72,7 +72,7 @@ export function createClient({ http }) {
       try {
         res = await request({ url: `${address}/api/pair/claim`, method: 'POST', data: { code, name, platform }, timeoutMs: CLAIM_TIMEOUT_MS })
       } catch {
-        return { ok: false, error: 'Couldn\'t reach that address. Check it, and make sure the computer is awake and this phone is on your private network.' }
+        return { ok: false, error: 'Couldn\'t reach that address. Check that it\'s typed right, that your computer is awake with the Hub running, and that your private network, such as Tailscale, is on for both devices.' }
       }
       const body = parse(res.text)
       const hub = readHub(body?.hub)

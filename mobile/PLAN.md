@@ -1,4 +1,4 @@
-# Local Hub mobile app: plan
+# LocalHub mobile app: plan
 
 An iPhone, iPad and Android client for a person's own Hub. The computer does the work. There is
 no hosted backend, no telemetry and no account with us. MIT, like the Hub.
@@ -278,7 +278,7 @@ render aren't reachable from it, and an unknown action does nothing.
 | --- | --- |
 | OS reports no network | You're offline |
 | `GET /api/pair/me` returns 200 | Connected |
-| Network error or timeout | Can't reach your computer: it may be asleep, or the private network is off on this phone |
+| Network error or timeout | Can't reach your computer: it may be asleep, or your private network, such as Tailscale, may be off on one of your devices. Check both, then try again |
 | 502, 503 or 504 | Your computer is on, but the Hub isn't running |
 | 401 | This phone was removed |
 | 404 | This Hub needs updating |
@@ -366,14 +366,16 @@ Nothing here is done or started.
 | --- | --- | --- |
 | Apple Developer Program | [US$99 a year](https://developer.apple.com/programs/whats-included/) | Decide personal or organization |
 | Google Play developer account | US$25 once | ID and a physical Android device. Organization accounts skip the 12-tester rule |
-| Choose the app ID, bundle ID, URL scheme and store name | | The repo uses `com.example.localhub` on purpose: it cannot be uploaded until replaced |
+| Register the iOS IDs under the Apple team | | `com.forgeitsolutions.localhub`, with `.share`, `.widget` and `group.` forms. They are in the repo, and nothing is registered yet |
+| Choose the Android package and Play account | | Open decision. Android stays on `com.example.localhub`, which can't be uploaded until replaced. `node scripts/set-app-id.mjs --android <id>` changes it. The two platforms having different ids breaks nothing, in the projects or CI |
+| Claim the store name | | The product is LocalHub, one word. Nothing is claimed, and whether either store has it free hasn't been checked |
 | App Group, in the developer portal | | Portal only: create it, attach it to the app's ID and the share extension's, then regenerate their profiles. A signed build fails on the entitlement without it. The widget uses no group |
 | Three signed targets, each with its own ID and profile | | The app, `.share` and `.widget`, as the project sets them |
 | A signing certificate for this app only | | Not one shared with other apps, so revoking it touches nothing else. Apple limits how many a team can have |
 | An App Store Connect API key for this app only, kept in Codemagic | | The lowest role that can upload: [Developer can](https://developer.apple.com/help/app-store-connect/manage-builds/upload-builds/). Saved once, since Apple offers the file only once, and revoked when idle. [A team key reaches every app on the team](https://developer.apple.com/help/app-store-connect/get-started/app-store-connect-api/) and can't be limited. An individual key follows one user's app access, but can't use the provisioning endpoints. Never in the repo |
 | Android upload key, kept outside the repo | | Losing it is a real problem, so use Play App Signing |
-| Privacy policy page | | A plain page in the public repo works |
-| Support URL | | App Store Connect requires one. It has to be this project's own page, and the same public page can do both |
+| Privacy policy page | | Goes on the product's domain, `trylocalhub.com`. It doesn't exist yet and the domain serves nothing today, so this isn't done. It has to load before submitting |
+| Support URL | | App Store Connect requires one. It also goes on `trylocalhub.com`, and doesn't exist yet. The same page can do both |
 | Store listings, screenshots, age rating, Data safety and App Privacy answers | | The app runs on iPad, so [an iPad screenshot set is needed too](https://developer.apple.com/help/app-store-connect/reference/screenshot-specifications/) |
 | 12 testers for 14 days on Google Play | | Only for a personal account |
 | turn on HTTPS for the Tailscale network, run `tailscale serve` and put its address in `url` | | Each person who uses the app does this for their own Hub |

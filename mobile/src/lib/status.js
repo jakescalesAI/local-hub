@@ -15,7 +15,7 @@ export const STATES = {
     tone: 'warn',
     pill: 'Can\'t reach it',
     title: 'Can\'t reach your computer',
-    body: 'It may be asleep, or the private network may be off on this phone. Anything you share will wait here.',
+    body: 'It may be asleep, or your private network, such as Tailscale, may be off on one of your devices. Check that your computer is awake and the network is on for both, then try again. Anything you share will wait here.',
     canOpen: false,
     canRetry: true,
   },

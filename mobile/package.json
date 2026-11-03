@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "buildNumber": 1,
   "private": true,
-  "description": "iPhone, iPad and Android client for your own Local Hub.",
+  "description": "iPhone, iPad and Android client for your own LocalHub.",
   "license": "MIT",
   "type": "module",
   "scripts": {

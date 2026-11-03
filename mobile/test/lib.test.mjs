@@ -59,6 +59,8 @@ test('states: each answer maps to the state the plan promises', () => {
   assert.equal(classify({ online: true, status: null }), 'asleep')
   assert.equal(classify({ online: false, status: null }), 'offline')
   assert.ok(!/is asleep|is off/i.test(STATES.asleep.body), 'never claims to know which')
+  assert.match(STATES.asleep.body, /awake/, 'says what to check')
+  assert.match(STATES.asleep.body, /such as Tailscale/, 'says what to check')
 })
 
 const fakeHttp = reply => {
@@ -331,7 +333,7 @@ test('the lock\'s words: a cancel says nothing, and nothing suggests it opened',
   assert.equal(unlockMessage({ cancelled: true }, 'Face ID'), '')
   assert.match(unlockMessage({ lockedOut: true }, 'Face ID'), /Too many tries/)
   assert.match(unlockMessage({ failed: true }, 'Face ID'), /didn't match/)
-  assert.match(unlockMessage({ unavailable: true }, 'your fingerprint or face'), /^Your fingerprint or face isn't available right now\. Local Hub stays locked/)
+  assert.match(unlockMessage({ unavailable: true }, 'your fingerprint or face'), /^Your fingerprint or face isn't available right now\. LocalHub stays locked/)
   for (const reason of ['notEnrolled', 'noPasscode', 'denied', 'noHardware', 'other', '']) assert.ok(lockUnavailable(reason, 'Face ID').length > 10, reason)
   assert.match(lockUnavailable('denied', 'your fingerprint or face'), /^Your fingerprint or face is turned off/)
 })

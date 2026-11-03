@@ -1,6 +1,6 @@
 {
-  "appId": "com.example.localhub",
-  "appName": "Local Hub",
+  "appId": "com.forgeitsolutions.localhub",
+  "appName": "LocalHub",
   "webDir": "www",
   "loggingBehavior": "none",
   "android": {

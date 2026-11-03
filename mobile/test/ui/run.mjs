@@ -141,6 +141,28 @@ try {
     await shot('01-welcome')
   })
 
+  await step('first run says what it runs on and what you need, before any form', async () => {
+    assert.match(await page.locator('.lead').first().textContent(), /runs on your computer, and this app connects to it/)
+    const needs = await T('what-you-need').locator('li').allTextContents()
+    assert.equal(needs.length, 3)
+    assert.match(needs[0], /desktop app on your computer/)
+    assert.match(needs[1], /private network between your computer and this device\. We recommend Tailscale/)
+    assert.match(needs[2], /one-time pairing code/)
+    assert.equal(await T('setup-link').count(), 0, 'no link to a page that isn\'t live')
+    await T('by-hand').click()
+    await page.getByText(/To get a code, .*the code lasts 5 minutes/).waitFor()
+    await page.getByRole('button', { name: 'Back' }).click()
+    await T('what-you-need').waitFor()
+  })
+
+  await step('the setup link only shows once its address is set, on welcome and on a failure', async () => {
+    await page.evaluate(() => window.__hubTest.setupUrl('https://example.com/setup'))
+    assert.equal(await T('setup-link').getAttribute('href'), 'https://example.com/setup')
+    assert.equal(await T('setup-link').getAttribute('target'), '_blank')
+    await page.evaluate(() => window.__hubTest.setupUrl(''))
+    assert.equal(await T('setup-link').count(), 0)
+  })
+
   await step('demo mode runs with no network, and shows every state', async () => {
     let requests = 0
     const count = r => { if (!r.url().startsWith(SHELL)) requests++ }
@@ -470,7 +492,7 @@ try {
     failing.on('pageerror', e => errors.push(e.message))
     await failing.addInitScript(() => { if (!sessionStorage.getItem('storage-back')) window.__testStorageFails = true })
     await failing.goto(SHELL)
-    await failing.getByRole('heading', { name: 'Local Hub couldn\'t start' }).waitFor()
+    await failing.getByRole('heading', { name: 'LocalHub couldn\'t start' }).waitFor()
     await failing.screenshot({ path: path.join(OUT, '20-start-failed.png') })
     await failing.evaluate(() => sessionStorage.setItem('storage-back', '1'))
     await failing.locator('[data-test="start-retry"]').click()
@@ -484,7 +506,7 @@ try {
     const failing = await context.newPage()
     await failing.addInitScript(() => { if (!sessionStorage.getItem('storage-back')) window.__testTokenReadFails = true })
     await failing.goto(SHELL)
-    await failing.getByRole('heading', { name: 'Local Hub couldn\'t start' }).waitFor()
+    await failing.getByRole('heading', { name: 'LocalHub couldn\'t start' }).waitFor()
     assert.equal(await failing.locator('[data-test="scan"]').count(), 0)
     await failing.evaluate(() => sessionStorage.setItem('storage-back', '1'))
     await failing.locator('[data-test="start-retry"]').click()
@@ -789,7 +811,7 @@ try {
     await turnOn()
     await setLock({ statusFails: true })
     await page.reload()
-    await page.getByText('Local Hub couldn\'t start').waitFor()
+    await page.getByText('LocalHub couldn\'t start').waitFor()
     for (const name of ['status', 'settings', 'open', 'send']) assert.equal(await T(name).count(), 0, name)
     await setLock({})
     await T('start-retry').click()

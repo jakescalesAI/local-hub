@@ -1,11 +1,11 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Local Hub</string>
-    <string name="title_activity_main">Local Hub</string>
+    <string name="app_name">LocalHub</string>
+    <string name="title_activity_main">LocalHub</string>
     <string name="package_name">com.example.localhub</string>
     <string name="custom_url_scheme">com.example.localhub</string>
     <string name="widget_open">Open Hub</string>
     <string name="widget_compose">Message</string>
     <string name="widget_status">Status</string>
-    <string name="widget_description">Shortcuts into Local Hub. They go through the lock when it is on.</string>
+    <string name="widget_description">Shortcuts into LocalHub. They go through the lock when it is on.</string>
 </resources>

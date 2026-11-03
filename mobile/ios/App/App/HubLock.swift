@@ -108,7 +108,7 @@ final class HubLock {
                 DispatchQueue.main.async { done(["unavailable": true]) }
                 return
             }
-            let read = self.read(reason: "Turn on the lock for Local Hub")
+            let read = self.read(reason: "Turn on the lock for LocalHub")
             DispatchQueue.main.async {
                 if read["token"] as? String == token {
                     UserDefaults.standard.set(true, forKey: Self.markerKey)
@@ -133,7 +133,7 @@ final class HubLock {
             return
         }
         DispatchQueue.global(qos: .userInitiated).async {
-            let result = self.read(reason: "Unlock Local Hub")
+            let result = self.read(reason: "Unlock LocalHub")
             DispatchQueue.main.async { done(result) }
         }
     }

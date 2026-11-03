@@ -9,8 +9,8 @@ struct HubWidget: Widget {
         StaticConfiguration(kind: "HubWidget", provider: Provider()) { _ in
             HubWidgetView()
         }
-        .configurationDisplayName("Local Hub")
-        .description("Shortcuts into Local Hub. They go through the lock if it's on.")
+        .configurationDisplayName("LocalHub")
+        .description("Shortcuts into LocalHub. They go through the lock if it's on.")
         .supportedFamilies([.systemSmall, .systemMedium])
     }
 }

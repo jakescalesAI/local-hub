@@ -6,14 +6,14 @@ import UniformTypeIdentifiers
 // calls: the app shows the text in its composer, and the person decides whether to send it.
 class ShareViewController: SLComposeServiceViewController {
     // Must match HubNativePlugin and both entitlements files.
-    private static let appGroup = "group.com.example.localhub"
+    private static let appGroup = "group.com.forgeitsolutions.localhub"
     private static let pendingKey = "pending-shares"
     private static let maxChars = 8000
     private static let maxPending = 20
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        title = "Local Hub"
+        title = "LocalHub"
         placeholder = "Add a note"
     }
 

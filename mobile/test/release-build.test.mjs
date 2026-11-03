@@ -26,6 +26,10 @@ test('the demo page is sample data that reaches for nothing', () => {
   assert.match(page, /Sample data/)
 })
 
+test('nothing ships pointing at the setup page until it is live', () => {
+  assert.ok(!www('app.js').includes('trylocalhub'))
+})
+
 test('the emulator test\'s build differs by the plain-HTTP allowance alone', () => {
   execFileSync(process.execPath, ['build.mjs', '--local-http'], { cwd: ROOT, stdio: 'pipe' })
   try {

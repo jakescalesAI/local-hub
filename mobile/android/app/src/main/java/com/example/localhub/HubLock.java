@@ -179,7 +179,7 @@ final class HubLock implements Application.ActivityLifecycleCallbacks {
                 done.accept(result("unavailable"));
                 return;
             }
-            prompt("Unlock Local Hub", cipher, (ok, failure) -> {
+            prompt("Unlock LocalHub", cipher, (ok, failure) -> {
                 if (ok == null) {
                     done.accept(result(failure));
                     return;

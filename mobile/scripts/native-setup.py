@@ -4,12 +4,14 @@ The projects are tracked, so this does not need running again. It is kept to sho
 from the Capacitor templates, and every step fails loudly if a template line has moved. Version numbers
 come from scripts/set-version.mjs, which is run after this.
 """
+import json
 import pathlib
 import re
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-GROUP = "group.com.example.localhub"
+IDS = json.loads((ROOT / "app-ids.json").read_text(encoding="utf8"))
+GROUP = f"group.{IDS['ios']}"
 
 
 def edit(rel, *pairs):
@@ -220,7 +222,7 @@ write(
     '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n'
     '<plist version="1.0">\n<dict>\n'
     "\t<key>CFBundleDevelopmentRegion</key>\n\t<string>en</string>\n"
-    "\t<key>CFBundleDisplayName</key>\n\t<string>Local Hub</string>\n"
+    "\t<key>CFBundleDisplayName</key>\n\t<string>LocalHub</string>\n"
     "\t<key>CFBundleExecutable</key>\n\t<string>$(EXECUTABLE_NAME)</string>\n"
     "\t<key>CFBundleIdentifier</key>\n\t<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>\n"
     "\t<key>CFBundleInfoDictionaryVersion</key>\n\t<string>6.0</string>\n"
@@ -262,7 +264,7 @@ def ext_config(ident, name, debug):
         '					"@executable_path/../../Frameworks",\n'
         "				);\n"
         "				MARKETING_VERSION = 1.0;\n"
-        "				PRODUCT_BUNDLE_IDENTIFIER = com.example.localhub.share;\n"
+        f"				PRODUCT_BUNDLE_IDENTIFIER = {IDS['ios']}.share;\n"
         '				PRODUCT_NAME = "$(TARGET_NAME)";\n'
         "				SKIP_INSTALL = YES;\n"
         f"{debug_only}"
@@ -481,7 +483,7 @@ edit(
     (
         "\t<key>NSCameraUsageDescription</key>\n",
         "\t<key>NSFaceIDUsageDescription</key>\n"
-        "\t<string>Face ID unlocks Local Hub when you turn on the lock in Settings.</string>\n"
+        "\t<string>Face ID unlocks LocalHub when you turn on the lock in Settings.</string>\n"
         "\t<key>NSCameraUsageDescription</key>\n",
     ),
 )
@@ -558,7 +560,7 @@ edit(
         '    <string name="widget_open">Open Hub</string>\n'
         '    <string name="widget_compose">Message</string>\n'
         '    <string name="widget_status">Status</string>\n'
-        '    <string name="widget_description">Shortcuts into Local Hub. They go through the lock when it is on.</string>\n'
+        '    <string name="widget_description">Shortcuts into LocalHub. They go through the lock when it is on.</string>\n'
         "</resources>",
     ),
 )
@@ -641,7 +643,7 @@ write(
     '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n'
     '<plist version="1.0">\n<dict>\n'
     "\t<key>CFBundleDevelopmentRegion</key>\n\t<string>en</string>\n"
-    "\t<key>CFBundleDisplayName</key>\n\t<string>Local Hub</string>\n"
+    "\t<key>CFBundleDisplayName</key>\n\t<string>LocalHub</string>\n"
     "\t<key>CFBundleExecutable</key>\n\t<string>$(EXECUTABLE_NAME)</string>\n"
     "\t<key>CFBundleIdentifier</key>\n\t<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>\n"
     "\t<key>CFBundleInfoDictionaryVersion</key>\n\t<string>6.0</string>\n"
@@ -671,7 +673,7 @@ def widget_config(ident, name, debug):
         '					"@executable_path/../../Frameworks",\n'
         "				);\n"
         "				MARKETING_VERSION = 1.0;\n"
-        "				PRODUCT_BUNDLE_IDENTIFIER = com.example.localhub.widget;\n"
+        f"				PRODUCT_BUNDLE_IDENTIFIER = {IDS['ios']}.widget;\n"
         '				PRODUCT_NAME = "$(TARGET_NAME)";\n'
         "				SKIP_INSTALL = YES;\n"
         f"				SWIFT_ACTIVE_COMPILATION_CONDITIONS = {'DEBUG' if debug else chr(34) * 2};\n"
