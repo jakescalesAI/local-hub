@@ -222,7 +222,7 @@ write(
     '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n'
     '<plist version="1.0">\n<dict>\n'
     "\t<key>CFBundleDevelopmentRegion</key>\n\t<string>en</string>\n"
-    "\t<key>CFBundleDisplayName</key>\n\t<string>Local Hub</string>\n"
+    "\t<key>CFBundleDisplayName</key>\n\t<string>LocalHub</string>\n"
     "\t<key>CFBundleExecutable</key>\n\t<string>$(EXECUTABLE_NAME)</string>\n"
     "\t<key>CFBundleIdentifier</key>\n\t<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>\n"
     "\t<key>CFBundleInfoDictionaryVersion</key>\n\t<string>6.0</string>\n"
@@ -483,7 +483,7 @@ edit(
     (
         "\t<key>NSCameraUsageDescription</key>\n",
         "\t<key>NSFaceIDUsageDescription</key>\n"
-        "\t<string>Face ID unlocks Local Hub when you turn on the lock in Settings.</string>\n"
+        "\t<string>Face ID unlocks LocalHub when you turn on the lock in Settings.</string>\n"
         "\t<key>NSCameraUsageDescription</key>\n",
     ),
 )
@@ -560,7 +560,7 @@ edit(
         '    <string name="widget_open">Open Hub</string>\n'
         '    <string name="widget_compose">Message</string>\n'
         '    <string name="widget_status">Status</string>\n'
-        '    <string name="widget_description">Shortcuts into Local Hub. They go through the lock when it is on.</string>\n'
+        '    <string name="widget_description">Shortcuts into LocalHub. They go through the lock when it is on.</string>\n'
         "</resources>",
     ),
 )
@@ -643,7 +643,7 @@ write(
     '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n'
     '<plist version="1.0">\n<dict>\n'
     "\t<key>CFBundleDevelopmentRegion</key>\n\t<string>en</string>\n"
-    "\t<key>CFBundleDisplayName</key>\n\t<string>Local Hub</string>\n"
+    "\t<key>CFBundleDisplayName</key>\n\t<string>LocalHub</string>\n"
     "\t<key>CFBundleExecutable</key>\n\t<string>$(EXECUTABLE_NAME)</string>\n"
     "\t<key>CFBundleIdentifier</key>\n\t<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>\n"
     "\t<key>CFBundleInfoDictionaryVersion</key>\n\t<string>6.0</string>\n"

@@ -13,7 +13,7 @@ class ShareViewController: SLComposeServiceViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        title = "Local Hub"
+        title = "LocalHub"
         placeholder = "Add a note"
     }
 

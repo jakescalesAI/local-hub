@@ -59,7 +59,7 @@ function shot(name) {
 
 // CI's emulator is slow enough for Android to call its own parts stuck. That's waited out and logged. If it
 // names this app, it stays on screen and fails the run.
-const OTHER_STUCK = /^\s*(?!Local Hub\b).*isn't responding/
+const OTHER_STUCK = /^\s*(?!LocalHub\b).*isn't responding/
 
 function dump() {
   for (let i = 0; i < 6; i++) {
@@ -151,10 +151,10 @@ const secureFlagged = () => {
   return mine.every(w => /\bSECURE\b/.test(w))
 }
 
-const LOCKED = /Local Hub is locked/
+const LOCKED = /LocalHub is locked/
 // The system prompt comes up on top of the lock screen as soon as the app comes back, and hides it from the dump.
-const PROMPT = /Unlock Local Hub/
-const LOCKING = /Local Hub is locked|Unlock Local Hub/
+const PROMPT = /Unlock LocalHub/
+const LOCKING = /LocalHub is locked|Unlock LocalHub/
 const resumed = () => sh('dumpsys activity activities | grep -E "topResumedActivity|mResumedActivity" || true').trim()
 const CONNECTED = /^\s*Connected\b/
 const open = () => sh(`am start -n ${ACTIVITY}`)
@@ -436,7 +436,7 @@ try {
     await tapOn(/^\s*Turn on\s*$/)
     await sleep(2500)
     finger(ENROLLED)
-    await waitFor(/^.*On\. Local Hub locks as soon as you leave it/)
+    await waitFor(/^.*On\. LocalHub locks as soon as you leave it/)
     assert.ok(secureFlagged(), 'FLAG_SECURE on the main window')
     const png = shot('04-secure-window')
     console.log(`    screen capture of the secure window: ${png.length} bytes`)
@@ -455,7 +455,7 @@ try {
     key('KEYCODE_BACK')
     await sleep(2500)
     await waitFor(LOCKED)
-    await neverShows(/Open Hub|Settings|10\.0\.2\.2|Connected|Unlock Local Hub/, 3000)
+    await neverShows(/Open Hub|Settings|10\.0\.2\.2|Connected|Unlock LocalHub/, 3000)
     finger(ENROLLED) // a finger with no prompt up opens nothing
     await neverShows(/Open Hub|Settings/, 3000)
     await waitFor(LOCKED)
@@ -561,7 +561,7 @@ try {
     await sleep(500)
     await enroll(STRANGER)
     open()
-    await waitFor(/Local Hub is locked|Unlock Local Hub|Pair this device again/)
+    await waitFor(/LocalHub is locked|Unlock LocalHub|Pair this device again/)
     await sleep(1000)
     const prompted = /Pair this device again/.test(screenText(dump()))
     if (!prompted) {

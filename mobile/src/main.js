@@ -227,7 +227,7 @@ async function scan() {
   const r = await native.scanQr()
   if (r.cancelled) return render()
   if (!receivePairLink(r.text)) {
-    app.error = r.error || 'That isn\'t a Local Hub pairing code.'
+    app.error = r.error || 'That isn\'t a LocalHub pairing code.'
     render()
   }
 }
@@ -492,7 +492,7 @@ const SCREENS = {
   welcome: () =>
     h('main', { class: 'screen center' },
       h('img', { class: 'logo', src: 'icon.png', alt: '', width: '72', height: '72' }),
-      title('Local Hub'),
+      title('LocalHub'),
       h('p', { class: 'lead' }, 'Your own Hub, on this device. It connects straight to a computer you run, with no account and no server in between.'),
       noticeLine(),
       app.error ? errorLine(app.error) : null,
@@ -627,7 +627,7 @@ const SCREENS = {
     }
     return h('main', { class: 'screen center', 'data-test': 'locked' },
       h('img', { class: 'logo', src: 'icon.png', alt: '', width: '72', height: '72' }),
-      title('Local Hub is locked'),
+      title('LocalHub is locked'),
       h('p', { class: 'lead' }, `Unlock with ${name} to continue.`),
       l.message ? h('p', { class: 'error', role: 'alert', 'data-test': 'lock-message' }, l.message) : null,
       h('div', { class: 'stack' },
@@ -638,7 +638,7 @@ const SCREENS = {
   startFailed: () =>
     h('main', { class: 'screen center' },
       h('img', { class: 'logo', src: 'icon.png', alt: '', width: '72', height: '72' }),
-      title('Local Hub couldn\'t start'),
+      title('LocalHub couldn\'t start'),
       h('p', { class: 'lead' }, 'This device\'s secure storage didn\'t respond. Nothing was changed. Try again, or restart the device if this keeps happening.'),
       noticeLine(),
       h('div', { class: 'stack' },
@@ -657,7 +657,7 @@ function lockCard() {
   const note = app.lockNote ? h('p', { class: 'error', role: 'alert', 'data-test': 'lock-note' }, app.lockNote) : null
   if (app.lock.enabled) {
     return h('div', { class: 'card prose', 'data-test': 'lock-card', 'data-lock': 'on' },
-      h('p', {}, `On. Local Hub locks as soon as you leave it, and only ${name} unlocks it. The device passcode doesn't.`),
+      h('p', {}, `On. LocalHub locks as soon as you leave it, and only ${name} unlocks it. The device passcode doesn't.`),
       h('p', {}, 'If your biometrics change, you\'ll need to pair again. That\'s on purpose.'),
       note,
       button('Turn off', turnLockOff, { test: 'lock-off' }))

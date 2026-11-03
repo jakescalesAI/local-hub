@@ -1,4 +1,4 @@
-# Local Hub mobile app
+# LocalHub mobile app
 
 An iPhone, iPad and Android client for your own Hub. The computer does the work: the app pairs with
 it, stores one key, and shows the Hub's own mobile page. MIT. No telemetry, no hosted backend and no
@@ -14,7 +14,7 @@ account with us.
 | `src/` | The shell: pairing, stored connection, status screens, share composer |
 | `android/`, `ios/` | Native projects, including the `HubNative` plugin and the iOS share extension |
 | `hub-changes/` | How pairing works on the Hub, and its tests |
-| `dev/mock-hub.mjs` | A local Hub stand-in that runs the real pairing module |
+| `dev/mock-hub.mjs` | A stand-in for your Hub that runs the real pairing module |
 | `scripts/native-setup.py` | Every change made to the Capacitor templates, written out |
 | `scripts/make-icons.mjs` | Draws the icons and launch screens from the Hub's own icon |
 
