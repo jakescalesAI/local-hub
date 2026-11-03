@@ -59,6 +59,8 @@ test('states: each answer maps to the state the plan promises', () => {
   assert.equal(classify({ online: true, status: null }), 'asleep')
   assert.equal(classify({ online: false, status: null }), 'offline')
   assert.ok(!/is asleep|is off/i.test(STATES.asleep.body), 'never claims to know which')
+  assert.match(STATES.asleep.body, /awake/, 'says what to check')
+  assert.match(STATES.asleep.body, /such as Tailscale/, 'says what to check')
 })
 
 const fakeHttp = reply => {

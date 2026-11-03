@@ -20,6 +20,13 @@ const WIDGET_SOURCES = [
   'ios/App/HubWidget/Info.plist',
 ]
 
+test('where a pairing code comes from is written in one place', () => {
+  const src = path.join(ROOT, 'src')
+  const files = fs.readdirSync(src, { recursive: true }).filter(f => /\.(js|html)$/.test(f))
+  const naming = files.filter(f => fs.readFileSync(path.join(src, f), 'utf8').includes('/pair/new'))
+  assert.deepEqual(naming.map(f => f.replace(/\\/g, '/')), ['lib/setup.js'])
+})
+
 test('the product is LocalHub, one word, wherever people see it', () => {
   assert.equal(JSON.parse(read('capacitor.config.json')).appName, 'LocalHub')
   for (const rel of ['ios/App/App/Info.plist', 'ios/App/ShareExtension/Info.plist', 'ios/App/HubWidget/Info.plist']) {

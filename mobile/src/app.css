@@ -98,6 +98,20 @@ p {
   flex-direction: column;
   gap: 8px;
 }
+.needs {
+  text-align: left;
+  font-size: 15px;
+}
+.needs h2 {
+  margin: 0 0 8px;
+}
+.needs ol {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding-left: 20px;
+}
 .btn {
   min-height: 50px;
   width: 100%;

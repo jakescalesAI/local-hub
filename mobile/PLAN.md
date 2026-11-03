@@ -278,7 +278,7 @@ render aren't reachable from it, and an unknown action does nothing.
 | --- | --- |
 | OS reports no network | You're offline |
 | `GET /api/pair/me` returns 200 | Connected |
-| Network error or timeout | Can't reach your computer: it may be asleep, or the private network is off on this phone |
+| Network error or timeout | Can't reach your computer: it may be asleep, or your private network, such as Tailscale, may be off on one of your devices. Check both, then try again |
 | 502, 503 or 504 | Your computer is on, but the Hub isn't running |
 | 401 | This phone was removed |
 | 404 | This Hub needs updating |

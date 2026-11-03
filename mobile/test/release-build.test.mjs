@@ -20,6 +20,10 @@ test('the release bundle carries no test hooks or debug addresses', () => {
   assert.ok(!js.includes('console.log('), 'no logging in app code paths')
 })
 
+test('nothing ships pointing at the setup page until it is live', () => {
+  assert.ok(!www('app.js').includes('trylocalhub'))
+})
+
 test('the emulator test\'s build differs by the plain-HTTP allowance alone', () => {
   execFileSync(process.execPath, ['build.mjs', '--local-http'], { cwd: ROOT, stdio: 'pipe' })
   try {

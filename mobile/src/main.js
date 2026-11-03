@@ -5,6 +5,7 @@ import { MAX_SHARE_CHARS, createClient } from './lib/client.js'
 import { parseQuickAction } from './lib/actions.js'
 import { lockName, lockUnavailable, unlockMessage } from './lib/lock.js'
 import { createQueue } from './lib/queue.js'
+import { GET_CODE, SETUP_URL, WHAT_YOU_NEED } from './lib/setup.js'
 import { STATES, classify } from './lib/status.js'
 import * as native from './lib/native.js'
 import { h } from './lib/dom.js'
@@ -18,6 +19,7 @@ const root = document.getElementById('app')
 
 const app = {
   screen: 'welcome',
+  setupUrl: SETUP_URL,
   conn: null, // { address, hubName, hubId, deviceId, lastSeen, demo? }
   hub: null,
   queue: null,
@@ -475,6 +477,8 @@ const noticeLine = () => (app.notice ? h('p', { class: 'notice', role: 'status',
 const back = (to, label = 'Back') => h('button', { class: 'link back', type: 'button', onclick: () => ((app.error = ''), show(to)) }, label)
 
 // Not `button`: these stay live whatever else is still finishing behind the lock.
+const setupLink = () => (app.setupUrl ? h('a', { class: 'link', href: app.setupUrl, target: '_blank', rel: 'noopener', 'data-test': 'setup-link' }, 'Read the setup guide') : null)
+
 const lockButton = (label, onclick, { kind = 'plain', test } = {}) =>
   h('button', { class: `btn ${kind}`, type: 'button', onclick, disabled: app.unlocking, 'data-test': test }, label)
 
@@ -493,14 +497,17 @@ const SCREENS = {
     h('main', { class: 'screen center' },
       h('img', { class: 'logo', src: 'icon.png', alt: '', width: '72', height: '72' }),
       title('LocalHub'),
-      h('p', { class: 'lead' }, 'Your own Hub, on this device. It connects straight to a computer you run, with no account and no server in between.'),
+      h('p', { class: 'lead' }, 'LocalHub runs on your computer, and this app connects to it. There\'s no account and no server in between.'),
+      h('section', { class: 'card needs', 'data-test': 'what-you-need' },
+        h('h2', {}, 'What you need'),
+        h('ol', {}, ...WHAT_YOU_NEED.map(need => h('li', {}, need)))),
       noticeLine(),
       app.error ? errorLine(app.error) : null,
       h('div', { class: 'stack' },
         button('Scan pairing code', scan, { kind: 'primary', test: 'scan' }),
         button('Enter by hand', () => ((app.error = ''), show('pair')), { kind: 'tinted', test: 'by-hand' }),
         button('Try the demo', startDemo, { test: 'demo' })),
-      h('p', { class: 'foot' }, 'To get a code, open /pair/new in your Hub on your computer.')),
+      setupLink()),
 
   pair: () => {
     const submit = e => {
@@ -516,7 +523,7 @@ const SCREENS = {
     return h('main', { class: 'screen' },
       back('welcome'),
       title('Enter by hand'),
-      h('p', { class: 'sub' }, 'Your Hub\'s pairing page shows both of these. The code lasts 5 minutes.'),
+      h('p', { class: 'sub' }, `To get a code, ${GET_CODE}. That shows both of these, and the code lasts 5 minutes.`),
       h('form', { class: 'card form', onsubmit: submit, novalidate: true },
         h('label', { for: 'address' }, 'Address'),
         h('input', { id: 'address', 'data-keep': 'address', type: 'url', inputmode: 'url', autocapitalize: 'off', autocorrect: 'off', spellcheck: 'false', placeholder: 'https://your-computer.example', value: app.pairForm.address, oninput: e => (app.pairForm.address = e.target.value) }),
@@ -552,7 +559,8 @@ const SCREENS = {
             s.body ? h('p', {}, s.body) : null,
             app.state !== 'ok' && app.conn.lastSeen ? h('p', { class: 'seen' }, `Last connected ${when(app.conn.lastSeen)}`) : null,
             s.canRetry ? button('Try again', refresh, { test: 'retry' }) : null,
-            app.state === 'removed' ? button('Pair again', () => forgetLocal(), { kind: 'tinted', test: 'pair-again' }) : null),
+            app.state === 'removed' ? button('Pair again', () => forgetLocal(), { kind: 'tinted', test: 'pair-again' }) : null,
+            s.canRetry ? setupLink() : null),
           app.conn.demo
             ? h('div', { class: 'segments', role: 'group', 'aria-label': 'Show a state' },
                 ...DEMO_STATES.map(([key, label]) => h('button', { type: 'button', class: key === app.demoState ? 'on' : '', 'aria-pressed': String(key === app.demoState), 'data-test': `demo-${key}`, onclick: () => ((app.demoState = key), refresh()) }, label)))
@@ -814,6 +822,7 @@ async function start() {
       link: handleLink,
       refresh,
       locked: onLockEvent,
+      setupUrl: url => ((app.setupUrl = url), render()),
     }
   }
 }
