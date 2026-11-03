@@ -14,6 +14,7 @@
     "test:ui": "node test/ui/run.mjs",
     "mock-hub": "node dev/mock-hub.mjs",
     "licenses": "node scripts/check-licenses.mjs",
+    "pictures": "node scripts/store-pictures.mjs",
     "version:set": "node scripts/set-version.mjs"
   },
   "dependencies": {

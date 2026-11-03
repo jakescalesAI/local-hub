@@ -2,6 +2,7 @@ node_modules/
 www/
 test/ui/out/
 test/device/out/
+store-pictures/
 .gradle/
 *.keystore
 *.jks
