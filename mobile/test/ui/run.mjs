@@ -33,7 +33,8 @@ const hub = await startMockHub(HUB_PORT, { name: 'Test <b>Hub</b>' })
 const mock = (body) => fetch(`${hub.base}/__mock`, { method: 'POST', body: JSON.stringify(body) }).then(r => r.json())
 const code = async () => (await (await fetch(`${hub.base}/api/pair/start`, { method: 'POST', headers: { 'x-hub': '1' } })).json()).code
 
-const browser = await chromium.launch({ channel: 'msedge', headless: true })
+// CI uses the runner's Edge. UI_BROWSER points at another Chromium build where Edge isn't installed.
+const browser = await chromium.launch(process.env.UI_BROWSER ? { executablePath: process.env.UI_BROWSER, headless: true } : { channel: 'msedge', headless: true })
 const context = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, colorScheme: 'light' })
 const page = await context.newPage()
 const consoleText = []
@@ -960,7 +961,7 @@ try {
     await shot('19-tablet')
   })
 
-  console.log(`\n${passed} of ${passed} UI checks passed in headless Edge, against the ${path.relative(path.join(HERE, '..', '..'), WWW)} dev build`)
+  console.log(`\n${passed} of ${passed} UI checks passed in headless ${process.env.UI_BROWSER ? path.basename(process.env.UI_BROWSER) : 'Edge'}, against the ${path.relative(path.join(HERE, '..', '..'), WWW)} dev build`)
 } catch (e) {
   failure = e
   await shot('failed').catch(() => {})
