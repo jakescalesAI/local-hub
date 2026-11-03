@@ -121,6 +121,20 @@ async function textField(ms = 30000) {
 }
 const tapOn = async (pattern, ms) => tap(await waitFor(pattern, ms))
 
+// A long page keeps going below the screen, and a tap there lands on nothing. Scroll until it's in view.
+async function tapInView(pattern, ms = 30000) {
+  const [, w, h] = sh('wm size').match(/(\d+)x(\d+)\s*$/m).map(Number)
+  await waitFor(pattern, ms)
+  for (let i = 0; i < 8; i++) {
+    const hit = dump().find(n => pattern.test(label(n)))
+    if (hit && hit.y > h * 0.08 && hit.y < h * 0.85) return tap(hit)
+    sh(`input swipe ${w >> 1} ${Math.round(h * 0.75)} ${w >> 1} ${Math.round(h * 0.35)} 300`)
+    await sleep(700)
+  }
+  shot(`out-of-view-${String(pattern).replace(/\W+/g, '-').slice(0, 40)}`)
+  throw new Error(`Couldn't bring ${pattern} into view.`)
+}
+
 async function gone(pattern, ms = 20000) {
   const end = Date.now() + ms
   while (Date.now() < end) {
@@ -331,8 +345,7 @@ try {
     await waitFor(/Sample web server/)
     await tapOn(/^\s*Done\s*$/)
     await waitFor(/Demo: sample data/)
-    await tapOn(/^\s*Settings\s*$/)
-    await tapOn(/Leave the demo/)
+    await tapOn(/^\s*Leave the demo\s*$/)
     await waitFor(/Try the demo/)
   })
 
@@ -350,8 +363,10 @@ try {
     await tapOn(/^\s*Continue\s*$/)
     await tapOn(/^\s*Connect\s*$/)
     await waitFor(/Demo: sample data/)
+    // Settings has the way out too, at the end of a long page.
     await tapOn(/^\s*Settings\s*$/)
-    await tapOn(/Leave the demo/)
+    await waitFor(/^\s*Version\s*$/)
+    await tapInView(/^\s*Leave the demo\s*$/)
     await waitFor(/Try the demo/)
   })
 

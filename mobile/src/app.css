@@ -160,6 +160,9 @@ p {
   justify-content: flex-end;
   margin-bottom: -12px;
 }
+.topbar > :first-child:not(:last-child) {
+  margin-right: auto;
+}
 :focus-visible {
   outline: 2px solid var(--blue);
   outline-offset: 2px;

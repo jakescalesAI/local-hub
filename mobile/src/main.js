@@ -455,6 +455,8 @@ async function turnLockOff() {
 function show(screen) {
   app.screen = screen
   render({ focusTitle: true })
+  // A new screen starts at its top, not where the last one was scrolled to, so its top bar is in view.
+  scrollTo(0, 0)
 }
 
 function render({ focusTitle = false } = {}) {
@@ -549,7 +551,10 @@ const SCREENS = {
   home: () => {
     const s = STATES[app.state]
     return h('main', { class: 'screen home' },
-      h('div', { class: 'topbar' }, h('button', { class: 'link', type: 'button', onclick: openSettings, 'data-test': 'settings' }, 'Settings')),
+      // The way out of the demo sits up here too, where a small phone shows it without scrolling.
+      h('div', { class: 'topbar' },
+        app.conn.demo ? h('button', { class: 'link', type: 'button', onclick: forget, 'data-test': 'leave-demo' }, 'Leave the demo') : null,
+        h('button', { class: 'link', type: 'button', onclick: openSettings, 'data-test': 'settings' }, 'Settings')),
       title(app.conn.hubName),
       app.conn.demo ? h('p', { class: 'demo-note' }, 'Demo: sample data. Nothing leaves this device.') : null,
       h('div', { class: 'panes' },

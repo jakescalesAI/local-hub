@@ -202,6 +202,20 @@ try {
     await T('forget').click()
   })
 
+  await step('on the smallest phone the way out of the demo is on screen without scrolling, and works', async () => {
+    await page.setViewportSize({ width: 320, height: 568 })
+    await T('demo').click()
+    await stateIs('ok')
+    const box = await T('leave-demo').boundingBox()
+    const scrolled = await page.evaluate(() => scrollY)
+    assert.ok(box && box.y >= 0 && box.y + box.height <= 568 && box.x >= 0 && box.x + box.width <= 320, `Leave the demo is off screen: ${JSON.stringify(box)}`)
+    assert.ok(box.height >= 44, `Leave the demo is ${box.height}px tall`)
+    assert.equal(scrolled, 0)
+    await T('leave-demo').click()
+    await T('scan').waitFor()
+    await page.setViewportSize({ width: 390, height: 844 })
+  })
+
   await step('pairing refuses a bad code or a non-HTTPS address before sending anything', async () => {
     await T('by-hand').click()
     await page.fill('#address', 'http://hub.example.test')
