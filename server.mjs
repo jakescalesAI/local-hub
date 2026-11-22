@@ -160,7 +160,9 @@ async function refreshSyncs() {
 
 async function refreshTailnet() {
   const tailscale = tailscalePath()
-  if (hubConfig().access !== 'tailnet' || !tailscale) return
+  // Without Tailscale there's no tailnet address to add, but hub.json's other addresses (or a new
+  // passcode that unlocks them) still have to be bound or closed.
+  if (hubConfig().access !== 'tailnet' || !tailscale) return bindListeners()
   const r = await run(tailscale, ['status', '--json'])
   if (!r.ok) return void (state.tailnet = { ip: '', dns: '', peers: [] })
   const j = JSON.parse(r.stdout)
@@ -310,7 +312,8 @@ const deviceAuth = createDeviceAuth({ here: HERE, hubName: () => hubConfig().nam
 // route(url, req, res, { send, readBody }) -> true when handled. A missing or broken one only
 // disables its tab. Keys live in config/secrets.json, which only the hub reads; never send them to
 // the page. A service add-on loads when it is turned on; until then its routes don't exist.
-const BACKENDS = ['ai', 'cloud', 'calendar', 'stripe', 'hub-settings', 'hub-setup', 'hub-sites', 'home', 'chat', 'browser', 'system', 'agent-actions', 'launcher', 'connections', 'tv']
+// tv-setup sits before tv: tv answers every other /api/tv/* path with a 404.
+const BACKENDS = ['ai', 'cloud', 'calendar', 'stripe', 'hub-settings', 'hub-setup', 'hub-sites', 'home', 'chat', 'browser', 'system', 'agent-actions', 'launcher', 'connections', 'tv-setup', 'tv']
 const SERVICES = new Set(['ai', 'cloud', 'calendar', 'stripe'])
 const loaded = new Map()
 async function tabRoutes() {
@@ -421,7 +424,16 @@ async function bindListeners() {
   const tailnet = localOnly || hubConfig().access !== 'tailnet' ? '' : state.tailnet.ip
   // More addresses only with a passcode in front of them.
   const more = localOnly || (passcodeNeeded() && !hasPasscode()) ? [] : hubConfig().listen
-  for (const host of ['127.0.0.1', tailnet, ...more].filter(Boolean)) {
+  const wanted = ['127.0.0.1', tailnet, ...more].filter(Boolean)
+  // An address taken out of hub.json (Set up a TV turning the home network off, say) stops answering.
+  for (const [host, server] of listeners) {
+    if (wanted.includes(host)) continue
+    listeners.delete(host)
+    server.close()
+    server.closeAllConnections?.()
+    console.log(`${hubConfig().name} stopped listening on ${host}:${PORT}`)
+  }
+  for (const host of wanted) {
     if (listeners.has(host)) continue
     const server = http.createServer((req, res) => handle(req, res).catch(err => {
       console.error(err)

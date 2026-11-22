@@ -478,7 +478,8 @@ html[data-wall] .hw-bar .hw-btn:not(.solid) { background: color-mix(in srgb, var
   function openTab(id) {
     if (id === 'chat') return window.HubChat ? window.HubChat.open() : hud?.('Chat isn’t available yet')
     // LocalHub TV in its own window. Inside LocalHub TV (where the hub opens as an app) it just goes back.
-    if (id === 'tv') { if (window.parent !== window && window.parent.haven?.closeHub) return window.parent.haven.closeHub(); return void window.open('/tv/', 'localhub-tv') }
+    // Inside LocalHub TV the tile goes back to the TV. Here it opens Set up a TV, which also opens the TV on this computer.
+    if (id === 'tv') { if (window.parent !== window && window.parent.haven?.closeHub) return window.parent.haven.closeHub(); if (window.HubTVSetup) return window.HubTVSetup.open(); return void window.open('/tv/', 'localhub-tv') }
     if (groupOf(id)) { if (typeof setEnv === 'function' && env !== 'home') setEnv('home'); return void requestAnimationFrame(() => window.HUB_OPEN_GROUP?.(id)) }
     if (pageOf(id)) { window.HUB_OPEN_PAGE?.(id); if (typeof setEnv === 'function' && env !== 'home') setEnv('home'); return }
     const site = siteOf(id)

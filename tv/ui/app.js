@@ -473,7 +473,7 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) endL
    The LocalHub tile opens the whole hub, full screen, growing out of its tile like any app. It
    lands on Home's TV view, so what the TV shows is right there to edit (Edit → add, move, remove).
    Back (or the TV button, or the hub's own TV app) comes back here, and the TV picks up the change. */
-function openHubApp() {
+function openHubApp(where = "/?view=tv#home") {
   if (!IN_HUB) return toast(NATIVE ? "Pair this TV with LocalHub first" : "Open this from LocalHub to open the hub");
   const app = $("#hubApp");
   const frame = $("#hubFrame");
@@ -482,7 +482,7 @@ function openHubApp() {
     app.style.setProperty("--ox", `${tile.left + tile.width / 2}px`);
     app.style.setProperty("--oy", `${tile.top + tile.height / 2}px`);
   }
-  if (!frame.getAttribute("src")) frame.src = "/?view=tv#home";
+  if (frame.getAttribute("src") !== where) frame.src = where;
   else { try { frame.contentWindow.HUB?.refresh?.(); } catch { /* not loaded yet */ } }
   leaveBar();
   window.HubVoice?.hush?.();
@@ -578,6 +578,7 @@ function ccTiles() {
     tiles.push({ id: "system", cls: "w2", ic: SYM.sliders, t1: "TV Settings", t2: "Fire TV" });
   } else {
     tiles.push({ id: "dashboard", cls: "w2", ic: SYM.laptop, t1: "LocalHub", t2: "The full dashboard" });
+    tiles.push({ id: "tvsetup", cls: "w2", ic: SYM.input, t1: "Set up a TV", t2: "Install, connect, pair" });
     tiles.push({ id: "help", cls: "w2", ic: KEY_IC, t1: "Keyboard", t2: prefs.help ? "Hide the keys" : "Show the keys" });
   }
   return tiles;
@@ -646,6 +647,7 @@ function ccActivate() {
   if (id === "help") { prefs.help = !prefs.help; savePrefs(); showKeys(prefs.help); return paintTiles(); }
   closeCC();
   if (id === "hub" || id === "tvlayout" || id === "dashboard") return openHubApp();
+  if (id === "tvsetup") return openHubApp("/#tv-setup");
   if (id === "ask") return startVoice();
   if (id.startsWith("chat:")) { if (window.HubChat?.openChat) { S.zone = "bar"; return window.HubChat.openChat(id.slice(5)); } return toast("The chat isn't loaded"); }
   if (id === "inputs") { const i = ITEMS.findIndex((x) => x.kind === "input"); if (i < 0) return toast("This TV reports no HDMI inputs"); S.zone = "grid"; S.i = i; return applyFocus(); }
@@ -681,7 +683,8 @@ function settingsModel() {
       { id: "pair", t1: "Pair this TV", t2: "On the laptop open localhost:3100/pair/new", v: HUB.paired ? "Paired" : "Not paired", on: HUB.paired },
       { id: "forget", t1: "Forget LocalHub", t2: "Removes this TV's device key", v: "" },
     ]
-    : [{ info: true, t1: "LocalHub", t2: IN_HUB ? "This screen is served by LocalHub" : "Open it from LocalHub at /tv/", v: HUB.on ? "Connected" : "Not connected", on: HUB.on }];
+    : [{ info: true, t1: "LocalHub", t2: IN_HUB ? "This screen is served by LocalHub" : "Open it from LocalHub at /tv/", v: HUB.on ? "Connected" : "Not connected", on: HUB.on },
+       ...(IN_HUB ? [{ id: "tvsetup", t1: "Set up a TV", t2: "Put LocalHub TV on a television and pair it", v: "" }] : [])];
   return [
     { title: "Settings" },
     { group: "Home Screen" },
@@ -744,6 +747,7 @@ function settingsActivate() {
   else if (it.id === "address") return openModal("LocalHub address", "The laptop's address on your network, and the hub's port.", HUB.url.replace(/^https?:\/\//, ""), (v) => { native("setHub", v.trim()); HUB.paired = false; probeNative(); });
   else if (it.id === "pair") return openPairing();
   else if (it.id === "look") { closeSettings(); return openHubApp(); }
+  else if (it.id === "tvsetup") { closeSettings(); return openHubApp("/#tv-setup"); }
   else if (it.id === "forget") { native("forgetHub"); HUB.paired = false; toast("This TV forgot LocalHub"); }
   savePrefs();
   applyLook();

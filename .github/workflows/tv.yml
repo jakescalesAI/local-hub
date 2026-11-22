@@ -11,6 +11,8 @@ on:
     paths:
       - 'tv/**'
       - 'tv.mjs'
+      - 'tv-setup.mjs'
+      - 'tabs/tvsetup.js'
       - 'test/tv/**'
       - '.github/workflows/tv.yml'
     tags: ['v*']
