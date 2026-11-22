@@ -198,10 +198,11 @@ function iconHTML(it) {
   if (it.kind === "settings") return `<div class="icon" style="--a-bg:linear-gradient(160deg,#8e8e93,#3a3a3c);--a-fg:#fff">${SYM.gear}</div>`;
   if (it.kind === "input") return `<div class="icon" style="--a-bg:linear-gradient(160deg,#2c2c2e,#0b0b0d);--a-fg:#fff">${SYM.input}<span class="sub">${esc(it.sub || "HDMI")}</span></div>`;
   const colors = `--a-bg:${it.bg};--a-fg:${it.fg}`;
+  const fill = '<i class="fill"></i>';
   if (it.banner) return `<div class="icon" style="${colors}"><img src="${esc(it.banner)}" alt="" decoding="async"></div>`;
-  if (it.img) return `<div class="icon" style="${colors}"><img class="square" src="${esc(it.img)}" alt="" decoding="async"></div>`;
-  if (it.icon) return `<div class="icon" style="${colors}"><i class="glyph${it.wide ? " wide" : ""}" style="--glyph:url('./brands/${it.icon}.svg')"></i></div>`;
-  return `<div class="icon" style="${colors}"><b class="letter"${it.letter && it.letter.length > 4 ? ' style="font-size:58px"' : ""}>${esc(it.letter || it.name.slice(0, 1))}</b></div>`;
+  if (it.img) return `<div class="icon" style="${colors}">${fill}<img class="square" src="${esc(it.img)}" alt="" decoding="async"></div>`;
+  if (it.icon) return `<div class="icon" style="${colors}">${fill}<i class="glyph${it.wide ? " wide" : ""}" style="--glyph:url('./brands/${it.icon}.svg')"></i></div>`;
+  return `<div class="icon" style="${colors}">${fill}<b class="letter"${it.letter && it.letter.length > 4 ? ' style="font-size:58px"' : ""}>${esc(it.letter || it.name.slice(0, 1))}</b></div>`;
 }
 
 function renderGrid() {
@@ -296,7 +297,7 @@ function paintShelf(force) {
     const tone = it.bg && !String(it.bg).includes("gradient") ? it.bg : null;
     const fg = it.fg || "#fff";
     const glow = tone && tone !== "#000000" && tone !== "#ffffff" ? tone : fg;
-    on.innerHTML = `<div class="bg" style="background:radial-gradient(70% 90% at 78% 30%, ${hexA(glow, 0.6)}, transparent 62%), radial-gradient(60% 70% at 10% 100%, ${hexA(glow, 0.22)}, transparent 70%), #05060a"></div>${
+    on.innerHTML = `<div class="bg" style="background:radial-gradient(70% 90% at 78% 30%, ${hexA(glow, 0.6)}, transparent 62%), radial-gradient(60% 70% at 10% 100%, ${hexA(glow, 0.22)}, transparent 70%), rgba(5,6,10,.5)"></div>${
       it.icon ? `<i class="glyph${it.wide ? " wide" : ""}" style="--glyph:url('./brands/${it.icon}.svg');color:${fg === "#ffffff" ? "#fff" : fg}"></i>` : ""}`;
   }
   on.classList.add("on");
@@ -315,13 +316,9 @@ function hexA(c, a) {
   return `rgba(${r},${g},${b},${a})`;
 }
 
+/* The header is the app's own long tile, larger, like Prime Video's: one logo, no caption. */
 function appShelfHTML(it) {
-  const title = it.icon && !it.banner
-    ? (it.wide ? `<i class="mark wide" style="--glyph:url('./brands/${it.icon}.svg')"></i>` : `<i class="mark" style="--glyph:url('./brands/${it.icon}.svg')"></i><h1>${esc(it.name)}</h1>`)
-    : `<h1>${esc(it.name)}</h1>`;
-  const when = it.kind === "input" ? esc(it.sub || "HDMI input") : it.kind === "settings" ? "LocalHub TV" : it.recentAt ? `Opened ${ago(it.recentAt)}` : "Not opened yet";
-  const how = NATIVE ? "Press OK to open" : it.url ? "Press Enter to open it in a new window" : it.kind === "settings" ? "Press Enter" : "Press Enter";
-  return `<div class="shelf-title">${title}</div><div class="shelf-meta"><span>${when}</span><i class="sep"></i><span>${how}</span></div>`;
+  return `<div class="shelf-title"><div class="hero" aria-label="${esc(it.name)}">${iconHTML(it)}</div></div>`;
 }
 
 /* The LocalHub tile: a greeting and the widgets picked for the TV in the hub's Home editor. */
@@ -684,19 +681,19 @@ function settingsModel() {
   return [
     { title: "Settings" },
     { group: "Home Screen" },
-    { key: "clock", t1: "Clock", t2: "Top right, and on the screensaver", values: ["12-hour", "24-hour"] },
+    { key: "clock", t1: "Clock", t2: "Top left, and on the screensaver", values: ["12-hour", "24-hour"] },
     { key: "inputs", t1: "HDMI inputs", t2: "Shown as icons after the apps", toggle: true },
     { key: "saver", t1: "Screensaver", t2: "After the remote has been still", values: ["Off", "2 min", "5 min", "10 min", "15 min"] },
-    { key: "effects", t1: "Glass", t2: "Light is quicker on older Fire TV sticks", values: ["Full", "Light"] },
-    { info: true, t1: "Wallpaper, style and widgets", t2: "Follow LocalHub: Home → Edit → TV on the laptop", v: SETTINGS?.wallpaper?.current ? cap(SETTINGS.wallpaper.current) : "Aurora" },
+    { key: "effects", t1: "Liquid glass", t2: "Light drops the blur, for older Fire TV sticks", values: ["Full", "Light"] },
+    { id: "look", t1: "Wallpaper, style and widgets", t2: "Opens LocalHub, where you change the TV", v: SETTINGS?.wallpaper?.current ? cap(SETTINGS.wallpaper.current) : "Aurora" },
     { group: "Assistant" },
     ...hubRows,
     { key: "speak", t1: "Read answers aloud", t2: NATIVE ? "With the TV's voice" : "With this computer's voice", values: ["After voice", "Always", "Off"] },
     { info: true, t1: "Alexa", t2: "“Alexa, ask local hub to open Netflix”", v: "tv/alexa" },
-    ...(!NATIVE ? [{ key: "help", t1: "Keyboard help", t2: "The remote's keys, bottom left", toggle: true }] : []),
+    ...(!NATIVE ? [{ key: "help", t1: "Keyboard help", t2: "The remote's keys, along the top", toggle: true }] : []),
     { group: "About" },
     ...(NATIVE ? [{ info: true, t1: "Home button", t2: "Brings LocalHub back when Home is pressed", v: st.homeService ? "On" : "Off", on: st.homeService }] : []),
-    { info: true, t1: "Version", t2: NATIVE ? "LocalHub TV for Fire TV" : "LocalHub TV on this laptop", v: NATIVE ? st.version || "?" : "0.3.0" },
+    { info: true, t1: "Version", t2: NATIVE ? "LocalHub TV for Fire TV" : "LocalHub TV on this laptop", v: NATIVE ? st.version || "?" : LIVE.status?.version ? `LocalHub ${LIVE.status.version}` : "LocalHub" },
   ];
 }
 const cap = (s) => String(s).replace(/(^|-)(\w)/g, (_, a, b) => (a ? " " : "") + b.toUpperCase());
@@ -722,7 +719,12 @@ function paintSettings() {
   const y = (row.getBoundingClientRect().top - track.getBoundingClientRect().top) / k;
   track.style.transform = `translateY(${-Math.max(0, y - 380)}px)`;
 }
-function openSettings() { renderSettings(); $("#settings").classList.add("on"); setOverlay("settings"); }
+function openSettings() {
+  renderSettings();
+  $("#settings").classList.add("on");
+  setOverlay("settings");
+  refreshLive().then(() => { if (S.overlay === "settings") renderSettings(); });
+}
 function closeSettings() { $("#settings").classList.remove("on"); setOverlay(null); }
 function settingsMove(d) {
   const m = S.setModel;
@@ -737,6 +739,7 @@ function settingsActivate() {
   else if (it.id === "find") { HUB.searching = true; native("findHub"); toast("Looking for LocalHub…"); }
   else if (it.id === "address") return openModal("LocalHub address", "The laptop's address on your network, and the hub's port.", HUB.url.replace(/^https?:\/\//, ""), (v) => { native("setHub", v.trim()); HUB.paired = false; probeNative(); });
   else if (it.id === "pair") return openPairing();
+  else if (it.id === "look") { closeSettings(); return openHubApp(); }
   else if (it.id === "forget") { native("forgetHub"); HUB.paired = false; toast("This TV forgot LocalHub"); }
   savePrefs();
   applyLook();
@@ -1218,7 +1221,8 @@ async function boot() {
   renderGrid();
   tick();
   setInterval(tick, 10_000);
-  setTimeout(() => { document.body.classList.add("booted"); $("#splash").classList.add("is-gone"); }, 2300);
+  // The opening (splash.js, the same one trylocalhub.com plays) decides when the home screen shows.
+  (window.LocalHubSplash?.done || new Promise((r) => setTimeout(r, 2300))).then(() => { document.body.classList.add("booted"); $("#splash").classList.add("is-gone"); });
   if (!NATIVE) { showKeys(prefs.help); if (prefs.help) setTimeout(() => showKeys(false), 12000); }
 
   if (IN_HUB) {

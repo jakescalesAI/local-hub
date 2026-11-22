@@ -41,6 +41,14 @@ const TYPES = new Set(['launch', 'input', 'home', 'saver', 'sleep', 'say', 'answ
 
 const tvConfig = () => hubConfig().tv || {}
 
+let VERSION = null
+function hubVersion(here) {
+  if (VERSION == null) {
+    try { VERSION = JSON.parse(fs.readFileSync(path.join(here, 'package.json'), 'utf8')).version || '' } catch { VERSION = '' }
+  }
+  return VERSION
+}
+
 export function create({ here }) {
   const uiDir = path.join(here, 'tv', 'ui')
   const whisper = createWhisper(here)
@@ -145,6 +153,7 @@ export function create({ here }) {
         whisper: whisper.state(),
         alexa: { on: !!alexa.listening(), port: a.port || 3109, configured: !!a.skillId },
         tvs: tvsOnline(),
+        version: hubVersion(here),
       }), true
     }
     send(res, 404, { error: 'not found' })

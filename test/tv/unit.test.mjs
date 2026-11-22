@@ -89,6 +89,9 @@ test('the chat mic has its own voice routes', async () => {
     assert.equal(notAudio.status, 415)
     assert.equal(typeof route.whisper.warm, 'function')
     assert.equal((await fetch(`${base}/api/voice/nope`)).status, 404)
+    // The TV's Settings shows the hub's real version.
+    const st = await (await fetch(`${base}/api/tv/status`)).json()
+    assert.match(st.version, /^\d+\.\d+\.\d+/)
   })
 })
 

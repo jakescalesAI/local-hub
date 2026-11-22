@@ -410,3 +410,53 @@ body.cc-open #hub-chat { opacity: 0; pointer-events: none; transition: opacity .
 .cc-tile.status-tile img { width: 76px; height: 76px; border-radius: 19px; }
 .cc-tile.status-tile .t1 { font-size: 28px; margin-bottom: 8px; }
 .cc-sect { margin: 8px 0 -2px 14px; font-size: 17px; }
+
+/* ══ The opening: the same as trylocalhub.com's (splash.js + glass.js) ═══════════════════════ */
+.splash { position: fixed; inset: 0; z-index: 2147483647; display: grid; place-items: center; background: #000; animation: none; opacity: 1; transform: none; transition: opacity .7s var(--ease); }
+.splash.leaving { opacity: 0; }
+.splash.is-gone { display: none; }
+.splash-mark { margin: 0; font: 600 min(15.6vw, 24vh)/1.06 var(--display); letter-spacing: -0.05em; white-space: nowrap; color: #fff; }
+.splash-tile { display: inline-block; width: .86em; height: .86em; margin: 0 .045em 0 .1em; vertical-align: -.08em; overflow: visible; opacity: 0; }
+.splash .word { display: inline-block; opacity: 0; transition: opacity .45s var(--ease), transform .7s var(--ease); }
+.splash .word-l { transform: translateX(.2em); }
+.splash .word-r { transform: translateX(-.2em); }
+.splash.moving .splash-tile { opacity: 1; }
+.splash.words .word { opacity: 1; transform: none; }
+.splash-reveal { position: absolute; inset: 0; width: 100%; height: 100%; display: block; background: #000; }
+
+/* ══ App tiles: liquid glass over the app's own colour ═══════════════════════════════════════ */
+.icon { background: transparent; -webkit-backdrop-filter: saturate(180%) blur(26px); backdrop-filter: saturate(180%) blur(26px); }
+.icon > .fill { position: absolute; inset: 0; z-index: 0; background: linear-gradient(160deg, rgba(255, 255, 255, .2), rgba(255, 255, 255, 0) 48%), var(--a-bg, #2c2c2e); opacity: .74; }
+.icon > .glyph, .icon > .letter, .icon > img.square, .icon > .sym, .icon > .sub { position: relative; z-index: 1; }
+.icon::before { z-index: 2; inset: 0; padding: 1.5px; border-radius: inherit; background: var(--lg-rim); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
+.icon::after { z-index: 3; }
+html.lite .icon { -webkit-backdrop-filter: none; backdrop-filter: none; }
+html.lite .icon > .fill { opacity: 1; }
+/* No name under the focused app: the header above says which it is, and the tile grows instead. */
+.app .name { display: none; }
+.app.is-focused .icon { --s: 1.17; --ty: -8px; }
+
+/* ══ The header: the app's long tile, large; the art fades into the wallpaper ═════════════════ */
+.shelf { overflow: visible; }
+.shelf-art { inset: -200px -260px 0; -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 20%, #000 58%, transparent 100%); mask-image: linear-gradient(180deg, transparent 0%, #000 20%, #000 58%, transparent 100%); }
+.shelf-art .bg { inset: 0; }
+.shelf-art .glyph { right: 350px; top: 240px; opacity: .18; }
+.shelf-art .poster { right: 400px; top: 350px; }
+.shelf-fade { inset: -200px -260px 0; background: linear-gradient(90deg, rgba(0, 0, 0, .42) 0%, transparent 55%); -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 20%, #000 58%, transparent 100%); mask-image: linear-gradient(180deg, transparent 0%, #000 20%, #000 58%, transparent 100%); }
+body.shelf-hub .shelf-fade { background: none; }
+.shelf-title .hero { position: relative; width: var(--icon-w); height: var(--icon-h); transform: scale(1.9); transform-origin: 0 100%; margin-bottom: 8px; filter: drop-shadow(0 30px 60px rgba(0, 0, 0, .45)); }
+.shelf-title .hero .icon { --s: 1; --ty: 0px; --rx: 0deg; --ry: 0deg; }
+.shelf-title .hero .icon::after { display: none; }
+
+/* ══ Settings: a liquid-glass sheet with glass rows ═══════════════════════════════════════════ */
+.settings { color: #fff; }
+.settings::before { inset: -200px; background: rgba(8, 8, 14, .36); -webkit-backdrop-filter: saturate(170%) blur(54px); backdrop-filter: saturate(170%) blur(54px); }
+.settings-art img { border-radius: 76px; box-shadow: 0 0 0 1.5px rgba(255, 255, 255, .28), inset 0 1px 1px rgba(255, 255, 255, .4), var(--lg-drop); }
+.settings-art p { color: rgba(255, 255, 255, .62); }
+.set-group { color: rgba(255, 255, 255, .56); }
+.row { position: relative; isolation: isolate; border-radius: 28px; margin-bottom: 12px; background: var(--lg-sheen), rgba(255, 255, 255, .07); box-shadow: var(--lg-inner); }
+.row::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; padding: 1.5px; pointer-events: none; background: var(--lg-rim); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
+.row .t2, .row .v { color: rgba(255, 255, 255, .6); }
+.row .chev { color: rgba(255, 255, 255, .35); }
+.row.is-sel { background: linear-gradient(180deg, rgba(255, 255, 255, .6), rgba(255, 255, 255, 0) 60%), rgba(255, 255, 255, .9); color: #000; transform: scale(1.025); box-shadow: var(--lg-inner), 0 22px 48px -18px rgba(0, 0, 0, .6); }
+.row.is-sel .t2, .row.is-sel .v, .row.is-sel .chev { color: rgba(0, 0, 0, .52); }
