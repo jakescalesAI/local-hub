@@ -30,7 +30,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - run: node --test test/tv/
+      # A glob, not a folder: Node 22 doesn't expand a directory argument to --test.
+      - run: node --test "test/tv/*.test.mjs"
 
   apk:
     runs-on: ubuntu-latest

@@ -3,6 +3,8 @@
 // close). Follow-ups continue the same conversation. The + button left of the input opens a menu:
 // Attach files (chips above the input, sent as base64), Model (Opus/Sonnet/Haiku 5.5, kept in
 // localStorage), Dictate (Web Speech API; says why when the page can't use it) and Full screen
+// With the box empty, the send button is a mic: talk, it stops when you do, Whisper on this
+// computer writes it down (/api/voice/*), it sends, and the answer is read aloud as it arrives.
 // (also Ctrl+/): whole conversation, history, new chat. Under each reply a hover (tap on touch)
 // row shows sent time, duration and tokens, then Reply (quotes it above the input as context) and
 // Copy. Talks to /api/chat/*
@@ -275,6 +277,12 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
 .send:disabled { opacity: .28; cursor: default; }
 .send:not(:disabled):active { transform: scale(.9); }
 .send.stop { background: var(--label, #000); color: var(--surface, #fff); }
+/* an empty composer: the send button is a mic */
+.send.voice { background: var(--fill-2, rgba(118, 118, 128, .2)); color: var(--label, #000); }
+.send.voice:hover { background: var(--blue, #007aff); color: #fff; }
+.send.voice.rec { background: var(--red, #ff3b30); color: #fff; box-shadow: 0 0 0 calc(3px + var(--lvl, 0) * 12px) color-mix(in srgb, var(--red, #ff3b30) 28%, transparent); transition: box-shadow .08s linear, background .15s; }
+.send.voice.wait { background: var(--blue, #007aff); color: #fff; opacity: 1; }
+.send.voice.wait .vspin { width: 18px; height: 18px; border-radius: 50%; border: 2.5px solid rgba(255, 255, 255, .35); border-top-color: #fff; animation: spin .7s linear infinite; }
 
 /* ----- the answer card ----- */
 .card { position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom) + var(--kb) + var(--barh) + 10px); width: min(640px, calc(100vw - 32px)); max-height: clamp(254px, calc(33vh + 54px), 434px); display: flex; flex-direction: column; border-radius: 22px; overflow: hidden; transform: translate(-50%, 16px) scale(.98); transform-origin: 50% 100%; opacity: 0; visibility: hidden; pointer-events: none; background: color-mix(in srgb, var(--surface, #fff) 86%, transparent); -webkit-backdrop-filter: saturate(180%) blur(24px); backdrop-filter: saturate(180%) blur(24px); box-shadow: 0 0 0 .5px var(--sep, rgba(60, 60, 67, .18)), 0 18px 50px rgba(0, 0, 0, .22), 0 3px 10px rgba(0, 0, 0, .08); transition: opacity .2s, transform .38s var(--ease, ease), visibility 0s .38s; }
@@ -1668,6 +1676,180 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
     }
   }
 
+  /* ---------- voice: the mic button ---------- */
+  // Speech to text runs on the hub computer (Whisper, /api/voice/*): it works on plain http and
+  // nothing goes to a cloud. A page with its own mic and voice (the LocalHub TV app) sets
+  // window.HubVoice = { listen({ onLevel, onWorking }) -> Promise<text>, cancel(), speak(text), hush() }.
+  const V = { state: 'idle', rec: null, speak: false, said: 0, text: '', voice: undefined }
+
+  function level(v) { for (const b of [bsend, fsend]) b.style.setProperty('--lvl', String(Math.max(0, Math.min(1, v || 0)))) }
+
+  async function toggleVoice(t) {
+    if (V.state === 'rec') { if (window.HubVoice?.listen) window.HubVoice.stop?.(); else V.rec?.stop(); return }
+    if (V.state === 'wait') return
+    hush()
+    if (S.rec) stopDictate()
+    fetch('/api/voice/warm', { method: 'POST', headers: { 'x-hub': '1' } }).catch(() => {})
+    V.state = 'rec'
+    syncSend()
+    let text = ''
+    try {
+      if (window.HubVoice?.listen) {
+        text = await window.HubVoice.listen({ onLevel: level, onWorking: () => { V.state = 'wait'; level(0); syncSend() } })
+      } else {
+        const wav = await recordWav()
+        if (!wav) { V.state = 'idle'; syncSend(); return flash('Didn’t catch that. Tap the mic and talk.') }
+        V.state = 'wait'
+        syncSend()
+        text = await transcribe(wav)
+      }
+    } catch (e) {
+      V.state = 'idle'
+      level(0)
+      syncSend()
+      return flash(e?.message || 'Couldn’t hear that.')
+    }
+    V.state = 'idle'
+    level(0)
+    syncSend()
+    text = String(text || '').trim()
+    if (!text) return flash('Didn’t catch that. Tap the mic and talk.')
+    V.speak = true
+    V.said = 0
+    V.text = ''
+    submit(text)
+  }
+
+  // Records until you stop talking (0.7 s of quiet), straight to 16 kHz WAV.
+  function recordWav() {
+    return new Promise(async (resolve, reject) => {
+      let stream
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, channelCount: 1 } })
+      } catch {
+        return reject(new Error(window.isSecureContext ? 'The microphone is blocked for this page. Allow it in the browser’s site settings.' : 'The browser only allows the microphone on https or on this computer (localhost).'))
+      }
+      const ctx = new (window.AudioContext || window.webkitAudioContext)()
+      const src = ctx.createMediaStreamSource(stream)
+      const node = ctx.createScriptProcessor(2048, 1, 1)
+      const rate = ctx.sampleRate
+      const chunks = []
+      let heard = false, quiet = 0, total = 0, done = false, floor = 0.006
+      const finish = keep => {
+        if (done) return
+        done = true
+        try { node.disconnect(); src.disconnect() } catch {}
+        stream.getTracks().forEach(tr => tr.stop())
+        ctx.close().catch(() => {})
+        V.rec = null
+        level(0)
+        resolve(keep && heard ? wav16k(chunks, rate) : null)
+      }
+      node.onaudioprocess = e => {
+        if (done) return
+        const d = e.inputBuffer.getChannelData(0)
+        chunks.push(new Float32Array(d))
+        let sum = 0
+        for (let i = 0; i < d.length; i++) sum += d[i] * d[i]
+        const rms = Math.sqrt(sum / d.length)
+        const sec = d.length / rate
+        total += sec
+        if (total < 0.25) floor = Math.max(floor, rms * 1.8)
+        level(Math.min(1, rms * 9))
+        if (rms > Math.max(0.018, floor)) { heard = true; quiet = 0 } else if (heard) quiet += sec
+        if ((heard && quiet > 0.7) || total > 30 || (!heard && total > 7)) finish(true)
+      }
+      src.connect(node)
+      node.connect(ctx.destination)
+      V.rec = { stop: () => finish(true), cancel: () => finish(false) }
+    })
+  }
+
+  function wav16k(chunks, rate) {
+    const n = chunks.reduce((a, c) => a + c.length, 0)
+    const all = new Float32Array(n)
+    let o = 0
+    for (const c of chunks) { all.set(c, o); o += c.length }
+    const ratio = rate / 16000
+    const len = Math.floor(n / ratio)
+    const pcm = new Int16Array(len)
+    for (let i = 0; i < len; i++) {
+      const a = Math.floor(i * ratio), b = Math.min(n, Math.floor((i + 1) * ratio))
+      let sum = 0
+      for (let j = a; j < b; j++) sum += all[j]
+      const v = Math.max(-1, Math.min(1, sum / Math.max(1, b - a)))
+      pcm[i] = v < 0 ? v * 0x8000 : v * 0x7fff
+    }
+    const buf = new ArrayBuffer(44 + pcm.length * 2)
+    const dv = new DataView(buf)
+    const str = (at, s) => { for (let i = 0; i < s.length; i++) dv.setUint8(at + i, s.charCodeAt(i)) }
+    str(0, 'RIFF'); dv.setUint32(4, 36 + pcm.length * 2, true); str(8, 'WAVE'); str(12, 'fmt ')
+    dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 1, true); dv.setUint32(24, 16000, true)
+    dv.setUint32(28, 32000, true); dv.setUint16(32, 2, true); dv.setUint16(34, 16, true); str(36, 'data'); dv.setUint32(40, pcm.length * 2, true)
+    new Int16Array(buf, 44).set(pcm)
+    return new Blob([buf], { type: 'audio/wav' })
+  }
+
+  async function transcribe(wav) {
+    let r
+    try {
+      r = await fetch('/api/voice/transcribe', { method: 'POST', headers: { 'x-hub': '1', 'content-type': 'audio/wav' }, body: wav })
+    } catch { throw new Error('The hub didn’t answer, so that wasn’t written down.') }
+    const j = await r.json().catch(() => ({}))
+    if (!r.ok || !j.ok) throw new Error(j.error || `Couldn’t write that down (${r.status}).`)
+    return j.text || ''
+  }
+
+  // Reading the answer aloud: the first phrase goes as soon as it's there, then whole sentences.
+  const plainSpeech = t => String(t).replace(/```[\s\S]*?```/g, '').replace(/`([^`]*)`/g, '$1').replace(/\[([^\]]+)\]\([^)]+\)/g, '$1').replace(/https?:\/\/\S+/g, '').replace(/[*_#>|]/g, '').replace(/\s+/g, ' ')
+  function voiceFeed(chunk, final) {
+    V.text += chunk
+    const text = plainSpeech(V.text)
+    const rest = text.slice(V.said)
+    let cut = -1
+    const sentence = /[.!?](\s|$)/g
+    let m
+    while ((m = sentence.exec(rest))) cut = m.index + 1
+    if (cut < 0 && V.said === 0) {
+      // Nothing said yet: a first phrase of a few words at a comma is worth not waiting for.
+      const comma = rest.search(/[,;:—–](\s)/)
+      if (comma > 0 && rest.slice(0, comma).trim().split(/\s+/).length >= 4) cut = comma + 1
+    }
+    if (final) cut = rest.length
+    if (cut <= 0) return
+    const piece = rest.slice(0, cut).trim()
+    V.said += cut
+    if (piece) say(piece)
+  }
+
+  function pickVoice() {
+    if (V.voice !== undefined) return V.voice
+    const all = window.speechSynthesis?.getVoices?.() || []
+    const lang = (navigator.language || 'en-US').toLowerCase()
+    const mine = all.filter(v => v.lang && v.lang.toLowerCase().startsWith(lang.slice(0, 2)))
+    // A local voice starts speaking at once; a cloud voice waits on the network first.
+    V.voice = mine.find(v => v.localService && v.lang.toLowerCase() === lang) || mine.find(v => v.localService) || mine[0] || null
+    return V.voice
+  }
+  window.speechSynthesis?.addEventListener?.('voiceschanged', () => { V.voice = undefined })
+
+  function say(text) {
+    if (!text) return
+    if (window.HubVoice?.speak) return window.HubVoice.speak(text)
+    if (!window.speechSynthesis) return
+    const u = new SpeechSynthesisUtterance(text)
+    const v = pickVoice()
+    if (v) u.voice = v
+    u.rate = 1.08
+    speechSynthesis.speak(u)
+  }
+  function hush() {
+    V.said = 0
+    V.text = ''
+    try { if (window.HubVoice?.hush) window.HubVoice.hush(); else window.speechSynthesis?.cancel() } catch {}
+  }
+
+
   /* ---------- composers ---------- */
 
   function grow(t, pill) {
@@ -1678,16 +1860,35 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
   function syncSend() {
     for (const [b, t] of [[bsend, bta], [fsend, fta]]) {
       // While a reply runs, an empty composer shows Stop; typed text turns it back into send (queue).
-      const halt = S.busy && !t.value.trim() && !S.files.length
+      // With nothing typed and nothing running, it's the mic.
+      const empty = !t.value.trim() && !S.files.length
+      const halt = S.busy && empty && V.state === 'idle'
+      const voice = !halt && (V.state !== 'idle' || (!S.busy && empty))
       b.classList.toggle('stop', halt)
-      b.innerHTML = halt ? IC.stop : IC.up
-      b.setAttribute('aria-label', halt ? 'Stop' : S.busy ? 'Queue this message' : 'Send')
-      b.title = halt ? 'Stop' : S.busy ? 'Queue: sends when this reply finishes' : ''
-      b.disabled = !S.busy && !t.value.trim() && !S.files.length
+      b.classList.toggle('voice', voice)
+      b.classList.toggle('rec', voice && V.state === 'rec')
+      b.classList.toggle('wait', voice && V.state === 'wait')
+      b.innerHTML = halt ? IC.stop : voice ? (V.state === 'rec' ? IC.stop : V.state === 'wait' ? '<i class="vspin"></i>' : IC.mic22) : IC.up
+      b.setAttribute('aria-label', halt ? 'Stop' : voice ? (V.state === 'rec' ? 'Stop listening' : V.state === 'wait' ? 'Writing down what you said' : 'Talk') : S.busy ? 'Queue this message' : 'Send')
+      b.title = halt ? 'Stop' : voice ? (V.state === 'rec' ? 'Listening… tap to stop' : V.state === 'wait' ? '' : 'Talk') : S.busy ? 'Queue: sends when this reply finishes' : ''
+      b.disabled = voice ? V.state === 'wait' : !S.busy && empty
+      if (!S.rec) t.placeholder = V.state === 'rec' ? 'Listening…' : V.state === 'wait' ? 'Writing it down…' : S.mode === 'plan' ? 'Ask anything (Plan mode)' : 'Ask anything'
     }
     syncCard()
   }
-  const submit = text => (S.busy ? enqueue(text) : send(text))
+  const submit = text => {
+    // A page can take a message first: LocalHub TV opens "open Netflix" itself, at once.
+    try {
+      if (String(text || '').trim() && window.HubChatHooks?.intercept?.(String(text).trim())) {
+        for (const [t, pill] of [[bta, barPill], [fta, fPill]]) { t.value = ''; grow(t, pill) }
+        V.speak = false
+        syncSend()
+        return
+      }
+    } catch (e) { console.error(e) }
+    if (!V.speak) hush()
+    return S.busy ? enqueue(text) : send(text)
+  }
 
   const confirmCards = id => [...flogEl.querySelectorAll('.confirm'), ...clogEl.querySelectorAll('.confirm')].filter(el => el.dataset.confirm === id)
   function settleConfirm(id, note) {
@@ -1723,7 +1924,12 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
     t.addEventListener('keydown', e => {
       if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && e.keyCode !== 229) { e.preventDefault(); submit(t.value) }
     })
-    b.addEventListener('click', () => { if (S.busy && !t.value.trim() && !S.files.length) stop(); else submit(t.value) })
+    b.addEventListener('click', () => {
+      const empty = !t.value.trim() && !S.files.length
+      if (V.state !== 'idle' || (!S.busy && empty)) toggleVoice(t)
+      else if (S.busy && empty) stop()
+      else submit(t.value)
+    })
   }
 
   /* ---------- sending and the NDJSON stream ---------- */
@@ -1833,6 +2039,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
     } finally {
       if (gen === S.gen) {
         eachView(v => { v.hidePending(); v.finishCur(); v.endBrowser() })
+        if (V.speak) { voiceFeed('', true); V.speak = false }
         S.busy = false
         S.ctrl = null
         syncSend()
@@ -1864,6 +2071,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
         break
       case 'delta':
         eachView(v => { if (!v.cur) v.cur = v.addAssistant('', false); v.feed(String(ev.text || '')) })
+        if (V.speak) voiceFeed(String(ev.text || ''), false)
         break
       case 'text_end':
         eachView(v => { if (!v.cur) { v.hidePending(); v.cur = v.addAssistant('', false) } if (typeof ev.text === 'string') v.setText(ev.text); v.finishCur() })
@@ -1902,6 +2110,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
         break
       case 'done':
         eachView(v => { v.hidePending(); v.finishCur(); v.endBrowser(); v.setMeta(ev.meta) })
+        if (V.speak) { voiceFeed('', true); V.speak = false }
         return true
     }
     return false
@@ -1909,6 +2118,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
 
   async function stop() {
     if (!S.busy) return
+    hush()
     S.stopped = true
     try { await fetch('/api/chat/stop', { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: JSON.stringify({ sessionId: S.conv || undefined }) }) } catch {}
     const c = S.ctrl
@@ -2074,5 +2284,6 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', loadInfo, { once: true }); else loadInfo()
 
   // A tiny handle for other tabs or tests: HubChat.open(), HubChat.ask('...').
-  window.HubChat = { open: () => setFull(true), close: () => setFull(false), toggle: () => setFull(!S.full), ask: t => submit(t) }
+  // voice/hush/say/listening are for pages around the chat: LocalHub TV's ⏯ key and Control Center talk through them.
+  window.HubChat = { open: () => setFull(true), close: () => setFull(false), toggle: () => setFull(!S.full), ask: t => submit(t), voice: () => toggleVoice(S.full ? fta : bta), hush, say, busy: () => S.busy, listening: () => V.state !== 'idle' }
 })()

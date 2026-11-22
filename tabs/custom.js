@@ -28,6 +28,7 @@
     calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
     stripe: '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h4"/>',
     chat: '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22z"/>',
+    tv: '<rect x="2.5" y="4" width="19" height="13" rx="2.2"/><path d="M8 21h8"/>',
     plug: '<path d="M12 22v-5M9 8V2M15 8V2M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8z"/>',
     palette: '<path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.93 0 1.65-.75 1.65-1.69 0-.43-.18-.83-.44-1.12-.29-.29-.44-.65-.44-1.13a1.64 1.64 0 0 1 1.67-1.67h2c3.05 0 5.56-2.5 5.56-5.55C21.97 6.01 17.46 2 12 2z"/><circle cx="7.5" cy="11.5" r="1.2"/><circle cx="10.5" cy="7" r="1.2"/><circle cx="15.5" cy="7.5" r="1.2"/>',
     image: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"/>',
@@ -59,6 +60,7 @@
     calendar: { label: 'Calendar', icon: 'calendar', tint: ['#ff8a65', '#ff3b30'] },
     stripe: { label: 'Stripe', icon: 'stripe', tint: ['#8c84ff', '#5048e5'] },
     chat: { label: 'Chat', icon: 'chat', tint: ['#ffb340', '#ff6a2b'] },
+    tv: { label: 'TV', icon: 'tv', tint: ['#5e5ce6', '#1c1c1e'] },
   }
   const appMeta = id => {
     if (META[id]) return META[id]
@@ -413,7 +415,7 @@ html[data-wall] .hw-bar .hw-btn:not(.solid) { background: color-mix(in srgb, var
   const pluginTabs = () => S.tabs.order.filter(t => !BUILTIN.includes(t) && window.TABS?.[t])
 
   // The header holds tabs, and also websites and Chat, which open without leaving the page.
-  const isItem = id => known(id) || id === 'chat' || !!siteOf(id) || !!pageOf(id)
+  const isItem = id => known(id) || id === 'chat' || id === 'tv' || !!siteOf(id) || !!pageOf(id)
   const stripOrder = () => [...S.tabs.order.filter(isItem), ...BUILTIN.filter(t => !S.tabs.order.includes(t))]
   const headerItems = () => stripOrder().filter(id => id === 'home' || !S.tabs.hidden.includes(id))
   const labelOf = id => S.tabs.names?.[id] || appMeta(id).label
@@ -475,6 +477,8 @@ html[data-wall] .hw-bar .hw-btn:not(.solid) { background: color-mix(in srgb, var
 
   function openTab(id) {
     if (id === 'chat') return window.HubChat ? window.HubChat.open() : hud?.('Chat isn’t available yet')
+    // LocalHub TV in its own window. Inside LocalHub TV (where the hub opens as an app) it just goes back.
+    if (id === 'tv') { if (window.parent !== window && window.parent.haven?.closeHub) return window.parent.haven.closeHub(); return void window.open('/tv/', 'localhub-tv') }
     if (groupOf(id)) { if (typeof setEnv === 'function' && env !== 'home') setEnv('home'); return void requestAnimationFrame(() => window.HUB_OPEN_GROUP?.(id)) }
     if (pageOf(id)) { window.HUB_OPEN_PAGE?.(id); if (typeof setEnv === 'function' && env !== 'home') setEnv('home'); return }
     const site = siteOf(id)
@@ -968,10 +972,10 @@ html[data-wall] .hw-bar .hw-btn:not(.solid) { background: color-mix(in srgb, var
     // Send a patch now (after anything queued) and take the hub's answer; throws its error.
     patch: async body => { await flush(); accept(await api('/api/hub/settings', body)); return S },
     visibleTabs, pluginTabs, syncTabs, orderOf, headerItems, setHeader, renameHeader, labelOf, setTabsEditing, sortable,
-    apps: () => S.apps.filter(id => id === 'chat' || known(id) || !!siteOf(id) || !!groupOf(id)),
+    apps: () => S.apps.filter(id => id === 'chat' || id === 'tv' || known(id) || !!siteOf(id) || !!groupOf(id)),
     pages: () => S.pages || [], pageOf, files: () => S.files || [], addFile, removeFile, undo, headerOn,
     groups: () => S.groups || [], groupOf,
-    allApps: () => [...orderOf().filter(t => t !== 'home'), 'chat', ...(S.sites || []).map(x => x.id)],
+    allApps: () => [...orderOf().filter(t => t !== 'home'), 'chat', 'tv', ...(S.sites || []).map(x => x.id)],
     appMeta, openApp: openTab, tile, icon,
     sites: () => S.sites || [], siteOf, siteTile, iconSrc, siteIcon, webUrl, hostOf,
     openSite, closeSite, siteCard, embedCheck,

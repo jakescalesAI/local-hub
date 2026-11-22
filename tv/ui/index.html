@@ -56,7 +56,8 @@
   <div class="fatal" id="fatal" hidden></div>
 </div>
 
-<div class="listen" id="listen"><svg class="mic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg><span id="listenText">Listening</span><span class="bars"><b></b><b></b><b></b><b></b></span></div>
+<!-- LocalHub itself, opened as an app from its tile: the full hub, landing on Home's TV view. -->
+<div class="hubapp" id="hubApp" aria-label="LocalHub"><iframe id="hubFrame" title="LocalHub" allow="microphone; clipboard-write"></iframe><button type="button" class="hubapp-done" id="hubDone"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>TV</button></div>
 <div class="keys" id="keys" hidden><b>Keyboard remote</b><span><kbd>← ↑ → ↓</kbd> move</span><span><kbd>Enter</kbd> open</span><span><kbd>Esc</kbd> back</span><span><kbd>M</kbd> Control Center</span><span><kbd>Space</kbd> talk</span><span><kbd>?</kbd> this help</span></div>
 <div class="pairbar" id="pairbar" hidden><span id="pairText">Pair this TV with LocalHub to ask anything.</span><button type="button" id="pairBtn">Pair</button></div>
 <div class="toast" id="toast"></div>

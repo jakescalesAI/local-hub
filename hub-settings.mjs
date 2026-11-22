@@ -138,7 +138,7 @@ export function pluginTabs(here) {
   } catch { return [] }
 }
 const allTabs = here => [...enabledTabs(), ...pluginTabs(here)]
-const allApps = here => [...allTabs(here).filter(t => t !== 'home'), 'chat']
+const allApps = here => [...allTabs(here).filter(t => t !== 'home'), 'chat', 'tv']
 const siteIds = s => (s.sites || []).map(x => x.id)
 const groupIds = s => (s.groups || []).map(x => x.id)
 
