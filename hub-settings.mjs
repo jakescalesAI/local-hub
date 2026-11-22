@@ -14,6 +14,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import crypto from 'node:crypto'
 import { hubConfig, enabledTabs, addonOn, activeTheme, baseTheme } from './config.mjs'
+import { isLocal } from './access.mjs'
 
 export const BUILTIN_TABS = ['home', 'laptop', 'server', 'drives', 'ai', 'cloud', 'calendar', 'stripe']
 const NOT_TABS = new Set(['home', 'chat', 'custom', 'setup', 'launcher', 'browser']) // files in tabs/ that are not plug-in tabs
@@ -92,6 +93,25 @@ const sniff = b => {
   if (b.toString('latin1', 0, 4) === 'GIF8') return 'image/gif'
   if (b.toString('latin1', 4, 8) === 'ftyp' && /avi[fs]/.test(b.toString('latin1', 8, 12))) return 'image/avif'
   return ''
+}
+
+// The TV's screensaver (tv.saver): where its photos come from (tv-saver.mjs scans and serves them),
+// how they move, and which widgets float on them. `folder` is a path on this computer, so only this
+// computer can change it, and it never leaves in an export.
+export const SAVER_SOURCES = ['wallpapers', 'folder', 'icloud', 'pictures']
+export const SAVER_MOTIONS = ['kenburns', 'fade']
+export const SAVER_WIDGETS = ['clock', 'date', 'world-clock', 'recent'] // the TV's own renderers (tv/ui/app.js WIDGETS)
+export const SAVER_MAX_WIDGETS = 4
+export const SAVER_INTERVAL = { min: 5, max: 300, default: 12 }
+const MAX_FOLDER = 1024
+export const saverDefault = () => ({ source: 'wallpapers', folder: '', interval: SAVER_INTERVAL.default, shuffle: true, motion: 'kenburns', widgets: ['clock', 'date'] })
+const withoutFolder = v => { const { folder, ...rest } = v; return rest }
+// '' means no folder chosen. Anything else is an absolute path, tidied (no trailing separator).
+export function cleanFolder(v) {
+  if (v === '') return ''
+  if (typeof v !== 'string' || v.length > MAX_FOLDER || /[\u0000-\u001f]/.test(v) || !path.isAbsolute(v.trim())) return null
+  const n = path.normalize(v.trim())
+  return n.length > path.parse(n).root.length ? n.replace(/[\\/]+$/, '') : n
 }
 
 const COLOR_RE = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/
@@ -178,6 +198,7 @@ const defaults = here => ({
   files: [],
   style: defaultStyle(),
   wallpaper: { current: activeTheme().wallpaper || 'none', custom: [], uploads: [] },
+  tv: { saver: saverDefault() },
 })
 
 /* ---------- validation ---------- */
@@ -317,6 +338,27 @@ function cleanGroup(c, p, g, members, { partial = false, needId = true } = {}) {
   return out
 }
 
+// tv.saver: a partial patch merged into the current one, every field checked.
+function cleanSaver(c, p, v, cur) {
+  const out = { ...saverDefault(), ...(cur || {}) }
+  if (!c.obj(p, v, Object.keys(saverDefault()))) return out
+  for (const [k, x] of Object.entries(v)) {
+    if (x === undefined) continue
+    const q = `${p}.${k}`
+    if (k === 'source') { if (c.oneOf(q, x, SAVER_SOURCES) !== undefined) out.source = x }
+    else if (k === 'motion') { if (c.oneOf(q, x, SAVER_MOTIONS) !== undefined) out.motion = x }
+    else if (k === 'interval') { if (c.int(q, x, SAVER_INTERVAL.min, SAVER_INTERVAL.max) !== undefined) out.interval = x }
+    else if (k === 'shuffle') { if (c.bool(q, x) !== undefined) out.shuffle = x }
+    else if (k === 'widgets') { if (c.ids(q, x, SAVER_WIDGETS, SAVER_MAX_WIDGETS)) out.widgets = [...x] }
+    else if (k === 'folder') {
+      const f = cleanFolder(x)
+      if (f === null) c.fail(q, `must be an absolute folder path on this computer (up to ${MAX_FOLDER} characters), or "" for none`)
+      else out.folder = f
+    }
+  }
+  return out
+}
+
 // Apply a patch to a copy of the current settings. Throws Bad (with every error) or returns the result.
 export function applyPatch(cur, body, here) {
   const c = checker()
@@ -324,14 +366,17 @@ export function applyPatch(cur, body, here) {
   const TABS = allTabs(here)
   next.sites = next.sites || []
   next.pages = next.pages || []
-  if (!c.obj('body', body, ['tabs', 'apps', 'sites', 'groups', 'pages', 'widgets', 'style', 'wallpaper', 'reset'])) c.done()
-  if (!Object.keys(body).length) c.fail('body', 'is empty: send at least one of tabs, apps, sites, groups, pages, widgets, style, wallpaper, reset')
+  next.tv = { saver: { ...saverDefault(), ...(next.tv?.saver || {}) } }
+  if (!c.obj('body', body, ['tabs', 'apps', 'sites', 'groups', 'pages', 'widgets', 'style', 'wallpaper', 'tv', 'reset'])) c.done()
+  if (!Object.keys(body).length) c.fail('body', 'is empty: send at least one of tabs, apps, sites, groups, pages, widgets, style, wallpaper, tv, reset')
 
   if (body.reset !== undefined) {
-    const parts = ['tabs', 'apps', 'widgets', 'style', 'wallpaper', 'pages', 'all']
-    const r = c.ids('reset', body.reset, parts, 7)
+    const parts = ['tabs', 'apps', 'widgets', 'style', 'wallpaper', 'pages', 'tv', 'all']
+    const r = c.ids('reset', body.reset, parts, parts.length)
     const d = defaults(here)
-    for (const k of r || []) for (const part of k === 'all' ? parts.slice(0, 6) : [k]) next[part] = part === 'wallpaper' ? { ...d.wallpaper, custom: next.wallpaper.custom, uploads: next.wallpaper.uploads } : d[part]
+    // A reset keeps what is yours rather than a choice: saved gradients, uploads, the screensaver's folder.
+    const keep = { wallpaper: () => ({ ...d.wallpaper, custom: next.wallpaper.custom, uploads: next.wallpaper.uploads }), tv: () => ({ saver: { ...d.tv.saver, folder: next.tv.saver.folder } }) }
+    for (const k of r || []) for (const part of k === 'all' ? parts.filter(x => x !== 'all') : [k]) next[part] = keep[part] ? keep[part]() : d[part]
     if (r?.includes('apps') || r?.includes('all')) next.groups = []
   }
 
@@ -576,6 +621,10 @@ export function applyPatch(cur, body, here) {
     if (!['none', ...BUILTIN_WALLPAPERS.map(x => x.id), ...next.wallpaper.custom.map(x => x.id), ...next.wallpaper.uploads.map(x => x.id)].includes(next.wallpaper.current)) next.wallpaper.current = 'none'
   }
 
+  if (body.tv !== undefined && c.obj('tv', body.tv, ['saver'])) {
+    if (body.tv.saver !== undefined) next.tv.saver = cleanSaver(c, 'tv.saver', body.tv.saver, next.tv.saver)
+  }
+
   c.done()
   return next
 }
@@ -605,6 +654,8 @@ function repair(saved, here) {
     .map(u => ({ id: u.id, name: String(u.name || 'Image').slice(0, 60), file: u.file, type: EXT_TYPE[u.file.split('.').pop()], bytes: Number(u.bytes) || 0, at: Number(u.at) || 0 }))
   const known = ['none', ...BUILTIN_WALLPAPERS.map(x => x.id), ...out.wallpaper.custom.map(x => x.id), ...out.wallpaper.uploads.map(x => x.id)]
   out.wallpaper.current = known.includes(saved.wallpaper?.current) ? saved.wallpaper.current : 'none'
+  out.tv = { saver: saverDefault() }
+  for (const k of Object.keys(saverDefault())) tryPart(`tv.${k}`, () => { out.tv = applyPatch({ ...d, tv: out.tv }, { tv: { saver: { [k]: saved.tv.saver[k] } } }, here).tv })
   out.at = Number(saved.at) || 0
   return out
 }
@@ -664,12 +715,25 @@ export function store(here) {
     return cache
   }
   // Undo puts back the settings from before the last save. Undoing again redoes it.
-  function undo() {
+  // From another device it leaves the screensaver's folder as it is (only this computer sets that).
+  function undo(local) {
     let before
     try { before = JSON.parse(fs.readFileSync(prev, 'utf8')) } catch { throw Object.assign(new Bad('there is nothing to undo yet'), { code: 400 }) }
-    return write(stripMeta(repair(before, here)))
+    const back = stripMeta(repair(before, here))
+    if (!local) back.tv.saver.folder = get().tv.saver.folder
+    return write(back)
   }
-  const patch = body => (body?.undo === true && Object.keys(body).length === 1 ? undo() : write(applyPatch(stripMeta(get()), body, here)))
+  // `local`: the change comes from this computer. Code inside the hub calls this without it.
+  function patch(body, { local = true } = {}) {
+    if (body?.undo === true && Object.keys(body).length === 1) return undo(local)
+    const cur = stripMeta(get())
+    const next = applyPatch(cur, body, here)
+    if (!local && next.tv.saver.folder !== cur.tv.saver.folder) {
+      const message = 'tv.saver.folder can only be changed on the computer LocalHub runs on'
+      throw Object.assign(new Bad(message), { code: 403, errors: [{ path: 'tv.saver.folder', message }] })
+    }
+    return write(next)
+  }
 
   const api = { get, patch, write: s => write(s), file, dataDir }
   stores.set(here, api)
@@ -715,7 +779,14 @@ export function catalog(here) {
     pages: { idPattern: PAGE_ID_RE.source, max: MAX_PAGES, patch: ['list', 'add', 'rename', 'remove', 'order', 'layout'] },
     files: { idPattern: FILE_ID_RE.source, max: MAX_FILES, maxBytes: MAX_FILE, note: 'custom .html files are added by the owner from the page and run sandboxed with no keys' },
     undo: 'send { undo: true } to put back the settings from before the last save',
-    reset: ['tabs', 'apps', 'widgets', 'style', 'wallpaper', 'pages', 'all'],
+    tv: {
+      saver: {
+        sources: SAVER_SOURCES, motions: SAVER_MOTIONS, widgets: SAVER_WIDGETS, maxWidgets: SAVER_MAX_WIDGETS, interval: SAVER_INTERVAL, default: saverDefault(),
+        folder: 'an absolute folder path on the computer LocalHub runs on, or "" for none; only that computer can change it',
+        photos: 'GET /api/tv/saver lists what the TV shows; GET /api/tv/saver/sources says which sources this computer has',
+      },
+    },
+    reset: ['tabs', 'apps', 'widgets', 'style', 'wallpaper', 'pages', 'tv', 'all'],
   }
 }
 
@@ -728,14 +799,14 @@ export function create({ here }) {
 
   return async function route(url, req, res, { send }) {
     const p = url.pathname
-    const fail = (e, code = e.code) => send(res, [400, 404, 413, 415].includes(code) ? code : e instanceof Bad ? 400 : 500, { error: e.message, ...(e.errors ? { errors: e.errors } : {}) })
+    const fail = (e, code = e.code) => send(res, [400, 403, 404, 413, 415].includes(code) ? code : e instanceof Bad ? 400 : 500, { error: e.message, ...(e.errors ? { errors: e.errors } : {}) })
     try {
       if (p === '/api/hub/settings') {
         if (req.method === 'GET') return send(res, 200, st.get()), true
         if (req.method !== 'POST') return send(res, 405, { error: 'method not allowed' }), true
         if (!/application\/json/i.test(req.headers['content-type'] || '')) return send(res, 415, { error: 'send JSON with content-type: application/json' }), true
         const body = await readJson(req, MAX_BODY)
-        return send(res, 200, st.patch(body)), true
+        return send(res, 200, st.patch(body, { local: isLocal(req) })), true
       }
       if (p === '/api/hub/settings/catalog' && req.method === 'GET') return send(res, 200, catalog(here)), true
 
@@ -747,6 +818,7 @@ export function create({ here }) {
           tabs: s.tabs, apps: s.apps, sites: s.sites, groups: s.groups, pages: s.pages, widgets: s.widgets, style: s.style,
           wallpaper: { current: s.wallpaper.uploads.some(u => u.id === s.wallpaper.current) ? 'none' : s.wallpaper.current, custom: s.wallpaper.custom },
           files: s.files.map(f => ({ ...f, html: fs.readFileSync(fileOf(f.id), 'utf8') })),
+          tv: { saver: withoutFolder(s.tv.saver) }, // a folder is a path on this computer: it stays here
         }
         res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'content-disposition': 'attachment; filename="local-hub-settings.json"', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' })
         return res.end(JSON.stringify(out, null, 2)), true
@@ -759,7 +831,7 @@ export function create({ here }) {
         const isObject = k => b[k] == null || (typeof b[k] === 'object' && !Array.isArray(b[k]))
         const isNames = (o, k) => o?.[k] == null || o[k].every(x => typeof x === 'string')
         const lists = [[b, 'apps'], [b, 'groups'], [b, 'sites'], [b, 'pages'], [b, 'files'], [b.tabs, 'order'], [b.tabs, 'hidden'], [b.wallpaper, 'custom']]
-        if (!lists.every(([o, k]) => isList(o, k)) || ![[b, 'apps'], [b.tabs, 'order'], [b.tabs, 'hidden']].every(([o, k]) => isNames(o, k)) || !['tabs', 'widgets', 'style', 'wallpaper'].every(isObject)) return send(res, 400, { error: 'that settings file has the wrong shape' }), true
+        if (!lists.every(([o, k]) => isList(o, k)) || ![[b, 'apps'], [b.tabs, 'order'], [b.tabs, 'hidden']].every(([o, k]) => isNames(o, k)) || !['tabs', 'widgets', 'style', 'wallpaper', 'tv'].every(isObject)) return send(res, 400, { error: 'that settings file has the wrong shape' }), true
         const cur = stripMeta(st.get())
         const files = (Array.isArray(b.files) ? b.files : []).filter(f => f && FILE_ID_RE.test(f.id) && typeof f.html === 'string' && Buffer.byteLength(f.html) <= MAX_FILE).slice(0, MAX_FILES)
         const have = new Set(files.map(f => f.id))
@@ -781,6 +853,7 @@ export function create({ here }) {
           widgets: Object.fromEntries(VIEWS.map(vk => [vk, lay(b.widgets?.[vk] ?? b.widgets?.desktop)])),
           ...(b.style ? { style: b.style } : {}),
           wallpaper: { custom: b.wallpaper?.custom || [], current: known.includes(b.wallpaper?.current) ? b.wallpaper.current : 'none' },
+          ...(b.tv?.saver && typeof b.tv.saver === 'object' && !Array.isArray(b.tv.saver) ? { tv: { saver: withoutFolder(b.tv.saver) } } : {}),
         }
         // Checked first, so a refused file changes nothing on disk.
         const next = applyPatch(start, change, here)
