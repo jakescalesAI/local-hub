@@ -16,6 +16,9 @@
 
 const NATIVE = typeof window.LocalHubNative === "object" && window.LocalHubNative ? window.LocalHubNative : null;
 const IN_HUB = location.pathname.startsWith("/tv");
+// ?preview: the hub's Home editor shows this page, scaled, as its TV view. It looks and moves the same,
+// but opens nothing, listens to nothing and takes no TV commands; the editor pushes its edits in.
+const PREVIEW = new URLSearchParams(location.search).has("preview");
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
@@ -144,18 +147,31 @@ async function syncHub() {
   try {
     const r = await fetch("/api/hub/settings", { cache: "no-store" });
     if (!r.ok) throw new Error(String(r.status));
-    const next = await r.json();
-    const sig = (s) => JSON.stringify([s?.style, s?.wallpaper, s?.widgets?.tv]);
-    const changed = sig(next) !== sig(SETTINGS);
-    SETTINGS = next;
+    takeSettings(await r.json());
     HUB.on = true;
-    if (changed) applyLook();
   } catch {
     HUB.on = false;
   }
   HUB.name = window.HUB_CONF?.name || HUB.name;
   HUB.owner = window.HUB_CONF?.owner || "";
   paintChip();
+}
+/* What the TV uses from the hub's settings: the look, the wallpaper, its app tiles (tv.apps,
+   tv.hidden) and how it scrolls (scroll.tv). */
+function takeSettings(next) {
+  const look = (s) => JSON.stringify([s?.style, s?.wallpaper, s?.widgets?.tv]);
+  const grid = (s) => JSON.stringify([s?.tv, s?.scroll?.tv]);
+  const lookChanged = look(next) !== look(SETTINGS);
+  const gridChanged = grid(next) !== grid(SETTINGS);
+  SETTINGS = next;
+  if (gridChanged) {
+    const keep = ITEMS[S.i]?.id;
+    loadItems();
+    S.i = Math.max(0, ITEMS.findIndex((x) => x.id === keep));
+    S.shelfId = null;
+    renderGrid();
+  }
+  if (lookChanged) applyLook(); // repaints the shelf too
 }
 function paintChip() {
   $("#splashName").textContent = HUB.name;
@@ -180,17 +196,29 @@ function loadItems() {
     INPUTS = DEMO_INPUTS;
   }
   if (!prefs.inputs) INPUTS = [];
-  const byRecent = [...APPS].sort((a, b) => (b.recentAt || 0) - (a.recentAt || 0) || a.name.localeCompare(b.name));
-  const top = byRecent.slice(0, COLS - 1);
-  const rest = APPS.filter((a) => !top.includes(a)).sort((a, b) => a.name.localeCompare(b.name));
   ITEMS = [
     { id: "hub", kind: "hub", name: HUB.name },
-    ...top,
-    ...rest,
+    ...tvApps(),
     ...INPUTS.map((i) => ({ ...i, kind: "input" })),
     { id: "settings", kind: "settings", name: "Settings" },
   ];
   S.i = clamp(S.i, 0, ITEMS.length - 1);
+}
+
+/* The app tiles. With no order saved in the hub (tv.apps) it's tvOS's: the four you opened last on
+   the top row, then the rest A to Z. A saved order puts those first; an app it doesn't name yet (just
+   installed, say) follows in the default order. tv.hidden leaves apps out. */
+function defaultOrder() {
+  const byRecent = [...APPS].sort((a, b) => (b.recentAt || 0) - (a.recentAt || 0) || a.name.localeCompare(b.name));
+  const top = byRecent.slice(0, COLS - 1);
+  return [...top, ...APPS.filter((a) => !top.includes(a)).sort((a, b) => a.name.localeCompare(b.name))];
+}
+function tvApps() {
+  const order = Array.isArray(SETTINGS?.tv?.apps) ? SETTINGS.tv.apps : [];
+  const hidden = new Set(Array.isArray(SETTINGS?.tv?.hidden) ? SETTINGS.tv.hidden : []);
+  const base = defaultOrder();
+  const listed = order.map((id) => APPS.find((a) => a.id === id)).filter(Boolean);
+  return [...listed, ...base.filter((a) => !listed.includes(a))].filter((a) => !hidden.has(a.id));
 }
 
 function iconHTML(it) {
@@ -221,8 +249,16 @@ function applyFocus(instant) {
   const row = Math.floor(S.i / COLS);
   const inGrid = S.zone === "grid" && row > 0;
   document.body.classList.toggle("in-grid", inGrid || (S.zone === "bar" && !atTop()));
-  // Row 0 sits on the Top Shelf. Further down, the focused row rides about a third of the way up.
-  const y = inGrid ? -(648 + row * 252 - 400) : 0;
+  // Row 0 sits on the Top Shelf. Further down, in one long scroll (the default, like tvOS) the
+  // focused row rides about a third of the way up; in pages the rows move three at a time.
+  const paged = SETTINGS?.scroll?.tv === "pages";
+  const first = 1 + Math.floor((row - 1) / 3) * 3;
+  const y = !inGrid ? 0 : paged ? -(648 + first * 252 - 190) : -(648 + row * 252 - 400);
+  // A page shows its own rows: the ones before it leave with it instead of hanging under the clock.
+  document.querySelectorAll(".app").forEach((n) => {
+    const off = paged && inGrid && Math.floor(Number(n.dataset.i) / COLS) < first;
+    if ((n.style.opacity === "0") !== off) { n.style.transition = "opacity .45s"; n.style.opacity = off ? "0" : ""; }
+  });
   const page = $("#page");
   if (instant) page.style.transition = "none";
   page.style.transform = `translateY(${y}px)`;
@@ -269,7 +305,7 @@ function move(dx, dy) {
     S.i -= COLS;
   }
   if (dy > 0) {
-    if (row === lastRow) return focusBar();
+    if (row === lastRow) return PREVIEW ? tilt(0, 1.6) : focusBar(); // a preview has no assistant bar
     S.i = Math.min(S.i + COLS, n - 1);
   }
   applyFocus();
@@ -398,6 +434,7 @@ function leaveBar() {
 /* ── opening things ────────────────────────────────────────────────────── */
 
 function activate() {
+  if (PREVIEW) return;
   if (S.zone === "status") return openCC();
   if (S.zone === "bar") return HUB.on ? focusBar() : openPairing();
   const it = ITEMS[S.i];
@@ -816,6 +853,7 @@ function tick() {
 let saverTimer = 0;
 function armSaver() {
   clearTimeout(saverTimer);
+  if (PREVIEW) return;
   const mins = parseInt(prefs.saver, 10);
   if (!mins || S.overlay === "saver") return;
   saverTimer = setTimeout(() => { if (!S.overlay && S.zone !== "bar") startSaver(); }, mins * 60000);
@@ -1044,6 +1082,7 @@ const KEYMAP = { ArrowLeft: "left", ArrowRight: "right", ArrowUp: "up", ArrowDow
 // Capture phase: tabs/chat.js keeps its own keys inside its shadow root, so this looks first.
 document.addEventListener("keydown", (e) => {
   if (S.overlay === "hub") return;
+  if (PREVIEW && !/^Arrow/.test(e.key)) return; // a preview moves, and nothing more
   armSaver();
   hidePointer();
   if (S.overlay === "saver") { e.preventDefault(); e.stopPropagation(); return stopSaver(); }
@@ -1180,6 +1219,7 @@ document.addEventListener("wheel", (e) => {
   document.wheelT = setTimeout(() => move(0, Math.sign(e.deltaY)), 30);
 }, { passive: true });
 document.addEventListener("click", (e) => {
+  if (PREVIEW) { const a = e.target.closest(".app"); if (a) { S.zone = "grid"; S.i = Number(a.dataset.i); applyFocus(); } return; }
   if (S.overlay === "saver") return stopSaver();
   const app = e.target.closest(".app");
   if (app && !S.overlay) { S.zone = "grid"; S.i = Number(app.dataset.i); applyFocus(); return press(activate); }
@@ -1198,6 +1238,17 @@ function showKeys(on) {
   k.hidden = false;
   k.classList.toggle("gone", !on);
 }
+
+/* ── for the hub's Home editor (TV view): what this screen has, and its edits pushed in ── */
+window.LocalHubTV = {
+  preview: PREVIEW,
+  // Every app this screen could show, in the default order.
+  apps: () => defaultOrder().map((a) => ({ id: a.id, name: a.name, bg: a.bg, fg: a.fg, icon: a.icon || "", wide: !!a.wide, letter: a.letter || "", img: a.img || a.banner || "" })),
+  // The widgets it can draw, for its screensaver (tv.saver.widgets): { id: label }.
+  widgets: () => Object.fromEntries(Object.entries(WIDGETS).map(([id, w]) => [id, w.label])),
+  apply: (next) => { if (next && typeof next === "object") takeSettings(next); },
+  sync: () => syncHub(),
+};
 
 /* ── boot ──────────────────────────────────────────────────────────────── */
 function showError(err) {
@@ -1226,8 +1277,9 @@ async function boot() {
   tick();
   setInterval(tick, 10_000);
   // The opening (splash.js, the same one trylocalhub.com plays) decides when the home screen shows.
-  (window.LocalHubSplash?.done || new Promise((r) => setTimeout(r, 2300))).then(() => { document.body.classList.add("booted"); $("#splash").classList.add("is-gone"); });
-  if (!NATIVE) { showKeys(prefs.help); if (prefs.help) setTimeout(() => showKeys(false), 12000); }
+  (PREVIEW ? Promise.resolve() : window.LocalHubSplash?.done || new Promise((r) => setTimeout(r, 2300))).then(() => { document.body.classList.add("booted"); $("#splash").classList.add("is-gone"); });
+  if (PREVIEW) { $("#keys").style.transition = "none"; showKeys(false); }
+  else if (!NATIVE) { showKeys(prefs.help); if (prefs.help) setTimeout(() => showKeys(false), 12000); }
 
   if (IN_HUB) {
     // The hub's own config, browser and assistant: the same agent, tools and conversations.
@@ -1238,6 +1290,7 @@ async function boot() {
     ITEMS[0].name = HUB.name;
     S.shelfId = null;
     renderGrid();
+    if (PREVIEW) { setInterval(syncHub, 30_000); return paintChip(); }
     await loadScript("/tabs/browser.js");
     await loadScript("/tabs/chat.js");
     setInterval(syncHub, 30_000);

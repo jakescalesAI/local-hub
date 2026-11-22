@@ -297,6 +297,9 @@ The hub's look and layout are stored in `data/hub-settings.json`. The previous v
   - `size` is s, m or l.
   - `id` is a widget id from the catalog, or a family id such as `claude-account.<name>`, `coolify-app.<name>`, `server.<name>`, `client.<name>` or `drive.<name>`.
   - A patch can also send `add: [{ id, size?, layout?: desktop|mobile|both, opts? }]`, `remove: [keys or ids]` and `reset: desktop|mobile|both`.
+- `scroll`: `{ desktop, ipad, mobile, tv }`, each `pages` or `infinite`: how that view moves through what doesn't fit, sideways a page at a time or one long vertical scroll. Desktop, iPad and Mobile default to `pages`, the TV to `infinite`. `/api/home/layout` takes and returns it too. Edit mode on Home has the switch.
+- `tv`: what LocalHub TV shows, edited in Home's TV view.
+  - `apps`: the TV's app tiles in order, as the TV's own app ids (a laptop's stand-ins such as `netflix`, or a Fire TV's package names). `hidden`: ids left off. An app in neither list follows the listed ones. `null` or `[]` gives the default order: the four opened last, then A to Z.
 - Widget `opts`:
   - `tint`: a hex colour, on any widget.
   - clock: `face` digital|analog, `seconds` true|false.
