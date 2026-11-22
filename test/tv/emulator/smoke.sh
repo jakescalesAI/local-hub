@@ -15,17 +15,28 @@ mkdir -p "$OUT"
 
 failures=()
 fail() { echo "::error::$1"; failures+=("$1"); }
-shot() { adb exec-out screencap -p > "$OUT/$1.png" && echo "screenshot $1.png ($(stat -c %s "$OUT/$1.png") bytes)"; }
+step() { echo "[$(date +%T)] $1"; }
+shot() { timeout 30 adb exec-out screencap -p > "$OUT/$1.png" && echo "screenshot $1.png ($(stat -c %s "$OUT/$1.png") bytes)"; }
 
-adb wait-for-device
+step "wait for device"; timeout 120 adb wait-for-device
 echo "device: $(adb shell getprop ro.product.model) / Android $(adb shell getprop ro.build.version.release) (API $(adb shell getprop ro.build.version.sdk))"
 echo "WebView: $(adb shell dumpsys webviewupdate | grep -m1 'Current WebView package')"
 
 # ── install and start ─────────────────────────────────────────────────────────────────────────
-adb install -r "$APK" || { echo "::error::adb install failed"; exit 1; }
+# Restored from a snapshot, the emulator says it has booted before the package manager answers,
+# and a streamed install then waits forever. So: wait for pm, push the APK whole, and retry.
+step "wait for the package manager"
+for i in $(seq 1 60); do timeout 10 adb shell pm path android 2>/dev/null | grep -q '^package:' && break; sleep 2; done
+step "install"
+installed=
+for i in 1 2 3; do
+  timeout 120 adb install --no-streaming -r "$APK" && { installed=1; break; }
+  echo "install attempt $i failed, retrying"; sleep 5
+done
+[ -n "$installed" ] || { echo "::error::adb install failed three times"; exit 1; }
 adb logcat -c
 adb logcat -b crash -c 2>/dev/null || true
-adb shell am start -W -n "$ACTIVITY" | tee "$OUT/am-start.txt"
+step "start"; timeout 60 adb shell am start -W -n "$ACTIVITY" | tee "$OUT/am-start.txt"
 grep -q "Status: ok" "$OUT/am-start.txt" || fail "am start didn't report Status: ok"
 
 sleep 10
@@ -37,7 +48,7 @@ PID=$(adb shell pidof "$PKG" | tr -d '\r')
 if [ -n "$PID" ]; then
   adb forward tcp:9222 "localabstract:webview_devtools_remote_$PID"
   # Waits up to 30 s more for the splash to finish and the grid to fill.
-  node "$HERE/check.mjs" page 9222 30 > "$OUT/page.json" 2> "$OUT/page-error.txt"
+  step "page check"; timeout 90 node "$HERE/check.mjs" page 9222 30 > "$OUT/page.json" 2> "$OUT/page-error.txt"
   page_status=$?
   cat "$OUT/page.json" "$OUT/page-error.txt"
   [ $page_status -eq 0 ] || fail "$(tail -n1 "$OUT/page-error.txt" | sed 's/^FAIL: //')"
@@ -48,17 +59,17 @@ fi
 
 shot 02-home
 node "$HERE/check.mjs" png "$OUT/02-home.png" || fail "the screen is blank or a single colour (02-home.png)"
-adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1 && adb pull /sdcard/ui.xml "$OUT/ui.xml" >/dev/null 2>&1 || true
+step "ui dump"; timeout 30 adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1 && adb pull /sdcard/ui.xml "$OUT/ui.xml" >/dev/null 2>&1 || true
 
 # ── still alive, still in front, never crashed ───────────────────────────────────────────────
 PID=$(adb shell pidof "$PKG" | tr -d '\r')
 [ -n "$PID" ] && echo "pid: $PID" || fail "local.hub.tv isn't running (pidof found nothing)"
 
-adb shell dumpsys activity activities > "$OUT/activities.txt"
+step "foreground and logcat"; timeout 30 adb shell dumpsys activity activities > "$OUT/activities.txt"
 resumed=$(grep -E 'mResumedActivity|topResumedActivity' "$OUT/activities.txt" | head -n 3)
 echo "resumed: $resumed"
 echo "$resumed" | grep -q "$ACTIVITY" || fail "MainActivity isn't the resumed activity: ${resumed:-none}"
-adb shell dumpsys window | grep -m1 mCurrentFocus | tee "$OUT/focus.txt"
+timeout 30 adb shell dumpsys window | grep -m1 mCurrentFocus | tee "$OUT/focus.txt"
 
 adb logcat -d -v threadtime > "$OUT/logcat-all.txt"
 adb logcat -d -b crash -v threadtime > "$OUT/logcat-crash.txt" 2>/dev/null || true

@@ -55,7 +55,7 @@ function problems(s) {
 }
 
 async function evaluate(port) {
-  const targets = await (await fetch(`http://127.0.0.1:${port}/json`)).json();
+  const targets = await (await fetch(`http://127.0.0.1:${port}/json`, { signal: AbortSignal.timeout(5000) })).json();
   const page = targets.find((t) => t.type === "page" && String(t.url).startsWith("http://localhub.tv/"))
     || targets.find((t) => t.type === "page");
   if (!page) throw new Error(`no page target: ${JSON.stringify(targets)}`);
