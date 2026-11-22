@@ -88,6 +88,23 @@ the zoom, the JPEG quality, or shows Chrome as a window on the laptop (about hal
 
 ## Put it on the TV
 
+The easy way: in LocalHub on the laptop, open **Home → TV → Set up a TV** (or the TV tile, or
+`http://localhost:3100/#tv-setup`). It walks through all three steps on one sheet:
+
+1. **Put the app on the TV.** On a Fire TV, *Settings → My Fire TV → Developer options → Install
+   unknown apps* → turn it on for **Downloader** (free, from the Appstore). In Downloader, type the
+   link the sheet shows (the newest release's `LocalHub-TV.apk`); a QR code has the same link. On
+   Google TV / Android TV, the same with Downloader from Google Play.
+2. **Let the TV find LocalHub.** *Turn on* adds this computer's home-network address to `"listen"`
+   in `config/hub.json`, and the hub starts answering there at once (and stops when you turn it off).
+   It needs the passcode first and offers to set one: anything on the network other than a paired TV
+   is asked for it. It stays off the internet. If Windows asks whether Node.js may use the network,
+   allow it on private networks.
+3. **Pair the TV.** *Show a pairing code*, then on the TV choose **Pair** and type it (it lasts five
+   minutes). The TV keeps its own device key; the sheet lists paired TVs, each with *Remove*.
+
+The rest of this section is the same by hand, for building it yourself or using adb.
+
 1. **Build** (or take the `localhub-tv-apk` artifact from the *TV* workflow):
 
    ```sh
@@ -119,8 +136,8 @@ the zoom, the JPEG quality, or shows Chrome as a window on the laptop (about hal
 
 ## Connect it to LocalHub
 
-The TV reaches LocalHub over your home network, so LocalHub has to listen there — by default it only
-answers on the laptop itself.
+*Set up a TV* (above) does this for you. By hand: the TV reaches LocalHub over your home network, so
+LocalHub has to listen there — by default it only answers on the laptop itself.
 
 1. On the laptop, set a passcode (`npm run passcode`) and add the laptop's LAN address to `"listen"`
    in `config/hub.json`, e.g. `"listen": ["192.168.1.20"]`. Restart the hub. (Tailscale works too:
@@ -196,7 +213,13 @@ dashboard's Home straight on the TV view.
 | Whisper | A Windows-TTS clip: “Open Netflix, please.” in 0.8 s warm (WAV), 1.3 s (webm) |
 | The TV back end and Alexa checks | `node --test test/tv/` (9 tests, offline) |
 | The APK | Compiles (Gradle, JDK 17, SDK 34); classes and UI assets checked inside it |
+| The APK on Android TV | CI's `emulator` job: an Android TV emulator (API 30, 1080p) installs and starts it, the page is read over WebView DevTools (home screen drawn, grid, pair bar), screenshots aren't blank, no crash or ANR |
+| Set up a TV, over a real home network | A scratch hub: passcode, *Turn on* → the TV app's `/pair` probe found it on the LAN address, a code was claimed from the LAN, `/tv/` opened with the TV's key, *Turn off* closed the address |
+| One assistant on the laptop and the TV | A question asked in the hub appeared on `/tv/` and the answer streamed into both; the TV asking for a site opened it in the hub's browser |
+| Browser and Chromium | Opened from their tiles, typed, clicked, back and leave; YouTube played; 1920×1080 frames at about 25–50 fps (`test/tv/stream.test.mjs` drives a real browser on a real computer; CI runners skip it) |
+| The screensaver | A folder of test photos, crossfades and widgets; settings from the hub's TV editor reached the running TV on its next sync |
 
 **Not run yet:** the APK on a real Fire TV (banners, launching, HDMI inputs, the mic, TTS, the Home
-button), a real Alexa request, and pairing a TV against a hub listening on the LAN. Say what you tested
+button, the streamed apps' speed and large screensaver photos), a real Alexa request, iCloud Photos
+detection, and Netflix past its sign-in page. Say what you tested
 when you change something here.
