@@ -144,11 +144,13 @@ const groupIds = s => (s.groups || []).map(x => x.id)
 
 /* ---------- defaults ---------- */
 
-// Each view keeps its own layout. iPad starts as a copy of Desktop, reflowed to fit.
-const VIEWS = ['desktop', 'ipad', 'mobile']
+// Each view keeps its own layout. iPad starts as a copy of Desktop, reflowed to fit. TV is what
+// LocalHub TV shows on its Top Shelf (tv/ui), so it starts small.
+const VIEWS = ['desktop', 'ipad', 'mobile', 'tv']
 
 const WIDGET_DEFAULTS = {
   desktop: [['claude-usage', 'm'], ['clock', 's'], ['next-event', 's'], ['tokens', 'm'], ['coolify', 's'], ['services', 's'], ['today', 'm'], ['stripe-balance', 's'], ['openrouter', 's'], ['server-health', 'm'], ['deepseek', 's'], ['icloud', 's'], ['drives', 'm'], ['backup-drive', 's'], ['laptop-health', 's'], ['servers', 'l'], ['revenue', 'm'], ['clients', 'm']],
+  tv: [['clock', 's'], ['date', 's'], ['world-clock', 's'], ['next-event', 's'], ['claude-usage', 's']],
   mobile: [['claude-usage', 's'], ['clock', 's'], ['next-event', 's'], ['coolify', 's'], ['today', 'm'], ['tokens', 'm'], ['openrouter', 's'], ['deepseek', 's'], ['stripe-balance', 's'], ['icloud', 's'], ['server-health', 'm'], ['drives', 'm'], ['services', 's'], ['backup-drive', 's'], ['servers', 'm']],
 }
 // Which add-on a default widget needs. With few add-ons on, a hub starts from the plain layout below.
@@ -156,11 +158,12 @@ const WIDGET_NEEDS = { 'claude-usage': 'ai', tokens: 'ai', openrouter: 'ai', dee
 const WIDGET_PLAIN = {
   desktop: [['clock', 's'], ['date', 's'], ['world-clock', 's']],
   mobile: [['clock', 's'], ['date', 's'], ['world-clock', 'm']],
+  tv: [['clock', 's'], ['date', 's'], ['world-clock', 's']],
 }
 const startLayout = name => {
   const from = name === 'ipad' ? 'desktop' : name
   const on = WIDGET_DEFAULTS[from].filter(([id]) => !WIDGET_NEEDS[id] || addonOn(WIDGET_NEEDS[id]))
-  return on.length >= 4 ? on : WIDGET_PLAIN[from]
+  return on.length >= (from === 'tv' ? 3 : 4) ? on : WIDGET_PLAIN[from]
 }
 export const seedLayout = name => startLayout(name).map(([id, size], i) => ({ key: `${name[0]}${i + 1}-${id}`.slice(0, 40), id, size }))
 const defaultStyle = () => ({ ...Object.fromEntries(Object.entries(STYLE).map(([k, v]) => [k, v.default])), ...activeTheme().style })
@@ -332,7 +335,7 @@ export function applyPatch(cur, body, here) {
     if (r?.includes('apps') || r?.includes('all')) next.groups = []
   }
 
-  // Extra Home pages: { id: page-<name>, name, widgets: { desktop, ipad, mobile } }. Home itself stays in `widgets`.
+  // Extra Home pages: { id: page-<name>, name, widgets: { desktop, ipad, mobile, tv } }. Home itself stays in `widgets`.
   if (body.pages !== undefined && c.obj('pages', body.pages, ['list', 'add', 'rename', 'remove', 'order', 'layout'])) {
     const g = body.pages
     const views = (p, w) => Object.fromEntries(VIEWS.map(vk => [vk, (w?.[vk] === undefined ? [] : cleanLayout(c, `${p}.${vk}`, w[vk])) || []]))
@@ -595,7 +598,7 @@ function repair(saved, here) {
   tryPart('pages', () => { out.pages = applyPatch({ ...d, sites: out.sites, groups: out.groups, apps: out.apps }, { pages: { list: saved.pages.filter(p => p && PAGE_ID_RE.test(p.id)).map(p => ({ id: p.id, name: p.name, widgets: Object.fromEntries(VIEWS.map(vk => [vk, (p.widgets?.[vk] ?? p.widgets?.desktop ?? []).filter(itemIdOk)])) })) } }, here).pages })
   out.files = (Array.isArray(saved.files) ? saved.files : []).filter(f => f && FILE_ID_RE.test(f.id) && fs.existsSync(path.join(here, 'data', 'custom', `${f.id}.html`))).slice(0, MAX_FILES)
     .map(f => ({ id: f.id, name: String(f.name || 'File').slice(0, 40), sizes: cleanSizes(f.sizes), at: Number(f.at) || 0 }))
-  for (const vk of VIEWS) tryPart(vk, () => { out.widgets = { ...out.widgets, [vk]: applyPatch(d, { widgets: { [vk]: (saved.widgets[vk] ?? saved.widgets.desktop).filter(itemIdOk) } }, here).widgets[vk] } })
+  for (const vk of VIEWS) tryPart(vk, () => { out.widgets = { ...out.widgets, [vk]: applyPatch(d, { widgets: { [vk]: (saved.widgets[vk] ?? (vk === 'tv' ? seedLayout('tv') : saved.widgets.desktop)).filter(itemIdOk) } }, here).widgets[vk] } })
   for (const k of Object.keys(STYLE)) tryPart(k, () => { out.style = { ...out.style, [k]: applyPatch(d, { style: { [k]: saved.style[k] } }, here).style[k] } })
   tryPart('custom', () => { out.wallpaper = { ...out.wallpaper, custom: applyPatch(d, { wallpaper: { custom: saved.wallpaper.custom } }, here).wallpaper.custom } })
   out.wallpaper.uploads = (saved.wallpaper?.uploads || []).filter(u => u && UPLOAD_ID_RE.test(u.id) && UPLOAD_FILE_RE.test(u.file) && fs.existsSync(path.join(here, 'data', 'wallpapers', u.file))).slice(0, MAX_UPLOADS)
