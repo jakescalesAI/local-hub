@@ -43,23 +43,24 @@ const SYM = {
 
 /* ── apps ──────────────────────────────────────────────────────────────────
    On a laptop there are no installed TV apps, so these stand in, drawn as tvOS icons with Simple
-   Icons (CC0) marks in ./brands, and opening one opens its website. On a TV the list and the art
-   are the apps' own. */
+   Icons (CC0) marks in ./brands, and opening one opens its website. `wordmark` is the app's long
+   logo in ./brands, shown white as the header when the app is focused (see brands/NOTICE.md).
+   On a TV the list and the art are the apps' own. */
 const WEB_APPS = [
-  { id: "netflix", name: "Netflix", bg: "#000000", fg: "#e50914", icon: "netflix", url: "https://www.netflix.com/browse", recent: 2 },
-  { id: "youtube", name: "YouTube", bg: "#ffffff", fg: "#ff0000", icon: "youtube", url: "https://www.youtube.com/", recent: 26 },
-  { id: "primevideo", name: "Prime Video", bg: "#00050d", fg: "#1aa8f0", icon: "primevideo", wide: true, url: "https://www.primevideo.com/", recent: 50 },
-  { id: "disney", name: "Disney+", bg: "linear-gradient(160deg,#1f3fa3,#06123b)", fg: "#ffffff", letter: "Disney+", url: "https://www.disneyplus.com/" },
-  { id: "max", name: "Max", bg: "linear-gradient(160deg,#002be7,#000d6b)", fg: "#ffffff", icon: "max", url: "https://play.max.com/" },
-  { id: "appletv", name: "Apple TV", bg: "#000000", fg: "#ffffff", icon: "appletv", url: "https://tv.apple.com/" },
-  { id: "plex", name: "Plex", bg: "#1f1f1f", fg: "#ebaf00", icon: "plex", url: "https://app.plex.tv/", recent: 72 },
-  { id: "spotify", name: "Spotify", bg: "#121212", fg: "#1ed760", icon: "spotify", url: "https://open.spotify.com/", recent: 96 },
-  { id: "hulu", name: "Hulu", bg: "#1ce783", fg: "#0b0c0f", letter: "hulu", url: "https://www.hulu.com/" },
-  { id: "crunchyroll", name: "Crunchyroll", bg: "#f47521", fg: "#ffffff", icon: "crunchyroll", url: "https://www.crunchyroll.com/" },
-  { id: "paramountplus", name: "Paramount+", bg: "linear-gradient(160deg,#0064ff,#002a8f)", fg: "#ffffff", icon: "paramountplus", url: "https://www.paramountplus.com/" },
-  { id: "twitch", name: "Twitch", bg: "#9146ff", fg: "#ffffff", icon: "twitch", url: "https://www.twitch.tv/" },
-  { id: "tubi", name: "Tubi", bg: "#7408ff", fg: "#ffff13", icon: "tubi", url: "https://tubitv.com/" },
-  { id: "kodi", name: "Kodi", bg: "linear-gradient(160deg,#30c4f2,#0d6f9e)", fg: "#ffffff", icon: "kodi", url: "https://kodi.tv/" },
+  { id: "netflix", name: "Netflix", bg: "#000000", fg: "#e50914", icon: "netflix", wordmark: "netflix-wordmark", url: "https://www.netflix.com/browse", recent: 2 },
+  { id: "youtube", name: "YouTube", bg: "#ffffff", fg: "#ff0000", icon: "youtube", wordmark: "youtube-wordmark", url: "https://www.youtube.com/", recent: 26 },
+  { id: "primevideo", name: "Prime Video", bg: "#00050d", fg: "#1aa8f0", icon: "primevideo", wide: true, wordmark: "primevideo-wordmark", url: "https://www.primevideo.com/", recent: 50 },
+  { id: "disney", name: "Disney+", bg: "linear-gradient(160deg,#1f3fa3,#06123b)", fg: "#ffffff", letter: "Disney+", wordmark: "disney-wordmark", url: "https://www.disneyplus.com/" },
+  { id: "max", name: "Max", bg: "linear-gradient(160deg,#002be7,#000d6b)", fg: "#ffffff", icon: "max", wordmark: "max-wordmark", url: "https://play.max.com/" },
+  { id: "appletv", name: "Apple TV", bg: "#000000", fg: "#ffffff", icon: "appletv", wordmark: "appletv-wordmark", url: "https://tv.apple.com/" },
+  { id: "plex", name: "Plex", bg: "#1f1f1f", fg: "#ebaf00", icon: "plex", wordmark: "plex-wordmark", url: "https://app.plex.tv/", recent: 72 },
+  { id: "spotify", name: "Spotify", bg: "#121212", fg: "#1ed760", icon: "spotify", wordmark: "spotify-wordmark", url: "https://open.spotify.com/", recent: 96 },
+  { id: "hulu", name: "Hulu", bg: "#1ce783", fg: "#0b0c0f", letter: "hulu", wordmark: "hulu-wordmark", url: "https://www.hulu.com/" },
+  { id: "crunchyroll", name: "Crunchyroll", bg: "#f47521", fg: "#ffffff", icon: "crunchyroll", wordmark: "crunchyroll-wordmark", url: "https://www.crunchyroll.com/" },
+  { id: "paramountplus", name: "Paramount+", bg: "linear-gradient(160deg,#0064ff,#002a8f)", fg: "#ffffff", icon: "paramountplus", wordmark: "paramountplus-wordmark", url: "https://www.paramountplus.com/" },
+  { id: "twitch", name: "Twitch", bg: "#9146ff", fg: "#ffffff", icon: "twitch", wordmark: "twitch-wordmark", url: "https://www.twitch.tv/" },
+  { id: "tubi", name: "Tubi", bg: "#7408ff", fg: "#ffff13", icon: "tubi", wordmark: "tubi-wordmark", url: "https://tubitv.com/" },
+  { id: "kodi", name: "Kodi", bg: "linear-gradient(160deg,#30c4f2,#0d6f9e)", fg: "#ffffff", icon: "kodi", wordmark: "kodi-wordmark", url: "https://kodi.tv/" },
   { id: "steam", name: "Steam", bg: "linear-gradient(160deg,#2a475e,#171a21)", fg: "#ffffff", icon: "steam", url: "https://store.steampowered.com/" },
   { id: "vlc", name: "VLC", bg: "#ff8800", fg: "#ffffff", icon: "vlcmediaplayer", url: "https://www.videolan.org/vlc/" },
 ];
@@ -166,11 +167,15 @@ function paintChip() {
 
 /* ── the items: LocalHub first, then the apps, the inputs, Settings ────── */
 
+// An installed app gets the same wordmark as its stand-in when the names match ("Disney+", "Apple TV").
+const nameKey = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+const wordmarkFor = (name) => WEB_APPS.find((w) => nameKey(w.name) === nameKey(name))?.wordmark || null;
+
 function loadItems() {
   if (NATIVE) {
     APPS = safeJson(native("apps") || "[]", []).map((a) => ({
       id: a.id, pkg: a.id, name: a.name, banner: a.banner || null, img: a.icon || null,
-      bg: a.color || "#2c2c2e", fg: "#ffffff", recentAt: a.recent || 0,
+      bg: a.color || "#2c2c2e", fg: "#ffffff", recentAt: a.recent || 0, wordmark: wordmarkFor(a.name),
     }));
     INPUTS = safeJson(native("inputs") || "[]", []);
   } else {
@@ -316,11 +321,11 @@ function hexA(c, a) {
   return `rgba(${r},${g},${b},${a})`;
 }
 
-/* The header is the app's banner in white, like tvOS: Prime Video's long wordmark where the app
-   has one, and otherwise its name set large as the wordmark. No icon, no caption. */
+/* The header is the app's banner in white, like tvOS: its own wordmark where we have one
+   (./brands/<id>-wordmark.svg), and otherwise its name set large in its place. No icon, no caption. */
 function appShelfHTML(it) {
-  const mark = it.icon && it.wide && !it.banner
-    ? `<i class="banner-mark" style="--glyph:url('./brands/${it.icon}.svg')"></i>`
+  const mark = it.wordmark
+    ? `<span class="banner-mark"><i style="--glyph:url('./brands/${esc(it.wordmark)}.svg')"></i></span>`
     : `<h1 class="banner-text">${esc(it.name)}</h1>`;
   return `<div class="shelf-title" aria-label="${esc(it.name)}">${mark}</div>`;
 }
