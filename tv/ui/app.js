@@ -362,7 +362,7 @@ function hubShelfHTML() {
   const first = (HUB.owner || "").split(/\s+/)[0];
   // The time and date are always top left, so their cards aren't repeated here.
   const ids = tvWidgets().filter((id) => id !== "clock" && id !== "date" && (WIDGETS[id] || LABELS[id])).slice(0, 3);
-  return `<div class="hub-shelf"><div class="greet"><h1>${esc(part)}${first ? `, ${esc(first)}` : ""}</h1><p>${esc(HUB.name)}${HUB.on ? "" : " · not connected"} · ${NATIVE ? "OK" : "Enter"} opens LocalHub · ${NATIVE ? "⏯" : "Space"} to talk</p></div><div class="widgets">${[...ids.map(widgetCard), widgetCard("recent")].join("")}</div></div>`;
+  return `<div class="hub-shelf"><div class="greet"><h1>${esc(part)}${first ? `, ${esc(first)}` : ""}</h1></div><div class="widgets">${[...ids.map(widgetCard), widgetCard("recent")].join("")}</div></div>`;
 }
 
 function miniArt(a) {
@@ -558,7 +558,7 @@ function ccTiles() {
     </div></div>`,
   });
   tiles.push({ id: "ask", cls: "w2", ic: SYM.mic, t1: "Ask LocalHub", t2: NATIVE ? "⏯ on the remote" : "Space on the keyboard" });
-  tiles.push({ id: "tvlayout", cls: "w2", ic: SYM.sliders, t1: "TV layout", t2: "Choose what shows here" });
+  tiles.push({ id: "tvlayout", cls: "w2", ic: SYM.sliders, t1: "TV layout", t2: "Pick what shows here" });
   const chats = (LIVE.chats || []).slice(0, 3);
   if (chats.length) {
     tiles.push({ sect: "Recent chats" });
@@ -616,7 +616,11 @@ function closeCC() {
   if (S.zone === "status") S.zone = "grid";
   setOverlay(null);
 }
-function paintCC() { document.querySelectorAll(".cc-tile[data-i]").forEach((n) => n.classList.toggle("is-sel", Number(n.dataset.i) === S.cc)); }
+function paintCC() {
+  document.querySelectorAll(".cc-tile[data-i]").forEach((n) => n.classList.toggle("is-sel", Number(n.dataset.i) === S.cc));
+  // The sheet scrolls when it holds more than fits; keep the selection in view.
+  document.querySelector(".cc-tile.is-sel")?.scrollIntoView({ block: "nearest" });
+}
 function ccMove(dx, dy) {
   const tiles = [...document.querySelectorAll(".cc-tile[data-i]")];
   const a = tiles[S.cc]?.getBoundingClientRect();
