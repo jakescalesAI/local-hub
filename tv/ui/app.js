@@ -837,6 +837,10 @@ let reqSeq = 0;
 const pending = new Map();
 const MIC = { wait: null };
 
+/* "Read answers aloud" (Settings), for tabs/chat.js: "After voice" speaks a reply when the question was
+   spoken, "Always" speaks every reply, "Off" never speaks. */
+window.HubSpeech = { mode: () => prefs.speak || "After voice" };
+
 if (NATIVE) {
   window.HubVoice = {
     // Resolves with what was said ("" when nothing was), rejects when the TV has no mic it can use.
