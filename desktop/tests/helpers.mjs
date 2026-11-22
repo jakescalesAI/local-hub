@@ -236,5 +236,8 @@ export function pressKeys(keys) {
   if (result.status !== 0) throw new Error(`press-hotkey failed: ${result.stderr}`)
 }
 
-// The login items in the registry: read-only, to prove the suite left them alone.
-export const runKey = () => spawnSync('reg.exe', ['query', 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run'], { encoding: 'utf8', windowsHide: true }).stdout
+// The login items in the registry: read-only, to prove the suite left them alone. Only the entries count:
+// on a fresh Windows (a CI runner) the Run key may not exist until Electron reads the login settings and
+// creates it empty, which adds no login item.
+export const runKey = () => (spawnSync('reg.exe', ['query', 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run'], { encoding: 'utf8', windowsHide: true }).stdout || '')
+  .split(/\r?\n/).filter(line => /^\s+\S/.test(line)).map(line => line.trim()).sort().join('\n')
