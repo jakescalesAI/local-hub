@@ -59,7 +59,7 @@ jobs:
           foreach ($i in 1..45) {
             $entry = Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*', 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*' -ErrorAction SilentlyContinue |
               Where-Object { $_.DisplayName -like 'LocalHub*' } | Select-Object -First 1
-            if ($entry -and $entry.InstallLocation -and (Test-Path (Join-Path $entry.InstallLocation 'LocalHub.exe'))) { break }
+            if ($entry -and $entry.UninstallString -match '^"([^"]+)\\[^\\"]+"' -and (Test-Path (Join-Path $Matches[1] 'LocalHub.exe'))) { break }
             Start-Sleep -Seconds 2
           }
           if (-not $entry) {
@@ -69,7 +69,10 @@ jobs:
             throw 'the installer left no uninstall entry'
           }
           $entry | Select-Object DisplayName, DisplayVersion, InstallLocation, UninstallString | Format-List | Out-String
-          $dir = $entry.InstallLocation.Trim('"')
+          # electron-builder leaves InstallLocation empty; the uninstaller sits in the install folder.
+          if ($entry.UninstallString -notmatch '^"([^"]+)\\[^\\"]+"') { throw "can't read the install folder from: $($entry.UninstallString)" }
+          $dir = $Matches[1]
+          "install folder: $dir"
           $exe = Join-Path $dir 'LocalHub.exe'
           if (-not (Test-Path $exe)) { Get-ChildItem $dir -ErrorAction SilentlyContinue | Select-Object Name; throw "no LocalHub.exe in $dir" }
           if (-not (Test-Path (Join-Path $dir 'resources\hub\server.mjs'))) { throw 'the installer has no bundled Hub' }
