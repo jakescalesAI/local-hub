@@ -1,4 +1,4 @@
-# Local Hub desktop app
+# LocalHub desktop app
 
 An Electron app around the Hub in the parent folder: a window, a tray icon and a global hotkey launcher. Windows first;
 platform-specific code is kept in `src/platform/` so Mac and Linux can follow.
@@ -15,12 +15,12 @@ Hub's `config/` and `data/` land in your checkout, as they do when you run the H
 
 ## Install it
 
-Run `Local-Hub-Setup-<version>.exe`. It installs for the current user, with no admin prompt. The
+Run `LocalHub-Setup.exe` from the [latest release](https://github.com/jakescalesAI/local-hub/releases/latest) or [trylocalhub.com](https://trylocalhub.com). It installs for the current user, with no admin prompt. The
 installer is unsigned for now, so Windows SmartScreen warns about it: choose **More info**, then **Run
 anyway**.
 
 On first start, with no Hub already running, the app starts the Hub it ships with and the Hub's own
-first-run wizard opens in the window. The Hub's data stays in `%APPDATA%\Local Hub\hub`. If you already
+first-run wizard opens in the window. The Hub's data stays in `%APPDATA%\LocalHub\hub`. If you already
 run a Hub on the port, the app attaches to it and changes nothing about how that Hub starts or stops.
 Uninstalling leaves that data folder in place.
 
@@ -30,7 +30,7 @@ Uninstalling leaves that data folder in place.
 npm run dist
 ```
 
-This writes `dist/Local-Hub-Setup-<version>.exe` and an unpacked copy in `dist/win-unpacked`.
+This writes `dist/LocalHub-Setup.exe` and an unpacked copy in `dist/win-unpacked`.
 
 The Hub in the parent folder is copied into the installer, leaving out everything its `.gitignore`
 treats as yours (`config/`, `data/`, `workspace/`, keys, logs and so on) and its start and restart
