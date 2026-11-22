@@ -24,7 +24,7 @@
   },
   "build": {
     "appId": "local-hub.desktop",
-    "artifactName": "LocalHub-Setup-${version}.${ext}",
+    "artifactName": "LocalHub-Setup.${ext}",
     "directories": {
       "output": "dist"
     },

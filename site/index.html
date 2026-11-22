@@ -3,7 +3,7 @@
   LocalHub landing page. Plain static files: no build step, no framework, no trackers, no third-party requests.
   The page is complete without script. The files in assets/js only add motion, and each one falls back to the still page.
 
-  At release, set the installer's address on the two lines marked DOWNLOAD_URL (the hero button and the closing button).
+  The two download buttons (marked DOWNLOAD_URL) point at the newest GitHub release's LocalHub-Setup.exe, which the Desktop workflow attaches for each v* tag.
   Later pages go in their own folders (privacy/index.html, support/index.html) and share assets/site.css.
 -->
 <html lang="en">
@@ -55,13 +55,12 @@
       <p class="lede arrive">Your links, snippets, files and an AI assistant behind one search bar, on your own PC.</p>
 
       <div class="get arrive">
-        <!-- DOWNLOAD_URL: at release, replace "#not-yet" on the next line with the installer's address. The closing button has the same line. -->
-        <a class="download" href="#not-yet">
+        <!-- DOWNLOAD_URL: the newest release's installer. The closing button has the same link. -->
+        <a class="download" href="https://github.com/jakescalesAI/local-hub/releases/latest/download/LocalHub-Setup.exe">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="m7 10.5 5 5 5-5"/><path d="M5 20h14"/></svg>
           <span>Download for Windows</span>
         </a>
-        <p class="platform for-pc">The installer isn’t signed yet, so Windows may warn you first: choose <b>More info</b>, then <b>Run anyway</b>.</p>
-        <p class="not-yet" id="not-yet">The installer isn’t published yet. This button will download it once it is.</p>
+        <p class="platform for-pc">The installer isn’t signed yet, so Windows may warn you first: choose <b>More info</b>, then <b>Run anyway</b>.</p>
         <!-- MOBILE_TEXT: what the page says about the mobile app. The closing section has the same line. -->
         <p class="coming for-phone">Coming soon to iPhone, iPad and Android</p>
         <p class="on-pc for-phone">Download for Windows on your PC.</p>
@@ -234,8 +233,8 @@
         </div>
         <figcaption>
           <h3>Desktop</h3>
-          <!-- DOWNLOAD_URL: at release, replace "#not-yet" on the next line with the installer's address. The hero button has the same line. -->
-          <a class="download" href="#not-yet">
+          <!-- DOWNLOAD_URL: the newest release's installer. The hero button has the same link. -->
+          <a class="download" href="https://github.com/jakescalesAI/local-hub/releases/latest/download/LocalHub-Setup.exe">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="m7 10.5 5 5 5-5"/><path d="M5 20h14"/></svg>
             <span>Download for Windows</span>
           </a>
@@ -266,8 +265,8 @@
   <p>Screenshots use made-up sample content. This page has no trackers, analytics or cookies.</p>
   <!-- DOCS_URL -->
   <p><a href="docs/index.html">Docs</a></p>
-  <!-- GITHUB_URL: off until the repo is public. To turn it on, uncomment this and set the href. -->
-  <!-- <p><a href="GITHUB_URL">Source on GitHub</a></p> -->
+  <!-- GITHUB_URL: the public repo. -->
+  <p><a href="https://github.com/jakescalesAI/local-hub">Source on GitHub</a></p>
 </footer>
 
 </body>
