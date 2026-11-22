@@ -397,7 +397,6 @@ html.lite .lg, html.lite .cc, html.lite .w.card, html.lite .gear, html.lite .key
 .cc-tile.is-sel.on .ic { background: var(--blue); color: #fff; }
 
 /* The ask bar steps aside while Control Center is open; ⏯ or "Ask LocalHub" brings it back. */
-body.cc-open #hub-chat { opacity: 0; pointer-events: none; transition: opacity .2s var(--ease); }
 
 /* Sized so the whole sheet fits under the gear without scrolling. */
 .cc { --lg-tint: rgba(18, 18, 26, .34); padding: 24px; }
@@ -481,3 +480,15 @@ body.shelf-hub .shelf-fade { background: none; }
 .hubapp-title { display: inline-flex; align-items: center; gap: 10px; font: 600 16px/1 var(--font); letter-spacing: -0.01em; }
 .hubapp-title img { width: 26px; height: 26px; border-radius: 7px; }
 .hubapp iframe { flex: 1; min-height: 0; height: auto; }
+
+/* The chat bar stays while Control Center is open, so the sheet stops above it. */
+.cc { max-height: 806px; }
+.cc-grid { gap: 10px; }
+.cc-tile { height: 84px; }
+.cc-tile .ic { width: 48px; height: 48px; }
+.cc-tile.chat { height: 62px; }
+.cc-tile.chat .ic { width: 38px; height: 38px; }
+.cc-tile.status-tile { padding: 14px 22px; }
+.cc-tile.status-tile img { width: 68px; height: 68px; border-radius: 17px; }
+.cc-sect { margin: 6px 0 -2px 14px; }
+.banner-greet { margin-top: 18px; font-size: 32px; font-weight: 600; color: rgba(255, 255, 255, .78); text-shadow: 0 4px 24px rgba(0, 0, 0, .35); }

@@ -361,9 +361,8 @@ function hubShelfHTML() {
   const h = new Date().getHours();
   const part = h < 5 ? "Good night" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
   const first = (HUB.owner || "").split(/\s+/)[0];
-  // The time and date are always top left, so their cards aren't repeated here.
-  const ids = tvWidgets().filter((id) => id !== "clock" && id !== "date" && (WIDGETS[id] || LABELS[id])).slice(0, 3);
-  return `<div class="hub-shelf"><div class="greet"><h1>${esc(part)}${first ? `, ${esc(first)}` : ""}</h1></div><div class="widgets">${[...ids.map(widgetCard), widgetCard("recent")].join("")}</div></div>`;
+  // Like every other app: its name as the white banner, with no widgets under it.
+  return `<div class="shelf-title" aria-label="${esc(HUB.name)}"><h1 class="banner-text">${esc(HUB.name)}</h1></div>`;
 }
 
 function miniArt(a) {
@@ -579,7 +578,6 @@ function ccTiles() {
   } else {
     tiles.push({ id: "dashboard", cls: "w2", ic: SYM.laptop, t1: "LocalHub", t2: "The full dashboard" });
     tiles.push({ id: "tvsetup", cls: "w2", ic: SYM.input, t1: "Set up a TV", t2: "Install, connect, pair" });
-    tiles.push({ id: "help", cls: "w2", ic: KEY_IC, t1: "Keyboard", t2: prefs.help ? "Hide the keys" : "Show the keys" });
   }
   return tiles;
 }
