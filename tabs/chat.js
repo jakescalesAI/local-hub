@@ -2239,7 +2239,9 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
       case 'site':
         if (ev.url) {
           eachView(v => { v.hidePending(); v.finishCur(); v.addSite(ev, true); v.showPending() })
-          if (!remote) window.HubBrowser?.open(ev.url, { name: ev.name, icon: ev.icon })
+          // The device that asked opens it in the hub browser. Asked from the TV, the hub page on the laptop opens it too,
+          // so a site the TV asks for is there to use on the computer.
+          if (!remote || (S.askedOn === 'tv' && curEnv() !== 'tv')) window.HubBrowser?.open(ev.url, { name: ev.name, icon: ev.icon })
         }
         break
       case 'confirm':
@@ -2334,7 +2336,8 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
     const turn = ++L.turn
     L.loading = true
     try {
-      const r = await hubFetch(`/api/chat/sessions/${encodeURIComponent(id)}`)
+      // The live hello can come before the page's own scripts are in, so plain fetch until hubFetch is there.
+      const r = await (typeof hubFetch === 'function' ? hubFetch : fetch)(`/api/chat/sessions/${encodeURIComponent(id)}`)
       if (!r.ok) throw Object.assign(new Error('gone'), { gone: r.status === 404 })
       const c = await r.json()
       if (turn !== L.turn) return
@@ -2426,6 +2429,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
       // A new message answers any card still waiting, as it does in History.
       for (const el of shadow.querySelectorAll('.confirm[data-confirm]')) if (el.querySelector('.confirm-row')) settleConfirm(el.dataset.confirm, 'Answered')
       S.busy = S.remote = true
+      S.askedOn = ev.tab || ''
       S.stopped = false
       S.cardOn = true
       cardView.clear()
@@ -2545,5 +2549,5 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
 
   // A tiny handle for other tabs or tests: HubChat.open(), HubChat.ask('...').
   // voice/hush/say/listening are for pages around the chat: LocalHub TV's ⏯ key and Control Center talk through them.
-  window.HubChat = { open: () => setFull(true), close: () => setFull(false), toggle: () => setFull(!S.full), ask: t => submit(t), openChat: async id => { setFull(true); await openConv(id) }, voice: () => toggleVoice(S.full ? fta : bta), hush, say, busy: () => S.busy, listening: () => V.state !== 'idle' }
+  window.HubChat = { open: () => setFull(true), close: () => setFull(false), toggle: () => setFull(!S.full), ask: t => submit(t), openChat: async id => { setFull(true); await openConv(id) }, voice: () => toggleVoice(S.full ? fta : bta), cancelVoice, hush, say, busy: () => S.busy, listening: () => V.state !== 'idle' }
 })()
