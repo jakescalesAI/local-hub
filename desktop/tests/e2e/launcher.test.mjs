@@ -230,7 +230,8 @@ describe('hotkey and launcher', () => {
     assert.equal(await launcherVisible(handle), true, 'the first Esc leaves it open')
     await pressEsc()
     await waitFor(async () => !(await launcherVisible(handle)), 'the second Esc to close it', 5000)
-    assert.equal((await windows(handle)).length, 2)
+    // The page's window.close() destroys the launcher and the app puts a new one in its place.
+    await waitFor(async () => (await windows(handle)).length === 2, 'one launcher, ready for next time', 5000)
   })
 
   test('window.close() from the /launcher page hides it and starts it clean, every time', async t => {
