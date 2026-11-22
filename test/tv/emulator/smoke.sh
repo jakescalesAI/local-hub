@@ -67,6 +67,7 @@ else
   fail "local.hub.tv wasn't running 10 s after launch, so its page couldn't be checked"
 fi
 
+adb shell am crash "$PKG"; sleep 3 # TEMPORARY: prove the crash checks fail the job
 shot 02-home
 node "$HERE/check.mjs" png "$OUT/02-home.png" || fail "the screen is blank or a single colour (02-home.png)"
 # Kept for the artifact only, see above.
