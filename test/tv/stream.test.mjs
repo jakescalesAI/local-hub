@@ -160,7 +160,10 @@ function jpegSize(j) {
 }
 
 const found = locate('chromium')
-test('a real browser: open, 1920×1080 frames, click a field, type, go back and leave', { skip: !found && 'no Chromium, Chrome or Edge on this computer', timeout: 90e3 }, async () => {
+// Runs on a real computer. GitHub's Linux runners start the browser but deliver no frames from it (headless there
+// has no display to draw), so CI skips it unless LOCALHUB_STREAM_E2E=1 asks for it.
+const ciSkip = process.env.CI && process.env.LOCALHUB_STREAM_E2E !== '1' && 'needs a real computer: CI runners deliver no browser frames'
+test('a real browser: open, 1920×1080 frames, click a field, type, go back and leave', { skip: (!found && 'no Chromium, Chrome or Edge on this computer') || ciSkip, timeout: 90e3 }, async () => {
   const page = '<title>start</title><body style="margin:0"><input id=q style="position:absolute;left:100px;top:100px;width:400px;height:60px" aria-label="Search">'
     + '<script>q.oninput = () => document.title = "typed " + q.value</script>'
   await withServer({ dataDir: fs.mkdtempSync(path.join(os.tmpdir(), 'tvs-')) }, async base => {
