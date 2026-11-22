@@ -71,3 +71,72 @@ jobs:
             echo "waiting for release $GITHUB_REF_NAME ($i)"; sleep 30
           done
           gh release upload "$GITHUB_REF_NAME" out/LocalHub-TV.apk --repo "$GITHUB_REPOSITORY" --clobber
+
+  # Proves the APK starts and runs: boots an Android TV emulator, installs it, opens it unpaired
+  # (so it shows the bundled home screen from http://localhub.tv/) and checks it stays up, stays in
+  # front, never crashes and really draws the UI. The checks are in test/tv/emulator/smoke.sh.
+  emulator:
+    needs: apk
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      # Android TV images are x86 up to API 34 (x86_64 only from 36). 30 is Android 11.
+      API_LEVEL: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22" # its own fetch and WebSocket talk to the WebView over DevTools
+      - uses: actions/download-artifact@v4
+        with:
+          name: localhub-tv-apk
+          path: out
+      # Hardware acceleration for the emulator: without /dev/kvm access it won't boot in time.
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      # A booted-once AVD with a snapshot, so later runs skip the cold boot.
+      - name: AVD cache
+        uses: actions/cache@v4
+        id: avd-cache
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-tv-${{ env.API_LEVEL }}-x86-1080p
+      - name: Create the AVD and its snapshot
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ env.API_LEVEL }}
+          target: android-tv
+          arch: x86
+          profile: tv_1080p
+          ram-size: 2048M
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: false
+          script: echo "AVD snapshot ready for the cache."
+      # The runner runs each script line on its own, so the checks live in one script.
+      - name: Install, start and check LocalHub TV
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ env.API_LEVEL }}
+          target: android-tv
+          arch: x86
+          profile: tv_1080p
+          ram-size: 2048M
+          force-avd-creation: false
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: bash test/tv/emulator/smoke.sh out/LocalHub-TV.apk out/emulator
+      # Screenshots, logcat and the page's state, pass or fail.
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: localhub-tv-emulator
+          path: out/emulator
+          retention-days: 14
+          if-no-files-found: warn
