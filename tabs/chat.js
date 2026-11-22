@@ -1625,7 +1625,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
 
   /* ---------- dictation (Web Speech API) ---------- */
 
-  function startDictate() {
+  function startDictate(opts = {}) {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition
     if (!window.isSecureContext) {
       flash(`Dictation needs a secure page, and this one is plain http. ${window.HUB_CONF?.url ? `Open the hub at ${window.HUB_CONF.url}, or use` : 'Use'} the mic key on your keyboard.`)
@@ -1637,7 +1637,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
     let rec
     try { rec = new SR() } catch { flash('Dictation could not start in this browser.'); return }
     rec.lang = navigator.language || 'en-US'
-    rec.continuous = true
+    rec.continuous = !opts.send // from the mic button it ends when you pause
     rec.interimResults = true
     let finalText = ''
     rec.onresult = e => {
@@ -1654,7 +1654,11 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
       const why = { 'not-allowed': 'The microphone is blocked for this page. Allow it in the browser’s site settings.', 'service-not-allowed': 'The browser refused speech recognition on this page.', 'no-speech': 'No speech heard. Try again.', 'audio-capture': 'No microphone was found.', network: 'Speech recognition needs the internet and could not reach it.' }[e.error]
       if (e.error !== 'aborted') flash(why || `Dictation stopped (${e.error}).`)
     }
-    rec.onend = () => { if (S.rec === rec) { S.rec = null; syncRec() } }
+    rec.onend = () => {
+      if (S.rec === rec) { S.rec = null; syncRec() }
+      // From the mic button: what was said goes, and the answer is read aloud.
+      if (opts.send && ta.value.trim()) { V.speak = true; V.said = 0; V.text = ''; submit(ta.value) }
+    }
     try { rec.start() } catch { flash('Dictation could not start.'); return }
     S.rec = rec
     syncRec()
@@ -1689,7 +1693,13 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
     if (V.state === 'wait') return
     hush()
     if (S.rec) stopDictate()
-    fetch('/api/voice/warm', { method: 'POST', headers: { 'x-hub': '1' } }).catch(() => {})
+    // Wakes Whisper on the hub. If it isn't installed there, the browser's own dictation takes over,
+    // so the mic works out of the box (install faster-whisper on the hub to keep it all local).
+    let warm = null
+    try { warm = await (await fetch('/api/voice/warm', { method: 'POST', headers: { 'x-hub': '1' } })).json() } catch {}
+    if (!window.HubVoice?.listen && String(warm?.whisper || '').startsWith('missing') && (window.SpeechRecognition || window.webkitSpeechRecognition) && window.isSecureContext) {
+      return startDictate({ send: true })
+    }
     V.state = 'rec'
     syncSend()
     let text = ''
@@ -2182,7 +2192,8 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
       if (S.hist) toggleHist(false)
       fullView.scrollEnd(true)
       syncSend()
-    } catch {
+    } catch (e) {
+      console.warn('openConv', e)
       fullView.addError('That chat could not be opened.')
     }
   }
@@ -2285,5 +2296,5 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
 
   // A tiny handle for other tabs or tests: HubChat.open(), HubChat.ask('...').
   // voice/hush/say/listening are for pages around the chat: LocalHub TV's ⏯ key and Control Center talk through them.
-  window.HubChat = { open: () => setFull(true), close: () => setFull(false), toggle: () => setFull(!S.full), ask: t => submit(t), voice: () => toggleVoice(S.full ? fta : bta), hush, say, busy: () => S.busy, listening: () => V.state !== 'idle' }
+  window.HubChat = { open: () => setFull(true), close: () => setFull(false), toggle: () => setFull(!S.full), ask: t => submit(t), openChat: async id => { setFull(true); await openConv(id) }, voice: () => toggleVoice(S.full ? fta : bta), hush, say, busy: () => S.busy, listening: () => V.state !== 'idle' }
 })()

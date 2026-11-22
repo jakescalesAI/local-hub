@@ -5,7 +5,7 @@
 <title>LocalHub TV</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="./hub.svg">
-<link rel="stylesheet" href="./styles.css?v=8">
+<link rel="stylesheet" href="./styles.css?v=9">
 </head>
 <body>
 <div id="hub-wall"></div>
@@ -22,10 +22,8 @@
     <section class="grid" id="grid"></section>
   </main>
 
-  <header class="status">
-    <span class="hubchip" id="hubChip"><img src="./hub.svg" alt=""><span id="hubName">LocalHub</span><i class="st"></i></span>
-    <span class="status-clock" id="clock"></span>
-  </header>
+  <header class="when"><span class="when-time" id="clock"></span><span class="when-date" id="today"></span></header>
+  <button type="button" class="gear" id="gearBtn" aria-label="Control Center"><svg class="sym" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3 1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8 1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><i class="st"></i></button>
 
   <div class="scrim" id="scrim"></div>
   <aside class="cc" id="cc" aria-label="Control Center">
@@ -80,7 +78,9 @@
   /* tabs/chat.js reads these to say "Looking at the TV tab". */
   var env = "tv";
   window.TABS = Object.assign(window.TABS || {}, { tv: { title: "TV" } });
+  /* The hub page defines hubFetch for chat.js (it waits out hub restarts); the TV only needs plain fetch. */
+  if (typeof window.hubFetch !== "function") window.hubFetch = function (url, init) { return fetch(url, init); };
 </script>
-<script type="module" src="./app.js?v=8"></script>
+<script type="module" src="./app.js?v=9"></script>
 </body>
 </html>

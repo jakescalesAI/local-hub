@@ -158,9 +158,10 @@ async function syncHub() {
   paintChip();
 }
 function paintChip() {
-  $("#hubName").textContent = HUB.name;
   $("#splashName").textContent = HUB.name;
-  $("#hubChip").classList.toggle("on", HUB.on);
+  const g = $("#gearBtn");
+  g.classList.toggle("on", HUB.on);
+  g.title = `${HUB.name}: ${HUB.on ? "connected" : "not connected"}`;
 }
 
 /* ── the items: LocalHub first, then the apps, the inputs, Settings ────── */
@@ -212,7 +213,7 @@ function renderGrid() {
 
 function applyFocus(instant) {
   document.querySelectorAll(".app.is-focused").forEach((n) => n.classList.remove("is-focused"));
-  $("#hubChip").classList.toggle("focus", S.zone === "status" && !S.overlay);
+  $("#gearBtn").classList.toggle("focus", S.zone === "status" && !S.overlay);
   $("#pairbar").classList.toggle("focus", S.zone === "bar" && !S.overlay);
   if (S.zone === "grid" && !S.overlay) $(`.app[data-i="${S.i}"]`)?.classList.add("is-focused");
 
@@ -359,7 +360,8 @@ function hubShelfHTML() {
   const h = new Date().getHours();
   const part = h < 5 ? "Good night" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
   const first = (HUB.owner || "").split(/\s+/)[0];
-  const ids = tvWidgets().filter((id) => WIDGETS[id] || LABELS[id]).slice(0, 3);
+  // The time and date are always top left, so their cards aren't repeated here.
+  const ids = tvWidgets().filter((id) => id !== "clock" && id !== "date" && (WIDGETS[id] || LABELS[id])).slice(0, 3);
   return `<div class="hub-shelf"><div class="greet"><h1>${esc(part)}${first ? `, ${esc(first)}` : ""}</h1><p>${esc(HUB.name)}${HUB.on ? "" : " · not connected"} · ${NATIVE ? "OK" : "Enter"} opens LocalHub · ${NATIVE ? "⏯" : "Space"} to talk</p></div><div class="widgets">${[...ids.map(widgetCard), widgetCard("recent")].join("")}</div></div>`;
 }
 
@@ -521,40 +523,96 @@ function setOverlay(name) {
   applyFocus();
 }
 
-/* The drop-down from the top right: the hub's TV widgets, then the controls. */
-function ccTiles() {
-  const net = NATIVE ? safeJson(native("network"), {}) : { connected: navigator.onLine, kind: "Wi-Fi" };
-  return [
-    { id: "ask", cls: "big", ic: SYM.mic, t1: "Ask LocalHub", t2: NATIVE ? "⏯ on the remote" : "Space on the keyboard" },
-    { id: "net", cls: "w2" + (net.connected ? " on" : ""), ic: SYM.wifi, t1: net.kind || "Network", t2: net.connected ? "Connected" : "Offline" },
-    { id: "timer", cls: "w2" + (S.sleepAt ? " on" : ""), ic: SYM.timer, t1: "Sleep Timer", t2: S.sleepAt ? `At ${clockText(new Date(S.sleepAt))}` : "Off" },
-    { id: "saver", cls: "", ic: SYM.moon, t1: "", t2: "" },
-    { id: "sleep", cls: "", ic: SYM.power, t1: "", t2: "" },
-    { id: "bt", cls: "", ic: SYM.bt, t1: "", t2: "" },
-    { id: "inputs", cls: "", ic: SYM.input, t1: "", t2: "" },
-    { id: "settings", cls: "w2", ic: SYM.gear, t1: "Settings", t2: "LocalHub TV" },
-    { id: "system", cls: "w2", ic: NATIVE ? SYM.sliders : SYM.laptop, t1: NATIVE ? "TV Settings" : "LocalHub", t2: NATIVE ? "Fire TV" : "Open the dashboard" },
-  ];
+/* Control Center, from the gear at the top right. Everything in it is real: the hub's live state,
+   your actual recent chats, and things that do something. TV hardware (sleep, inputs, Wi-Fi,
+   Bluetooth) only shows on a TV, where it works. */
+const LIVE = { status: null, info: null, chats: null };
+async function refreshLive() {
+  if (!IN_HUB) return;
+  const get = (u) => fetch(u, { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  const [status, info, chats] = await Promise.all([get("/api/tv/status"), get("/api/chat/info"), get("/api/chat/sessions")]);
+  LIVE.status = status;
+  LIVE.info = info;
+  LIVE.chats = chats?.sessions || [];
 }
+
+function voiceState() {
+  const w = String(LIVE.status?.whisper || "");
+  if (NATIVE) return w === "ready" ? ["TV mic → Whisper", "var(--green)"] : w.startsWith("missing") ? ["Needs Whisper on the laptop", "var(--orange)"] : ["TV mic → Whisper", "var(--green)"];
+  if (w === "ready") return ["Whisper, on this computer", "var(--green)"];
+  if (w === "loading") return ["Whisper is loading", "var(--orange)"];
+  if (w.startsWith("missing")) return ["Browser dictation", "var(--orange)"];
+  return ["Whisper, starts when you talk", "var(--green)"];
+}
+
+function ccTiles() {
+  const tiles = [];
+  const [voice, voiceTint] = voiceState();
+  const ready = LIVE.info ? LIVE.info.ready !== false : HUB.on;
+  tiles.push({
+    id: "hub", cls: "status-tile",
+    html: `<img src="./hub.svg" alt=""><div><div class="t1">${esc(HUB.name)}</div><div class="lines">
+      <span class="k">Hub</span><span class="v"><i style="--c:${HUB.on ? "var(--green)" : "var(--red)"}"></i>${HUB.on ? "Connected" : "Not connected"}</span>
+      <span class="k">Assistant</span><span class="v"><i style="--c:${ready ? "var(--green)" : "var(--red)"}"></i>${ready ? "Ready" : "Needs Claude Code"}</span>
+      <span class="k">Voice</span><span class="v"><i style="--c:${voiceTint}"></i>${esc(voice)}</span>
+    </div></div>`,
+  });
+  tiles.push({ id: "ask", cls: "w2", ic: SYM.mic, t1: "Ask LocalHub", t2: NATIVE ? "⏯ on the remote" : "Space on the keyboard" });
+  tiles.push({ id: "tvlayout", cls: "w2", ic: SYM.sliders, t1: "TV layout", t2: "Choose what shows here" });
+  const chats = (LIVE.chats || []).slice(0, 3);
+  if (chats.length) {
+    tiles.push({ sect: "Recent chats" });
+    for (const c of chats) tiles.push({ id: `chat:${c.id}`, cls: "w4 chat", ic: CHAT_IC, t1: c.title || "Chat", t2: c.running ? "Answering now" : ago(c.updated) });
+  }
+  tiles.push({ sect: NATIVE ? "This TV" : "This screen" });
+  tiles.push({ id: "saver", cls: "w2", ic: SYM.moon, t1: "Screensaver", t2: "Start now" });
+  tiles.push({ id: "settings", cls: "w2", ic: SYM.gear, t1: "Settings", t2: "LocalHub TV" });
+  if (NATIVE) {
+    const net = safeJson(native("network"), {}) || {};
+    tiles.push({ id: "sleep", cls: "w2", ic: SYM.power, t1: "Sleep", t2: "Turn the TV off" });
+    tiles.push({ id: "timer", cls: "w2" + (S.sleepAt ? " on" : ""), ic: SYM.timer, t1: "Sleep Timer", t2: S.sleepAt ? `At ${clockText(new Date(S.sleepAt))}` : "Off" });
+    if (INPUTS.length) tiles.push({ id: "inputs", cls: "w2", ic: SYM.input, t1: "Inputs", t2: `${INPUTS.length} on this TV` });
+    tiles.push({ id: "net", cls: "w2" + (net.connected ? " on" : ""), ic: SYM.wifi, t1: net.kind || "Network", t2: net.connected ? "Connected" : "Offline" });
+    tiles.push({ id: "bt", cls: "w2", ic: SYM.bt, t1: "Bluetooth", t2: "Headphones, remotes" });
+    tiles.push({ id: "system", cls: "w2", ic: SYM.sliders, t1: "TV Settings", t2: "Fire TV" });
+  } else {
+    tiles.push({ id: "dashboard", cls: "w2", ic: SYM.laptop, t1: "LocalHub", t2: "The full dashboard" });
+    tiles.push({ id: "help", cls: "w2", ic: KEY_IC, t1: "Keyboard", t2: prefs.help ? "Hide the keys" : "Show the keys" });
+  }
+  return tiles;
+}
+const CHAT_IC = sym('<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22z"/>');
+const KEY_IC = sym('<rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/>');
+
 let CC = [];
-function openCC() {
+function paintTiles() {
   CC = ccTiles();
-  const n = new Date();
-  $("#ccClock").textContent = clockText(n);
-  $("#ccDate").textContent = n.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
-  const widgets = tvWidgets().filter((id) => WIDGETS[id]).slice(0, 2);
-  $("#ccGrid").innerHTML =
-    widgets.map((id) => `<div class="cc-tile w2 widget" style="height:auto;min-height:220px;padding:20px 24px;align-items:stretch;flex-direction:column;gap:8px"><div class="w-label" style="font-size:20px"><i class="dot" style="--c:${WIDGETS[id].tint}"></i>${esc(WIDGETS[id].label)}</div><div class="w-body" style="transform:scale(.72);transform-origin:0 50%;margin:-14px 0">${WIDGETS[id].render()}</div></div>`).join("") +
-    CC.map((t, i) => `<div class="cc-tile ${t.cls}" data-i="${i}" title="${esc({ saver: "Screensaver", sleep: "Sleep", bt: "Bluetooth", inputs: "Inputs" }[t.id] || t.t1)}"><span class="ic">${t.ic}</span>${t.t1 ? `<span><div class="t1">${esc(t.t1)}</div><div class="t2">${esc(t.t2)}</div></span>` : ""}</div>`).join("");
+  let n = 0;
+  $("#ccGrid").innerHTML = CC.map((t) => {
+    if (t.sect) return `<div class="cc-sect">${esc(t.sect)}</div>`;
+    const i = n++;
+    t.i = i;
+    if (t.html) return `<div class="cc-tile ${t.cls}" data-i="${i}">${t.html}</div>`;
+    return `<div class="cc-tile ${t.cls}" data-i="${i}"><span class="ic">${t.ic}</span><span style="min-width:0"><div class="t1">${esc(t.t1)}</div><div class="t2">${esc(t.t2)}</div></span></div>`;
+  }).join("");
+  CC = CC.filter((t) => !t.sect);
+  S.cc = clamp(S.cc, 0, CC.length - 1);
+  paintCC();
+}
+function openCC() {
   S.cc = 0;
+  paintTiles();
   $("#cc").classList.add("on");
   $("#scrim").classList.add("on");
+  document.body.classList.add("cc-open");
   setOverlay("cc");
-  paintCC();
+  // The hub's live state and your chats, fresh each time it opens.
+  refreshLive().then(() => { if (S.overlay === "cc") { const keep = CC[S.cc]?.id; paintTiles(); const k = CC.findIndex((t) => t.id === keep); if (k >= 0) { S.cc = k; paintCC(); } } });
 }
 function closeCC() {
   $("#cc").classList.remove("on");
   $("#scrim").classList.remove("on");
+  document.body.classList.remove("cc-open");
   if (S.zone === "status") S.zone = "grid";
   setOverlay(null);
 }
@@ -578,16 +636,19 @@ function ccMove(dx, dy) {
   paintCC();
 }
 function ccActivate() {
-  const id = CC[S.cc]?.id;
+  const id = CC[S.cc]?.id || "";
   if (id === "timer") return cycleSleepTimer();
+  if (id === "help") { prefs.help = !prefs.help; savePrefs(); showKeys(prefs.help); return paintTiles(); }
   closeCC();
+  if (id === "hub" || id === "tvlayout" || id === "dashboard") return openHubApp();
   if (id === "ask") return startVoice();
+  if (id.startsWith("chat:")) { if (window.HubChat?.openChat) { S.zone = "bar"; return window.HubChat.openChat(id.slice(5)); } return toast("The chat isn't loaded"); }
   if (id === "inputs") { const i = ITEMS.findIndex((x) => x.kind === "input"); if (i < 0) return toast("This TV reports no HDMI inputs"); S.zone = "grid"; S.i = i; return applyFocus(); }
   if (id === "saver") return startSaver();
   if (id === "sleep") return sleepNow();
-  if (id === "net") return NATIVE ? native("openNetworkSettings") : toast(navigator.onLine ? "This laptop is online" : "This laptop is offline");
-  if (id === "bt") return NATIVE ? native("openBluetoothSettings") : toast("Bluetooth is in the TV's settings");
-  if (id === "system") return NATIVE ? native("openSystemSettings") : window.open("/", "_blank");
+  if (id === "net") return native("openNetworkSettings");
+  if (id === "bt") return native("openBluetoothSettings");
+  if (id === "system") return native("openSystemSettings");
   if (id === "settings") return openSettings();
 }
 function sleepNow() {
@@ -602,10 +663,7 @@ function cycleSleepTimer() {
   S.sleepAt = next ? Date.now() + next * 60000 : 0;
   if (next) S.sleepTimer = setTimeout(sleepNow, next * 60000);
   toast(next ? `Sleeping in ${next} minutes` : "Sleep timer off");
-  const keep = S.cc;
-  openCC();
-  S.cc = keep;
-  paintCC();
+  paintTiles();
 }
 
 /* Settings: tvOS — the icon on the left, the list on the right */
@@ -739,6 +797,7 @@ const clockText = (d) => { const p = clockParts(d); return p.ap ? `${p.hm} ${p.a
 function tick() {
   const d = new Date();
   $("#clock").textContent = clockText(d);
+  $("#today").textContent = d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
   $("#saverTime").textContent = clockParts(d).hm;
   $("#saverDate").textContent = d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
   if (S.shelfId === "hub" && !S.overlay) $("#shelfBody").innerHTML = hubShelfHTML();
@@ -1118,7 +1177,7 @@ document.addEventListener("click", (e) => {
   const row = e.target.closest("#setTrack .row");
   if (row) { S.set = Number(row.dataset.i); paintSettings(); return settingsActivate(); }
   if (e.target.id === "scrim") return closeCC();
-  if (e.target.closest("#hubChip, #clock")) return S.overlay === "cc" ? closeCC() : openCC();
+  if (e.target.closest("#gearBtn")) return S.overlay === "cc" ? closeCC() : openCC();
   if (S.overlay === "settings" && !e.target.closest(".settings-side")) return closeSettings();
 });
 
