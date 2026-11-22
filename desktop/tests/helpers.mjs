@@ -183,8 +183,11 @@ export async function quit(handle) {
   await Promise.race([handle.exited, sleep(QUIT_LIMIT_MS).then(() => { throw new Error(`app did not exit within ${QUIT_LIMIT_MS / 1000} s`) })])
 }
 
-// Windows in creation order: [0] main, [1] launcher, then anything opened later.
+// Windows in creation order: [0] main, [1] launcher, then anything opened later. A page's own
+// window.close() destroys the launcher and the app puts a new one in its place, so a window on its
+// way out is left out rather than read ("Object has been destroyed").
 export const windows = handle => handle.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()
+  .filter(win => !win.isDestroyed() && !win.webContents.isDestroyed())
   .sort((a, b) => a.id - b.id)
   .map(win => ({
     id: win.id,
