@@ -1102,7 +1102,7 @@ function handleKey(name) {
   if (S.pendingOpen && name === "enter") { const app = S.pendingOpen; S.pendingOpen = null; return launch(app, () => openApp(app)); }
   S.pendingOpen = null;
   if (name === "ai") { if (S.overlay === "cc") closeCC(); if (S.overlay === "settings") closeSettings(); return startVoice(); }
-  if (window.HubChat?.listening?.() && name === "back") { window.HubVoice?.cancel?.(); return; }
+  if (window.HubChat?.listening?.() && name === "back") { if (window.HubChat.cancelVoice) window.HubChat.cancelVoice(); else window.HubVoice?.cancel?.(); return; }
   if (S.zone === "bar" && document.activeElement === chatHost()) {
     if (name === "back") {
       const root = chatHost().shadowRoot;

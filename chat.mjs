@@ -11,10 +11,18 @@
 //   GET  /api/chat/sessions/<id>        -> { id, title, updated, items, running, ... }
 //   POST /api/chat/sessions/<id>/delete
 //   POST /api/chat/sessions/<id>/rename { title }
+//   GET  /api/chat/live                 text/event-stream: the live channel every open chat follows (LIVE below)
+//   POST /api/chat/current              { sessionId?, client? }  this chat is now the current one, on every device
 // Every POST needs the page's `x-hub: 1` header (server.mjs enforces it).
 // A send with test: true (the page sends it when sessionStorage hub-chat-test is "1") saves its chat in data/chat/test/,
 // so test runs stay out of the real history.
 //
+// LIVE: one conversation is current, on every device (the hub page, LocalHub TV, a phone). /api/chat/live sends each
+//   open chat `data: { seq, conv, from, ev }` lines: hello (conv is the current chat) | current (another chat is current
+//   now, '' for a new one) | user {text, at, atts?, reply?} (someone sent a message) | every EVENT below as it streams.
+//   from is the sending page's client id, so that page skips what its own stream already showed. A page that opens a
+//   chat mid-reply reads /api/chat/sessions/<id>, which says the seq it is current to and the reply's text so far.
+//   Test chats never go out on it.
 // EVENTS (one per line): session {sessionId,title,atts?} | attachment {id,name,size,view,type} (attach_file) | text_start | delta {text} | text_end {text}
 //   | tool {id,name,label,detail} | tool_result {id,ok,text} | error {message} | ping
 //   | done {sessionId, ms, meta: {at, ms, model, in, cached, out, cost?}} (meta is also saved on the turn's last answer)
@@ -38,6 +46,7 @@ import { RUN_DIRS, RUN_EXTS, RUN_FILES, holdsKeys } from './files.mjs'
 
 const TIMEOUT_MS = 6 * 60e3 // one reply, start to finish
 const PING_MS = 15e3
+const ORPHAN_MS = 2500 // a page that went away stops its reply, unless another open chat is following it
 const MAX_RUNS = 3 // replies running at once, across conversations
 const LONG_TEXT = 16000 // the page sends anything longer as a pasted-text attachment
 const MAX_TEXT = LONG_TEXT // longest message accepted
@@ -307,7 +316,39 @@ export function create({ run, sshHost, here }) {
     if (cur !== text) fs.writeFileSync(MCP_FILE, text)
     return MCP_FILE
   }
-  const running = new Map() // conversation id -> { proc, res, startedAt, killed }
+  const running = new Map() // conversation id -> { proc, res, startedAt, killed, conv, partial }
+
+  /* ---------- the live channel ---------- */
+
+  const CURRENT_FILE = path.join(DIR, 'current.json')
+  const live = new Set() // open /api/chat/live responses
+  let liveSeq = 0
+  let current = ''
+  try { current = String(JSON.parse(fs.readFileSync(CURRENT_FILE, 'utf8')).id || '') } catch {}
+  if (current && !ID_RE.test(current)) current = ''
+  const CLIENT_RE = /^[\w-]{1,40}$/
+  function broadcast(conv, ev, from = '') {
+    const line = `data: ${JSON.stringify({ seq: ++liveSeq, conv, from, ev })}\n\n`
+    for (const res of live) if (!res.destroyed && !res.writableEnded) res.write(line)
+  }
+  // What one chat says as it happens, to every other open chat. Test chats stay on the page that ran them.
+  const pub = (conv, ev, from) => { if (!conv.test && ev.type !== 'ping') broadcast(conv.id, ev, from) }
+  function setCurrent(id, from = '') {
+    id = id && ID_RE.test(id) ? id : ''
+    if (id === current) return
+    current = id
+    try { fs.writeFileSync(CURRENT_FILE, JSON.stringify({ id })) } catch {}
+    broadcast(id, { type: 'current' }, from)
+  }
+  function openLive(req, res) {
+    res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store', connection: 'keep-alive', 'x-accel-buffering': 'no' })
+    res.socket?.setNoDelay(true)
+    if (current && !load(current)) current = ''
+    res.write(`retry: 2000\ndata: ${JSON.stringify({ seq: liveSeq, conv: current, from: '', ev: { type: 'hello' } })}\n\n`)
+    live.add(res)
+    const ping = setInterval(() => res.write(': ping\n\n'), 20e3)
+    req.on('close', () => { clearInterval(ping); live.delete(res) })
+  }
 
   /* ---------- keeping secrets out ---------- */
 
@@ -497,7 +538,7 @@ export function create({ run, sshHost, here }) {
     const lines = []
     if (ctx.tabTitle) lines.push(`The user is looking at the "${ctx.tabTitle}" tab (id ${ctx.tab}).`)
     if (ctx.narrow) lines.push('They are on a narrow screen (phone or iPad portrait).')
-    if (ctx.tab === 'tv') lines.push('They are on their TV (LocalHub TV, or Alexa), often speaking rather than typing, and your answer may be read aloud across the room. Keep it to one to three short sentences that sound right spoken, with no markdown, lists, tables or links unless they ask for detail. To open an app, switch input, go home or show something on the TV, use tv_control.')
+    if (ctx.tab === 'tv') lines.push('They are on their TV (LocalHub TV, or Alexa), often speaking rather than typing, and your answer may be read aloud across the room. Keep it to one to three short sentences that sound right spoken, with no markdown, lists, tables or links unless they ask for detail. To open an app, switch input, go home or show something on the TV, use tv_control. The hub page on their computer shows this same chat live, and a site you open with show_site or the hub browser opens there too, with a live card in the chat on both.')
     if (ctx.plan) lines.push('Plan mode is on for this message: you can look and read, and you cannot change anything. Attaching a file with attach_file is still fine, because it changes none of their files. Say what you would do, step by step. If they want it done, tell them to switch Mode to Auto in the + menu.')
     else if (ctx.wasPlan) lines.push('Plan mode is off now, so you can make changes again.')
     lines.push('Their question may have nothing to do with this tab. Keep the answer short unless the question needs more or they ask for detail.')
@@ -594,20 +635,35 @@ export function create({ run, sshHost, here }) {
     }
 
     res.writeHead(200, { 'content-type': 'application/x-ndjson; charset=utf-8', 'cache-control': 'no-store', 'x-accel-buffering': 'no' })
-    const emit = ev => { if (!res.destroyed && !res.writableEnded) res.write(JSON.stringify(ev) + '\n') }
-    const entry = { proc: null, res, startedAt: Date.now(), killed: '' }
+    const from = CLIENT_RE.test(String(body.client || '')) ? String(body.client) : ''
+    const emit = ev => {
+      if (!res.destroyed && !res.writableEnded) res.write(JSON.stringify(ev) + '\n')
+      pub(conv, ev, from)
+    }
+    const entry = { proc: null, res, startedAt: Date.now(), killed: '', conv, partial: null }
     running.set(conv.id, entry)
 
     const turnStart = conv.items.length
-    conv.items.push({ kind: 'user', text, at: Date.now(), tab: ctx.tab, ...(saved.length ? { files: saved.map(f => f.name), atts } : {}), ...(reply ? { reply: trim(reply, 300) } : {}) })
+    const userItem = { kind: 'user', text, at: Date.now(), tab: ctx.tab, ...(saved.length ? { files: saved.map(f => f.name), atts } : {}), ...(reply ? { reply: trim(reply, 300) } : {}) }
+    conv.items.push(userItem)
     save(conv)
+    if (!conv.test) setCurrent(conv.id, from)
+    pub(conv, { type: 'user', text, at: userItem.at, tab: ctx.tab, ...(atts.length ? { atts } : {}), ...(userItem.reply ? { reply: userItem.reply } : {}) }, from)
     emit({ type: 'session', sessionId: conv.id, title: conv.title, ...(atts.length ? { atts } : {}) })
     if (body.detached) res.end() // the phone goes away after sharing: keep working, the reply lands in the conversation
 
     const pingTimer = setInterval(() => emit({ type: 'ping' }), PING_MS)
     const timer = setTimeout(() => { entry.killed = 'timeout'; killTree(entry.proc) }, TIMEOUT_MS)
-    // The page went away (closed, reloaded, network dropped): stop the reply.
-    res.on('close', () => { if (!body.detached && running.get(conv.id) === entry && !entry.finished) { entry.killed = entry.killed || 'disconnect'; killTree(entry.proc) } })
+    // The page went away (closed, reloaded, network dropped): stop the reply, unless another open chat (the TV, the
+    // laptop, the same page reloaded) is following it there. Stop and New chat still stop it, from any of them.
+    res.on('close', () => {
+      if (body.detached || running.get(conv.id) !== entry || entry.finished) return
+      setTimeout(() => {
+        if ((live.size && !conv.test) || running.get(conv.id) !== entry || entry.finished) return
+        entry.killed = entry.killed || 'disconnect'
+        killTree(entry.proc)
+      }, conv.test ? 0 : ORPHAN_MS)
+    })
 
     const prompt = buildPrompt(text, { ...ctx, plan: mode === 'plan', wasPlan: conv.mode === 'plan' }, saved, reply)
     const toolItems = new Map()
@@ -652,13 +708,15 @@ export function create({ run, sshHost, here }) {
             if (e.type === 'content_block_start' && e.content_block?.type === 'text') {
               block = blockStream()
               partial = ''
+              entry.partial = ''
               emit({ type: 'text_start' })
             } else if (e.type === 'content_block_delta' && e.delta?.type === 'text_delta') {
-              if (!block) { block = blockStream(); partial = ''; emit({ type: 'text_start' }) }
+              if (!block) { block = blockStream(); partial = ''; entry.partial = ''; emit({ type: 'text_start' }) }
               const out = block.push(e.delta.text || '')
               if (out) {
-                emit({ type: 'delta', text: out })
                 partial += out
+                entry.partial = partial
+                emit({ type: 'delta', text: out })
                 // On disk every moment too, in case the hub itself restarts mid-reply.
                 if (Date.now() - partialAt > 1500) { partialAt = Date.now(); conv.partial = partial; save(conv) }
               }
@@ -672,10 +730,11 @@ export function create({ run, sshHost, here }) {
                 const full = scrub(b.text)
                 block = null
                 partial = ''
+                entry.partial = null
                 delete conv.partial
-                emit({ type: 'text_end', text: full })
                 conv.items.push({ kind: 'assistant', text: full, at: Date.now() })
                 save(conv)
+                emit({ type: 'text_end', text: full })
               } else if (b.type === 'tool_use') {
                 gotOutput = true
                 const item = { kind: 'tool', id: String(b.id), name: b.name, label: scrub(toolLabel(b.name, b.input)), detail: toolDetail(b.name, b.input) }
@@ -784,10 +843,11 @@ export function create({ run, sshHost, here }) {
         proc.stderr.on('data', d => { stderr = (stderr + d).slice(-3000) })
         proc.on('error', e => resolve({ code: -1, stderr: `Couldn't start Claude Code: ${e.message}`, lastResult }))
         proc.on('close', code => {
-          if (block) { const rest = block.end(); if (rest) { emit({ type: 'delta', text: rest }); partial += rest } block = null }
+          if (block) { const rest = block.end(); if (rest) { partial += rest; entry.partial = partial; emit({ type: 'delta', text: rest }) } block = null }
           delete conv.partial
           if (partial.trim()) { conv.items.push({ kind: 'assistant', text: partial, at: Date.now(), partial: true }); gotOutput = true; save(conv) }
           partial = ''
+          entry.partial = null
           resolve({ code, stderr, lastResult })
         })
         proc.stdin.on('error', () => {})
@@ -897,6 +957,15 @@ export function create({ run, sshHost, here }) {
     if (!p.startsWith('/api/chat/')) return false
     try {
       if (p === '/api/chat/send' && req.method === 'POST') return await handleSend(req, res, { send }), true
+      if (p === '/api/chat/live' && req.method === 'GET') return openLive(req, res), true
+      if (p === '/api/chat/current' && req.method === 'POST') {
+        const b = await readBody(req).catch(() => ({}))
+        const id = String(b.sessionId || '')
+        if (id && (!ID_RE.test(id) || !load(id))) return send(res, 404, { error: 'No such chat.' }), true
+        if (id && load(id).test) return send(res, 200, { ok: true, current }), true
+        setCurrent(id, CLIENT_RE.test(String(b.client || '')) ? String(b.client) : '')
+        return send(res, 200, { ok: true, current }), true
+      }
       const fileAsked = /^\/api\/chat\/file\/(c[a-z0-9]{6,24})\/([0-9a-f]{24})$/.exec(p)
       if (fileAsked && req.method === 'GET') return sendFile(load(fileAsked[1]), fileAsked[2], url, res, send), true
       if (p === '/api/chat/info' && req.method === 'GET') {
@@ -917,10 +986,12 @@ export function create({ run, sshHost, here }) {
       if (m) {
         const id = m[1]
         if (!ID_RE.test(id)) return send(res, 400, { error: 'bad id' }), true
-        const conv = load(id)
+        const run = running.get(id)
+        const conv = run?.conv || load(id)
         if (!conv) return send(res, 404, { error: 'No such chat.' }), true
         if (!m[2] && req.method === 'GET') {
-          return send(res, 200, { id: conv.id, title: conv.title, created: conv.created, updated: conv.updated, model: conv.model || '', effort: conv.effort || '', items: conv.items || [], running: running.has(id) }), true
+          // seq: the live channel's count this answer is current to. partial: the reply's text block so far, while it runs.
+          return send(res, 200, { id: conv.id, title: conv.title, created: conv.created, updated: conv.updated, model: conv.model || '', effort: conv.effort || '', items: conv.items || [], running: !!run, seq: liveSeq, ...(run && run.partial != null ? { partial: run.partial } : {}) }), true
         }
         if (m[2] === 'delete' && req.method === 'POST') {
           const r = running.get(id)
@@ -928,6 +999,7 @@ export function create({ run, sshHost, here }) {
           const error = await trashChatFiles(conv)
           if (error) return send(res, 500, { error: `The chat wasn’t deleted, because its files couldn’t go to ${TRASH_NAME}: ${error}` }), true
           try { fs.unlinkSync(file(id, conv.test)) } catch {}
+          if (id === current) setCurrent('')
           return send(res, 200, { ok: true }), true
         }
         if (m[2] === 'rename' && req.method === 'POST') {
