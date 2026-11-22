@@ -134,10 +134,9 @@ function applyLook() {
   r.classList.toggle("lite", prefs.effects === "Light");
   const w = wallFor(SETTINGS);
   const wall = $("#hub-wall");
-  if (!w) { delete r.dataset.wall; wall.style.backgroundImage = ""; $("#saverWall").style.backgroundImage = ""; return; }
+  if (!w) { delete r.dataset.wall; wall.style.backgroundImage = ""; return; }
   r.dataset.wall = "1";
   wall.style.backgroundImage = w.image;
-  $("#saverWall").style.backgroundImage = w.image;
   r.style.setProperty("--hub-scrim", w.tone ? (w.tone === theme ? ".18" : ".55") : ".4");
   if (S.shelfId === "hub") paintShelf(true);
 }
@@ -160,10 +159,13 @@ async function syncHub() {
    tv.hidden) and how it scrolls (scroll.tv). */
 function takeSettings(next) {
   const look = (s) => JSON.stringify([s?.style, s?.wallpaper, s?.widgets?.tv]);
-  const grid = (s) => JSON.stringify([s?.tv, s?.scroll?.tv]);
+  const grid = (s) => JSON.stringify([s?.tv?.apps, s?.tv?.hidden, s?.scroll?.tv]);
+  const saver = (s) => JSON.stringify(s?.tv?.saver || null);
   const lookChanged = look(next) !== look(SETTINGS);
   const gridChanged = grid(next) !== grid(SETTINGS);
+  const saverChanged = SETTINGS && saver(next) !== saver(SETTINGS);
   SETTINGS = next;
+  if (saverChanged) saverSettingsChanged();
   if (gridChanged) {
     const keep = ITEMS[S.i]?.id;
     loadItems();
@@ -726,6 +728,9 @@ function settingsModel() {
     { key: "clock", t1: "Clock", t2: "Top left, and on the screensaver", values: ["12-hour", "24-hour"] },
     { key: "inputs", t1: "HDMI inputs", t2: "Shown as icons after the apps", toggle: true },
     { key: "saver", t1: "Screensaver", t2: "After the remote has been still", values: ["Off", "2 min", "5 min", "10 min", "15 min"] },
+    IN_HUB && !PREVIEW
+      ? { id: "saverSource", t1: "Screensaver photos", t2: saverSourceNote(), v: saverSourceName() }
+      : { info: true, t1: "Screensaver photos", t2: "Chosen in LocalHub", v: "Wallpapers" },
     { key: "effects", t1: "Liquid glass", t2: "Light drops the blur, for older Fire TV sticks", values: ["Full", "Light"] },
     { id: "look", t1: "Wallpaper, style and widgets", t2: "Opens LocalHub, where you change the TV", v: SETTINGS?.wallpaper?.current ? cap(SETTINGS.wallpaper.current) : "Aurora" },
     { group: "Assistant" },
@@ -781,6 +786,7 @@ function settingsActivate() {
   else if (it.id === "find") { HUB.searching = true; native("findHub"); toast("Looking for LocalHub…"); }
   else if (it.id === "address") return openModal("LocalHub address", "The laptop's address on your network, and the hub's port.", HUB.url.replace(/^https?:\/\//, ""), (v) => { native("setHub", v.trim()); HUB.paired = false; probeNative(); });
   else if (it.id === "pair") return openPairing();
+  else if (it.id === "saverSource") return cycleSaverSource();
   else if (it.id === "look") { closeSettings(); return openHubApp(); }
   else if (it.id === "tvsetup") { closeSettings(); return openHubApp("/#tv-setup"); }
   else if (it.id === "forget") { native("forgetHub"); HUB.paired = false; toast("This TV forgot LocalHub"); }
@@ -826,12 +832,12 @@ $("#modalInput").addEventListener("keydown", (e) => {
 });
 
 let toastTimer = 0;
-function toast(msg) {
+function toast(msg, ms = msg.length > 70 ? 5200 : 2400) {
   const n = $("#toast");
   n.textContent = msg;
   n.classList.add("on");
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => n.classList.remove("on"), 2400);
+  toastTimer = setTimeout(() => n.classList.remove("on"), ms);
 }
 
 /* ── clock + screensaver ───────────────────────────────────────────────── */
@@ -848,8 +854,7 @@ function tick() {
   const d = new Date();
   $("#clock").textContent = clockText(d);
   $("#today").textContent = d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
-  $("#saverTime").textContent = clockParts(d).hm;
-  $("#saverDate").textContent = d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+  if (S.overlay === "saver") paintSaverHud();
   if (S.shelfId === "hub" && !S.overlay) $("#shelfBody").innerHTML = hubShelfHTML();
 }
 let saverTimer = 0;
@@ -860,8 +865,211 @@ function armSaver() {
   if (!mins || S.overlay === "saver") return;
   saverTimer = setTimeout(() => { if (!S.overlay && S.zone !== "bar") startSaver(); }, mins * 60000);
 }
-function startSaver() { tick(); $("#saver").classList.add("on"); setOverlay("saver"); }
-function stopSaver() { $("#saver").classList.remove("on"); setOverlay(null); armSaver(); }
+
+/* The screensaver: photos from the library chosen in LocalHub (tv.saver: the hub's wallpapers, this
+   computer's Pictures or iCloud Photos, or a folder; tv-saver.mjs serves them), one after another with a
+   slow crossfade and, unless it's set to Fade or the glass is Light, a slow Ken Burns move. The next
+   photo is loaded before its turn. Over them, bottom left like tvOS: the time, the date and the widgets
+   picked for it, as glass cards. With no hub, or a library that is empty or fails, the wallpapers show. */
+const SAVER_DEFAULT = { source: "wallpapers", folder: "", interval: 12, shuffle: true, motion: "kenburns", widgets: ["clock", "date"] };
+const SAVER_SOURCES = { wallpapers: "Wallpapers", pictures: "Pictures", icloud: "iCloud Photos", folder: "Folder" };
+const SAVER_WALLS = Object.keys(BUILTIN_WALLS).map((id) => ({ id: `wall-${id}`, url: `./wallpapers/${id}.svg` }));
+const SAVER_FADE = 1800;
+const SAVER_STALE = 5 * 60e3;
+// Ken Burns: where a photo starts and ends. Slow, and never far enough to show an edge.
+const KB = [
+  ["scale(1.03) translate3d(0,0,0)", "scale(1.16) translate3d(-2.5%,-1.5%,0)"],
+  ["scale(1.16) translate3d(2.5%,1.5%,0)", "scale(1.04) translate3d(0,0,0)"],
+  ["scale(1.05) translate3d(2%,-1.5%,0)", "scale(1.17) translate3d(-2%,1.5%,0)"],
+  ["scale(1.15) translate3d(-2.5%,1%,0)", "scale(1.04) translate3d(1.5%,-1%,0)"],
+];
+const SAVER = { photos: [], source: null, at: 0, loading: null, order: [], last: -1, gen: 0, timer: 0, front: null, fails: 0, preload: null };
+const saverSettings = () => ({ ...SAVER_DEFAULT, ...(SETTINGS?.tv?.saver || {}) });
+const saverLayers = () => [$("#saverA"), $("#saverB")];
+
+function loadSaverPhotos(force) {
+  if (SAVER.loading && !force) return SAVER.loading;
+  SAVER.loading = (async () => {
+    let photos = [], source = null;
+    if (IN_HUB) {
+      try {
+        const r = await fetch(`/api/tv/saver${force ? "?refresh=1" : ""}`, { cache: "no-store" });
+        if (!r.ok) throw new Error(String(r.status));
+        const j = await r.json();
+        photos = (Array.isArray(j.photos) ? j.photos : []).filter((p) => p && typeof p.url === "string");
+        source = j.source || null;
+      } catch {
+        source = { id: saverSettings().source, label: SAVER_SOURCES[saverSettings().source], ok: false, error: "LocalHub didn’t answer, so the wallpapers show.", fallback: true };
+      }
+    }
+    SAVER.photos = photos.length ? photos : SAVER_WALLS;
+    SAVER.source = source || { id: "wallpapers", label: "Wallpapers", ok: true, count: SAVER_WALLS.length };
+    SAVER.at = Date.now();
+    SAVER.order = [];
+    SAVER.fails = 0;
+  })().finally(() => { SAVER.loading = null; });
+  return SAVER.loading;
+}
+
+// Shuffled, a whole round before any photo comes back, and never the same one twice in a row.
+function dealSaver() {
+  const ids = SAVER.photos.map((_, i) => i);
+  if (saverSettings().shuffle) {
+    for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; }
+    if (ids.length > 1 && ids[0] === SAVER.last) ids.push(ids.shift());
+  }
+  SAVER.order = ids;
+}
+function takePhoto() {
+  if (!SAVER.order.length) dealSaver();
+  SAVER.last = SAVER.order.shift() ?? -1;
+  return SAVER.photos[SAVER.last];
+}
+function preloadNext() {
+  if (!SAVER.order.length) dealSaver();
+  const next = SAVER.photos[SAVER.order[0]];
+  if (!next) return;
+  SAVER.preload = new Image();
+  SAVER.preload.decoding = "async";
+  SAVER.preload.src = next.url;
+}
+
+async function showNextPhoto(gen) {
+  if (gen !== SAVER.gen) return;
+  clearTimeout(SAVER.timer);
+  const set = saverSettings();
+  const photo = takePhoto();
+  if (!photo) return;
+  const [a, b] = saverLayers();
+  const layer = SAVER.front === a ? b : a;
+  const img = layer.querySelector("img");
+  img.style.animation = "none";
+  img.src = photo.url;
+  try {
+    await img.decode();
+  } catch {
+    // A photo that won't load (gone, or a format this TV can't draw) is skipped. If many fail, the wallpapers take over.
+    if (gen !== SAVER.gen) return;
+    if (++SAVER.fails >= 6 && SAVER.photos !== SAVER_WALLS) { SAVER.photos = SAVER_WALLS; SAVER.order = []; SAVER.fails = 0; }
+    SAVER.timer = setTimeout(() => showNextPhoto(gen), 400);
+    return;
+  }
+  if (gen !== SAVER.gen) return;
+  SAVER.fails = 0;
+  const lite = document.documentElement.classList.contains("lite");
+  // A tall photo (a phone's) shows whole, over a soft, dim copy of itself, instead of losing its top and bottom.
+  const tall = img.naturalWidth > 0 && img.naturalWidth / img.naturalHeight < 1.2;
+  layer.classList.toggle("tall", tall);
+  layer.querySelector(".bd").style.backgroundImage = tall && !lite ? `url("${photo.url.replace(/["\\]/g, "")}")` : "";
+  void img.offsetWidth; // restart the move
+  if (set.motion === "kenburns" && !lite) {
+    const [from, to] = KB[Math.floor(Math.random() * KB.length)];
+    img.style.setProperty("--kb-from", from);
+    img.style.setProperty("--kb-to", to);
+    img.style.animation = `saverKB ${set.interval * 1000 + SAVER_FADE * 2}ms linear both`;
+  } else {
+    img.style.animation = "";
+  }
+  const old = SAVER.front;
+  saverLayers().forEach((l) => l.classList.remove("was"));
+  if (old) { old.classList.remove("on"); old.classList.add("was"); }
+  layer.classList.add("on");
+  SAVER.front = layer;
+  // The old photo stays under the new one until the fade is done, then lets go of its image.
+  setTimeout(() => { if (old && !old.classList.contains("on")) { old.classList.remove("was"); old.querySelector("img").style.animation = "none"; } }, SAVER_FADE + 100);
+  if (SAVER.photos.length > 1) {
+    preloadNext();
+    SAVER.timer = setTimeout(() => showNextPhoto(gen), set.interval * 1000);
+  }
+}
+
+function paintSaverHud() {
+  const w = saverSettings().widgets;
+  const d = new Date(), t = clockParts(d);
+  const time = w.includes("clock") ? `<div class="saver-time">${esc(t.hm)}${t.ap ? `<small>${t.ap}</small>` : ""}</div>` : "";
+  const date = w.includes("date") ? `<div class="saver-date">${esc(d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" }))}</div>` : "";
+  const cards = w.filter((id) => id !== "clock" && id !== "date" && WIDGETS[id]).map(widgetCard).join("");
+  $("#saverHud").innerHTML = `${time || date ? `<div class="saver-when">${time}${date}</div>` : ""}${cards ? `<div class="saver-cards">${cards}</div>` : ""}`;
+}
+// A library that couldn't be used says so for a few seconds, then the wallpapers carry on alone.
+function paintSaverNote() {
+  const n = $("#saverNote"), src = SAVER.source;
+  clearTimeout(paintSaverNote.t);
+  n.textContent = src?.fallback && src.error ? src.error : "";
+  n.classList.toggle("on", !!n.textContent);
+  if (n.textContent) paintSaverNote.t = setTimeout(() => n.classList.remove("on"), 9000);
+}
+
+async function startSaver() {
+  tick();
+  const gen = ++SAVER.gen;
+  $("#saver").classList.add("on");
+  setOverlay("saver");
+  paintSaverHud();
+  if (!SAVER.photos.length || Date.now() - SAVER.at > SAVER_STALE) await loadSaverPhotos();
+  if (gen !== SAVER.gen) return;
+  paintSaverNote();
+  showNextPhoto(gen);
+}
+function stopSaver() {
+  SAVER.gen++;
+  clearTimeout(SAVER.timer);
+  $("#saver").classList.remove("on");
+  $("#saverNote").classList.remove("on");
+  setOverlay(null);
+  armSaver();
+  // Once it has faded away, nothing keeps moving or holds a photo.
+  const gen = SAVER.gen;
+  setTimeout(() => {
+    if (gen !== SAVER.gen) return;
+    saverLayers().forEach((l) => { l.classList.remove("on", "was", "tall"); const img = l.querySelector("img"); img.style.animation = "none"; img.removeAttribute("src"); l.querySelector(".bd").style.backgroundImage = ""; });
+    SAVER.front = null;
+  }, 1500);
+}
+// The hub's tv.saver changed (here, in the hub's editor, or on another TV): new photos, motion and widgets.
+function saverSettingsChanged() {
+  SAVER.at = 0;
+  if (PREVIEW) return;
+  loadSaverPhotos(true).then(() => {
+    if (S.overlay === "saver") { const gen = ++SAVER.gen; paintSaverHud(); paintSaverNote(); showNextPhoto(gen); }
+    if (S.overlay === "settings") renderSettings();
+  });
+}
+
+// Settings › Screensaver photos: which library, and how it's doing.
+function saverSourceName() {
+  const set = saverSettings();
+  return set.source === "folder" && set.folder ? set.folder.split(/[\\/]/).filter(Boolean).pop() || "Folder" : SAVER_SOURCES[set.source] || "Wallpapers";
+}
+function saverSourceNote() {
+  const src = SAVER.source;
+  if (!src || src.id !== saverSettings().source) return "Wallpapers, Pictures, iCloud Photos, or a folder chosen in LocalHub";
+  if (src.fallback) return "Not available here, so the wallpapers show";
+  const n = Number(src.count) || SAVER.photos.length;
+  return `${n.toLocaleString()} photo${n === 1 ? "" : "s"}${src.truncated ? " (the first ones)" : ""}`;
+}
+async function cycleSaverSource() {
+  const set = saverSettings();
+  const order = ["wallpapers", "pictures", "icloud", ...(set.folder ? ["folder"] : [])];
+  const source = order[(order.indexOf(set.source) + 1) % order.length];
+  // Shown at once; the hub's answer settles it.
+  SETTINGS = { ...(SETTINGS || {}), tv: { ...(SETTINGS?.tv || {}), saver: { ...set, source } } };
+  SAVER.source = null;
+  renderSettings();
+  try {
+    const r = await fetch("/api/hub/settings", { method: "POST", headers: { "content-type": "application/json", "x-hub": "1" }, body: JSON.stringify({ tv: { saver: { source } } }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || `LocalHub answered ${r.status}`);
+    SETTINGS = j;
+    await loadSaverPhotos(true);
+    const src = SAVER.source;
+    toast(src?.fallback ? src.error || `${saverSourceName()} isn’t available here` : `Screensaver: ${saverSourceName()}, ${saverSourceNote()}`);
+  } catch (err) {
+    SETTINGS = { ...(SETTINGS || {}), tv: { ...(SETTINGS?.tv || {}), saver: set } };
+    toast(`Couldn’t change the screensaver: ${err.message}`);
+  }
+  if (S.overlay === "settings") renderSettings();
+}
 
 /* ── voice ─────────────────────────────────────────────────────────────────
    The mic is the hub chat's own (tabs/chat.js): with nothing typed, its send button is a mic, on
@@ -1293,6 +1501,7 @@ async function boot() {
     HUB.name = window.HUB_CONF?.name || HUB.name;
     HUB.owner = window.HUB_CONF?.owner || "";
     await syncHub();
+    if (!PREVIEW) loadSaverPhotos();
     ITEMS[0].name = HUB.name;
     S.shelfId = null;
     renderGrid();
