@@ -460,3 +460,10 @@ body.shelf-hub .shelf-fade { background: none; }
 .row .chev { color: rgba(255, 255, 255, .35); }
 .row.is-sel { background: linear-gradient(180deg, rgba(255, 255, 255, .6), rgba(255, 255, 255, 0) 60%), rgba(255, 255, 255, .9); color: #000; transform: scale(1.025); box-shadow: var(--lg-inner), 0 22px 48px -18px rgba(0, 0, 0, .6); }
 .row.is-sel .t2, .row.is-sel .v, .row.is-sel .chev { color: rgba(0, 0, 0, .52); }
+
+/* Settings list: room on every side for the lifted row, and the list fades out above the ask bar
+   instead of being cut off. */
+.settings-side { overflow: hidden; padding: 80px 112px 0 40px; -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 60px, #000 calc(100% - 230px), transparent calc(100% - 110px)); mask-image: linear-gradient(180deg, transparent 0, #000 60px, #000 calc(100% - 230px), transparent calc(100% - 110px)); }
+.set-track { padding: 0 16px 260px; }
+.set-title { margin-left: 28px; }
+.row.is-sel { transform: scale(1.02); }
