@@ -213,7 +213,7 @@
       </div>
     </div>
   </section>
-  <!-- TV: LocalHub TV (tv/ in the repo). The APK is a preview until it has run on a real Fire TV.
+  <!-- TV: LocalHub TV (tv/ in the repo). Checked in CI on an Android TV emulator (tv.yml "emulator" job); in the hub it's Home → TV → Set up a TV.
        TV_DOWNLOAD_URL: the newest release's LocalHub-TV.apk, attached by .github/workflows/tv.yml for each v* tag. -->
   <section class="tv page" aria-labelledby="tv-title">
     <p class="tv-tag">LocalHub TV</p>
@@ -228,7 +228,8 @@
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="m7 10.5 5 5 5-5"/><path d="M5 20h14"/></svg>
         <span>Download for Fire TV</span>
       </a>
-      <p class="platform">Preview. Needs LocalHub running on a PC on the same network. On the TV, turn on apps from unknown sources and install the file with the Downloader app, then pair it with your hub. <a href="https://github.com/jakescalesAI/local-hub/tree/main/tv#readme">Setup steps</a></p>
+      <p class="platform">For Fire TV and Android TV, with LocalHub running on a PC on the same network. In LocalHub, open Home → TV → Set up a TV: it walks you through installing with the Downloader app, lets the TV find your hub, and pairs it.</p>
+      <p class="platform">Voice works out of the box; install faster-whisper on the PC for local transcription. The TV’s mic depends on the device, and Alexa is in beta. <a href="https://github.com/jakescalesAI/local-hub/tree/main/tv#readme">TV details</a></p>
     </div>
   </section>
   <section class="steps page" aria-labelledby="steps-title">
