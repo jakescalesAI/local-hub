@@ -41,7 +41,7 @@ if [ -z "$installed" ]; then
 fi
 adb logcat -c
 adb logcat -b crash -c 2>/dev/null || true
-step "start"; timeout 60 adb shell am start -W -n "$ACTIVITY" | tee "$OUT/am-start.txt"
+step "start"; started=$(date +%s); timeout 60 adb shell am start -W -n "$ACTIVITY" | tee "$OUT/am-start.txt"
 grep -q "Status: ok" "$OUT/am-start.txt" || fail "am start didn't report Status: ok"
 
 sleep 10
@@ -49,26 +49,35 @@ shot 01-after-10s
 
 # ── the WebView drew the home screen ─────────────────────────────────────────────────────────
 # The debug build turns on WebView debugging, so the page itself can be asked over DevTools.
+# (A uiautomator dump only shows an empty WebView node here, and MainActivity doesn't forward the
+# page's console to logcat, so neither would prove anything.)
 PID=$(adb shell pidof "$PKG" | tr -d '\r')
 if [ -n "$PID" ]; then
-  adb forward tcp:9222 "localabstract:webview_devtools_remote_$PID"
+  adb forward tcp:9222 "localabstract:webview_devtools_remote_$PID" >/dev/null
   # Waits up to 30 s more for the splash to finish and the grid to fill.
   step "page check"; timeout 90 node "$HERE/check.mjs" page 9222 30 > "$OUT/page.json" 2> "$OUT/page-error.txt"
   page_status=$?
   cat "$OUT/page.json" "$OUT/page-error.txt"
   [ $page_status -eq 0 ] || fail "$(tail -n1 "$OUT/page-error.txt" | sed 's/^FAIL: //')"
-  adb forward --remove tcp:9222 || true
+  adb forward --remove tcp:9222 >/dev/null 2>&1 || true
 else
   fail "local.hub.tv wasn't running 10 s after launch, so its page couldn't be checked"
 fi
 
 shot 02-home
 node "$HERE/check.mjs" png "$OUT/02-home.png" || fail "the screen is blank or a single colour (02-home.png)"
+# Kept for the artifact only, see above.
 step "ui dump"; timeout 30 adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1 && adb pull /sdcard/ui.xml "$OUT/ui.xml" >/dev/null 2>&1 || true
 
 # ── still alive, still in front, never crashed ───────────────────────────────────────────────
+# Asked no sooner than 30 s after the launch, so a slow crash or ANR has had time to happen.
+left=$(( started + 30 - $(date +%s) ))
+[ $left -gt 0 ] && { step "settle ${left}s"; sleep $left; }
+first_pid=$PID
 PID=$(adb shell pidof "$PKG" | tr -d '\r')
-[ -n "$PID" ] && echo "pid: $PID" || fail "local.hub.tv isn't running (pidof found nothing)"
+echo "pid: ${PID:-none} ($(( $(date +%s) - started )) s after launch)"
+if [ -z "$PID" ]; then fail "local.hub.tv isn't running (pidof found nothing)"
+elif [ -n "$first_pid" ] && [ "$PID" != "$first_pid" ]; then fail "local.hub.tv restarted (pid $first_pid, now $PID)"; fi
 
 step "foreground and logcat"; timeout 30 adb shell dumpsys activity activities > "$OUT/activities.txt"
 resumed=$(grep -E 'mResumedActivity|topResumedActivity' "$OUT/activities.txt" | head -n 3)
@@ -79,8 +88,12 @@ timeout 30 adb shell dumpsys window | grep -m1 mCurrentFocus | tee "$OUT/focus.t
 adb logcat -d -v threadtime > "$OUT/logcat-all.txt"
 adb logcat -d -b crash -v threadtime > "$OUT/logcat-crash.txt" 2>/dev/null || true
 [ -n "$PID" ] && adb logcat -d -v threadtime --pid="$PID" > "$OUT/logcat-app.txt"
-# chromium carries the page's console; ActivityManager and AndroidRuntime carry starts and crashes.
-grep -E "$PKG|chromium|AndroidRuntime|FATAL|ANR in" "$OUT/logcat-all.txt" > "$OUT/logcat-excerpt.txt" || true
+# The app's own lines, then what the rest of the system said about it (starts, deaths, crashes).
+{
+  [ -f "$OUT/logcat-app.txt" ] && cat "$OUT/logcat-app.txt"
+  echo "── other processes about $PKG ──"
+  grep -E "$PKG|FATAL EXCEPTION|ANR in" "$OUT/logcat-all.txt" | awk -v pid="$PID" '$3 != pid' || true
+} > "$OUT/logcat-excerpt.txt"
 
 if grep -q "$PKG" "$OUT/logcat-crash.txt"; then fail "the crash log has an entry for $PKG"; fi
 if grep -A3 "FATAL EXCEPTION" "$OUT/logcat-all.txt" | grep -q "Process: $PKG"; then fail "FATAL EXCEPTION in $PKG"; fi
