@@ -485,7 +485,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
 @keyframes dot { 0%, 70%, 100% { opacity: .35; transform: none; } 35% { opacity: 1; transform: translateY(-2px); } }
 /* Under each reply in the full chat: sent time, duration, tokens, Reply, Copy. Hover (or tap on touch) shows it. The card never does. */
 .clog .acts { display: none; }
-.acts { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; min-height: 26px; margin-left: -6px; font-size: 12px; color: var(--label-2, rgba(60, 60, 67, .6)); opacity: 0; transition: opacity .15s; }
+.acts { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; min-height: 26px; margin: -2px 0 -6px -6px; font-size: 12px; color: var(--label-2, rgba(60, 60, 67, .6)); opacity: 0; transition: opacity .15s; }
 .msg:hover .acts, .msg:focus-within .acts, .msg.show .acts { opacity: 1; }
 .acts .meta { display: inline-flex; align-items: center; gap: 0; margin-right: 2px; }
 .acts .mt { display: inline-flex; align-items: center; height: 24px; padding: 0 6px; white-space: nowrap; font-variant-numeric: tabular-nums; cursor: default; }
