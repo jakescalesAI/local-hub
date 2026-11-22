@@ -28,7 +28,7 @@ concurrency:
 jobs:
   windows:
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     defaults:
       run:
         working-directory: desktop
@@ -42,6 +42,40 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run dist
+      # The real app through Playwright's Electron driver, including the packaged build in dist/win-unpacked.
+      - run: npm run test:e2e
+      # What a user does: install silently, start it, and check the bundled Hub answers, TV page included.
+      # Then uninstall and check the Hub's data folder stays, as the README promises.
+      - name: Install, launch and uninstall the real installer
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Start-Process dist\LocalHub-Setup.exe -ArgumentList '/S' -Wait
+          $dir = Join-Path $env:LOCALAPPDATA 'Programs\LocalHub'
+          $exe = Join-Path $dir 'LocalHub.exe'
+          if (-not (Test-Path $exe)) { Get-ChildItem (Join-Path $env:LOCALAPPDATA 'Programs') -Recurse -Depth 1 | Select FullName; throw "not installed at $exe" }
+          if (-not (Test-Path (Join-Path $dir 'resources\hub\server.mjs'))) { throw 'the installer has no bundled Hub' }
+          if (-not (Test-Path (Join-Path $dir 'resources\hub\tv\ui'))) { throw 'the installer has no TV page' }
+          Start-Process $exe -ArgumentList '--hidden'
+          $ok = $false
+          foreach ($i in 1..60) { try { $r = Invoke-WebRequest http://localhost:3100/ -UseBasicParsing -TimeoutSec 5; if ($r.StatusCode -lt 500) { $ok = $true; break } } catch { Start-Sleep -Seconds 2 } }
+          if (-not $ok) { throw 'the bundled Hub never answered on :3100' }
+          foreach ($p in '/', '/tv/') {
+            $r = Invoke-WebRequest "http://localhost:3100$p" -UseBasicParsing -TimeoutSec 10 -SkipHttpErrorCheck
+            "$p -> $($r.StatusCode)"
+            if ($r.StatusCode -ge 500) { throw "$p answered $($r.StatusCode)" }
+          }
+          Get-Process LocalHub -ErrorAction SilentlyContinue | Stop-Process -Force
+          Get-CimInstance Win32_Process -Filter "Name='node.exe' OR Name='LocalHub.exe'" | Where-Object { $_.CommandLine -match 'LocalHub' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+          Start-Sleep -Seconds 2
+          $data = Join-Path $env:APPDATA 'LocalHub\hub'
+          if (-not (Test-Path $data)) { Get-ChildItem $env:APPDATA -Directory | Select Name; throw "no Hub data folder at $data" }
+          $un = Get-ChildItem $dir -Filter 'Uninstall*.exe' | Select-Object -First 1
+          Start-Process $un.FullName -ArgumentList '/S' -Wait
+          Start-Sleep -Seconds 5
+          if (Test-Path $exe) { throw 'uninstall left the app behind' }
+          if (-not (Test-Path $data)) { throw 'uninstall removed the Hub data folder' }
+          'installed, served / and /tv/, uninstalled, data kept'
       - uses: actions/upload-artifact@v4
         with:
           name: LocalHub-Windows
