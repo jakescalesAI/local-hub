@@ -316,9 +316,13 @@ function hexA(c, a) {
   return `rgba(${r},${g},${b},${a})`;
 }
 
-/* The header is the app's own long tile, larger, like Prime Video's: one logo, no caption. */
+/* The header is the app's banner in white, like tvOS: Prime Video's long wordmark where the app
+   has one, and otherwise its name set large as the wordmark. No icon, no caption. */
 function appShelfHTML(it) {
-  return `<div class="shelf-title"><div class="hero" aria-label="${esc(it.name)}">${iconHTML(it)}</div></div>`;
+  const mark = it.icon && it.wide && !it.banner
+    ? `<i class="banner-mark" style="--glyph:url('./brands/${it.icon}.svg')"></i>`
+    : `<h1 class="banner-text">${esc(it.name)}</h1>`;
+  return `<div class="shelf-title" aria-label="${esc(it.name)}">${mark}</div>`;
 }
 
 /* The LocalHub tile: a greeting and the widgets picked for the TV in the hub's Home editor. */
