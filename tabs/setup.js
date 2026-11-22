@@ -7,7 +7,7 @@
   const css = `
   .hs-veil { position: fixed; inset: 0; z-index: 9000; display: grid; place-items: center; padding: 16px; overflow: auto;
     background: rgba(8, 10, 16, .55); -webkit-backdrop-filter: blur(24px) saturate(1.4); backdrop-filter: blur(24px) saturate(1.4); font: 15px/1.4 Inter, system-ui, sans-serif; }
-  .hs-card { width: min(480px, 100%); max-height: calc(100dvh - 32px); overflow: auto; border-radius: 22px; padding: 26px; color: var(--label, #111);
+  .hs-card { width: min(480px, 100%); max-height: calc(100dvh - 32px); display: flex; flex-direction: column; overflow: hidden; border-radius: 22px; color: var(--label, #111);
     background: color-mix(in srgb, var(--surface, #fff) 82%, transparent); border: 1px solid rgba(255,255,255,.25); box-shadow: 0 24px 70px rgba(0,0,0,.4); }
   .hs-card h1 { margin: 0 0 4px; font-size: 24px; font-weight: 700; letter-spacing: -.02em; }
   .hs-card p { margin: 0 0 16px; color: var(--label-2, #6b6b72); }
@@ -19,7 +19,18 @@
   .hs-choice small { display: block; color: var(--label-2, #6b6b72); font-size: 13px; font-weight: 400; }
   .hs-status { padding: 12px; border-radius: 12px; background: var(--surface-2, #f2f2f7); margin: 0 0 12px; }
   .hs-status code { font: 13px ui-monospace, Menlo, Consolas, monospace; }
-  .hs-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
+  /* The fields scroll inside the card; the buttons stay put at the bottom. */
+  .hs-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 26px 26px 6px; --thumb: color-mix(in srgb, var(--label, #000) 22%, transparent); }
+  .hs-body:hover { --thumb: color-mix(in srgb, var(--label, #000) 34%, transparent); }
+  .hs-body p, .hs-body h1, .hs-body label { overflow-wrap: anywhere; }
+  .hs-btns { flex: none; display: flex; gap: 8px; justify-content: flex-end; padding: 14px 26px 22px; border-top: 1px solid color-mix(in srgb, var(--label, #000) 8%, transparent); }
+  @supports selector(::-webkit-scrollbar) {
+    .hs-body::-webkit-scrollbar { width: 14px; background: transparent; }
+    .hs-body::-webkit-scrollbar-track { background: transparent; margin: 14px 0; }
+    .hs-body::-webkit-scrollbar-thumb { border: 5px solid transparent; border-radius: 10px; background: var(--thumb) padding-box; }
+    .hs-body::-webkit-scrollbar-button { display: none; }
+  }
+  @supports not selector(::-webkit-scrollbar) { .hs-body { scrollbar-width: thin; scrollbar-color: var(--thumb) transparent; } }
   .hs-btn { padding: 10px 18px; border: 0; border-radius: 11px; font: 600 15px Inter, system-ui, sans-serif; cursor: pointer; color: inherit; background: var(--surface-2, #f2f2f7); }
   .hs-btn.go { color: #fff; background: var(--blue, #0a84ff); }
   .hs-btn:disabled { opacity: .5; cursor: default; }
@@ -61,8 +72,8 @@
   }
   function paint(error = '') {
     const last = step === STEPS.length - 1
-    card.innerHTML = `<div class="hs-steps">Step ${step + 1} of ${STEPS.length}</div>${STEPS[step]()}
-      <div class="hs-err" role="alert">${esc(error)}</div>
+    card.innerHTML = `<div class="hs-body"><div class="hs-steps">Step ${step + 1} of ${STEPS.length}</div>${STEPS[step]()}
+      <div class="hs-err" role="alert">${esc(error)}</div></div>
       <div class="hs-btns">${step ? '<button class="hs-btn" data-go="back">Back</button>' : ''}<button class="hs-btn go" data-go="next">${last ? 'Finish' : 'Continue'}</button></div>`
     card.querySelector('input:not([type=radio])')?.focus()
     for (const r of card.querySelectorAll('input[name=hs-access]')) r.onchange = () => { collect(); paint() }
