@@ -14,6 +14,8 @@
 // voice) comes from Java through window.LocalHubNative. On a laptop, apps open their websites.
 // ============================================================================
 
+import * as Stream from "./stream.js";
+
 const NATIVE = typeof window.LocalHubNative === "object" && window.LocalHubNative ? window.LocalHubNative : null;
 const IN_HUB = location.pathname.startsWith("/tv");
 const $ = (s) => document.querySelector(s);
@@ -172,11 +174,12 @@ function loadItems() {
       id: a.id, pkg: a.id, name: a.name, banner: a.banner || null, img: a.icon || null,
       bg: a.color || "#2c2c2e", fg: "#ffffff", recentAt: a.recent || 0,
     }));
+    if (IN_HUB) APPS.push(...Stream.STREAM_APPS.map((a) => ({ ...a, note: Stream.noteFor(a) })));
     INPUTS = safeJson(native("inputs") || "[]", []);
   } else {
     const now = Date.now();
     const opened = safeJson((() => { try { return localStorage.getItem("localhub.tv.opened"); } catch { return null; } })(), {}) || {};
-    APPS = WEB_APPS.map((a) => ({ ...a, recentAt: opened[a.id] || (a.recent ? now - a.recent * 3600e3 : 0) }));
+    APPS = [...WEB_APPS, ...(IN_HUB ? Stream.STREAM_APPS : [])].map((a) => ({ ...a, note: Stream.noteFor(a), recentAt: opened[a.id] || (a.recent ? now - a.recent * 3600e3 : 0) }));
     INPUTS = DEMO_INPUTS;
   }
   if (!prefs.inputs) INPUTS = [];
@@ -201,7 +204,7 @@ function iconHTML(it) {
   const fill = '<i class="fill"></i>';
   if (it.banner) return `<div class="icon" style="${colors}"><img src="${esc(it.banner)}" alt="" decoding="async"></div>`;
   if (it.img) return `<div class="icon" style="${colors}">${fill}<img class="square" src="${esc(it.img)}" alt="" decoding="async"></div>`;
-  if (it.icon) return `<div class="icon" style="${colors}">${fill}<i class="glyph${it.wide ? " wide" : ""}" style="--glyph:url('./brands/${it.icon}.svg')"></i></div>`;
+  if (it.icon) return `<div class="icon" style="${colors}">${fill}<i class="glyph${it.wide ? " wide" : ""}" style="--glyph:url('./brands/${it.icon}.svg')"></i>${it.note ? `<span class="sub">${esc(it.note)}</span>` : ""}</div>`;
   return `<div class="icon" style="${colors}">${fill}<b class="letter"${it.letter && it.letter.length > 4 ? ' style="font-size:58px"' : ""}>${esc(it.letter || it.name.slice(0, 1))}</b></div>`;
 }
 
@@ -405,13 +408,27 @@ function activate() {
   if (it.kind === "hub") return openHubApp();
   if (it.kind === "settings") return openSettings();
   if (it.kind === "input") return launch(it, () => (NATIVE ? native("switchInput", it.id) : true), `Switching to ${it.name}`);
+  if (it.stream || (!NATIVE && IN_HUB && Stream.engineFor(it))) return openInStream(it);
   return launch(it, () => openApp(it));
 }
 
-/* On a TV, Java starts the app. On a laptop, the website opens in a new window; when you come
-   back to this one, the icon settles back into the grid. */
-function openApp(app) {
+/* The TV's browsers (stream.js): Chromium and Chrome on the laptop, shown full screen here. On a laptop the web
+   apps open in them too, inside LocalHub; a new window is only for when this laptop has no browser to use. */
+function openInStream(it) {
+  remember(it);
+  const tile = $(`.app[data-i="${ITEMS.indexOf(it)}"] .icon`)?.getBoundingClientRect();
+  Stream.open(it, tile).then((ok) => {
+    if (ok || !it.url) return;
+    toast("No Chrome or Chromium here to open it in, so it opens in a new window");
+    launch(it, () => openApp(it, true));
+  });
+}
+
+/* On a TV, Java starts the app. On a laptop, the website opens inside LocalHub in one of its browsers,
+   or, with none on this laptop, in a new window; coming back to this one settles the icon into the grid. */
+function openApp(app, windowOnly) {
   if (NATIVE) return native("launch", app.pkg) !== false;
+  if (!windowOnly && IN_HUB && Stream.engineFor(app)) { openInStream(app); return true; }
   if (!app.url) return false;
   const w = window.open(app.url, "_blank", "noopener");
   remember(app);
@@ -444,7 +461,7 @@ function launch(it, go, note) {
   const icon = holder.firstElementChild;
   Object.assign(icon.style, { left: `${(r.left - stage.left) / k}px`, top: `${(r.top - stage.top) / k}px`, width: `${r.width / k}px`, height: `${r.height / k}px`, transition: "none" });
   layer.prepend(icon);
-  $("#launchNote").textContent = NATIVE ? "" : note ? `${note} — on a TV this switches the input` : it.url ? `Opening ${it.name} in a new window…` : `${it.name} isn't on this laptop`;
+  $("#launchNote").textContent = NATIVE ? "" : note ? `${note} — on a TV this switches the input` : it.url ? (IN_HUB && Stream.engineFor(it) ? `Opening ${it.name}…` : `Opening ${it.name} in a new window…`) : `${it.name} isn't on this laptop`;
   setOverlay("launch");
   layer.classList.add("on");
   requestAnimationFrame(() => requestAnimationFrame(() => { icon.style.transition = ""; layer.classList.add("full"); }));
@@ -958,6 +975,7 @@ function runCommand(cmd) {
   if (S.overlay === "saver") stopSaver();
   if (S.overlay === "cc") closeCC();
   if (S.overlay === "settings") closeSettings();
+  if (S.overlay === "stream" && cmd.type !== "say" && cmd.type !== "answer") Stream.close();
   if (cmd.type === "launch") { const app = findApp(cmd.app); return app ? runIntent({ type: "launch", app }) : toast(`No app called “${cmd.app}” here`); }
   if (cmd.type === "input") {
     const want = String(cmd.name || "").toLowerCase();
@@ -1088,6 +1106,7 @@ function handleKey(name) {
   armSaver();
   if (S.overlay === "saver") return stopSaver();
   if (S.overlay === "launch") return;
+  if (S.overlay === "stream") return void Stream.key(name);
   if (S.overlay === "hub") { if (name === "back") closeHub(); return; }
   if (name === "help") { prefs.help = !prefs.help; savePrefs(); return showKeys(prefs.help); }
   if (S.overlay === "modal") { if (name === "back") closeModal(false); return; }
@@ -1235,6 +1254,7 @@ async function boot() {
     HUB.name = window.HUB_CONF?.name || HUB.name;
     HUB.owner = window.HUB_CONF?.owner || "";
     await syncHub();
+    Stream.init({ toast, native, NATIVE, setOverlay, closed: () => { S.zone = "grid"; setOverlay(null); window.focus(); }, changed: () => window.haven.appsChanged() });
     ITEMS[0].name = HUB.name;
     S.shelfId = null;
     renderGrid();

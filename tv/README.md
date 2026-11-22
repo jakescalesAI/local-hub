@@ -65,8 +65,26 @@ or open **http://localhost:3100/tv/** in any browser. The keyboard is the remote
 
 The mouse works too: hovering focuses and tilts an icon, a click opens it, the wheel scrolls.
 On a laptop the apps open their **real websites** (Netflix, YouTube, Prime Video, Disney+, Max,
-Apple TV, Plex, Spotify, …) in a new window; come back to LocalHub TV and the icon settles back into
-the grid. Typing or saying **"open Netflix"** in the bar does the same at once, without the agent.
+Apple TV, Plex, Spotify, …) inside LocalHub TV, in one of its browsers below; only a laptop with no
+Chrome, Chromium or Edge at all opens them in a new window. Typing or saying **"open Netflix"** in the
+bar does the same at once, without the agent.
+
+## The browsers: Browser and Chromium
+
+Two tiles are browsers running on the laptop and shown full screen on the TV (`stream.mjs`, `ui/stream.js`):
+**Browser** is Google Chrome, whose Widevine plays Netflix, Prime Video, Disney+ and the rest, and
+**Chromium** is a Chromium build (Playwright's or Puppeteer's download, Chromium.app, the chromium
+package), or Chrome's or Edge's program run as Chromium when there's none. Both run headless with
+their own profiles in `data/tv-stream/`, apart from the agent's browser, so sign-ins (a Netflix login)
+last and the agent is never disturbed. The web app tiles open in Chrome when it's there.
+
+The picture is Chrome's own screencast: 1920×1080 JPEG frames over one HTTP response, the page laid
+out at 1280×720 so it reads from the sofa. The remote: arrows move a pointer (faster while held; at an
+edge the page scrolls, and Up at the top reaches the bar), OK clicks, Back goes back and leaves from the
+app's first page, Menu types an address or a search, ⏯ is the page's Space. A click on a text field
+brings up a sheet with a real input, so a Fire TV shows its keyboard; on a laptop just type.
+`"tv": { "stream": { "zoom": 1.5, "quality": 80, "chrome": { "window": true } } }` in hub.json changes
+the zoom, the JPEG quality, or shows Chrome as a window on the laptop (about half the frame rate).
 
 ## Put it on the TV
 
