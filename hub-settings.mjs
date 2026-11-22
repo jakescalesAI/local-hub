@@ -147,6 +147,15 @@ const groupIds = s => (s.groups || []).map(x => x.id)
 // Each view keeps its own layout. iPad starts as a copy of Desktop, reflowed to fit. TV is what
 // LocalHub TV shows on its Top Shelf (tv/ui), so it starts small.
 const VIEWS = ['desktop', 'ipad', 'mobile', 'tv']
+// How each view moves through what doesn't fit: sideways a page at a time, or one long vertical scroll.
+// The TV scrolls down through its rows like tvOS; the others page like an iPhone.
+export const SCROLLS = ['pages', 'infinite']
+export const SCROLL_DEFAULT = { desktop: 'pages', ipad: 'pages', mobile: 'pages', tv: 'infinite' }
+// LocalHub TV's own choices: its app tiles in order (`apps`) and the ones it leaves out (`hidden`).
+// Ids are the TV's: a stand-in id on a laptop (netflix, plex…), a package name on a Fire TV. An app
+// in neither list (new, or from another TV) shows after the listed ones; both empty is the default order.
+const TV_APP_RE = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/
+const MAX_TV_APPS = 200
 
 const WIDGET_DEFAULTS = {
   desktop: [['claude-usage', 'm'], ['clock', 's'], ['next-event', 's'], ['tokens', 'm'], ['coolify', 's'], ['services', 's'], ['today', 'm'], ['stripe-balance', 's'], ['openrouter', 's'], ['server-health', 'm'], ['deepseek', 's'], ['icloud', 's'], ['drives', 'm'], ['backup-drive', 's'], ['laptop-health', 's'], ['servers', 'l'], ['revenue', 'm'], ['clients', 'm']],
@@ -178,6 +187,8 @@ const defaults = here => ({
   files: [],
   style: defaultStyle(),
   wallpaper: { current: activeTheme().wallpaper || 'none', custom: [], uploads: [] },
+  scroll: { ...SCROLL_DEFAULT },
+  tv: { apps: [], hidden: [] },
 })
 
 /* ---------- validation ---------- */
@@ -324,14 +335,16 @@ export function applyPatch(cur, body, here) {
   const TABS = allTabs(here)
   next.sites = next.sites || []
   next.pages = next.pages || []
-  if (!c.obj('body', body, ['tabs', 'apps', 'sites', 'groups', 'pages', 'widgets', 'style', 'wallpaper', 'reset'])) c.done()
-  if (!Object.keys(body).length) c.fail('body', 'is empty: send at least one of tabs, apps, sites, groups, pages, widgets, style, wallpaper, reset')
+  next.scroll = { ...SCROLL_DEFAULT, ...(next.scroll || {}) }
+  next.tv = { apps: [], hidden: [], ...(next.tv || {}) }
+  if (!c.obj('body', body, ['tabs', 'apps', 'sites', 'groups', 'pages', 'widgets', 'scroll', 'tv', 'style', 'wallpaper', 'reset'])) c.done()
+  if (!Object.keys(body).length) c.fail('body', 'is empty: send at least one of tabs, apps, sites, groups, pages, widgets, scroll, tv, style, wallpaper, reset')
 
   if (body.reset !== undefined) {
-    const parts = ['tabs', 'apps', 'widgets', 'style', 'wallpaper', 'pages', 'all']
-    const r = c.ids('reset', body.reset, parts, 7)
+    const parts = ['tabs', 'apps', 'widgets', 'scroll', 'tv', 'style', 'wallpaper', 'pages', 'all']
+    const r = c.ids('reset', body.reset, parts, parts.length)
     const d = defaults(here)
-    for (const k of r || []) for (const part of k === 'all' ? parts.slice(0, 6) : [k]) next[part] = part === 'wallpaper' ? { ...d.wallpaper, custom: next.wallpaper.custom, uploads: next.wallpaper.uploads } : d[part]
+    for (const k of r || []) for (const part of k === 'all' ? parts.filter(x => x !== 'all') : [k]) next[part] = part === 'wallpaper' ? { ...d.wallpaper, custom: next.wallpaper.custom, uploads: next.wallpaper.uploads } : d[part]
     if (r?.includes('apps') || r?.includes('all')) next.groups = []
   }
 
@@ -541,6 +554,28 @@ export function applyPatch(cur, body, here) {
     next.widgets[vk] = (next.widgets[vk] || []).filter(it => it && (it.id !== 'app' || (next.apps.includes(it.app) && !seen.has(it.app) && seen.add(it.app))))
   }
 
+  // Pages or one long scroll, per view: { desktop?, ipad?, mobile?, tv? }.
+  if (body.scroll !== undefined && c.obj('scroll', body.scroll, VIEWS)) {
+    for (const [vk, v] of Object.entries(body.scroll)) if (VIEWS.includes(vk) && c.oneOf(`scroll.${vk}`, v, SCROLLS) !== undefined) next.scroll[vk] = v
+  }
+
+  // LocalHub TV: { apps?: [ids in order] | null, hidden?: [ids] }. null or [] puts back the default order.
+  if (body.tv !== undefined && c.obj('tv', body.tv, ['apps', 'hidden'])) {
+    for (const k of ['apps', 'hidden']) {
+      const v = body.tv[k]
+      if (v === undefined) continue
+      if (v === null) { next.tv[k] = []; continue }
+      if (!c.list(`tv.${k}`, v, MAX_TV_APPS)) continue
+      const seen = new Set()
+      v.forEach((x, i) => {
+        if (typeof x !== 'string' || !TV_APP_RE.test(x)) c.fail(`tv.${k}[${i}]`, 'must be a TV app id: letters, digits, . _ : or -, up to 128')
+        else if (seen.has(x)) c.fail(`tv.${k}[${i}]`, `repeats ${x}`)
+        seen.add(x)
+      })
+      next.tv[k] = [...v]
+    }
+  }
+
   if (body.style !== undefined && c.obj('style', body.style, Object.keys(STYLE))) {
     for (const [k, v] of Object.entries(body.style)) {
       const s = STYLE[k], p = `style.${k}`
@@ -599,6 +634,8 @@ function repair(saved, here) {
   out.files = (Array.isArray(saved.files) ? saved.files : []).filter(f => f && FILE_ID_RE.test(f.id) && fs.existsSync(path.join(here, 'data', 'custom', `${f.id}.html`))).slice(0, MAX_FILES)
     .map(f => ({ id: f.id, name: String(f.name || 'File').slice(0, 40), sizes: cleanSizes(f.sizes), at: Number(f.at) || 0 }))
   for (const vk of VIEWS) tryPart(vk, () => { out.widgets = { ...out.widgets, [vk]: applyPatch(d, { widgets: { [vk]: (saved.widgets[vk] ?? (vk === 'tv' ? seedLayout('tv') : saved.widgets.desktop)).filter(itemIdOk) } }, here).widgets[vk] } })
+  tryPart('scroll', () => { out.scroll = applyPatch(d, { scroll: Object.fromEntries(Object.entries(saved.scroll || {}).filter(([vk, v]) => VIEWS.includes(vk) && SCROLLS.includes(v))) }, here).scroll })
+  for (const k of ['apps', 'hidden']) tryPart(`tv.${k}`, () => { out.tv = { ...out.tv, [k]: applyPatch(d, { tv: { [k]: [...new Set((saved.tv?.[k] || []).filter(x => typeof x === 'string' && TV_APP_RE.test(x)))].slice(0, MAX_TV_APPS) } }, here).tv[k] } })
   for (const k of Object.keys(STYLE)) tryPart(k, () => { out.style = { ...out.style, [k]: applyPatch(d, { style: { [k]: saved.style[k] } }, here).style[k] } })
   tryPart('custom', () => { out.wallpaper = { ...out.wallpaper, custom: applyPatch(d, { wallpaper: { custom: saved.wallpaper.custom } }, here).wallpaper.custom } })
   out.wallpaper.uploads = (saved.wallpaper?.uploads || []).filter(u => u && UPLOAD_ID_RE.test(u.id) && UPLOAD_FILE_RE.test(u.file) && fs.existsSync(path.join(here, 'data', 'wallpapers', u.file))).slice(0, MAX_UPLOADS)
@@ -710,12 +747,14 @@ export function catalog(here) {
     sites: { idPattern: SITE_ID_RE.source, max: MAX_SITES, suggestions: [...hubConfig().siteSuggestions, ...SITE_SUGGESTIONS] },
     groups: { idPattern: GROUP_ID_RE.source, max: MAX_GROUPS, maxApps: MAX_IN_GROUP },
     widgets: { ids: WIDGET_IDS, families: WIDGET_FAMILIES.map(f => `${f}.<key>`), sizes: SIZES, options: WIDGET_OPTIONS, maxPerLayout: MAX_ITEMS, stack: { id: 'stack', min: 2, max: MAX_STACK }, app: { id: 'app', note: 'an app place: { id: "app", app: <id on Home> }' } },
+    scroll: { views: VIEWS, values: SCROLLS, default: SCROLL_DEFAULT },
+    tv: { apps: 'the TV app tiles in order, as the TV’s own app ids', hidden: 'TV app ids left off the TV', max: MAX_TV_APPS, note: 'apps in neither list show after the listed ones; send null or [] for the default order' },
     style: STYLE,
     wallpapers: { builtin: BUILTIN_WALLPAPERS, maxCustom: MAX_CUSTOM, maxUploads: MAX_UPLOADS, uploadTypes: Object.keys(IMAGE_TYPES), uploadMaxBytes: MAX_UPLOAD },
     pages: { idPattern: PAGE_ID_RE.source, max: MAX_PAGES, patch: ['list', 'add', 'rename', 'remove', 'order', 'layout'] },
     files: { idPattern: FILE_ID_RE.source, max: MAX_FILES, maxBytes: MAX_FILE, note: 'custom .html files are added by the owner from the page and run sandboxed with no keys' },
     undo: 'send { undo: true } to put back the settings from before the last save',
-    reset: ['tabs', 'apps', 'widgets', 'style', 'wallpaper', 'pages', 'all'],
+    reset: ['tabs', 'apps', 'widgets', 'scroll', 'tv', 'style', 'wallpaper', 'pages', 'all'],
   }
 }
 
@@ -744,7 +783,7 @@ export function create({ here }) {
         const s = st.get()
         const out = {
           format: EXPORT_FORMAT, version: 1,
-          tabs: s.tabs, apps: s.apps, sites: s.sites, groups: s.groups, pages: s.pages, widgets: s.widgets, style: s.style,
+          tabs: s.tabs, apps: s.apps, sites: s.sites, groups: s.groups, pages: s.pages, widgets: s.widgets, scroll: s.scroll, tv: s.tv, style: s.style,
           wallpaper: { current: s.wallpaper.uploads.some(u => u.id === s.wallpaper.current) ? 'none' : s.wallpaper.current, custom: s.wallpaper.custom },
           files: s.files.map(f => ({ ...f, html: fs.readFileSync(fileOf(f.id), 'utf8') })),
         }
@@ -759,7 +798,7 @@ export function create({ here }) {
         const isObject = k => b[k] == null || (typeof b[k] === 'object' && !Array.isArray(b[k]))
         const isNames = (o, k) => o?.[k] == null || o[k].every(x => typeof x === 'string')
         const lists = [[b, 'apps'], [b, 'groups'], [b, 'sites'], [b, 'pages'], [b, 'files'], [b.tabs, 'order'], [b.tabs, 'hidden'], [b.wallpaper, 'custom']]
-        if (!lists.every(([o, k]) => isList(o, k)) || ![[b, 'apps'], [b.tabs, 'order'], [b.tabs, 'hidden']].every(([o, k]) => isNames(o, k)) || !['tabs', 'widgets', 'style', 'wallpaper'].every(isObject)) return send(res, 400, { error: 'that settings file has the wrong shape' }), true
+        if (!lists.every(([o, k]) => isList(o, k)) || ![[b, 'apps'], [b.tabs, 'order'], [b.tabs, 'hidden']].every(([o, k]) => isNames(o, k)) || !['tabs', 'widgets', 'scroll', 'tv', 'style', 'wallpaper'].every(isObject)) return send(res, 400, { error: 'that settings file has the wrong shape' }), true
         const cur = stripMeta(st.get())
         const files = (Array.isArray(b.files) ? b.files : []).filter(f => f && FILE_ID_RE.test(f.id) && typeof f.html === 'string' && Buffer.byteLength(f.html) <= MAX_FILE).slice(0, MAX_FILES)
         const have = new Set(files.map(f => f.id))
@@ -779,6 +818,8 @@ export function create({ here }) {
           ...(b.groups ? { groups: b.groups } : {}),
           ...(b.apps ? { apps: b.apps.filter(a => allApps(here).includes(a) || sites.some(x => x?.id === a) || b.groups?.some(g => g?.id === a)) } : {}),
           widgets: Object.fromEntries(VIEWS.map(vk => [vk, lay(b.widgets?.[vk] ?? b.widgets?.desktop)])),
+          ...(b.scroll ? { scroll: Object.fromEntries(Object.entries(b.scroll).filter(([vk]) => VIEWS.includes(vk))) } : {}),
+          ...(b.tv ? { tv: { apps: Array.isArray(b.tv.apps) ? b.tv.apps : [], hidden: Array.isArray(b.tv.hidden) ? b.tv.hidden : [] } } : {}),
           ...(b.style ? { style: b.style } : {}),
           wallpaper: { custom: b.wallpaper?.custom || [], current: known.includes(b.wallpaper?.current) ? b.wallpaper.current : 'none' },
         }
