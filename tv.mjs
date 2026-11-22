@@ -27,6 +27,7 @@ import tls from 'node:tls'
 import crypto from 'node:crypto'
 import { spawn } from 'node:child_process'
 import { hubConfig, PORT } from './config.mjs'
+import { create as createStream } from './stream.mjs'
 
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
@@ -52,6 +53,7 @@ function hubVersion(here) {
 export function create({ here }) {
   const uiDir = path.join(here, 'tv', 'ui')
   const whisper = createWhisper(here)
+  const stream = createStream({ here }) // /api/tv/stream/*: the TV's browsers (stream.mjs)
   const commands = []
   const waiters = new Set()
   let seq = 0
@@ -84,6 +86,7 @@ export function create({ here }) {
     }
     if (p.startsWith('/tv/') && req.method === 'GET') return serveUi(p, res, send), true
     if (!p.startsWith('/api/tv/') && !p.startsWith('/api/voice/')) return false
+    if (await stream(url, req, res, { send })) return true
 
     if (p === '/api/voice/warm' && req.method === 'POST') {
       whisper.warm()
@@ -184,7 +187,7 @@ export function create({ here }) {
   route.queue = queue
   route.alexa = alexa
   route.whisper = whisper
-  route.close = () => { alexa.stop(); whisper.stop(); for (const w of waiters) w.deliver({ seq, command: null }) }
+  route.close = () => { alexa.stop(); whisper.stop(); stream.close(); for (const w of waiters) w.deliver({ seq, command: null }) }
   return route
 }
 
