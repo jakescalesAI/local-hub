@@ -235,13 +235,16 @@ export function cleanLayout(c, p, l) {
   }
   return l.map((it, i) => {
     const q = `${p}[${i}]`
+    // br: this item starts a new Home page.
+    if (it?.br !== undefined && it.br !== true) c.fail(`${q}.br`, 'must be true or left out')
+    const br = it?.br ? { br: true } : {}
     // An app's place among the widgets: { id: "app", app }. Apps not on Home are dropped after the patch.
     if (it?.id === 'app') {
-      if (!c.obj(q, it, ['key', 'id', 'app'])) return null
+      if (!c.obj(q, it, ['key', 'id', 'app', 'br'])) return null
       if (typeof it.app !== 'string' || !APP_REF_RE.test(it.app)) return c.fail(`${q}.app`, 'must be an app id'), null
-      return { id: 'app', app: it.app }
+      return { id: 'app', app: it.app, ...br }
     }
-    if (!c.obj(q, it, ['key', 'id', 'size', 'opts', 'stack'])) return null
+    if (!c.obj(q, it, ['key', 'id', 'size', 'opts', 'stack', 'br'])) return null
     key(q, it.key)
     c.oneOf(`${q}.size`, it.size, SIZES)
     // A widget stack: 2-8 widgets sharing one place, swiped through like on iPhone. Each keeps its own options.
@@ -258,11 +261,11 @@ export function cleanLayout(c, p, l) {
         if (x.opts !== undefined) { const op = cleanOpts(c, `${r}.opts`, x.id, x.opts); if (op && Object.keys(op).length) o.opts = op }
         return o
       })
-      return { key: it.key, id: 'stack', size: it.size, stack }
+      return { key: it.key, id: 'stack', size: it.size, ...br, stack }
     }
     if (it.stack !== undefined) c.fail(`${q}.stack`, 'is only for items with id "stack"')
     if (!widgetIdOk(it.id)) c.fail(`${q}.id`, `is not a known widget (see /api/hub/settings/catalog)`)
-    const out = { key: it.key, id: it.id, size: it.size }
+    const out = { key: it.key, id: it.id, size: it.size, ...br }
     if (it.opts !== undefined) { const o = cleanOpts(c, `${q}.opts`, it.id, it.opts); if (o && Object.keys(o).length) out.opts = o }
     return out
   })
@@ -747,7 +750,7 @@ export function create({ here }) {
       }
       if (p === '/api/hub/settings/import' && req.method === 'POST') {
         const b = await readJson(req, MAX_IMPORT)
-        if (b?.format !== EXPORT_FORMAT) return send(res, 400, { error: 'that isn’t a Local Hub settings file' }), true
+        if (b?.format !== EXPORT_FORMAT) return send(res, 400, { error: 'that isn’t a LocalHub settings file' }), true
         // A wrong type refuses the whole file, so a bad one can't quietly empty a part of the hub.
         const isList = (o, k) => o?.[k] == null || Array.isArray(o[k])
         const isObject = k => b[k] == null || (typeof b[k] === 'object' && !Array.isArray(b[k]))

@@ -1,4 +1,4 @@
-# Local Hub
+# LocalHub
 
 Your own private dashboard and AI agent, running on your own computer. One page for your files, your
 services and a chat that can look things up, write, and work in a real browser while you watch.
@@ -34,7 +34,7 @@ Windows and Linux are tested. Mac is written for but has not been run yet, so pl
 
   ```ini
   [Unit]
-  Description=Local Hub
+  Description=LocalHub
 
   [Service]
   WorkingDirectory=%h/local-hub

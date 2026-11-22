@@ -1,0 +1,92 @@
+{
+  "name": "local-hub-desktop",
+  "productName": "LocalHub",
+  "version": "0.1.0",
+  "description": "Desktop app for LocalHub: window, tray icon and global hotkey launcher.",
+  "license": "MIT",
+  "private": true,
+  "author": "LocalHub contributors",
+  "type": "module",
+  "main": "src/main.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test --test-concurrency=1 \"tests/unit/*.test.mjs\"",
+    "test:e2e": "node --test --test-concurrency=1 --test-timeout=180000 --test-force-exit \"tests/e2e/*.test.mjs\"",
+    "dist": "electron-builder --win --publish never"
+  },
+  "devDependencies": {
+    "electron": "45.2.1",
+    "electron-builder": "26.18.0",
+    "playwright-core": "1.64.1"
+  },
+  "build": {
+    "appId": "local-hub.desktop",
+    "artifactName": "LocalHub-Setup-${version}.${ext}",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**",
+      "pages/**",
+      "assets/**",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "..",
+        "to": "hub",
+        "filter": [
+          "**/*",
+          "!desktop{,/**}",
+          "!mobile{,/**}",
+          "!tv/android{,/**}",
+          "!tv/alexa{,/**}",
+          "!site{,/**}",
+          "!test{,/**}",
+          "!.git{,/**}",
+          "!.github{,/**}",
+          "!config{,/**}",
+          "!data{,/**}",
+          "!workspace{,/**}",
+          "!node_modules{,/**}",
+          "!handoffs{,/**}",
+          "!caddy{,/**}",
+          "!logs{,/**}",
+          "!__pycache__{,/**}",
+          "!local-only*",
+          "!secrets.json",
+          "!clients.json",
+          "!servers.json",
+          "!names.json",
+          "!pinned.json",
+          "!.env*",
+          "!*.log",
+          "!*.bak*",
+          "!*.pyc",
+          "!*.exe",
+          "!*.dll",
+          "!*.tar",
+          "!*.zip",
+          "!start-hidden.vbs",
+          "!start.sh",
+          "!restart.ps1",
+          "!restart.sh"
+        ]
+      }
+    ],
+    "npmRebuild": false,
+    "publish": null,
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.png"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "deleteAppDataOnUninstall": false
+    }
+  }
+}

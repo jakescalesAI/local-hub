@@ -147,19 +147,31 @@
 .hw-btn:focus-visible, .hw-pill:focus-visible, .hw-x:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 
 .hw-stage { display: flex; justify-content: center; }
-/* The space below clears the chat bar, so nothing rests under it at the end of the page. */
-.hw-frame { width: 100%; min-width: 0; padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
+/* Home never scrolls: its pages move sideways, and each holds what fits between the top and the chat bar. */
+html:has(.hw-root) { overflow: hidden; overscroll-behavior: none; }
+html:has(.hw-root) .page { padding-bottom: 0 !important; }
+.hw-frame { display: flex; flex-direction: column; width: 100%; min-width: 0; padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
 .hw-device { display: contents; }
-/* iPad and Mobile on a bigger screen: a device drawn at scale, whose content scrolls inside it. */
+/* iPad and Mobile on a bigger screen: a device drawn at scale, whose pages move inside it. */
 .hw-root[data-framed="1"] .hw-stage { display: block; position: relative; height: calc((var(--fh) + 2 * var(--fb)) * var(--fk)); }
 .hw-root[data-framed="1"] .hw-device { display: block; position: absolute; left: 50%; top: calc(var(--fb) * var(--fk)); width: var(--fw); height: var(--fh); margin-left: calc(var(--fw) / -2); transform: scale(var(--fk)); transform-origin: top center; border-radius: var(--fr); overflow: hidden; box-shadow: 0 0 0 1px rgba(255, 255, 255, .14), 0 0 0 var(--fb) #101012, 0 0 0 calc(var(--fb) + 1px) rgba(255, 255, 255, .16), 0 18px 60px rgba(0, 0, 0, .4); }
-.hw-root[data-framed="1"] .hw-frame { width: 100%; height: 100%; padding: var(--fpt) var(--fpx) 30px; overflow: hidden auto; overscroll-behavior-y: contain; scrollbar-width: none; }
-.hw-root[data-framed="1"] .hw-frame::-webkit-scrollbar { display: none; }
+.hw-root[data-framed="1"] .hw-frame { width: 100%; height: 100%; padding: var(--fpt) var(--fpx) 18px; }
 .hw-root[data-framed="1"][data-view="mobile"] .hw-device::before { content: ""; position: absolute; z-index: 3; top: 11px; left: 50%; width: 112px; height: 32px; margin-left: -56px; border-radius: 99px; background: #101012; pointer-events: none; }
 .hw-root[data-framed="1"] .hw-device::after { content: ""; position: absolute; z-index: 3; bottom: 8px; left: 50%; width: 134px; height: 5px; margin-left: -67px; border-radius: 99px; background: var(--label); opacity: .35; pointer-events: none; }
 .hw-root[data-framed="1"][data-view="ipad"] .hw-device::after { width: 220px; margin-left: -110px; }
 /* One grid for apps and widgets, like an iPhone: an app takes one slot, a small widget 2 by 2, medium 4 by 2, large 4 by 4. */
-.hw-grid { display: grid; grid-template-columns: repeat(var(--cols, 8), minmax(0, 1fr)); grid-auto-rows: calc((var(--uh) - var(--gap)) / 2); gap: var(--gap); }
+/* A page reaches the edges of the window or device, so one sliding away leaves the whole screen. */
+.hw-pager { position: relative; flex: 1 1 0; min-height: 0; margin-left: calc(var(--hw-bl, 0px) * -1); margin-right: calc(var(--hw-br, 0px) * -1); padding-left: var(--hw-bl, 0px); padding-right: var(--hw-br, 0px); overflow-x: clip; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+.hw-grid { display: grid; grid-template-columns: repeat(var(--cols, 8), minmax(0, 1fr)); grid-auto-rows: var(--hw-rh, calc((var(--uh) - var(--gap)) / 2)); gap: var(--gap); }
+.hw-dots { flex: none; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, auto) minmax(0, 1fr); align-items: center; gap: 8px; height: 32px; margin-top: 6px; }
+.hw-dots-in { grid-column: 2; display: flex; align-items: center; justify-content: center; width: calc(var(--n, 1) * 18px); max-width: 100%; min-width: 0; }
+.hw-pdot { flex: 0 1 18px; min-width: 6px; height: 32px; display: grid; place-items: center; border-radius: 8px; }
+.hw-pdot::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--label); opacity: .28; transition: opacity .2s; }
+.hw-pdot[aria-current="true"]::before { opacity: .85; }
+.hw-pdot:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
+.hw-dots .hw-pgl { grid-column: 1; justify-self: start; }
+.hw-dots .hw-pgr { grid-column: 3; justify-self: end; }
+.hw-blank { display: flex; align-items: center; justify-content: center; text-align: center; padding: 0 16px; color: var(--label-2); font-size: 15px; }
 .hw-root[data-view="mobile"] .hw-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); justify-content: stretch; }
 .hw-cell { position: relative; min-width: 0; min-height: 0; }
 .hw-cell.s { grid-column: span 2; grid-row: span 2; }
@@ -167,7 +179,7 @@
 .hw-cell.l { grid-column: span 4; grid-row: span 4; }
 .hw-cell.a { display: flex; align-items: center; justify-content: center; }
 .hw-cell.a > .hw-app { width: 100%; }
-.hw-empty { grid-column: 1 / -1; text-align: center; color: var(--label-2); padding: 56px 16px; font-size: 15px; }
+.hw-empty { grid-column: 1 / span var(--cols, 4); text-align: center; color: var(--label-2); padding: 56px 16px; font-size: 15px; }
 
 /* The widget card */
 .hw-card { position: relative; width: 100%; height: 100%; overflow: hidden; border-radius: var(--hub-radius, 20px); padding: 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0; background: var(--surface); color: var(--label); box-shadow: 0 0 0 .5px var(--sep); text-align: left; }
@@ -668,6 +680,8 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     root: null, layout: null, layoutErr: '', mode: pref('hub-home-mode', 'desktop', VIEWS), editing: false,
     framed: false, frameK: 1, dirty: { desktop: false, ipad: false, mobile: false }, timers: {}, saving: {}, lastLoad: 0, src: {}, sig: '', drag: null, overlay: null,
     pending: false, started: false, hubSig: '', raf: 0,
+    // Sideways pages: the one on screen in each view, an empty one just added, how far the grid is moved, and what fits.
+    at: { desktop: 0, ipad: 0, mobile: 0 }, extra: 0, px: 0, sheets: [[]], q: '', geo: { w: 0, h: 0, gap: 22, unit: 84, bleed: 0, cols: 8, rows: 6, stride: 0 },
   }
   const onMain = () => S.page === 'main'
   const rec = id => (S.src[id] ||= { data: null, err: '', missing: false, at: 0, p: null })
@@ -742,16 +756,20 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
   // A layout holds widgets and app places ({ id: 'app', app }); in memory an app place has the key app:<id>.
   const isAppItem = it => it?.id === 'app'
   const appItem = id => ({ key: `app:${id}`, id: 'app', app: id })
-  const withKeys = l => l.map(it => (isAppItem(it) ? appItem(it.app) : it))
+  const withKeys = l => l.map(it => (isAppItem(it) ? { ...appItem(it.app), ...(it.br ? { br: true } : {}) } : it))
   // What Home shows, in order: every widget, and every app on Home at its place. An app with no place yet
   // (new, or a group that took another app's spot) goes next to its neighbour in the app order; with no
   // placed app at all, apps go first, so older layouts keep their apps on top.
   function homeItems(vk) {
     if (!onMain()) return [...layoutItems(vk)]
     const on = appList(), seen = new Set(), out = []
+    let carry = false
+    const put = it => { if (carry) it.br = true; carry = false; out.push(it) }
     for (const it of layoutItems(vk)) {
-      if (!isAppItem(it)) { out.push(it); continue }
-      if (on.includes(it.app) && !seen.has(it.app)) { seen.add(it.app); out.push(it) }
+      if (!isAppItem(it)) { put(it); continue }
+      if (on.includes(it.app) && !seen.has(it.app)) { seen.add(it.app); put(it) }
+      // An app that left Home doesn't take its page's start with it.
+      else if (it.br) carry = true
     }
     const at = id => out.findIndex(x => isAppItem(x) && x.app === id)
     let lead = 0
@@ -848,6 +866,8 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     for (let i = 0; i < 40 && VIEWS.some(k => S.saving[k]); i++) await new Promise(r => setTimeout(r, 50))
     S.page = id
     S.layout = S.layouts[id]
+    S.at = { desktop: 0, ipad: 0, mobile: 0 }
+    S.extra = 0
     try { localStorage.setItem('hub-home-page', id) } catch {}
     S.apps = null
     S.sig = ''
@@ -918,7 +938,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
   }
   const appSig = id => { const H = window.HUB; return H ? `${H.appMeta(id).label}:${H.groupOf?.(id)?.apps?.join('+') || ''}:${H.siteOf?.(id)?.icon || ''}` : '' }
   const sigOne = (i, wm) => (isAppItem(i) ? `${i.key}:${appSig(i.app)}` : `${i.key}:${i.size}:${wm.get(i.id)?.label || ''}:${JSON.stringify(i.opts || {})}`)
-  const sigOf = (vk, items, wm) => `${vk}|${S.editing}|${items.map(i => (isStack(i) ? `${i.key}:${i.size}[${i.stack.map(x => sigOne(x, wm)).join('+')}]` : sigOne(i, wm))).join(',')}`
+  const sigOf = (vk, items, wm) => `${vk}|${S.editing}|${items.map(i => (i.br ? '/' : '') + (isStack(i) ? `${i.key}:${i.size}[${i.stack.map(x => sigOne(x, wm)).join('+')}]` : sigOne(i, wm))).join(',')}`
   const ctlHtml = (it, w, size) => `<button type="button" class="hw-ctl hw-del" data-hw-del aria-label="Remove ${esc(w?.label || it.id)}">${icon('close', 11)}</button>${w && w.sizes.length > 1 ? `<button type="button" class="hw-ctl hw-size" data-hw-size aria-label="Change size, now ${SIZE_NAME[size]}">${SIZE_NAME[size]}</button>` : ''}`
 
   /* ---------- stacks: same-size widgets sharing one cell, swiped through ---------- */
@@ -1005,41 +1025,144 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     root.innerHTML = `<div class="hw-bar">
       <div class="seg hw-seg" role="tablist" aria-label="Layout" style="--n:3;--i:0"><span class="seg-thumb"></span><button type="button" role="tab" data-hw-mode="desktop">Desktop</button><button type="button" role="tab" data-hw-mode="ipad">iPad</button><button type="button" role="tab" data-hw-mode="mobile">Mobile</button></div>
       <div class="hw-hint" data-hw-hint></div>
-      <div class="hw-bar-r"><button type="button" class="hw-btn red" data-hw-act="reset" hidden>Reset</button><button type="button" class="hw-btn tint hw-iconly" data-hw-act="tabs" aria-label="Edit Tabs" hidden>${hic('tabs', 15)}<span class="hw-btn-t">Edit Tabs</span></button><button type="button" class="hw-btn tint hw-iconly" data-hw-act="style" aria-label="Edit Style" hidden>${hic('palette', 15)}<span class="hw-btn-t">Edit Style</span></button><button type="button" class="hw-btn tint hw-iconly" data-hw-act="pages" aria-label="Home Pages" hidden>${icon('layers', 15)}<span class="hw-btn-t">Pages</span></button><button type="button" class="hw-btn tint" data-hw-act="add" hidden>${icon('plus', 15)}Add</button><button type="button" class="hw-btn tint" data-hw-act="edit">Edit</button></div>
+      <div class="hw-bar-r"><button type="button" class="hw-btn red" data-hw-act="reset" hidden>Reset</button><button type="button" class="hw-btn tint hw-iconly" data-hw-act="tabs" aria-label="Edit Tabs" hidden>${hic('tabs', 15)}<span class="hw-btn-t">Edit Tabs</span></button><button type="button" class="hw-btn tint hw-iconly" data-hw-act="style" aria-label="Edit Style" hidden>${hic('palette', 15)}<span class="hw-btn-t">Edit Style</span></button><button type="button" class="hw-btn tint hw-iconly" data-hw-act="pages" aria-label="Named Pages" hidden>${icon('layers', 15)}<span class="hw-btn-t">Named Pages</span></button><button type="button" class="hw-btn tint" data-hw-act="add" hidden>${icon('plus', 15)}Add</button><button type="button" class="hw-btn tint" data-hw-act="edit">Edit</button></div>
     </div>
     <div class="hw-pages" data-hw-pages role="tablist" aria-label="Home Pages" hidden></div>
-    <div class="hw-stage"><div class="hw-device"><div class="hw-frame"><div class="hw-grid" data-hw-grid role="list" aria-label="Home"></div></div></div></div>`
+    <div class="hw-stage"><div class="hw-device"><div class="hw-frame"><div class="hw-pager"><div class="hw-grid" data-hw-grid role="list" aria-label="Home"></div></div><div class="hw-dots" data-hw-dots></div></div></div></div>`
     return root
   }
 
   // Logical size of each device, its bezel, corners, and the insets of its screen.
   const FRAME = { ipad: { w: 1024, h: 768, b: 13, r: 26, pt: 26, px: 26 }, mobile: { w: 390, h: 844, b: 11, r: 48, pt: 58, px: 20 } }
-  // Fits the device between the toggle and the chat bar, so the page itself doesn't scroll.
+  // Fits the device between the toggle and the chat bar. Off a device, Home takes what's left of the window.
   function frameFit() {
     const root = S.root, vk = viewKey(), f = !realDevice() && FRAME[vk]
-    if (!root || S.drag?.on) return
+    if (!root?.isConnected || S.drag?.on) return
     S.framed = !!f
     root.dataset.framed = f ? '1' : '0'
-    const stage = root.querySelector('.hw-stage')
-    root.style.marginBottom = ''
-    if (!f) { S.frameK = 1; root.querySelector('.hw-frame').scrollTop = 0; return }
-    const top = stage.getBoundingClientRect().top + scrollY, room = innerHeight - top - 84
-    S.frameK = Math.max(0.42, Math.min(1, root.clientWidth / (f.w + 2 * f.b), room / (f.h + 2 * f.b)))
-    for (const [k, v] of [['--fw', f.w], ['--fh', f.h], ['--fb', f.b], ['--fr', f.r], ['--fpt', f.pt], ['--fpx', f.px]]) stage.style.setProperty(k, `${v}px`)
-    stage.style.setProperty('--fk', S.frameK.toFixed(4))
-    // The page keeps room under Home for the chat bar; the device already clears it, so that room would only make the page scroll.
-    root.style.marginBottom = `${-Math.max(0, document.body.getBoundingClientRect().bottom - root.getBoundingClientRect().bottom)}px`
+    const stage = root.querySelector('.hw-stage'), frame = root.querySelector('.hw-frame'), top = stage.getBoundingClientRect().top
+    if (f) {
+      frame.style.height = ''
+      S.frameK = Math.max(0.25, Math.min(1, root.clientWidth / (f.w + 2 * f.b), (innerHeight - top - 84) / (f.h + 2 * f.b)))
+      for (const [k, v] of [['--fw', f.w], ['--fh', f.h], ['--fb', f.b], ['--fr', f.r], ['--fpt', f.pt], ['--fpx', f.px]]) stage.style.setProperty(k, `${v}px`)
+      stage.style.setProperty('--fk', S.frameK.toFixed(4))
+    } else {
+      S.frameK = 1
+      frame.style.height = `${Math.max(0, innerHeight - top)}px`
+    }
+    pagerFit()
   }
   // What a drag's numbers are measured in. In a device they are the device's own pixels, so a move stays arithmetic.
+  // The pages moving under a held card count as its scroll.
   function view() {
     const el = S.framed && S.root?.querySelector('.hw-frame')
-    if (!el) return { el: null, k: 1, left: 0, top: 0, h: innerHeight, edge: 90, x: () => scrollX, y: () => scrollY, by: dy => scrollBy(0, dy), max: () => document.documentElement.scrollHeight - innerHeight }
+    if (!el) return { el: null, k: 1, left: 0, top: 0, x: () => S.px, y: () => 0 }
     const r = el.getBoundingClientRect()
-    return { el, k: S.frameK, left: r.left, top: r.top, h: el.clientHeight, edge: 56, x: () => el.scrollLeft, y: () => el.scrollTop, by: dy => { el.scrollTop += dy }, max: () => el.scrollHeight - el.clientHeight }
+    return { el, k: S.frameK, left: r.left, top: r.top, x: () => S.px, y: () => 0 }
   }
-  // The held card is moved with a transform, which stretches what can be scrolled, so the limit comes from the laid-out grid:
-  // it's the room below the grid at the start of the drag, and it follows the grid if a move adds a row.
-  const gridEnd = (d, box) => (box.getBoundingClientRect().bottom - d.v.top) / d.v.k + d.v.y()
+
+  /* ---------- pages: Home moves sideways, a page at a time ---------- */
+
+  const at = () => S.at[viewKey()] || 0
+  const pageCount = () => S.sheets.length + (S.extra ? 1 : 0)
+  // Measures what fits on a page at this size, then lays the cells out again.
+  function pagerFit() {
+    const root = S.root, pager = root.querySelector('.hw-pager'), grid = root.querySelector('[data-hw-grid]'), cs = getComputedStyle(root), g = S.geo
+    const rr = root.getBoundingClientRect(), side = S.framed ? FRAME[viewKey()].px : rr.left
+    g.bleed = S.framed ? side : Math.max(side, document.documentElement.clientWidth - rr.right, innerWidth - rr.right)
+    g.left = side
+    pager.style.setProperty('--hw-bl', `${side}px`)
+    pager.style.setProperty('--hw-br', `${g.bleed}px`)
+    g.gap = parseFloat(cs.getPropertyValue('--gap')) || 22
+    g.unit = ((parseFloat(cs.getPropertyValue('--uh')) || 190) - g.gap) / 2
+    setCols(grid)
+    g.w = grid.clientWidth
+    g.h = pager.clientHeight
+    place(grid, S.drag?.order)
+  }
+  function pagerSet(x) {
+    S.px = x
+    const grid = S.root?.querySelector('[data-hw-grid]')
+    if (grid) grid.style.transform = x ? `translate3d(${(-x).toFixed(1)}px, 0, 0)` : ''
+    // A held card rides along, in the same frame.
+    const d = S.drag
+    if (d?.on) { d.px = x; dragPlace(d) }
+  }
+  let turn = null
+  function pagerStep(now) {
+    if (!turn) return
+    const t = Math.min(1, (now - turn.t0) / turn.ms)
+    pagerSet(turn.from + (turn.to - turn.from) * (1 - (1 - t) ** 3))
+    if (t < 1) requestAnimationFrame(pagerStep)
+    else turn = null
+  }
+  // Puts the page on screen at once, for anything that isn't the person turning it.
+  function pagerSnap() {
+    if (turn || swipe?.on) return
+    pagerSet(at() * S.geo.stride)
+  }
+  function pagerGo(i) {
+    const vk = viewKey()
+    i = Math.max(0, Math.min(pageCount() - 1, i))
+    S.at[vk] = i
+    paintDots()
+    const to = i * S.geo.stride
+    if (S.px === to) { turn = null; return }
+    if (REDUCED.matches || document.hidden) { turn = null; return pagerSet(to) }
+    const run = !turn
+    turn = { from: S.px, to, t0: performance.now(), ms: 320 }
+    if (run) requestAnimationFrame(pagerStep)
+  }
+  // Shows whichever page the cell with this key is on.
+  function pagerShow(key) {
+    const c = S.root?.querySelector(`.hw-cell[data-hw-key="${CSS.escape(key)}"]`)
+    if (c && c.hwPage != null) pagerGo(c.hwPage)
+  }
+  function paintDots() {
+    const box = S.root?.querySelector('[data-hw-dots]')
+    if (!box) return
+    const n = pageCount(), i = at(), shape = `${n}|${S.editing}`
+    if (box._shape !== shape) {
+      box._shape = shape
+      const dots = n > 1 ? Array.from({ length: n }, (_, k) => `<button type="button" class="hw-pdot" data-hw-dot="${k}" aria-label="Page ${k + 1} of ${n}"></button>`).join('') : ''
+      box.innerHTML = `${S.editing && n > 1 ? `<button type="button" class="hw-btn red hw-iconly hw-pgl" data-hw-pagebtn="remove" aria-label="Remove Page" title="Remove Page">${icon('trash', 15)}<span class="hw-btn-t">Remove Page</span></button>` : ''}<div class="hw-dots-in" role="group" aria-label="Pages" style="--n:${n > 1 ? n : 0}">${dots}</div>${S.editing ? `<button type="button" class="hw-btn tint hw-iconly hw-pgr" data-hw-pagebtn="add" aria-label="Add Page" title="Add Page">${icon('plus', 15)}<span class="hw-btn-t">Add Page</span></button>` : ''}`
+    }
+    box.querySelectorAll('[data-hw-dot]').forEach(b => { if (Number(b.dataset.hwDot) === i) b.setAttribute('aria-current', 'true'); else b.removeAttribute('aria-current') })
+  }
+  // A new page goes last and stays empty until something lands on it; like an iPhone, an empty one is gone when editing ends.
+  function addPage() {
+    if (!S.editing) toggleEdit()
+    if (!S.sheets.at(-1)?.length || S.extra) return pagerGo(pageCount() - 1)
+    S.extra = 1
+    place(S.root.querySelector('[data-hw-grid]'))
+    pagerGo(pageCount() - 1)
+  }
+  async function removePage() {
+    const vk = viewKey(), i = at(), cells = S.sheets[i] || []
+    if (pageCount() < 2) return
+    if (!cells.length) {
+      S.extra = 0
+      place(S.root.querySelector('[data-hw-grid]'))
+      return pagerGo(i - 1)
+    }
+    const apps = cells.filter(c => c.classList.contains('a')).map(c => c.querySelector('.hw-app')?.dataset.hwApp).filter(Boolean)
+    const n = cells.length, also = apps.length && onMain() ? ' Apps come off your other layouts too.' : ''
+    const ok = typeof alertBox === 'function'
+      ? await alertBox({ title: 'Remove this page?', message: `${n === 1 ? 'The item' : `The ${n} items`} on it come off this layout. You can add ${n === 1 ? 'it' : 'them'} back with Add.${also}`, ok: 'Remove', danger: true })
+      : confirm('Remove this page?')
+    if (!ok) return
+    const gone = new Set(cells.map(c => c.dataset.hwKey)), list_ = homeItems(vk), first = list_.findIndex(it => gone.has(it.key)), rest = list_.filter(it => !gone.has(it.key))
+    // The page after it stays a page of its own.
+    if (i > 0 && rest[first]) rest[first].br = true
+    S.layout[vk] = rest
+    saveSoon(vk)
+    S.at[vk] = Math.max(0, i - 1)
+    if (apps.length && onMain()) setApps(appList().filter(x => !apps.includes(x)))
+    S.sig = ''
+    paint(true)
+    pagerSnap()
+    hud('Page removed')
+  }
 
   function paintPages(root) {
     const box = root.querySelector('[data-hw-pages]'), html = S.pages.length ? [{ id: 'main', name: 'Home' }, ...S.pages].map(p => `<button type="button" role="tab" class="hw-page" data-hw-page="${esc(p.id)}" aria-selected="${p.id === S.page}">${esc(p.name)}</button>`).join('') : ''
@@ -1063,11 +1186,13 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     edit.classList.toggle('solid', S.editing)
     edit.classList.toggle('tint', !S.editing)
     paintPages(root)
-    for (const a of ['add', 'reset', 'style', 'tabs', 'pages']) root.querySelector(`[data-hw-act=${a}]`).hidden = !S.editing || (a !== 'add' && a !== 'reset' && !window.HUB)
+    for (const a of ['add', 'reset', 'style', 'tabs', 'pages']) root.querySelector(`[data-hw-act=${a}]`).hidden = !S.editing || (a !== 'add' && a !== 'reset' && !window.HUB) || (a === 'pages' && !S.pages.length)
     const hint = root.querySelector('[data-hw-hint]')
     const bad = S.layoutErr
     hint.classList.toggle('err', !!bad)
     hint.textContent = bad ? (bad === 'reconnecting' ? 'Reconnecting to the hub. Changes save as soon as it’s back.' : `The layout couldn’t be saved (${bad}). Trying again.`) : ''
+    // The bar can wrap in edit mode, which changes what fits below it.
+    frameFit()
   }
 
   function rectMap(grid) {
@@ -1113,7 +1238,13 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     const html = items.map(it => cellHtml(it, wm, vk)).join('')
     grid.innerHTML = html || `<div class="hw-empty">Nothing on Home yet.${S.editing ? ' Tap Add.' : ' Tap Edit, then Add.'}</div>`
     S.sig = sig
-    grid.querySelectorAll('[data-hw-wkey] .hw-body').forEach(body => (body._h = body.innerHTML))
+    const byKey = new Map(items.map(it => [it.key, it]))
+    grid.querySelectorAll('.hw-cell').forEach(c => { c.hwBr = !!byKey.get(c.dataset.hwKey)?.br })
+    // What each body was built from, not the browser's rewrite of it, or the next paint redoes every widget.
+    grid.querySelectorAll('[data-hw-wkey]').forEach(el => {
+      const f = findItem(vk, el.dataset.hwWkey), it = f?.it, w = it && wm.get(it.id), body = el.querySelector('.hw-body')
+      if (w && body) body._h = bodyFor(w, f.parent ? f.parent.size : sizeOf(it, w), it.opts)
+    })
     fitAll()
     restoreStacks(grid)
     applyFilter()
@@ -1122,38 +1253,77 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
 
   // Widget columns of at least 202 px; the grid has two app slots per widget column, and a small widget is square.
   function setCols(grid) {
-    if (!grid || viewKey() === 'mobile') return
+    if (!grid) return
     const gap = parseFloat(getComputedStyle(grid).columnGap) || 22, w = grid.clientWidth
     if (!w) return
-    const n = Math.max(2, Math.floor((w + gap) / (202 + gap))), cols = n * 2
-    if (grid.style.getPropertyValue('--cols') !== String(cols)) { grid.style.setProperty('--cols', String(cols)); place(grid) }
+    const n = Math.max(2, Math.floor((w + gap) / (202 + gap))), cols = viewKey() === 'mobile' ? 4 : n * 2
+    if (grid.style.getPropertyValue('--cols') !== String(cols)) { grid.style.setProperty('--cols', String(cols)); place(grid, S.drag?.order) }
   }
 
   // Where each cell goes. Items stay in the order they were put, and each fills the current shelf: a band of
   // rows as tall as the tallest thing on it. A widget snaps to even columns, so widgets line up across the
   // page, and it never stretches a row of apps, which would leave an empty band under them.
+  // Pages come from the same walk: what doesn't fit goes to the next page, and a cell marked br starts one.
+  // What spills over joins the page after it instead of making a page of its own, so a smaller window closes up.
   const CELL_SPAN = { a: [1, 1], s: [2, 2], m: [4, 2], l: [4, 4] }
+  const spanOf = el => CELL_SPAN[['a', 's', 'm', 'l'].find(k => el.classList.contains(k))] || CELL_SPAN.s
   function place(grid, cells = [...grid.querySelectorAll('.hw-cell')]) {
-    const cols = viewKey() === 'mobile' ? 4 : Number(grid.style.getPropertyValue('--cols')) || 8
+    const g = S.geo, cols = viewKey() === 'mobile' ? 4 : Number(grid.style.getPropertyValue('--cols')) || 8, shown = cells.filter(el => el.style.display !== 'none')
+    // Every size has to fit on a page, so a short window makes the rows shorter rather than clipping a large widget.
+    const need = shown.reduce((m, el) => Math.max(m, spanOf(el)[1]), 1), fits = g.h ? Math.floor((g.h + g.gap) / (g.unit + g.gap)) : 999
+    const rows = Math.max(1, need, fits), rh = rows > fits ? Math.max(44, (g.h - (rows - 1) * g.gap) / rows) : g.unit
     const used = new Set(), key = (r, c) => r * 64 + c
     const free = (r, c, w, h) => { for (let y = r; y < r + h; y++) for (let x = c; x < c + w; x++) if (used.has(key(y, x))) return false; return true }
-    let top = 0, height = 1, apps = false
-    for (const el of cells) {
-      if (el.style.display === 'none') continue
-      const [w, h] = CELL_SPAN[['a', 's', 'm', 'l'].find(k => el.classList.contains(k))] || CELL_SPAN.s
+    const sheets = [[]]
+    let top = 0, height = 1, apps = false, spilled = false
+    const next = over => { sheets.push([]); used.clear(); top = 0; height = 1; apps = false; spilled = over }
+    for (const el of shown) {
+      const [w, h] = spanOf(el)
+      if (el.hwBr && !S.q && sheets.at(-1).length) { if (spilled) spilled = false; else next(false) }
       let spot = null
       for (let r = top; r < top + height && !spot; r++) {
-        if (r + h > top + height && (r !== top || apps)) continue
+        if (r + h > rows || (r + h > top + height && (r !== top || apps))) continue
         for (let c = 0; c + w <= cols && !spot; c += w > 1 ? 2 : 1) if (free(r, c, w, h)) spot = [r, c]
       }
-      if (!spot) { top += height; height = 1; apps = false; spot = [top, 0] }
+      if (!spot) {
+        top += height; height = 1; apps = false
+        if (top + h > rows) next(true)
+        spot = [top, 0]
+      }
       height = Math.max(height, spot[0] + h - top)
       if (h === 1) apps = true
       for (let y = spot[0]; y < spot[0] + h; y++) for (let x = spot[1]; x < spot[1] + w; x++) used.add(key(y, x))
+      el.hwPage = sheets.length - 1
+      sheets.at(-1).push(el)
       // Only a cell that really moved gets a new style, so a swap restyles two or three cells, not all of them.
-      const area = `${spot[0] + 1} / ${spot[1] + 1} / span ${h} / span ${w}`
+      const area = `${spot[0] + 1} / ${el.hwPage * (cols + 1) + spot[1] + 1} / span ${h} / span ${w}`
       if (el.hwArea !== area) { el.hwArea = area; el.style.gridArea = area }
     }
+    S.sheets = sheets
+    if (S.q || !S.editing) S.extra = 0
+    const n = pageCount()
+    // One set of columns per page, with a spacer so the next page starts off the screen.
+    const cw = g.w ? (g.w - (cols - 1) * g.gap) / cols : 0, gutter = Math.max(0, g.bleed - 2 * g.gap + 4)
+    if (cw) {
+      const tracks = Array.from({ length: n }, () => `repeat(${cols}, ${cw.toFixed(3)}px)`).join(` ${gutter.toFixed(1)}px `)
+      if (grid.hwTracks !== tracks) { grid.hwTracks = tracks; grid.style.gridTemplateColumns = tracks }
+      g.stride = g.w + 2 * g.gap + gutter
+    }
+    if (g.rows !== rows || grid.hwRh !== rh) { grid.hwRh = rh; grid.style.setProperty('--hw-rh', `${rh.toFixed(2)}px`) }
+    g.cols = cols
+    g.rows = rows
+    placeBlank(grid, cols, rows)
+    const vk = viewKey()
+    if (S.at[vk] > n - 1) S.at[vk] = n - 1
+    paintDots()
+    pagerSnap()
+  }
+  // The empty page says what it's for.
+  function placeBlank(grid, cols, rows) {
+    let el = grid.querySelector(':scope > .hw-blank')
+    if (!S.extra) return el?.remove()
+    if (!el) { el = document.createElement('div'); el.className = 'hw-blank'; el.textContent = 'Drag apps and widgets here, or use Add.'; grid.append(el) }
+    el.style.gridArea = `1 / ${S.sheets.length * (cols + 1) + 1} / span ${rows} / span ${cols}`
   }
 
   function scheduleRepaint() {
@@ -1170,6 +1340,8 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
   function applyFilter() {
     const q = (document.getElementById('q')?.value || '').trim().toLowerCase()
     S.root?.querySelectorAll('[data-hay]').forEach(c => { c.style.display = !q || c.dataset.hay.includes(q) ? '' : 'none' })
+    // What a search finds runs together from the first page.
+    if (q !== S.q) { S.q = q; S.at[viewKey()] = 0 }
     const grid = S.root?.querySelector('[data-hw-grid]')
     if (grid) place(grid)
   }
@@ -2414,17 +2586,28 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     if (!w || !S.layout) return
     const it = { key: uid(), id, size: w.sizes.includes(size) ? size : w.defaultSize }
     if (layoutItems(vk).filter(i => !isAppItem(i)).length >= 60) return hud('That layout is full')
-    S.layout[vk].push(it)
+    // It lands on the page on screen; if there's no room there, the next page takes it.
+    const after = S.sheets[at() + 1]?.[0]?.dataset.hwKey, l = S.layout[vk], before = after ? l.findIndex(x => (isAppItem(x) ? appItem(x.app).key : x.key) === after) : -1
+    if (at() >= S.sheets.length) it.br = true
+    if (before >= 0) l.splice(before, 0, it)
+    else l.push(it)
+    if (it.br) S.extra = 0
     saveSoon(vk)
     loadSources(srcOf(w))
     paint(true)
     hud(`${w.label} added`)
-    const cell = S.root.querySelector(`[data-hw-key="${CSS.escape(it.key)}"]`)
-    setTimeout(() => cell?.scrollIntoView({ block: 'nearest', behavior: REDUCED.matches ? 'auto' : 'smooth' }), 60)
+    pagerShow(it.key)
   }
 
   /* ---------- editing: size, remove, reorder by dragging ---------- */
 
+  // An item leaving the list leaves the page it started as it was: the next item starts it now.
+  function passBreak(l, it) {
+    if (!it?.br) return
+    const next = l[l.indexOf(it) + 1]
+    if (next) next.br = true
+    delete it.br
+  }
   // Sizes a top-level item can take, and the one it shows now.
   function sizesOf(it, wm) {
     if (isStack(it)) return [stackSizes(it, wm), it.size]
@@ -2446,14 +2629,14 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     if (!f?.parent) return
     const st = f.parent, l = layoutItems(vk)
     st.stack = st.stack.filter(x => x !== f.it)
-    if (st.stack.length < 2) l.splice(l.indexOf(st), 1, ...st.stack)
+    if (st.stack.length < 2) { if (st.br) st.stack[0].br = true; l.splice(l.indexOf(st), 1, ...st.stack) }
     saveSoon(vk)
     paint(true)
   }
   function unstack(key) {
     const vk = viewKey(), l = layoutItems(vk), i = l.findIndex(x => x.key === key)
     if (i < 0 || !isStack(l[i])) return
-    l.splice(i, 1, ...l[i].stack.map(x => ({ ...x, size: l[i].size })))
+    l.splice(i, 1, ...l[i].stack.map((x, n) => ({ ...x, size: l[i].size, ...(n === 0 && l[i].br ? { br: true } : {}) })))
     saveSoon(vk)
     paint(true)
   }
@@ -2464,10 +2647,14 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     if (isStack(b) && b.stack.length >= 8) return hud('A stack holds up to 8 widgets')
     const size = isStack(b) ? b.size : sizesOf(b, wm)[1]
     const top = { key: a.key, id: a.id, size, ...(a.opts ? { opts: a.opts } : {}) }
+    passBreak(l, a)
     l.splice(l.indexOf(a), 1)
     let st = b
     if (isStack(b)) b.stack.unshift(top)
-    else l.splice(l.indexOf(b), 1, (st = { key: uid(), id: 'stack', size, stack: [top, { ...b, size }] }))
+    else {
+      const { br, ...rest } = b
+      l.splice(l.indexOf(b), 1, (st = { key: uid(), id: 'stack', size, ...(br ? { br: true } : {}), stack: [top, { ...rest, size }] }))
+    }
     ;(S.skPage ||= {})[st.key] = 0
     saveSoon(vk)
     paint(true)
@@ -2483,13 +2670,17 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     const vk = viewKey(), list_ = layoutItems(vk), i = list_.findIndex(x => x.key === key)
     if (i < 0) return removeFromStack(key)
     const cell = S.root.querySelector(`[data-hw-key="${CSS.escape(key)}"]`)
-    const done = () => { list_.splice(i, 1); saveSoon(vk); paint(true) }
+    const done = () => { passBreak(list_, list_[list_.findIndex(x => x.key === key)]); list_.splice(list_.findIndex(x => x.key === key), 1); saveSoon(vk); paint(true) }
     if (cell?.animate && !REDUCED.matches) cell.animate([{ opacity: 1, transform: 'scale(1)' }, { opacity: 0, transform: 'scale(.82)' }], { duration: 170, easing: EASE }).finished.then(done, done)
     else done()
   }
   function syncLayoutFromDom() {
     const vk = viewKey(), grid = S.root.querySelector('[data-hw-grid]'), cur = homeItems(vk)
-    const order = [...grid.querySelectorAll('.hw-cell')].map(c => cur.find(i => i.key === c.dataset.hwKey)).filter(Boolean)
+    const order = [...grid.querySelectorAll('.hw-cell')].map(c => {
+      const it = cur.find(i => i.key === c.dataset.hwKey)
+      if (it) { if (c.hwBr) it.br = true; else delete it.br }
+      return it
+    }).filter(Boolean)
     if (order.length === cur.length) S.layout[vk] = order
     S.sig = ''
     paintSigFix()
@@ -2566,12 +2757,10 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     const h = hold
     hold = null
     if (!h || S.editing) return
-    const at = h.key && S.root?.querySelector(`.hw-cell[data-hw-key="${CSS.escape(h.key)}"]`)?.getBoundingClientRect().top
     toggleEdit()
     eatReleaseClick()
     const cell = h.key && S.root?.querySelector(`.hw-cell[data-hw-key="${CSS.escape(h.key)}"]`)
     if (!cell) return
-    if (at != null) { const v = view(); v.by((cell.getBoundingClientRect().top - at) / v.k) }
     S.drag = { cell, pid: h.pid, sx: h.x, sy: h.y, x: h.x, y: h.y, on: false, touch: h.touch, raf: 0, swapAt: 0, t: 0, ox: 0, oy: 0 }
     dragBegin()
   }
@@ -2597,12 +2786,14 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     d.scale = 1
     d.tx = d.ty = 0
     dragMeasure(d)
-    d.below = d.v.max() - gridEnd(d, d.cell.parentElement)
     d.slack = (parseFloat(getComputedStyle(d.cell.parentElement).columnGap) || 0) / 2 + 1
     d.ox = vx(d) + d.px - d.nat.left
     d.oy = vy(d) + d.py - d.nat.top
     d.order = [...d.cell.parentElement.querySelectorAll('.hw-cell')]
     d.was = [...d.order]
+    // While a card is held every page stays a page: taking one off doesn't pull the next page's cards back.
+    d.brWas = d.order.map(el => el.hwBr)
+    if (!S.q) pinPages()
     d.cell.classList.add('hw-dragging')
     d.app = d.isApp ? d.cell.querySelector(':scope > .hw-app') : null
     d.app?.classList.add('drag')
@@ -2622,17 +2813,51 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     if (off < (d.hover.off ?? Infinity) - 1.5) { d.hover.off = off; d.hover.at = now }
     return now - d.hover.at < 150
   }
-  function dragFrame(d) {
-    let dy = 0
-    const v = d.v, py = vy(d)
-    if (py < v.edge) dy = -Math.min(24, Math.ceil((v.edge - py) / 5))
-    else if (py > v.h - v.edge) dy = Math.min(24, Math.ceil((py - (v.h - v.edge)) / 5), Math.max(0, Math.ceil(gridEnd(d, d.cell.parentElement) + d.below - v.y())))
-    if (dy) {
-      v.by(dy)
-      d.py = v.y()
-      dragPlace(d)
+  // Marks where each page starts now, so it stays that way when a card leaves or joins.
+  const pinPages = () => S.sheets.forEach((sheet, n) => sheet.forEach((el, i) => { el.hwBr = n > 0 && i === 0 }))
+  // Held at the side of the page for a moment, the card goes on to the next page, as on an iPhone.
+  // It lands first on that page and the rest make room; past the last page there's a new one.
+  function dragTurn(d, dir) {
+    const c = d.cell, grid = c.parentElement, o = d.order, sheets = S.sheets, from = c.hwPage, to = at() + dir
+    if (to < 0) return
+    if (to >= pageCount()) {
+      if (from === sheets.length - 1 && sheets[from].length === 1) return
+      S.extra = 1
     }
-    const c = d.cell, x = vx(d) + d.px, y = py + d.py, now = performance.now()
+    pinPages()
+    const before = rectMap(grid), t = sheets[to]?.find(el => el !== c)
+    if (c.hwBr) {
+      const after = o[o.indexOf(c) + 1]
+      if (after?.hwPage === from) after.hwBr = true
+      c.hwBr = false
+    }
+    o.splice(o.indexOf(c), 1)
+    if (t) { c.hwBr = t.hwBr; t.hwBr = false; o.splice(o.indexOf(t), 0, c) }
+    else { c.hwBr = true; o.push(c); S.extra = 0 }
+    d.moved = true
+    d.last = null
+    place(grid, o)
+    playFlip(grid, before, c)
+    pagerGo(c.hwPage)
+    dragMeasure(d)
+    dragPlace(d)
+    navigator.vibrate?.(6)
+  }
+  const EDGE = 28, EDGE_MS = 420
+  function dragFrame(d) {
+    const py = vy(d), vxx = vx(d), now = performance.now(), g = S.geo
+    const side = S.q ? 0 : vxx < g.left + EDGE ? -1 : vxx > g.left + g.w - EDGE ? 1 : 0
+    if (side !== d.side) {
+      d.side = side
+      d.sideAt = now
+      if (side) { setMerge(d, null); d.hover = null }
+    }
+    if (side && now - d.sideAt >= EDGE_MS) {
+      d.sideAt = now + 600
+      dragTurn(d, side)
+    }
+    if (side || turn) return
+    const c = d.cell, x = vxx + d.px, y = py + d.py
     // Each cell owns half the gap beside it, so a pointer in a gap still means the nearest cell.
     const hit = inside(d.nat, x, y) ? null : d.rects.find(o => inside(o, x, y)) || (near(d.nat, x, y, d.slack) ? null : d.rects.find(o => near(o, x, y, d.slack))) || null
     const target = hit?.el || null
@@ -2672,6 +2897,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     o.splice(fi, 1)
     o.splice(ti, 0, c)
     place(grid, o)
+    d.moved = true
     d.swapAt = now
     d.last = [d.x, d.y]
     playFlip(grid, before, c)
@@ -2715,7 +2941,11 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     try { dragging = false } catch {}
     try { c.releasePointerCapture(d.pid) } catch {}
     dragCommit(d)
+    // After a real move the pages stay as they are now. Picked up and put back, or Escape, changes nothing.
+    if (d.moved) pinPages()
+    else d.was.forEach((el, i) => { el.hwBr = d.brWas[i] })
     syncLayoutFromDom()
+    if (c.hwPage !== at()) pagerGo(c.hwPage)
     if (merge?.isConnected && d.app) {
       // The icon shrinks into the one it lands on, then the group takes that place.
       const t = merge.querySelector('.hc-app').getBoundingClientRect(), done = () => groupWith(d.app.dataset.hwApp, merge.querySelector('.hw-app').dataset.hwApp)
@@ -2747,7 +2977,96 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
   document.addEventListener('pointerup', e => { if (S.drag && e.pointerId === S.drag.pid) dragEnd() })
   document.addEventListener('pointercancel', e => { if (S.drag && e.pointerId === S.drag.pid) dragEnd() })
   // Once a touch drag has begun, the page must not scroll under the finger.
-  document.addEventListener('touchmove', e => { if (S.drag?.on && e.cancelable) e.preventDefault() }, { passive: false })
+  document.addEventListener('touchmove', e => { if ((S.drag?.on || swipe?.on) && e.cancelable) e.preventDefault() }, { passive: false })
+
+  /* ---------- turning pages: swipe, mouse drag, wheel, arrow keys ---------- */
+
+  let swipe = null
+  function swipeStart(e) {
+    if (S.overlay || swipe || S.drag?.on || appDrag || (e.pointerType === 'mouse' && e.button !== 0) || !e.isPrimary) return
+    if (!e.target.closest('.hw-frame') || e.target.closest('.hw-ctl, input, textarea, select, [data-hw-pagebtn]')) return
+    // With a mouse, a card in edit mode moves the card. A finger has a moment first, so a quick swipe still turns the page.
+    if (S.editing && e.pointerType === 'mouse' && e.target.closest('.hw-cell')) return
+    swipe = { pid: e.pointerId, sx: e.clientX, sy: e.clientY, x: e.clientX, t: performance.now(), v: 0, on: false, base: 0, target: e.target }
+  }
+  function swipeMove(e) {
+    const w = swipe
+    if (!w || e.pointerId !== w.pid) return
+    if (S.drag?.on) { swipe = null; return }
+    const dx = e.clientX - w.sx, dy = e.clientY - w.sy, now = performance.now()
+    if (!w.on) {
+      if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)) { swipe = null; return }
+      if (Math.abs(dx) < 9 || Math.abs(dx) < Math.abs(dy) * 1.2) return
+      w.on = true
+      turn = null
+      w.base = S.px
+      w.sx = e.clientX
+      holdCancel()
+      eatReleaseClick()
+      // A file shown in a widget would otherwise keep the pointer.
+      document.documentElement.classList.add('hw-drag-on')
+      try { S.root.setPointerCapture(w.pid) } catch {}
+    }
+    const moved = (e.clientX - w.sx) / S.frameK, last = S.geo.stride * (pageCount() - 1)
+    let x = w.base - moved
+    // Past the first or last page it follows less and less.
+    if (x < 0) x /= 3
+    else if (x > last) x = last + (x - last) / 3
+    pagerSet(x)
+    const dt = now - w.t
+    if (dt > 0) w.v = ((e.clientX - w.x) / dt) * 0.7 + w.v * 0.3
+    w.x = e.clientX
+    w.t = now
+  }
+  function swipeEnd(e) {
+    const w = swipe
+    if (!w || e.pointerId !== w.pid) return
+    swipe = null
+    if (!w.on) return
+    document.documentElement.classList.remove('hw-drag-on')
+    try { S.root.releasePointerCapture(w.pid) } catch {}
+    const moved = (w.x - w.sx) / S.frameK, cancelled = e.type === 'pointercancel', quick = performance.now() - w.t < 120 && Math.abs(w.v) > 0.35
+    let i = at()
+    if (!cancelled) {
+      if (moved < 0 && (quick || -moved > S.geo.stride * 0.3)) i++
+      else if (moved > 0 && (quick || moved > S.geo.stride * 0.3)) i--
+    }
+    pagerGo(i)
+  }
+  document.addEventListener('pointermove', swipeMove)
+  document.addEventListener('pointerup', swipeEnd)
+  document.addEventListener('pointercancel', swipeEnd)
+  // Only a list that can really scroll keeps a wheel for itself.
+  function wheelScroller(el, stop) {
+    for (; el && el !== stop; el = el.parentElement) {
+      if (el.scrollHeight > el.clientHeight + 1 && /auto|scroll/.test(getComputedStyle(el).overflowY)) return el
+    }
+    return null
+  }
+  let wheel = { sum: 0, at: 0, quiet: 0 }
+  function onWheel(e) {
+    if (S.overlay || S.drag?.on || swipe?.on || e.ctrlKey) return
+    const unit = e.deltaMode === 1 ? 32 : e.deltaMode === 2 ? innerHeight : 1, dx = e.deltaX * unit, dy = e.deltaY * unit, sideways = Math.abs(dx) >= Math.abs(dy)
+    if (!sideways && wheelScroller(e.target, S.root)) return
+    e.preventDefault()
+    const now = performance.now()
+    // One flick of a trackpad sends many events and keeps sending them as it coasts: one flick, one page.
+    if (now < wheel.quiet) { if (now - wheel.at < 120) { wheel.at = now; return } wheel.quiet = 0 }
+    if (now - wheel.at > 200) wheel.sum = 0
+    wheel.at = now
+    wheel.sum += sideways ? dx : dy
+    if (Math.abs(wheel.sum) < 50) return
+    pagerGo(at() + Math.sign(wheel.sum))
+    wheel.sum = 0
+    wheel.quiet = now + 1100
+  }
+  document.addEventListener('keydown', e => {
+    if ((e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') || !showing() || !S.root?.isConnected) return
+    if (e.defaultPrevented || S.overlay || S.drag?.on || appDrag || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey || document.querySelector('.scrim, body > .menu, #hub-setup')) return
+    if (e.composedPath()[0]?.closest?.('input, textarea, select, [contenteditable]')) return
+    e.preventDefault()
+    pagerGo(at() + (e.key === 'ArrowRight' ? 1 : -1))
+  })
 
   /* ---------- apps: icons that open a tab (chosen with Add App or in edit mode, saved in hub settings) ---------- */
 
@@ -2780,17 +3099,19 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     S.detail?.refresh()
   }
   const removeApp = id => { if (!onMain()) return pageApp(id, false); if (window.HUB?.groupOf?.(id)) return removeGroup(id); setApps(appList().filter(x => x !== id)); hud(`${window.HUB.appMeta(id).label} removed from Home`) }
-  const addApp = id => { if (!onMain()) return pageApp(id, true); if (!appList().includes(id)) setApps([...appList(), id]) }
+  const addApp = id => { if (!onMain()) pageApp(id, true); else if (!appList().includes(id)) setApps([...appList(), id]); pagerShow(`app:${id}`) }
   function moveApp(id, by) {
     const vk = viewKey(), l = homeItems(vk), i = l.findIndex(x => isAppItem(x) && x.app === id), j = i + by
     if (i < 0 || j < 0 || j >= l.length) return
+    passBreak(l, l[i])
     const [x] = l.splice(i, 1)
     l.splice(j, 0, x)
     S.layout[vk] = l
     saveSoon(vk)
     paint(true)
     saveAppOrder()
-    requestAnimationFrame(() => S.root?.querySelector(`[data-hw-appopen="${CSS.escape(id)}"]`)?.focus())
+    pagerShow(`app:${id}`)
+    requestAnimationFrame(() => S.root?.querySelector(`[data-hw-appopen="${CSS.escape(id)}"]`)?.focus({ preventScroll: true }))
   }
   const openApp = id => window.HUB?.openApp(id)
 
@@ -2892,12 +3213,13 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
   // A scroll or resize is the one thing besides a swap that moves the cells under a drag.
   addEventListener('scroll', e => {
     const d = S.drag
+    if (e.target === document && showing() && S.root?.isConnected && scrollY) scrollTo(0, 0)
     if (d?.on && (e.target === document || e.target === d.v.el)) { d.px = d.v.x(); d.py = d.v.y(); dragPlace(d) }
     if (appDrag?.on) { appMeasure(appDrag); appPlace(appDrag) }
   }, { capture: true, passive: true })
   addEventListener('resize', () => {
     if (S.root?.isConnected) frameFit()
-    if (S.drag?.on) { dragMeasure(S.drag); dragPlace(S.drag) }
+    if (S.drag?.on) { pagerFit(); pagerSet(at() * S.geo.stride); dragMeasure(S.drag); dragPlace(S.drag) }
     if (appDrag?.on) { appMeasure(appDrag); appPlace(appDrag) }
     if (!S.drag?.on && S.root?.isConnected) setCols(S.root.querySelector('[data-hw-grid]'))
   }, { passive: true })
@@ -2944,6 +3266,8 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
       const d = S.drag, grid = d.cell.parentElement, before = rectMap(grid)
       setMerge(d, null)
       d.order = d.was
+      d.moved = false
+      d.was.forEach((el, i) => { el.hwBr = d.brWas[i] })
       place(grid, d.was)
       playFlip(grid, before, d.cell)
       dragEnd()
@@ -3522,6 +3846,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     const items = [
       { label: 'Add Widget…', icon: icon('plus', 16), run: openGallery },
       ...(HUB ? [{ label: 'Add App…', icon: icon('grid', 16), run: openAppPicker }] : []),
+      { label: 'Add Page', icon: icon('layers', 16), run: addPage },
       editItem(),
     ]
     if (HUB) items.push('-', { label: 'Edit Style…', icon: hic('palette', 16), run: () => HUB.openStyle() }, { label: 'Change Wallpaper…', icon: hic('image', 16), run: () => HUB.openStyle('wallpaper') }, { label: 'Edit Tabs…', icon: hic('tabs', 16), run: () => HUB.openTabs() }, ...(window.HUB_CONNECTIONS ? [{ label: 'Connections…', icon: hic('plug', 16), run: () => window.HUB_CONNECTIONS() }] : []))
@@ -3547,7 +3872,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     if (S.layoutAt && Number(s.at) < S.layoutAt) return
     let moved = false
     const main = S.layouts?.main || S.layout
-    for (const k of VIEWS) if (Array.isArray(s.widgets?.[k]) && JSON.stringify(s.widgets[k]) !== JSON.stringify(main[k])) { main[k] = s.widgets[k]; moved = true }
+    for (const k of VIEWS) if (Array.isArray(s.widgets?.[k])) { const next = withKeys(s.widgets[k]); if (JSON.stringify(next) !== JSON.stringify(main[k])) { main[k] = next; moved = true } }
     if (moved && onMain()) { scheduleRepaint(); loadSources(neededSources()) }
   })
 
@@ -3557,18 +3882,19 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     if (S.mode === m || realDevice()) return
     S.mode = m
     save('hub-home-mode', m)
+    S.extra = 0
     S.sig = ''
     scrollTo(0, 0)
     paint()
     const dev = S.root?.querySelector('.hw-device'), grid = S.root?.querySelector('[data-hw-grid]')
     if (S.framed) {
-      dev.querySelector('.hw-frame').scrollTop = 0
       if (dev.animate && !REDUCED.matches) dev.animate([{ opacity: 0, transform: `scale(${S.frameK * 0.96})` }, { opacity: 1, transform: `scale(${S.frameK})` }], { duration: 280, easing: EASE })
     } else if (grid?.animate && !REDUCED.matches) grid.animate([{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: 240, easing: EASE })
     loadSources(neededSources())
   }
   function toggleEdit() {
     S.editing = !S.editing
+    if (!S.editing) S.extra = 0
     closeOverlay(true)
     if (!S.editing) { for (const vk of VIEWS) { clearTimeout(S.timers[vk]); flush(vk) } hud('Layout saved') }
     paint(true)
@@ -3591,7 +3917,10 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
       S.layoutErr = isNet(e) ? 'reconnecting' : e.message
       saveSoon(vk)
     }
+    S.extra = 0
+    S.at[vk] = 0
     paint(true)
+    pagerSnap()
     loadSources(neededSources())
     hud('Layout reset')
   }
@@ -3613,6 +3942,10 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
       }
       const pg = t.closest('[data-hw-page]')
       if (pg) return void openPage(pg.dataset.hwPage)
+      const dot = t.closest('[data-hw-dot]')
+      if (dot) return pagerGo(Number(dot.dataset.hwDot))
+      const pb = t.closest('[data-hw-pagebtn]')
+      if (pb) return pb.dataset.hwPagebtn === 'add' ? addPage() : removePage()
       const adel = t.closest('[data-hw-appdel]')
       if (adel) return removeApp(adel.dataset.hwAppdel)
       const ao = t.closest('[data-hw-appopen]')
@@ -3643,13 +3976,17 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     root.addEventListener('pointerdown', holdStart)
     root.addEventListener('pointerdown', dragStart)
     root.addEventListener('pointerdown', appDown)
+    root.addEventListener('pointerdown', swipeStart)
+    root.addEventListener('wheel', onWheel, { passive: false })
+    // Tabbing to a card on another page brings that page.
+    root.addEventListener('focusin', e => { const c = e.target.closest?.('.hw-cell'); if (c && !S.drag?.on && c.hwPage != null && c.hwPage !== at()) pagerGo(c.hwPage) })
     root.addEventListener('scroll', onStackScroll, true)
     root.addEventListener('contextmenu', e => {
       // A held finger means edit, never the phone's own menu.
       if (e.pointerType === 'touch' && e.target.closest('.hw-cell')) { e.preventDefault(); e.stopPropagation(); return }
       if (S.editing) e.preventDefault()
     })
-    root.addEventListener('dragstart', e => { if (S.editing) e.preventDefault() })
+    root.addEventListener('dragstart', e => { if (S.editing || e.target.closest?.('.hw-pager')) e.preventDefault() })
   }
 
   document.addEventListener('keydown', e => {
@@ -3682,7 +4019,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     document.addEventListener('visibilitychange', () => { if (!document.hidden && showing() && Date.now() - S.lastLoad > 30_000) load() })
     // A service was just connected or disconnected from a sheet: the cards catch up now.
     document.addEventListener('hub-connection', () => { if (showing()) load(true) })
-    document.fonts?.ready.then(() => fitAll())
+    document.fonts?.ready.then(() => { fitAll(); if (showing()) frameFit() })
   }
 
   async function load(force) {
@@ -3699,6 +4036,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     const slot = document.getElementById('hw-slot')
     if (!slot || !S.root) return
     slot.replaceWith(S.root)
+    if (scrollY) scrollTo(0, 0)
     // The hub replaces the page every few seconds; cards update only if the hub's own data moved.
     const st = typeof data !== 'undefined' && data ? `${data.laptop?.at}:${data.server?.at}:${data.syncs?.at}` : ''
     const moved = st !== S.hubSig

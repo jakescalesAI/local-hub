@@ -1,6 +1,6 @@
 {
-  "name": "Local Hub",
-  "short_name": "Hub",
+  "name": "LocalHub",
+  "short_name": "LocalHub",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0b0f16",

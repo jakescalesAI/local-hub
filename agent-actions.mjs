@@ -1,6 +1,7 @@
 // What the assistant can change besides writing files: move, copy, rename and trash files, and a short list of hub actions.
 //   POST /api/agent/file      { op: move|copy|rename|trash, from, to }
 //   POST /api/agent/action    { name, args }
+//   POST /api/agent/attach    { path, name? } a copy of a readable file for the chat to show in the reply
 //   GET  /api/agent/log?n=    the last of these, newest first, so it can undo a move and you can see what happened
 //   GET  /api/agent/confirm/<id>   what a card is asking
 //   POST /api/agent/confirm/<id>   { allow } the card's answer. The hub then does the step itself.
@@ -12,8 +13,8 @@ import { constants as FS, realpath as realpathSync } from 'node:fs'
 import { promisify } from 'node:util'
 import os from 'node:os'
 import path from 'node:path'
-import { deniedToAgent } from './chat.mjs'
-import { HERE, PORT, hubConfig, scrubSecrets } from './config.mjs'
+import { deniedToAgent, holdChatFile, safeName } from './chat.mjs'
+import { HERE, PORT, hubConfig, scrubSecrets, secretValues } from './config.mjs'
 import { runsCode } from './files.mjs'
 import { IS_WIN, TRASH_NAME, moveToTrash } from './platform.mjs'
 
@@ -24,6 +25,8 @@ const ASK_MS = 5 * 60_000
 const ASK_LIMIT = 20
 const LOG_FILE = path.join(HERE, 'data', 'agent-actions.log')
 const LOG_LIMIT = 5 * 2 ** 20
+const ATTACH_BYTES = 25 * 2 ** 20
+const ATTACH_MAX = { files: 20, ms: 10 * 60_000 }
 
 const fail = (message, code = 400) => Object.assign(new Error(message), { code })
 const realOf = promisify(realpathSync.native) // the native one, because it also expands 8.3 short names
@@ -89,6 +92,34 @@ async function checkFolder(dir) {
   }
   await walk(dir)
   return sum
+}
+
+// A file the agent hands back to the user. Copying it changes nothing, so it can come from anywhere the agent can read,
+// and the only limits are the key-file deny, links, and size.
+const attachedAt = []
+async function attachFile({ path: asked, name } = {}) {
+  const now = Date.now()
+  while (attachedAt.length && now - attachedAt[0] > ATTACH_MAX.ms) attachedAt.shift()
+  if (attachedAt.length >= ATTACH_MAX.files) throw fail(`That’s ${ATTACH_MAX.files} attachments in ten minutes, so wait a little before attaching more.`, 429)
+  const abs = plainPath(asked)
+  if (deniedToAgent(abs)) throw fail(KEY_REFUSAL, 403)
+  const st = await lstat(abs).catch(() => { throw fail('That doesn’t exist.', 404) })
+  if (st.isSymbolicLink()) throw fail('That’s a link, so the hub won’t attach it.', 403)
+  if (st.isDirectory()) throw fail('That’s a folder. Attach the files in it one at a time.')
+  if (!st.isFile()) throw fail('That isn’t a file.')
+  if (st.nlink > 1) throw fail('This file has another name elsewhere, so the hub won’t attach it.', 403)
+  const real = await realOf(abs)
+  if (deniedToAgent(real)) throw fail(KEY_REFUSAL, 403)
+  if (!(await readRoots()).some(r => inside(real, r))) throw fail('That’s outside the folders the assistant can read.', 403)
+  if (st.size > ATTACH_BYTES) throw fail(`That’s over ${ATTACH_BYTES / 2 ** 20} MB, so it can’t be attached.`, 413)
+  if (!st.size) throw fail('That file is empty.')
+  const shown = safeName(str(name) || path.basename(real))
+  if (deniedToAgent(str(name)) || deniedToAgent(shown)) throw fail(KEY_REFUSAL, 403)
+  const data = await readFile(real)
+  if (data.length > ATTACH_BYTES) throw fail(`That’s over ${ATTACH_BYTES / 2 ** 20} MB, so it can’t be attached.`, 413)
+  if (secretValues().some(v => data.includes(v))) throw fail('That file holds a stored key, so the hub won’t attach it.', 403)
+  attachedAt.push(now)
+  return holdChatFile(shown, data)
 }
 
 async function source(asked, roots, { removes = false } = {}) {
@@ -276,6 +307,18 @@ export function create({ run }) {
       const n = Math.max(1, Math.min(500, Number(url.searchParams.get('n')) || 50))
       const lines = (await readFile(LOG_FILE, 'utf8').catch(() => '')).split('\n').filter(Boolean).slice(-n).reverse()
       return send(res, 200, { entries: lines.flatMap(l => { try { return [JSON.parse(l)] } catch { return [] } }) }), true
+    }
+    if (p === '/api/agent/attach' && req.method === 'POST') {
+      const body = await bodyOf(req, readBody)
+      const line = { op: 'attach', from: clip(body?.path), to: clip(body?.name) }
+      try {
+        const out = await attachFile(body || {})
+        await log({ ...line, id: out.id, ok: true })
+        return send(res, 200, out), true
+      } catch (e) {
+        await log({ ...line, ok: false, note: e.message })
+        throw e
+      }
     }
     if ((p === '/api/agent/file' || p === '/api/agent/action') && req.method === 'POST') {
       const body = await bodyOf(req, readBody)

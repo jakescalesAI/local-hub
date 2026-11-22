@@ -147,7 +147,8 @@ foreach ($p in $paths) {
 export async function moveToTrash(run, items) {
   if (IS_WIN) {
     const r = await run('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', RECYCLE_PS], { input: JSON.stringify(items) })
-    return r.ok ? '' : r.stderr.trim().split('\n')[0] || 'Delete failed'
+    // PowerShell wraps the reason in its own words: keep Windows' sentence.
+    return r.ok ? '' : (r.stderr.trim().split('\n')[0] || 'Delete failed').replace(/^.*argument\(s\): "(.*?)"?\s*$/, '$1')
   }
   const tool = IS_MAC ? firstOf('/usr/bin/trash', onPath('trash')) : ''
   const cmd = tool ? [tool, []] : onPath('gio') ? ['gio', ['trash', '--']] : onPath('trash-put') ? ['trash-put', ['--']] : null

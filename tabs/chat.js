@@ -232,6 +232,8 @@
     collapse: svg('<path d="M4 14h6v6"/><path d="M20 10h-6V4"/><path d="M14 10l7-7"/><path d="M3 21l7-7"/>', 18),
     plus22: svg('<path d="M12 5v14M5 12h14"/>', 22),
     clip: svg('<path d="m21.4 11.1-9.2 9.2a6 6 0 0 1-8.5-8.5l8.6-8.6a4 4 0 1 1 5.7 5.7l-8.6 8.6a2 2 0 0 1-2.8-2.8l8.5-8.5"/>', 19),
+    gauge: svg('<path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/>', 19),
+    compass: svg('<circle cx="12" cy="12" r="10"/><path d="m16.24 7.76-2.12 6.36-6.36 2.12 2.12-6.36z"/>', 19),
     brain: svg('<path d="M12 18V5"/><path d="M15 13a4.17 4.17 0 0 1-3-4 4.17 4.17 0 0 1-3 4"/><path d="M17.6 6.5A3 3 0 1 0 12 5a3 3 0 1 0-5.6 1.5"/><path d="M18 5.1a4 4 0 0 1 2.5 5.8"/><path d="M18 18a4 4 0 0 0 2-7.5"/><path d="M19.97 17.5A4 4 0 1 1 12 18a4 4 0 1 1-7.97-.5"/><path d="M6 18a4 4 0 0 1-2-7.5"/><path d="M6 5.1a4 4 0 0 0-2.5 5.8"/>', 19),
     mic: svg('<rect x="9" y="2" width="6" height="12" rx="3"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><path d="M12 18v4"/>', 19),
     mic22: svg('<rect x="9" y="2" width="6" height="12" rx="3"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><path d="M12 18v4"/>', 20),
@@ -239,6 +241,9 @@
     collapse19: svg('<path d="M4 14h6v6"/><path d="M20 10h-6V4"/><path d="M14 10l7-7"/><path d="M3 21l7-7"/>', 19),
     file: svg('<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/>', 15),
     x14: svg('<path d="M18 6 6 18M6 6l12 12"/>', 14),
+    save: svg('<path d="M12 4v11"/><path d="m7 11 5 5 5-5"/><path d="M5 20h14"/>', 14),
+    save18: svg('<path d="M12 4v11"/><path d="m7 11 5 5 5-5"/><path d="M5 20h14"/>', 18),
+    copy18: svg('<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/>', 18),
     reply: svg('<path d="m9 17-5-5 5-5"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/>', 14),
   }
 
@@ -320,10 +325,16 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
 .mi .ml { flex: 1; min-width: 0; }
 .mi .mv { flex: none; font-size: 13.5px; color: var(--label-2, rgba(60, 60, 67, .6)); display: inline-flex; align-items: center; gap: 4px; }
 .mi .mv svg { transition: transform .2s var(--ease, ease); }
-.mi[aria-expanded="true"] .mv svg { transform: rotate(90deg); }
-.sub { margin: 0 0 4px 34px; border-left: .5px solid var(--sep, rgba(60, 60, 67, .18)); padding-left: 4px; }
-.sub .mi { min-height: 40px; font-size: 14.5px; }
-.sub .mi .ck { flex: none; width: 18px; color: var(--blue, #007aff); display: grid; place-items: center; }
+.mi[aria-expanded="true"] { background: var(--fill, rgba(118, 118, 128, .12)); }
+.mi[hidden] { display: none; }
+.menu.under { visibility: hidden; }
+.fly { min-width: 200px; max-width: min(300px, calc(100vw - 24px)); max-height: calc(100vh - 24px); overflow-y: auto; }
+.fly .mi { min-height: 40px; font-size: 14.5px; }
+.fly .mi.two { padding-top: 8px; padding-bottom: 8px; align-items: flex-start; }
+.fly .ck { flex: none; width: 18px; color: var(--blue, #007aff); display: grid; place-items: center; }
+.fly .mi.two .ck { height: 20px; }
+.fly .hint { display: block; margin-top: 2px; font-size: 13.5px; line-height: 1.3; color: var(--label-2, rgba(60, 60, 67, .6)); }
+.fly .back .mic svg { transform: rotate(180deg); }
 .msep { height: .5px; margin: 4px 10px; background: var(--sep, rgba(60, 60, 67, .18)); }
 .atts { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; }
 .atts:empty, .note:empty { display: none; }
@@ -335,6 +346,28 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
 .att button:hover { background: var(--fill, rgba(118, 118, 128, .12)); color: var(--label, #000); }
 .note { margin: 0 0 8px; padding: 8px 12px; border-radius: 12px; font-size: 13.5px; line-height: 1.35; color: var(--label, #000); background: var(--surface, #fff); box-shadow: 0 0 0 .5px var(--sep, rgba(60, 60, 67, .18)), 0 4px 14px rgba(0, 0, 0, .1); }
 .bub .files { display: block; margin-top: 4px; font-size: 12.5px; opacity: .85; }
+.att .ao { flex: 0 1 auto; display: inline-flex; align-items: center; gap: 6px; min-width: 0; width: auto; height: 100%; border-radius: 8px; color: inherit; background: none; text-align: left; text-decoration: none; }
+.att button.ao:hover { background: none; color: inherit; }
+.att button.ao:hover .an { text-decoration: underline; }
+.att .asv { flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; color: var(--label-2, rgba(60, 60, 67, .6)); }
+.att .asv:hover { background: var(--fill, rgba(118, 118, 128, .12)); color: var(--label, #000); }
+.afiles { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.afiles .att { color: var(--label, #000); }
+.apic { display: block; max-width: min(100%, 360px); border-radius: 12px; overflow: hidden; }
+.apic img { display: block; max-width: 100%; max-height: 260px; object-fit: contain; }
+.msg.afile { align-items: flex-start; gap: 6px; }
+.dropping { outline: 2px dashed var(--blue, #007aff); outline-offset: 2px; }
+.fv { position: fixed; inset: 0; z-index: 5; pointer-events: auto; display: flex; align-items: center; justify-content: center; padding: 24px; background: rgba(0, 0, 0, .5); }
+.fvp { display: flex; flex-direction: column; width: min(860px, 100%); max-height: 100%; min-height: 0; border-radius: 16px; overflow: hidden; color: var(--label, #000); background: var(--bg, #f2f2f7); box-shadow: 0 12px 40px rgba(0, 0, 0, .35); }
+.fvh { flex: none; display: flex; align-items: center; gap: 4px; padding: 6px 8px 6px 16px; border-bottom: .5px solid var(--sep, rgba(60, 60, 67, .18)); }
+.fvn { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+.fvs { flex: none; margin-right: 6px; color: var(--label-2, rgba(60, 60, 67, .6)); font-size: 13px; }
+.fvh .ib { width: 36px; height: 36px; border-radius: 10px; color: var(--blue, #007aff); text-decoration: none; }
+.fvb { flex: 1 1 auto; min-height: 0; overflow: auto; overscroll-behavior: contain; }
+.fvb pre { margin: 0; padding: 14px 16px; font: 13px/1.5 var(--mono, ui-monospace, Consolas, monospace); white-space: pre-wrap; overflow-wrap: anywhere; }
+.fvb img { display: block; max-width: 100%; margin: 0 auto; }
+.fvcut { padding: 10px 16px; font-size: 14px; color: var(--label-2, rgba(60, 60, 67, .6)); }
+@media (max-width: 640px) { .fv { padding: 0; } .fvp { width: 100%; height: 100%; border-radius: 0; padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); } }
 
 /* ----- messages (card and full chat) ----- */
 .msg { max-width: 100%; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
@@ -539,7 +572,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
     <div class="rq" aria-label="Replying to"></div>
     <div class="atts" aria-label="Attached files"></div>
     <div class="pill glass">
-      <button type="button" class="ib plus bplus" aria-label="Attach, model, dictate, full screen" aria-haspopup="menu" aria-expanded="false" title="Attach, model, dictate, full screen">${IC.plus22}</button>
+      <button type="button" class="ib plus bplus" aria-label="Attach, model, effort, mode, dictate, full screen" aria-haspopup="menu" aria-expanded="false" title="Attach, model, effort, mode, dictate, full screen">${IC.plus22}</button>
       <textarea class="bta" rows="1" placeholder="Ask anything" aria-label="Message" enterkeyhint="send" autocomplete="off" autocapitalize="sentences"></textarea>
       <button type="button" class="send bsend" aria-label="Send" disabled>${IC.up}</button>
     </div>
@@ -563,7 +596,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
         <div class="rq" aria-label="Replying to"></div>
         <div class="atts" aria-label="Attached files"></div>
         <div class="pill">
-          <button type="button" class="ib plus fplus" aria-label="Attach, model, dictate, full screen" aria-haspopup="menu" aria-expanded="false" title="Attach, model, dictate, full screen">${IC.plus22}</button>
+          <button type="button" class="ib plus fplus" aria-label="Attach, model, effort, mode, dictate, full screen" aria-haspopup="menu" aria-expanded="false" title="Attach, model, effort, mode, dictate, full screen">${IC.plus22}</button>
           <textarea class="fta" rows="1" placeholder="Ask anything" aria-label="Message" enterkeyhint="send" autocomplete="off" autocapitalize="sentences"></textarea>
           <button type="button" class="send fsend" aria-label="Send" disabled>${IC.up}</button>
         </div>
@@ -571,14 +604,26 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
     </section>
   </div>
   <div class="menu" role="menu" aria-label="Composer options" hidden></div>
-  <input class="pick" type="file" multiple hidden accept="image/*,.pdf,.txt,.md,.csv,.tsv,.json,.log,.yaml,.yml,.xml,.html,.htm,.js,.mjs,.ts,.py,.ps1,.sh,.ini,.toml">
+  <div class="menu fly" role="menu" hidden></div>
+  <input class="pick" type="file" multiple hidden>
+  <div class="fv" role="dialog" aria-modal="true" aria-label="File" hidden>
+    <div class="fvp">
+      <header class="fvh">
+        <span class="fvn"></span><span class="fvs"></span>
+        <button type="button" class="ib fvc" aria-label="Copy" title="Copy" hidden>${IC.copy18}</button>
+        <a class="ib fvd" aria-label="Save" title="Save">${IC.save18}</a>
+        <button type="button" class="ib fvx" aria-label="Close" title="Close (Esc)">${IC.close}</button>
+      </header>
+      <div class="fvb"></div>
+    </div>
+  </div>
 </div>`
   const $ = s => shadow.querySelector(s)
   const rootEl = $('.root'), bar = $('.bar'), barPill = $('.bar .pill'), bta = $('.bta'), bsend = $('.bsend'), bPlus = $('.bplus')
   const card = $('.card'), clogEl = $('.clog'), cStop = $('.chead .sb'), cExpand = $('.cx'), cClose = $('.cc')
   const full = $('.full'), fp = $('.fp'), flogEl = $('.flog'), hist = $('.hist'), ctxEls = shadow.querySelectorAll('.ctx'), fta = $('.fta'), fsend = $('.fsend')
   const fPill = $('.ffoot .pill'), fNew = $('.fnew'), fHist = $('.fhist'), fX = $('.fx'), scrim = $('.scrim'), fPlus = $('.fplus')
-  const menu = $('.menu'), pick = $('.pick')
+  const menu = $('.menu'), fly = $('.fly'), pick = $('.pick')
   const attsEls = [...shadow.querySelectorAll('.atts')], noteEls = [...shadow.querySelectorAll('.note')], rqEls = [...shadow.querySelectorAll('.rq')], quEls = [...shadow.querySelectorAll('.qu')]
 
   /* ---------- state ---------- */
@@ -605,7 +650,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
       const today = d.toDateString() === new Date().toDateString()
       parts.push([today ? t : `${d.toLocaleDateString([], { month: 'short', day: 'numeric' })}, ${t}`, d.toLocaleString([], { dateStyle: 'full', timeStyle: 'medium' })])
     }
-    if (m.ms) parts.push([m.ms < 60e3 ? `${(m.ms / 1000).toFixed(1)}s` : `${Math.floor(m.ms / 60e3)}m ${Math.round((m.ms % 60e3) / 1000)}s`, `Took ${(m.ms / 1000).toFixed(1)} seconds${m.model ? ` on ${modelName(m.model)}` : ''}`])
+    if (m.ms) parts.push([m.ms < 60e3 ? `${(m.ms / 1000).toFixed(1)}s` : `${Math.floor(m.ms / 60e3)}m ${Math.round((m.ms % 60e3) / 1000)}s`, `Took ${(m.ms / 1000).toFixed(1)} seconds${m.model ? ` on ${modelName(m.model)}` : ''}${m.effort ? `, ${(S.info?.efforts || []).find(([v]) => v === m.effort)?.[1] || m.effort} effort` : ''}${m.mode === 'plan' ? ', Plan mode' : ''}`])
     const tok = (m.in || 0) + (m.out || 0)
     if (tok) parts.push([`${fmtK(tok)} tokens${m.cost ? ` · ${fmtCost(m.cost)}` : ''}`, `${(m.in || 0).toLocaleString()} in (${(m.cached || 0).toLocaleString()} from cache) + ${(m.out || 0).toLocaleString()} out${m.cost ? ` · ${fmtCost(m.cost)} at API prices` : ''}`])
     return parts.map(([t, tip]) => `<span class="mt" title="${esc(tip)}">${esc(t)}</span>`).join('<i class="sd" aria-hidden="true"></i>')
@@ -663,8 +708,8 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
           const ta = activeTa()
           ta.value = ta.value.trim() ? `${it.text}\n${ta.value}` : it.text
           grow(ta, ta === fta ? fPill : barPill)
-          if (it.files.length) { S.files = it.files.concat(S.files).slice(0, MAX_FILES()); renderAtts() }
-          if (it.reply && !S.reply) { S.reply = it.reply; renderReply() }
+          if (it.files.length) { S.files = it.files.concat(S.files); renderAtts() }
+          takeReply(it.reply, ta)
           syncSend()
           ta.focus({ preventScroll: true })
         })
@@ -810,8 +855,18 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
       const m = document.createElement('div'); m.className = 'msg u'
       const b = document.createElement('div'); b.className = 'bub'; b.textContent = text
       if (reply) { const q = document.createElement('span'); q.className = 'rqt'; q.textContent = reply; b.prepend(q) }
-      if (files && files.length) { const f = document.createElement('span'); f.className = 'files'; f.textContent = `Attached: ${files.join(', ')}`; b.append(f) }
+      if (files && files.length) { v.lastFiles = filesEl(files, () => v.scrollEnd()); b.append(v.lastFiles) }
       m.append(b); log.append(m); v.scrollEnd(true)
+    }
+    // The hub has saved them, so the chips can open from there instead of from this page's memory.
+    v.setFiles = list => { const el = filesEl(list, () => v.scrollEnd()); v.lastFiles?.replaceWith(el); v.lastFiles = el }
+    v.addAttachment = f => {
+      v.clearEmpty()
+      const g = { ...f, conv: S.conv }
+      const m = document.createElement('div'); m.className = 'msg a afile'
+      if (isPic(g)) m.append(picEl(g, () => v.scrollEnd()))
+      m.append(attEl(g))
+      log.append(m); v.scrollEnd(true)
     }
     v.addAssistant = (raw, final = true, meta = null) => {
       v.clearEmpty()
@@ -954,7 +1009,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
       if (d.textContent && !answered) {
         let read = false
         const check = () => {
-          if (read || !d.clientHeight || !yes.isConnected) return
+          if (read || !d.clientHeight || !yes.isConnected || no.disabled) return // Don't is on its way, so Allow stays off
           read = d.scrollHeight - d.scrollTop - d.clientHeight <= 4
           yes.disabled = !read
           yes.textContent = read ? 'Allow' : 'Scroll to read all'
@@ -1070,7 +1125,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
 
   function updateSub() {
     const t = curTitle()
-    const text = window.HubBrowser?.isOpen?.() ? 'Looking at the browser' : t ? `Looking at the ${t} tab` : (window.HUB_CONF?.name || 'Local Hub')
+    const text = window.HubBrowser?.isOpen?.() ? 'Looking at the browser' : t ? `Looking at the ${t} tab` : (window.HUB_CONF?.name || 'LocalHub')
     ctxEls.forEach(el => { if (el.textContent !== text) el.textContent = text })
   }
   setInterval(() => { if (S.cardOn && !S.full) updateSub() }, 1500)
@@ -1147,7 +1202,9 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
 
   /* ---------- info (the models the server allows) ---------- */
 
-  const MODEL_KEY = 'hub-chat-model'
+  const MODEL_KEY = 'hub-chat-model', EFFORT_KEY = 'hub-chat-effort', MODE_KEY = 'hub-chat-mode'
+  S.effort = store.get(EFFORT_KEY, '')
+  S.mode = store.get(MODE_KEY, '') === 'plan' ? 'plan' : 'auto'
   async function loadInfo() {
     try {
       const info = await (await hubFetch('/api/chat/info')).json()
@@ -1155,28 +1212,86 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
       const ids = (info.models || []).map(([v]) => v)
       const saved = store.get(MODEL_KEY, '')
       S.model = ids.includes(saved) ? saved : ids.includes(info.defaultModel) ? info.defaultModel : ids[0] || ''
+      if (!(info.efforts || []).some(([v]) => v === S.effort)) S.effort = ''
+      if (!(info.modes || []).some(([v]) => v === S.mode)) S.mode = 'auto'
+      syncRec()
     } catch { S.info = null }
   }
   const modelName = id => ((S.info?.models || []).find(([v]) => v === id) || [])[1] || 'Default'
 
-  /* ---------- the + menu: Attach files, Model, Dictate, Full screen ---------- */
+  /* ---------- the + menu: Attach files, Model, Effort, Mode, Dictate, Full screen ---------- */
 
   let menuFrom = null // the + button that opened it
   function menuRow(act, icon, label, value = '', extra = '') {
     return `<button type="button" class="mi" role="menuitem" data-act="${act}"${extra}><span class="mic">${icon}</span><span class="ml">${esc(label)}</span>${value ? `<span class="mv">${value}</span>` : ''}</button>`
   }
-  function renderMenu(open = false) {
-    const models = S.info?.models || []
-    const sub = open && models.length
-      ? `<div class="sub" role="group" aria-label="Model">${models.map(([v, l]) => `<button type="button" class="mi" role="menuitemradio" aria-checked="${v === S.model}" data-act="pick-model" data-model="${esc(v)}"><span class="ck">${v === S.model ? IC.check : ''}</span><span class="ml">${esc(l)}</span></button>`).join('')}</div>`
-      : ''
+  // The rows with a pop-out: their choices, what's chosen now, and where a choice goes.
+  const flyRows = () => ({
+    model: { label: 'Model', icon: IC.brain, list: S.info?.models || [], now: S.model, set: v => { S.model = v; store.set(MODEL_KEY, v) } },
+    effort: { label: 'Effort', icon: IC.gauge, list: S.info?.efforts || [], now: S.effort, set: v => { S.effort = v; store.set(EFFORT_KEY, v) } },
+    mode: { label: 'Mode', icon: IC.compass, list: S.info?.modes || [], now: S.mode, set: v => { S.mode = v; store.set(MODE_KEY, v); syncRec() } },
+  })
+  function flyRow(key) {
+    const f = flyRows()[key]
+    const name = (f.list.find(([v]) => v === f.now) || [])[1] || (f.list.length ? 'Default' : 'Loading…')
+    return menuRow(key, f.icon, f.label, `${esc(name)}${IC.chev}`, ` data-fly="${key}" aria-haspopup="menu" aria-expanded="false"`)
+  }
+  function renderMenu() {
     menu.innerHTML =
       menuRow('attach', IC.clip, 'Attach files') +
-      menuRow('model', IC.brain, 'Model', `${esc(models.length ? modelName(S.model) : 'Loading…')}${IC.chev}`, ` aria-haspopup="true" aria-expanded="${!!sub}"`) +
-      sub +
+      flyRow('model') + flyRow('effort') + flyRow('mode') +
       menuRow('dictate', IC.mic, S.rec ? 'Stop dictation' : 'Dictate') +
       '<div class="msep" role="separator"></div>' +
       menuRow('full', S.full ? IC.collapse19 : IC.expand19, S.full ? 'Exit full screen' : 'Full screen')
+  }
+  let flyFor = '', flyTimer = 0, lastPointer = 'mouse'
+  const flyRowEl = () => menu.querySelector(`[data-fly="${flyFor}"]`)
+  function openFly(key, focus = false) {
+    clearTimeout(flyTimer)
+    const f = flyRows()[key]
+    if (!f.list.length) return
+    flyRowEl()?.setAttribute('aria-expanded', 'false')
+    flyFor = key
+    flyRowEl().setAttribute('aria-expanded', 'true')
+    fly.setAttribute('aria-label', f.label)
+    fly.innerHTML = `<button type="button" class="mi back" hidden><span class="mic">${IC.chev}</span><span class="ml">${esc(f.label)}</span></button>` +
+      f.list.map(([v, l, hint]) => `<button type="button" class="mi${hint ? ' two' : ''}" role="menuitemradio" aria-checked="${v === f.now}" data-v="${esc(v)}"><span class="ck">${v === f.now ? IC.check : ''}</span><span class="ml">${esc(l)}${hint ? `<span class="hint">${esc(hint)}</span>` : ''}</span></button>`).join('')
+    fly.hidden = false
+    placeFly()
+    if (focus) (fly.querySelector('[aria-checked="true"]') || fly.querySelector('[data-v]'))?.focus({ preventScroll: true })
+  }
+  function closeFly(refocus = false) {
+    clearTimeout(flyTimer)
+    if (fly.hidden) return
+    fly.hidden = true
+    menu.classList.remove('under')
+    const row = flyRowEl()
+    row?.setAttribute('aria-expanded', 'false')
+    flyFor = ''
+    if (refocus) row?.focus({ preventScroll: true })
+  }
+  // Beside its row, on the right if it fits and otherwise the left. With no room on either side, as on a phone, it takes the menu's place.
+  function placeFly() {
+    if (fly.hidden) return
+    const row = flyRowEl()
+    if (!row) return
+    const GAP = 6, EDGE = 12, vw = document.documentElement.clientWidth, vh = window.innerHeight
+    menu.classList.remove('under')
+    fly.querySelector('.back').hidden = true
+    fly.style.width = ''
+    fly.style.left = '0px'; fly.style.top = '0px'; fly.style.bottom = 'auto'
+    const m = menu.getBoundingClientRect(), r = row.getBoundingClientRect(), w = fly.offsetWidth
+    const side = m.right + GAP + w <= vw - EDGE ? m.right + GAP : m.left - GAP - w >= EDGE ? m.left - GAP - w : null
+    if (side == null) {
+      fly.querySelector('.back').hidden = false
+      menu.classList.add('under')
+      fly.style.width = `${m.width}px`
+      fly.style.left = `${m.left}px`
+      fly.style.top = `${Math.max(EDGE, Math.min(m.bottom - fly.offsetHeight, vh - fly.offsetHeight - EDGE))}px`
+      return
+    }
+    fly.style.left = `${side}px`
+    fly.style.top = `${Math.max(EDGE, Math.min(r.top - 6, vh - fly.offsetHeight - EDGE))}px`
   }
   function placeMenu() {
     if (!menuFrom || menu.hidden) return
@@ -1189,6 +1304,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
   function openMenu(btn) {
     if (S.rec) { stopDictate(); return } // while listening, the + is the stop button
     if (!menu.hidden && menuFrom === btn) { closeMenu(); return }
+    closeFly()
     menuFrom = btn
     renderMenu()
     menu.hidden = false
@@ -1200,6 +1316,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
   }
   function closeMenu(refocus = false) {
     if (menu.hidden) return
+    closeFly()
     menu.hidden = true
     for (const b of [bPlus, fPlus]) b.setAttribute('aria-expanded', 'false')
     if (refocus) menuFrom?.focus({ preventScroll: true })
@@ -1210,34 +1327,70 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
     const b = e.target.closest('.mi')
     if (!b) return
     const act = b.dataset.act
-    if (act === 'model') { renderMenu(b.getAttribute('aria-expanded') !== 'true'); placeMenu(); menu.querySelector('[data-act="model"]')?.focus({ preventScroll: true }); return }
-    if (act === 'pick-model') { S.model = b.dataset.model; store.set(MODEL_KEY, S.model); renderMenu(false); placeMenu(); flash(`Model: ${modelName(S.model)}`, 1800); closeMenu(); activeTa().focus({ preventScroll: true }); return }
+    // A mouse has already opened it by hovering, so a click keeps it. A tap toggles, and a key press goes into the list.
+    if (b.dataset.fly) {
+      const typed = e.detail === 0
+      if (flyFor === b.dataset.fly && !typed && lastPointer !== 'mouse') closeFly(); else openFly(b.dataset.fly, typed)
+      return
+    }
     closeMenu()
     if (act === 'attach') { pick.value = ''; pick.click() }
     else if (act === 'dictate') S.rec ? stopDictate() : startDictate()
     else if (act === 'full') setFull(!S.full)
   })
-  // Arrow keys move through the rows.
-  menu.addEventListener('keydown', e => {
-    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
+  menu.addEventListener('pointerdown', e => { lastPointer = e.pointerType }, true)
+  fly.addEventListener('pointerdown', e => { lastPointer = e.pointerType }, true)
+  // Hovering opens a row's pop-out, or closes it on a row without one. The wait lets the pointer cross another row on its way to the panel.
+  menu.addEventListener('pointerover', e => {
+    if (e.pointerType !== 'mouse') return
+    const b = e.target.closest('.mi')
+    if (!b) return
+    clearTimeout(flyTimer)
+    const key = b.dataset.fly || ''
+    if (key === flyFor) return
+    flyTimer = setTimeout(() => { if (key) openFly(key); else closeFly() }, flyFor ? 180 : 60)
+  })
+  fly.addEventListener('pointerover', () => clearTimeout(flyTimer))
+  fly.addEventListener('click', e => {
+    const b = e.target.closest('.mi')
+    if (!b) return
+    if (b.classList.contains('back')) { closeFly(true); return }
+    const f = flyRows()[flyFor]
+    f.set(b.dataset.v)
+    const name = (f.list.find(([v]) => v === b.dataset.v) || [])[1]
+    closeMenu()
+    flash(`${f.label}: ${name}`, 1800)
+    activeTa().focus({ preventScroll: true })
+  })
+  // Arrow keys move through the rows, right goes into a pop-out and left comes back out.
+  const arrowRows = (box, e) => {
     e.preventDefault()
-    const rows = [...menu.querySelectorAll('.mi')]
+    const rows = [...box.querySelectorAll('.mi:not([hidden])')]
     const i = rows.indexOf(shadow.activeElement)
     rows[(i + (e.key === 'ArrowDown' ? 1 : -1) + rows.length) % rows.length]?.focus()
+  }
+  menu.addEventListener('keydown', e => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { closeFly(); arrowRows(menu, e); return }
+    const key = shadow.activeElement?.dataset?.fly
+    if (e.key === 'ArrowRight' && key) { e.preventDefault(); openFly(key, true) }
+  })
+  fly.addEventListener('keydown', e => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') arrowRows(fly, e)
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); closeFly(true) }
   })
   // Esc closes it wherever the focus is, before anything else on the page sees the key.
   document.addEventListener('keydown', e => {
     if (e.key !== 'Escape' || menu.hidden) return
     e.preventDefault(); e.stopPropagation()
-    closeMenu(true)
+    if (!fly.hidden) closeFly(true); else closeMenu(true)
   }, true)
   // A press anywhere outside the menu and its + button closes it.
   document.addEventListener('pointerdown', e => {
     if (menu.hidden) return
     const p = e.composedPath()
-    if (!p.includes(menu) && !p.includes(menuFrom)) closeMenu()
+    if (!p.includes(menu) && !p.includes(fly) && !p.includes(menuFrom)) closeMenu()
   }, true)
-  window.addEventListener('resize', () => placeMenu())
+  window.addEventListener('resize', () => { placeMenu(); placeFly() })
 
   const activeTa = () => (S.full ? fta : bta)
   // Test runs set sessionStorage hub-chat-test to "1": their chats stay out of the real history.
@@ -1257,30 +1410,202 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
   const size = n => (n < 1024 ? `${n} B` : n < 1048576 ? `${Math.round(n / 1024)} KB` : `${(n / 1048576).toFixed(1)} MB`)
   function renderAtts() {
     for (const box of attsEls) {
-      box.replaceChildren(...S.files.map((f, i) => {
-        const el = document.createElement('span'); el.className = 'att'
-        let thumb
-        if (f.url) { thumb = document.createElement('img'); thumb.src = f.url; thumb.alt = '' } else { thumb = document.createElement('span'); thumb.className = 'fi'; thumb.innerHTML = IC.file }
-        const n = document.createElement('span'); n.className = 'an'; n.textContent = f.name; n.title = f.name
-        const s = document.createElement('span'); s.className = 'as'; s.textContent = size(f.size)
-        const x = document.createElement('button'); x.type = 'button'; x.innerHTML = IC.x14; x.setAttribute('aria-label', `Remove ${f.name}`)
-        x.addEventListener('click', () => { const [gone] = S.files.splice(i, 1); if (gone?.url) URL.revokeObjectURL(gone.url); renderAtts(); syncSend(); activeTa().focus({ preventScroll: true }) })
-        el.append(thumb, n, s, x)
-        return el
-      }))
+      box.replaceChildren(...S.files.map((f, i) => attEl(f, () => {
+        const [gone] = S.files.splice(i, 1)
+        if (gone?.url) URL.revokeObjectURL(gone.url)
+        // The whole draft went into this one, so taking it off gives the draft back.
+        const t = activeTa()
+        if (gone?.restore && !t.value) { t.value = gone.restore; t.dispatchEvent(new Event('input')) }
+        renderAtts(); syncSend(); t.focus({ preventScroll: true })
+      })))
     }
   }
-  function clearFiles() { for (const f of S.files) if (f.url) URL.revokeObjectURL(f.url); S.files = []; renderAtts() }
-  pick.addEventListener('change', () => {
-    const skipped = []
-    for (const file of pick.files || []) {
+  const fileHref = (f, q = '') => `/api/chat/file/${encodeURIComponent(f.conv || S.conv)}/${f.id}${q}`
+  const fileLabel = f => (f.paste || /^pasted-text-\d/.test(f.name || '') ? 'Pasted text' : f.name)
+  const isPic = f => f.view === 'image' || !!f.url
+  const isReadable = f => f.view === 'text' || !!f.paste || (!!f.file && (/^text\//.test(f.file.type) || /\.(txt|md|csv|tsv|json|log|ya?ml|xml|html?|js|mjs|ts|py|ps1|sh|ini|toml)$/i.test(f.name)))
+  // One attachment as a chip: in the composer with a remove button, in a message with a save button.
+  function attEl(f, onRemove) {
+    const el = document.createElement('span'); el.className = 'att'
+    const label = fileLabel(f)
+    const open = document.createElement(isPic(f) || isReadable(f) ? 'button' : 'span'); open.className = 'ao'
+    if (open.tagName === 'BUTTON') { open.type = 'button'; open.setAttribute('aria-label', `Open ${label}`); open.addEventListener('click', () => openFile(f, open)) }
+    let thumb
+    if (isPic(f)) { thumb = document.createElement('img'); thumb.src = f.url || fileHref(f); thumb.alt = '' } else { thumb = document.createElement('span'); thumb.className = 'fi'; thumb.innerHTML = IC.file }
+    const n = document.createElement('span'); n.className = 'an'; n.textContent = label; n.title = f.preview || f.name
+    const s = document.createElement('span'); s.className = 'as'; s.textContent = f.gone ? 'No longer here' : f.lines ? `${f.lines} line${f.lines === 1 ? '' : 's'}` : size(f.size)
+    open.append(thumb, n, s)
+    el.append(open)
+    if (f.id) {
+      const a = document.createElement('a'); a.className = 'asv'; a.href = fileHref(f, '?download=1'); a.download = f.name; a.innerHTML = IC.save; a.title = 'Save'; a.setAttribute('aria-label', `Save ${label}`)
+      el.append(a)
+    }
+    if (onRemove) {
+      const x = document.createElement('button'); x.type = 'button'; x.innerHTML = IC.x14; x.setAttribute('aria-label', `Remove ${label}`)
+      x.addEventListener('click', onRemove)
+      el.append(x)
+    }
+    return el
+  }
+  function picEl(f, onLoad) {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'apic'; b.setAttribute('aria-label', `Open ${f.name}`)
+    const img = document.createElement('img'); img.alt = f.name; img.src = f.url || fileHref(f)
+    if (onLoad) img.addEventListener('load', onLoad)
+    img.addEventListener('error', () => b.replaceWith(attEl({ name: f.name, size: f.size, gone: true })))
+    b.append(img)
+    b.addEventListener('click', () => openFile(f, b))
+    return b
+  }
+  // What a message shows. Chats from before attachments were kept only have the names.
+  function filesEl(list, onLoad) {
+    if (list.every(f => typeof f === 'string')) { const s = document.createElement('span'); s.className = 'files'; s.textContent = `Attached: ${list.join(', ')}`; return s }
+    const w = document.createElement('div'); w.className = 'afiles'
+    for (const f of list) {
+      const g = f.id ? { ...f, conv: S.conv } : f
+      w.append(isPic(g) ? picEl(g, onLoad) : attEl(g))
+    }
+    return w
+  }
+
+  /* ---------- reading an attachment ---------- */
+
+  const SHOW_CHARS = 3e6
+  const fv = $('.fv'), fvName = $('.fvn'), fvSize = $('.fvs'), fvCopy = $('.fvc'), fvSave = $('.fvd'), fvBody = $('.fvb'), fvClose = $('.fvx')
+  let fvOpen = 0, fvFrom = null, fvBlob = '', fvText = ''
+  function closeFile() {
+    if (fv.hidden) return
+    fvOpen++
+    fv.hidden = true
+    fvBody.replaceChildren()
+    fvText = ''
+    if (fvBlob) { URL.revokeObjectURL(fvBlob); fvBlob = '' }
+    if (fvFrom?.isConnected) fvFrom.focus({ preventScroll: true })
+    fvFrom = null
+  }
+  async function openFile(f, from) {
+    const turn = ++fvOpen
+    fvFrom = from
+    fvName.textContent = fileLabel(f); fvName.title = f.name
+    fvSize.textContent = f.size != null ? size(f.size) : ''
+    if (fvBlob) { URL.revokeObjectURL(fvBlob); fvBlob = '' }
+    if (f.id) fvSave.href = fileHref(f, '?download=1')
+    else { fvBlob = URL.createObjectURL(f.file); fvSave.href = fvBlob }
+    fvSave.download = f.name
+    fvCopy.hidden = true
+    fvBody.replaceChildren()
+    fv.hidden = false
+    fvClose.focus({ preventScroll: true })
+    if (isPic(f)) {
+      const img = document.createElement('img'); img.alt = f.name; img.src = f.url || fileHref(f)
+      fvBody.append(img)
+      return
+    }
+    const pre = document.createElement('pre'); pre.textContent = 'Loading…'
+    fvBody.append(pre)
+    try {
+      const text = f.id
+        ? await fetch(fileHref(f, '?text=1')).then(r => { if (!r.ok) throw new Error(); return r.text() })
+        : await f.file.text()
+      if (turn !== fvOpen) return
+      pre.textContent = text.length > SHOW_CHARS ? text.slice(0, SHOW_CHARS) : text
+      if (text.length > SHOW_CHARS) { const cut = document.createElement('div'); cut.className = 'fvcut'; cut.textContent = 'This is the first part. Save the file to read the rest.'; fvBody.append(cut) }
+      fvText = text
+      fvCopy.hidden = false
+      fvBody.scrollTop = 0
+    } catch {
+      if (turn === fvOpen) pre.textContent = 'That file couldn’t be opened. It may no longer be here.'
+    }
+  }
+  fvClose.addEventListener('click', closeFile)
+  fvCopy.addEventListener('click', async () => {
+    await copyText(fvText)
+    fvCopy.innerHTML = IC.check
+    setTimeout(() => { fvCopy.innerHTML = IC.copy18 }, 1200)
+  })
+  fv.addEventListener('click', e => { if (e.target === fv) closeFile() })
+  fv.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeFile(); return }
+    if (e.key !== 'Tab') return
+    // Keeps Tab inside while it's open.
+    const stops = [fvCopy, fvSave, fvClose].filter(x => !x.hidden)
+    const at = stops.indexOf(shadow.activeElement)
+    e.preventDefault()
+    stops[(at + (e.shiftKey ? -1 : 1) + stops.length) % stops.length].focus()
+  })
+
+  /* ---------- adding files: the + button, paste and drop all come here ---------- */
+
+  const LONG_TEXT = () => S.info?.longText || 16000
+  const keyName = name => {
+    try { return !!S.info?.keyNames && (new RegExp(S.info.keyNames, 'i').test(name) || /::|:\$|~\d/.test(name)) } catch { return false }
+  }
+  function addFiles(list, folders = []) {
+    const skipped = folders.map(n => `${n} is a folder`)
+    for (const file of list) {
       if (S.files.length >= MAX_FILES()) { skipped.push(`only ${MAX_FILES()} files fit in one message`); break }
       if (file.size > MAX_MB() * 1048576) { skipped.push(`${file.name} is over ${MAX_MB()} MB`); continue }
-      if (!file.size) { skipped.push(`${file.name} is empty`); continue }
+      if (!file.size) { skipped.push(`${file.name} is empty or a folder`); continue }
+      if (keyName(file.name)) { skipped.push(`files named like ${file.name} usually hold keys, so the assistant can’t open them`); continue }
       S.files.push({ file, name: file.name, size: file.size, url: /^image\//.test(file.type) ? URL.createObjectURL(file) : '' })
     }
     if (skipped.length) flash(`Not attached: ${skipped.join('; ')}.`)
     renderAtts(); syncSend()
+  }
+  const clock = () => new Date().toTimeString().slice(0, 8).replace(/:/g, '')
+  function textFile(text) {
+    const file = new File([text], `pasted-text-${clock()}.txt`, { type: 'text/plain' })
+    return { file, name: file.name, size: file.size, url: '', paste: true, lines: text.split('\n').length, preview: text.slice(0, 120) }
+  }
+  // Long text goes in as a file the assistant can read, with whatever draft it replaced kept for if it's removed.
+  function attachText(text, restore = '') {
+    if (S.files.length >= MAX_FILES()) { flash(`Not attached: only ${MAX_FILES()} files fit in one message.`); return false }
+    const f = textFile(text)
+    if (f.size > MAX_MB() * 1048576) { flash(`Not attached: that text is over ${MAX_MB()} MB.`); return false }
+    S.files.push(restore ? { ...f, restore } : f)
+    renderAtts(); syncSend()
+    return true
+  }
+  function onPaste(e, t) {
+    const cd = e.clipboardData
+    if (!cd) return
+    const text = cd.getData('text/plain')
+    const items = [...(cd.items || [])].filter(i => i.kind === 'file')
+    const folders = items.map(i => i.webkitGetAsEntry?.()).filter(x => x?.isDirectory).map(x => x.name)
+    let files = [...cd.files]
+    // Word and Excel copy a picture of the selection along with its words, and the words are what's meant.
+    if (files.length && text.trim() && files.every(f => /^image\//.test(f.type))) files = []
+    if (files.length || folders.length) {
+      e.preventDefault()
+      // A copied screenshot is always called image.png, so each gets its own name.
+      addFiles(files.filter(f => !folders.includes(f.name)).map((f, i) => (!f.name || /^image\.\w+$/i.test(f.name) ? new File([f], `pasted-image-${clock()}${i ? `-${i + 1}` : ''}.${(f.type.split('/')[1] || 'png').replace(/\W.*/, '')}`, { type: f.type }) : f)), folders)
+      return
+    }
+    if (!text) return
+    const draft = t.value.slice(0, t.selectionStart) + text + t.value.slice(t.selectionEnd)
+    if (draft.length <= LONG_TEXT()) return
+    e.preventDefault()
+    // A long block is the file and the typed words stay as the message. If it only tips the draft over, the whole draft is the file.
+    if (text.length > LONG_TEXT()) attachText(text)
+    else if (attachText(draft, t.value)) { t.value = ''; t.dispatchEvent(new Event('input')) }
+  }
+  for (const zone of [bar, card, fp]) {
+    const pill = zone === fp ? fPill : barPill
+    const hasFiles = e => [...(e.dataTransfer?.types || [])].includes('Files')
+    zone.addEventListener('dragover', e => { if (!hasFiles(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; pill.classList.add('dropping') })
+    zone.addEventListener('dragleave', e => { if (!zone.contains(e.relatedTarget)) pill.classList.remove('dropping') })
+    zone.addEventListener('drop', e => {
+      pill.classList.remove('dropping')
+      if (!hasFiles(e)) return
+      e.preventDefault()
+      e.stopPropagation()
+      const folders = [...e.dataTransfer.items].map(i => i.webkitGetAsEntry?.()).filter(x => x?.isDirectory).map(x => x.name)
+      addFiles([...e.dataTransfer.files].filter(f => !folders.includes(f.name)), folders)
+      activeTa().focus({ preventScroll: true })
+    })
+  }
+  function clearFiles() { for (const f of S.files) if (f.url) URL.revokeObjectURL(f.url); S.files = []; renderAtts() }
+  pick.addEventListener('change', () => {
+    addFiles([...(pick.files || [])])
     activeTa().focus({ preventScroll: true })
   })
   const b64 = file => new Promise((resolve, reject) => {
@@ -1337,9 +1662,9 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
     for (const [b, t, ph] of [[bPlus, bta, 'Ask anything'], [fPlus, fta, 'Ask anything']]) {
       b.classList.toggle('rec', !!S.rec)
       b.innerHTML = S.rec ? IC.mic22 : IC.plus22
-      b.setAttribute('aria-label', S.rec ? 'Stop dictation' : 'Attach, model, dictate, full screen')
-      b.title = S.rec ? 'Listening… tap to stop' : 'Attach, model, dictate, full screen'
-      t.placeholder = S.rec ? 'Listening…' : ph
+      b.setAttribute('aria-label', S.rec ? 'Stop dictation' : 'Attach, model, effort, mode, dictate, full screen')
+      b.title = S.rec ? 'Listening… tap to stop' : 'Attach, model, effort, mode, dictate, full screen'
+      t.placeholder = S.rec ? 'Listening…' : S.mode === 'plan' ? `${ph} (Plan mode)` : ph
     }
   }
 
@@ -1387,6 +1712,14 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
   }
   for (const [t, pill, b] of [[bta, barPill, bsend], [fta, fPill, fsend]]) {
     t.addEventListener('input', () => { grow(t, pill); syncSend() })
+    t.addEventListener('paste', e => onPaste(e, t))
+    // A block that arrives without a paste event, such as text dragged in.
+    let was = 0
+    t.addEventListener('input', () => {
+      const grew = t.value.length - was
+      was = t.value.length
+      if (grew > 1000 && t.value.length > LONG_TEXT() && attachText(t.value)) { t.value = ''; was = 0; t.dispatchEvent(new Event('input')) }
+    })
     t.addEventListener('keydown', e => {
       if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && e.keyCode !== 229) { e.preventDefault(); submit(t.value) }
     })
@@ -1397,11 +1730,40 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
 
   const eachView = fn => { for (const v of views) fn(v) }
 
+  // The composer holds one quote. If it already has a different one, this one goes in as a quoted line, so neither is lost.
+  function takeReply(reply, ta) {
+    if (!reply || reply === S.reply) return
+    if (!S.reply) { S.reply = reply; renderReply(); return }
+    for (const [t, p] of [[bta, barPill], [fta, fPill]]) { t.value = `> ${reply}\n${ta.value}`.trimEnd(); grow(t, p) }
+  }
+
   // q: a queued item, which brings its own files and reply quote and leaves the composer alone.
+  // A send that never arrived: chips, words and the reply go back where they were, ahead of anything added since.
+  function putBack(text, files, reply) {
+    S.files = [...files, ...S.files]
+    renderAtts()
+    const now = (S.full ? fta : bta).value
+    for (const [t, p] of [[bta, barPill], [fta, fPill]]) { t.value = text && now ? `${text}\n${now}` : text || now; grow(t, p) }
+    takeReply(reply, S.full ? fta : bta)
+  }
+
   async function send(text, q) {
     text = String(text || '').trim()
-    const attached = q ? q.files : S.files
-    if ((!text && !attached.length) || S.busy) return
+    let attached = q ? q.files : S.files
+    if (!text && !attached.length) return
+    if (S.busy) {
+      if (q) { S.queue.unshift(q); renderQueue() }
+      return
+    }
+    // Typed up to here without a paste: it still goes in full.
+    if (text.length > LONG_TEXT()) {
+      if (attached.length >= MAX_FILES()) {
+        if (q) { S.queue.unshift(q); renderQueue() }
+        return flash(`That message is too long to send, and only ${MAX_FILES()} files fit in one message.`)
+      }
+      attached = [...attached, textFile(text)]
+      text = ''
+    }
     if (S.rec) stopDictate()
     closeMenu()
     if (S.hist) toggleHist(false)
@@ -1419,28 +1781,30 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
     }
     renderQueue()
     const names = attached.map(f => f.name)
+    S.sending = attached
     const shown = reply.length > 300 ? reply.slice(0, 299) + '…' : reply
     S.cardOn = true
     cardView.clear()
-    cardView.addUser(text || (names.length === 1 ? 'Have a look at the attached file.' : 'Have a look at the attached files.'), names, shown)
-    fullView.addUser(text || (names.length === 1 ? 'Have a look at the attached file.' : 'Have a look at the attached files.'), names, shown)
+    cardView.addUser(text || (names.length === 1 ? 'Have a look at the attached file.' : 'Have a look at the attached files.'), attached, shown)
+    fullView.addUser(text || (names.length === 1 ? 'Have a look at the attached file.' : 'Have a look at the attached files.'), attached, shown)
     eachView(v => v.showPending())
     syncSend()
     const ctrl = (S.ctrl = new AbortController())
     let finished = false
+    let accepted = false // once it has, the words are in the chat and don't come back
     try {
       const files = await Promise.all(attached.map(async f => ({ name: f.name, data: await b64(f.file) })))
-      for (const f of attached) if (f.url) URL.revokeObjectURL(f.url)
       const res = await fetch('/api/chat/send', {
         method: 'POST',
         headers: { 'content-type': 'application/json', 'x-hub': '1' },
-        body: JSON.stringify({ text, test: isTest() || undefined, files: files.length ? files : undefined, sessionId: S.conv || undefined, tab: curEnv(), tabTitle: curTitle(), narrow: PHONE.matches, model: S.model || undefined, reply: reply || undefined }),
+        body: JSON.stringify({ text, test: isTest() || undefined, files: files.length ? files : undefined, sessionId: S.conv || undefined, tab: curEnv(), tabTitle: curTitle(), narrow: PHONE.matches, model: S.model || undefined, effort: S.effort || undefined, mode: S.mode === 'auto' ? undefined : S.mode, reply: reply || undefined }),
         signal: ctrl.signal,
       })
       if (!res.ok || !res.body) {
         const j = await res.json().catch(() => ({}))
         throw new Error(j.error || `The hub answered ${res.status}`)
       }
+      accepted = true
       const reader = res.body.getReader()
       const dec = new TextDecoder()
       let buf = ''
@@ -1460,7 +1824,12 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
       }
       if (!finished && gen === S.gen) eachView(v => v.addError('The connection closed before the reply finished.'))
     } catch (e) {
-      if (e && e.name !== 'AbortError' && gen === S.gen) eachView(v => v.addError(e.message || 'Could not reach the hub.'))
+      if (e && e.name !== 'AbortError' && gen === S.gen) {
+        // A queued message comes back too, and the ones behind it wait so nothing goes out of order.
+        if (!accepted) { putBack(text, attached, reply); if (q) S.stopped = true }
+        const said = accepted ? 'The connection closed before the reply finished.' : e instanceof TypeError ? 'The hub didn’t answer, so that wasn’t sent.' : e.message || 'Could not reach the hub.'
+        eachView(v => v.addError(said))
+      }
     } finally {
       if (gen === S.gen) {
         eachView(v => { v.hidePending(); v.finishCur(); v.endBrowser() })
@@ -1481,6 +1850,14 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
     switch (ev.type) {
       case 'session':
         S.conv = ev.sessionId || S.conv
+        if (ev.atts?.length) {
+          eachView(v => v.setFiles(ev.atts))
+          for (const f of S.sending || []) if (f.url) URL.revokeObjectURL(f.url)
+          S.sending = []
+        }
+        break
+      case 'attachment':
+        eachView(v => { v.hidePending(); v.finishCur(); v.addAttachment(ev.file); v.showPending() })
         break
       case 'text_start':
         eachView(v => { v.finishCur(); v.cur = v.addAssistant('', false) })
@@ -1575,7 +1952,8 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
       for (const [n, it] of (c.items || []).entries()) {
         if (it.kind === 'confirm') fullView.addConfirm(it, c.items.slice(n + 1).some(x => x.kind === 'user'))
         else if (it.kind === 'connect') fullView.addConnect(it)
-        else if (it.kind === 'user') fullView.addUser(it.text || '', it.files, it.reply)
+        else if (it.kind === 'user') fullView.addUser(it.text || '', it.atts || it.files, it.reply)
+        else if (it.kind === 'attachment') fullView.addAttachment(it)
         else if (it.kind === 'assistant') fullView.addAssistant(it.text || '', true, it.meta || (it.at ? { at: it.at } : null))
         else if (it.kind === 'tool') fullView.addTool(it)
         else if (it.kind === 'site') fullView.addSite(it)
@@ -1666,7 +2044,14 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
         return
       }
       clearTimeout(armed)
-      try { await fetch(`/api/chat/sessions/${encodeURIComponent(s.id)}/delete`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: '{}' }) } catch {}
+      armed = 0
+      del.className = 'rb'; del.innerHTML = IC.trash
+      let r = null
+      try { r = await fetch(`/api/chat/sessions/${encodeURIComponent(s.id)}/delete`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: '{}' }) } catch {}
+      if (!r || (!r.ok && r.status !== 404)) {
+        const j = r ? await r.json().catch(() => ({})) : {}
+        return flash(j.error || 'The hub didn’t answer, so that chat is still here.')
+      }
       const wasCurrent = s.id === S.conv
       row.remove()
       if (wasCurrent) { const keep = S.hist; newChat(); if (keep) toggleHist(true) }
@@ -1686,7 +2071,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
   fullView.empty()
   syncSend()
   measureBar()
-  loadInfo()
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', loadInfo, { once: true }); else loadInfo()
 
   // A tiny handle for other tabs or tests: HubChat.open(), HubChat.ask('...').
   window.HubChat = { open: () => setFull(true), close: () => setFull(false), toggle: () => setFull(!S.full), ask: t => submit(t) }

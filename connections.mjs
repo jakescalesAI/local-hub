@@ -199,7 +199,7 @@ export async function readCapped(r, cap) {
 const jsonOf = async r => { try { return JSON.parse((await readCapped(r, MAX_READ)).text) } catch { return {} } }
 
 // A reply can hold a service's own secrets inside a normal listing. The assistant has no reason to see them.
-const SECRET_FIELD = /secret|token|passw|passphrase|passcode|(^|[_-])pass$|pwd|private[_-]?key|api[_-]?key|access[_-]?key|auth[_-]?(key|code)|signing[_-]?key|ssh[_-]?key|encryption[_-]?key|license[_-]?key|(master|app|consumer|client|shared|root|service)[_-]?key|credential|bearer|real_value|authorization|jwt|cookie|webhook[_-]?url|recovery[_-]?codes?|(otp|mfa|2fa)[_-]?code|totp|csrf|xsrf|sess(ion)?[_-]?id|\.sid$|connection[_-]?string|(mongo(db)?|postgres(ql)?|redis|database|db)[_-]?ur[il]|card[_-]?number|cvv|cvc|^auth$|^key$|^otp$|^pin$|^sess$|^salt$|^pem$|^sas$|^pat$|^x[_-]auth|^session([_-]?(id|key))?$|[_-]session$|(^|[_-])(dsn|ssn)$/i
+const SECRET_FIELD = /secret|token|passw|passphrase|passcode|(^|[_-])pass$|pwd|private[_-]?key|api[_-]?key|access[_-]?key|auth[_-]?(key|code)|signing[_-]?key|ssh[_-]?key|encryption[_-]?key|license[_-]?key|(master|app|consumer|client|shared|root|service)[_-]?key|credential|bearer|real_value|authorization|jwt|cookie|webhook[_-]?url|recovery[_-]?codes?|(otp|mfa|2fa)[_-]?code|totp|csrf|xsrf|sess(ion)?[_-]?id|\.sid$|connection[_-]?string|(mongo(db)?|postgres(ql)?|redis|database|db)[_-]?ur[il]|card[_-]?number|cvv|cvc|^auth$|^key$|^otp$|^pin$|^sess$|^salt$|^pem$|^sas$|^pat$|^sig$|^(x[_-])?signature([_-]?value)?$|^access$|^refresh$|^(access|refresh)[_-]?code$|^basic([_-]?auth)?$|^keys$|^certificate$|^private$|^x[_-]auth|^session([_-]?(id|key))?$|[_-]session$|(^|[_-])(dsn|ssn)$/i
 const PLAIN_FIELD = /^(?![_-]*token$)(next|prev|previous)?[_-]?(page|pagination|continuation|sync|cursor)?[_-]?token$|^token[_-]?type$|^(max|total|input|output|prompt|completion|cached|reasoning|used|usage)[_-]?tokens?([_-]?details)?$|^tokens?[_-]?(count|limit|used|usage)$/i
 const isSecretField = k => (SECRET_FIELD.test(k) || /[a-z]Pass$/.test(k)) && !PLAIN_FIELD.test(k)
 // A service's own id that's called key, such as an issue's PROJ-12, stays. Any other key is taken for a secret.
@@ -1200,7 +1200,7 @@ export function create({ here, run } = {}) {
     return { format: 'local-hub-connections', version: 1, connections: custom }
   }
   async function importFile(body, opts) {
-    if (body?.format !== 'local-hub-connections' || !Array.isArray(body.connections)) throw fail('That isn’t a Local Hub connections file')
+    if (body?.format !== 'local-hub-connections' || !Array.isArray(body.connections)) throw fail('That isn’t a LocalHub connections file')
     const before = readState().custom
     const added = []
     try {
