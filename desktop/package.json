@@ -45,6 +45,7 @@
           "!tv/android{,/**}",
           "!tv/alexa{,/**}",
           "!site{,/**}",
+          "!wrangler.jsonc",
           "!test{,/**}",
           "!.git{,/**}",
           "!.github{,/**}",

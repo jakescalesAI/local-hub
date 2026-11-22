@@ -324,3 +324,14 @@ kbd { display: inline-block; padding: .05em .34em .08em; border-radius: .26em; b
   .orbit { --rx: 80px; }
   .tools { --tool-text: 14px; }
 }
+
+/* ----- LocalHub TV ----- */
+.tv { display: flex; flex-direction: column; align-items: center; text-align: center; padding-top: clamp(64px, 9vw, 110px); }
+.tv-tag { font-size: 14px; font-weight: 600; letter-spacing: -0.006em; color: var(--label-2); }
+.tv h2 { margin: 8px 0 0; font-size: clamp(28px, 4.6vw, 46px); letter-spacing: -0.035em; text-wrap: balance; }
+.tv-lede { max-width: 36em; margin-top: 12px; font-size: clamp(16px, 1.7vw, 19px); line-height: 1.4; letter-spacing: -0.015em; color: var(--label-2); text-wrap: pretty; }
+.tv-set { width: min(100%, 880px); margin: clamp(26px, 4vw, 44px) 0 0; }
+.tv-screen { padding: clamp(5px, .9vw, 9px); border-radius: clamp(8px, 1.4vw, 14px); background: #0b0b0c; box-shadow: var(--ring), 0 30px 90px -24px rgba(255, 255, 255, .14); }
+.tv-screen img { display: block; width: 100%; height: auto; border-radius: clamp(3px, .5vw, 6px); }
+.tv-stand { display: block; width: 26%; height: clamp(8px, 1.3vw, 14px); margin: 0 auto; border-radius: 0 0 10px 10px; background: linear-gradient(#1c1c1e, #0e0e0f); box-shadow: var(--ring); }
+.tv .coming { margin-top: 22px; font-size: 17px; }
