@@ -175,11 +175,11 @@ export function createDeviceAuth({ here, hubName = () => 'Hub', hubUrl = () => '
 
   // Runs before the passcode gate. True means this request doesn't need the passcode. A valid Bearer
   // on the page load is swapped for a cookie, so the page's own requests work without the token ever
-  // reaching its scripts.
+  // reaching its scripts. The TV app opens /tv/ the same way the phone opens /.
   function admit(url, req, res) {
     const { device, viaBearer, token } = authenticate(req)
     req.hubDevice = device
-    if (viaBearer && req.method === 'GET' && (url.pathname === '/' || url.pathname === '/index.html')) res.setHeader('set-cookie', cookieHeader(req, token))
+    if (viaBearer && req.method === 'GET' && (url.pathname === '/' || url.pathname === '/index.html' || url.pathname === '/tv/')) res.setHeader('set-cookie', cookieHeader(req, token))
     if (device) return true
     return (url.pathname === '/pair' && req.method === 'GET') || (url.pathname === '/api/pair/claim' && req.method === 'POST')
   }

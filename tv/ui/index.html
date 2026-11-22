@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>LocalHub TV</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="./hub.svg">
+<link rel="stylesheet" href="./styles.css?v=7">
+</head>
+<body>
+<div id="hub-wall"></div>
+
+<div id="stage">
+  <header class="nav">
+    <div>
+      <h1 class="large-title" id="title">Home</h1>
+      <div class="nav-sub" id="navSub"></div>
+    </div>
+    <div class="nav-r">
+      <span class="hubchip glass" id="hubChip"><img src="./hub.svg" alt=""><span id="hubName">LocalHub</span><i class="st"></i></span>
+      <span class="nav-clock" id="clock"></span>
+    </div>
+  </header>
+
+  <div class="segrow">
+    <div class="seg" id="seg" role="tablist"><span class="seg-thumb"></span></div>
+    <span class="seg-hint" id="segHint"></span>
+  </div>
+
+  <section class="view" id="view-home">
+    <div class="sect"><div class="sect-h">Apps</div><div class="apps-row" id="homeApps"></div></div>
+    <div class="sect"><div class="widgets-row" id="widgets"></div></div>
+  </section>
+  <section class="view" id="view-apps"><div class="apps-grid" id="allApps"></div></section>
+  <section class="view" id="view-inputs"><div class="apps-grid" id="inputGrid"></div></section>
+
+  <div class="scrim" id="scrim"></div>
+  <aside class="menu" id="cc" aria-label="Control Center">
+    <div class="menu-h"><b id="ccClock"></b><span id="ccDate"></span></div>
+    <div id="ccList"></div>
+  </aside>
+
+  <section class="settings" id="settings" aria-label="Settings">
+    <div class="set-wrap"><div class="set-track" id="setTrack"></div></div>
+  </section>
+
+  <div class="modal" id="modal">
+    <div class="modal-card">
+      <div class="modal-in">
+        <h3 id="modalTitle"></h3>
+        <p id="modalHint"></p>
+        <input id="modalInput" type="text" inputmode="numeric" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="modal-actions"><button type="button" id="modalCancel">Cancel</button><button type="button" id="modalSave">Done</button></div>
+    </div>
+  </div>
+
+  <div class="launch" id="launch"><div class="launch-note" id="launchNote"></div></div>
+  <div class="fatal" id="fatal" hidden></div>
+</div>
+
+<div class="listen" id="listen"><svg class="mic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg><span id="listenText">Listening</span><span class="bars"><b></b><b></b><b></b><b></b></span></div>
+<div class="pairbar" id="pairbar" hidden><span id="pairText">Pair this TV with LocalHub to ask anything.</span><button type="button" id="pairBtn">Pair</button></div>
+<div class="toast" id="toast"></div>
+<div class="saver" id="saver"><div class="saver-wall" id="saverWall"></div><div class="saver-time" id="saverTime"></div><div class="saver-date" id="saverDate"></div></div>
+<div class="splash" id="splash"><img src="./hub.svg" alt=""><b id="splashName">LocalHub</b></div>
+
+<script>
+  /* Fit the 1920×1080 canvas before anything paints. */
+  (function () {
+    function fit() {
+      var stage = document.getElementById("stage");
+      if (!stage) return;
+      var s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+      stage.style.transform = "translate(-50%,-50%) scale(" + s + ")";
+    }
+    fit();
+    window.addEventListener("resize", fit);
+  })();
+  /* tabs/chat.js reads these to say "Looking at the TV tab". */
+  var env = "tv";
+  window.TABS = Object.assign(window.TABS || {}, { tv: { title: "TV" } });
+</script>
+<script type="module" src="./app.js?v=7"></script>
+</body>
+</html>

@@ -310,7 +310,7 @@ const deviceAuth = createDeviceAuth({ here: HERE, hubName: () => hubConfig().nam
 // route(url, req, res, { send, readBody }) -> true when handled. A missing or broken one only
 // disables its tab. Keys live in config/secrets.json, which only the hub reads; never send them to
 // the page. A service add-on loads when it is turned on; until then its routes don't exist.
-const BACKENDS = ['ai', 'cloud', 'calendar', 'stripe', 'hub-settings', 'hub-setup', 'hub-sites', 'home', 'chat', 'browser', 'system', 'agent-actions', 'launcher', 'connections']
+const BACKENDS = ['ai', 'cloud', 'calendar', 'stripe', 'hub-settings', 'hub-setup', 'hub-sites', 'home', 'chat', 'browser', 'system', 'agent-actions', 'launcher', 'connections', 'tv']
 const SERVICES = new Set(['ai', 'cloud', 'calendar', 'stripe'])
 const loaded = new Map()
 async function tabRoutes() {

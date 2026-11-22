@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">LocalHub</string>
+    <string name="accessibility_label">LocalHub home button</string>
+    <string name="accessibility_description">Brings LocalHub back when the TV\'s own home screen appears. It watches for that one screen and cannot read what is on the screen, any text, or any key press.</string>
+</resources>

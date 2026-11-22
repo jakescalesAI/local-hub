@@ -73,6 +73,14 @@ These stay off until you set them up, and a tab that's off fetches nothing:
 - **Calendar:** a local calendar plus your feeds and bookings
 - **Stripe:** balance, revenue and payouts, read-only
 
+## LocalHub TV
+
+This hub's Home on a Fire TV or Android TV: your wallpaper and style, your widgets, your TV's apps as
+hub tiles, and the same assistant bar and conversations as here — typed, spoken with the remote's ⏯
+button, or through Alexa ("Alexa, ask local hub to open Netflix"). The TV pairs like a phone does,
+speech-to-text runs on this computer with Whisper, and the agent can open apps on the TV from any
+chat. Try it at http://localhost:3100/tv/; the app and setup are in [tv/](tv/README.md).
+
 ## The agent
 
 The chat is a general agent that knows your hub best. It answers anything, reads your files, searches
