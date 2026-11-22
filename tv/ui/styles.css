@@ -316,3 +316,10 @@ body.booted .shelf-body { animation: riseIn .9s .2s var(--ease) backwards; }
 .keys b { margin: 0; }
 .keys kbd { min-width: 0; margin-right: 5px; }
 .keys.gone { transform: translate(-50%, -8px); }
+
+/* LocalHub opened as an app: it grows out of its tile, full screen, with a way back */
+.hubapp { position: fixed; inset: 0; z-index: 2147483200; background: var(--bg); opacity: 0; visibility: hidden; transform-origin: var(--ox, 50%) var(--oy, 50%); transform: scale(.2); border-radius: 40px; overflow: hidden; transition: transform .55s var(--ease), opacity .3s var(--ease), border-radius .55s var(--ease), visibility 0s .55s; }
+.hubapp.on { opacity: 1; visibility: visible; transform: none; border-radius: 0; transition: transform .55s var(--ease), opacity .25s var(--ease), border-radius .55s var(--ease); }
+.hubapp iframe { width: 100%; height: 100%; border: 0; display: block; background: var(--bg); }
+.hubapp-done { position: absolute; left: 14px; top: 12px; z-index: 2; display: inline-flex; align-items: center; gap: 4px; height: 34px; padding: 0 14px 0 8px; border-radius: 17px; font: 600 14px/1 var(--font); color: var(--label); background: var(--menu-bg); -webkit-backdrop-filter: saturate(180%) blur(24px); backdrop-filter: saturate(180%) blur(24px); box-shadow: 0 0 0 .5px var(--sep), 0 8px 24px rgba(0, 0, 0, .2); cursor: pointer; }
+body.hub-open #hub-chat { display: none; }

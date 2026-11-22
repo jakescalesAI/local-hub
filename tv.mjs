@@ -5,6 +5,8 @@
 //   GET  /api/tv/next?after=n&wait=25   -> { seq, command } as soon as one is newer than n, else 204
 //   POST /api/tv/command  { type, … }   -> { ok, seq, tvs } queue a command for every TV showing LocalHub
 //   POST /api/tv/transcribe  <audio>    -> { ok, text, ms } speech to text with Whisper, on this computer
+//   POST /api/voice/transcribe <audio>  the same, for the hub's chat mic (the dashboard and the TV)
+//   POST /api/voice/warm                 -> { whisper } start Whisper now, while someone is still talking
 //   GET  /api/tv/status                 -> { whisper, alexa, tvs }
 //
 // Commands: { type: 'launch', app } · { type: 'input', name } · { type: 'home' } · { type: 'saver' } ·
@@ -15,7 +17,7 @@
 // Point a tunnel at that port, never at the hub: the hub itself stays off the internet.
 //
 // Settings in config/hub.json, all optional:
-//   "tv": { "whisper": { "model": "base.en", "python": "python", "device": "cpu" },
+//   "tv": { "whisper": { "model": "base.en", "fast": "tiny.en", "python": "python", "device": "cpu" },
 //           "alexa": { "skillId": "amzn1.ask.skill.…", "port": 3109 } }
 import fs from 'node:fs'
 import path from 'node:path'
@@ -73,7 +75,12 @@ export function create({ here }) {
       return true
     }
     if (p.startsWith('/tv/') && req.method === 'GET') return serveUi(p, res, send), true
-    if (!p.startsWith('/api/tv/')) return false
+    if (!p.startsWith('/api/tv/') && !p.startsWith('/api/voice/')) return false
+
+    if (p === '/api/voice/warm' && req.method === 'POST') {
+      whisper.warm()
+      return send(res, 200, { whisper: whisper.state() }), true
+    }
 
     if (p === '/api/tv/next' && req.method === 'GET') {
       lastPoll = Date.now()
@@ -111,7 +118,7 @@ export function create({ here }) {
       return send(res, 200, { ok: true, seq: n, tvs: tvsOnline() }), true
     }
 
-    if (p === '/api/tv/transcribe' && req.method === 'POST') {
+    if ((p === '/api/tv/transcribe' || p === '/api/voice/transcribe') && req.method === 'POST') {
       const type = String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase()
       const ext = AUDIO_EXT[type]
       if (!ext) return send(res, 415, { ok: false, error: 'Send audio: wav, webm, ogg, m4a or mp3.' }), true
@@ -124,7 +131,7 @@ export function create({ here }) {
       fs.writeFileSync(file, audio)
       try {
         const r = await whisper.transcribe(file)
-        return send(res, 200, { ok: true, text: r.text, ms: r.ms }), true
+        return send(res, 200, { ok: true, text: r.text, ms: r.ms, model: r.model }), true
       } catch (e) {
         return send(res, e.missing ? 503 : 500, { ok: false, error: e.message }), true
       } finally {
@@ -239,7 +246,7 @@ function createWhisper(here) {
     fatal = ''
     state = 'loading'
     try {
-      child = spawn(py, [script, cfg.model || 'base.en', cfg.device || 'cpu'], { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true })
+      child = spawn(py, [script, cfg.model || 'base.en', cfg.device || 'cpu', cfg.fast === undefined ? 'tiny.en' : cfg.fast || '-'], { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true })
     } catch (e) {
       return die(`Could not start Python (${py}): ${e.message}`)
     }
@@ -262,7 +269,7 @@ function createWhisper(here) {
           jobs.delete(msg.id)
           clearTimeout(job.timer)
           if (msg.error) job.reject(new Error(`Whisper: ${msg.error}`))
-          else job.resolve({ text: String(msg.text || ''), ms: msg.ms })
+          else job.resolve({ text: String(msg.text || ''), ms: msg.ms, model: msg.model })
         }
       }
     })
@@ -293,7 +300,7 @@ function createWhisper(here) {
   async function transcribe(file) {
     await ready()
     clearTimeout(idle)
-    idle = setTimeout(stop, 10 * 60e3)
+    idle = setTimeout(stop, 30 * 60e3)
     idle.unref?.()
     const id = `j${++n}`
     return new Promise((resolve, reject) => {
@@ -310,7 +317,17 @@ function createWhisper(here) {
     if (state !== 'missing') state = 'off'
   }
 
-  return { transcribe, stop, state: () => (state === 'missing' ? `missing: ${fatal}` : state) }
+  // Starts loading without waiting, and keeps it from going idle for a while: the mic button calls
+  // this the moment you press it, so the models load while you're still talking.
+  function warm() {
+    clearTimeout(idle)
+    idle = setTimeout(stop, 30 * 60e3)
+    idle.unref?.()
+    if (state === 'ready' || state === 'loading') return
+    ready().catch(() => {})
+  }
+
+  return { transcribe, warm, stop, state: () => (state === 'missing' ? `missing: ${fatal}` : state) }
 }
 
 // ── Alexa: signed requests only, on their own loopback port ─────────────────────────────────

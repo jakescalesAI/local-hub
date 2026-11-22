@@ -681,7 +681,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
   const savedPage = () => { try { return localStorage.getItem('hub-home-page') || 'main' } catch { return 'main' } }
   const S = {
     page: savedPage(), pages: [], layouts: null,
-    root: null, layout: null, layoutErr: '', mode: pref('hub-home-mode', 'desktop', VIEWS), editing: false,
+    root: null, layout: null, layoutErr: '', mode: (() => { try { const v = new URLSearchParams(location.search).get('view'); if (VIEWS.includes(v)) { save('hub-home-mode', v); return v } } catch {} return pref('hub-home-mode', 'desktop', VIEWS) })(), editing: false,
     framed: false, frameK: 1, dirty: { desktop: false, ipad: false, mobile: false, tv: false }, timers: {}, saving: {}, lastLoad: 0, src: {}, sig: '', drag: null, overlay: null,
     pending: false, started: false, hubSig: '', raf: 0,
     // Sideways pages: the one on screen in each view, an empty one just added, how far the grid is moved, and what fits.
@@ -756,8 +756,10 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
   }
   const seedLayout = name => startLayout(name).map(([id, size], i) => ({ key: `${name[0]}${i + 1}-${id}`.slice(0, 40), id, size }))
   // A real phone or iPad always shows its own layout, full screen. On a bigger screen the toggle picks one.
-  const realDevice = () => PHONE.matches || TABLET.matches
-  const viewKey = () => (PHONE.matches ? 'mobile' : TABLET.matches ? 'ipad' : S.mode)
+  // Inside LocalHub TV the hub is a full-screen app on a TV, not a tablet, so the toggle stays.
+  const IN_TV = (() => { try { return window.parent !== window && !!window.parent.haven } catch { return false } })()
+  const realDevice = () => !IN_TV && (PHONE.matches || TABLET.matches)
+  const viewKey = () => (realDevice() ? (PHONE.matches ? 'mobile' : 'ipad') : S.mode)
   const layoutItems = vk => (S.layout ? S.layout[vk] || [] : [])
   // A layout holds widgets and app places ({ id: 'app', app }); in memory an app place has the key app:<id>.
   const isAppItem = it => it?.id === 'app'

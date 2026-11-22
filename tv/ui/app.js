@@ -360,7 +360,7 @@ function hubShelfHTML() {
   const part = h < 5 ? "Good night" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
   const first = (HUB.owner || "").split(/\s+/)[0];
   const ids = tvWidgets().filter((id) => WIDGETS[id] || LABELS[id]).slice(0, 3);
-  return `<div class="hub-shelf"><div class="greet"><h1>${esc(part)}${first ? `, ${esc(first)}` : ""}</h1><p>${esc(HUB.name)}${HUB.on ? "" : " · not connected"} · Ask anything below, or press ${NATIVE ? "⏯" : "Space"} to talk</p></div><div class="widgets">${[...ids.map(widgetCard), widgetCard("recent")].join("")}</div></div>`;
+  return `<div class="hub-shelf"><div class="greet"><h1>${esc(part)}${first ? `, ${esc(first)}` : ""}</h1><p>${esc(HUB.name)}${HUB.on ? "" : " · not connected"} · ${NATIVE ? "OK" : "Enter"} opens LocalHub · ${NATIVE ? "⏯" : "Space"} to talk</p></div><div class="widgets">${[...ids.map(widgetCard), widgetCard("recent")].join("")}</div></div>`;
 }
 
 function miniArt(a) {
@@ -399,7 +399,7 @@ function activate() {
   if (S.zone === "bar") return HUB.on ? focusBar() : openPairing();
   const it = ITEMS[S.i];
   if (!it) return;
-  if (it.kind === "hub") return focusBar();
+  if (it.kind === "hub") return openHubApp();
   if (it.kind === "settings") return openSettings();
   if (it.kind === "input") return launch(it, () => (NATIVE ? native("switchInput", it.id) : true), `Switching to ${it.name}`);
   return launch(it, () => openApp(it));
@@ -465,6 +465,53 @@ function endLaunch() {
   renderGrid();
 }
 document.addEventListener("visibilitychange", () => { if (!document.hidden) endLaunch(); });
+
+/* ── LocalHub, opened as an app ──────────────────────────────────────────
+   The LocalHub tile opens the whole hub, full screen, growing out of its tile like any app. It
+   lands on Home's TV view, so what the TV shows is right there to edit (Edit → add, move, remove).
+   Back (or the TV button, or the hub's own TV app) comes back here, and the TV picks up the change. */
+function openHubApp() {
+  if (!IN_HUB) return toast(NATIVE ? "Pair this TV with LocalHub first" : "Open this from LocalHub to open the hub");
+  const app = $("#hubApp");
+  const frame = $("#hubFrame");
+  const tile = $(`.app[data-i="${S.i}"] .icon`)?.getBoundingClientRect();
+  if (tile) {
+    app.style.setProperty("--ox", `${tile.left + tile.width / 2}px`);
+    app.style.setProperty("--oy", `${tile.top + tile.height / 2}px`);
+  }
+  if (!frame.getAttribute("src")) frame.src = "/?view=tv#home";
+  else { try { frame.contentWindow.HUB?.refresh?.(); } catch { /* not loaded yet */ } }
+  leaveBar();
+  window.HubVoice?.hush?.();
+  document.body.classList.add("hub-open");
+  setOverlay("hub");
+  requestAnimationFrame(() => app.classList.add("on"));
+  native("setTyping", true); // the remote's arrows and OK belong to the hub page now; Back still comes here
+  setTimeout(() => { try { frame.focus(); } catch { /* fine */ } }, 400);
+}
+
+function closeHub() {
+  if (S.overlay !== "hub") return;
+  $("#hubApp").classList.remove("on");
+  document.body.classList.remove("hub-open");
+  native("setTyping", false);
+  S.zone = "grid";
+  setOverlay(null);
+  window.focus();
+  syncHub(); // the TV layout or the look may have just changed
+}
+$("#hubDone").addEventListener("click", closeHub);
+$("#hubFrame").addEventListener("load", () => {
+  // Esc with nothing open in the hub comes back to the TV.
+  try {
+    const doc = $("#hubFrame").contentDocument;
+    doc.addEventListener("keydown", (e) => {
+      if (e.key !== "Escape") return;
+      const busy = doc.activeElement && doc.activeElement !== doc.body;
+      if (!busy && !doc.querySelector("dialog[open], .sheet.on, .menu.on")) closeHub();
+    });
+  } catch { /* cross-origin can't happen: it's the same hub */ }
+});
 
 /* ── overlays ──────────────────────────────────────────────────────────── */
 
@@ -706,92 +753,55 @@ function armSaver() {
 function startSaver() { tick(); $("#saver").classList.add("on"); setOverlay("saver"); }
 function stopSaver() { $("#saver").classList.remove("on"); setOverlay(null); armSaver(); }
 
-/* ── voice: the TV's mic (or the laptop's) → Whisper → the hub's chat ──── */
+/* ── voice ─────────────────────────────────────────────────────────────────
+   The mic is the hub chat's own (tabs/chat.js): with nothing typed, its send button is a mic, on
+   the laptop and on the TV alike. On a laptop it uses the browser's mic and voice. On a TV this
+   page lends it the TV's microphone and voice through window.HubVoice, and Whisper on the laptop
+   writes it down either way. ⏯, Space and "Ask LocalHub" all press that same button. */
 
-const VOICE = { rec: null, state: "idle", follow: null };
-function listenUi(state, text) {
-  VOICE.state = state;
-  const n = $("#listen");
-  n.classList.toggle("on", state !== "idle");
-  n.classList.toggle("busy", state === "working");
-  $("#listenText").textContent = text || "";
-}
-function startVoice() {
-  if (VOICE.state === "listening") return stopListening(false);
-  stopSpeaking();
-  if (!HUB.on) { toast(NATIVE ? "Pair this TV with LocalHub first" : "Open this page from LocalHub to talk to it"); return; }
-  listenUi("listening", "Listening");
-  if (NATIVE) return native("startListening");
-  browserRecord().then((r) => { VOICE.rec = r; }).catch((err) => { listenUi("idle"); toast(`Microphone: ${err.message || err}`); });
-}
-function stopListening(discard) {
-  if (NATIVE) native(discard ? "cancelListening" : "stopListening");
-  else VOICE.rec?.stop(discard);
-  if (discard) listenUi("idle");
-}
-async function browserRecord() {
-  const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
-  const ctx = new AudioContext();
-  const an = ctx.createAnalyser();
-  an.fftSize = 512;
-  ctx.createMediaStreamSource(stream).connect(an);
-  const rec = new MediaRecorder(stream);
-  const chunks = [];
-  let discarded = false, heard = false, quietSince = performance.now();
-  const started = performance.now();
-  const buf = new Uint8Array(an.fftSize);
-  rec.ondataavailable = (e) => chunks.push(e.data);
-  rec.onstop = () => {
-    stream.getTracks().forEach((t) => t.stop());
-    ctx.close();
-    VOICE.rec = null;
-    if (discarded) return;
-    if (!heard) { listenUi("idle"); return toast("Didn't catch that"); }
-    transcribe(new Blob(chunks, { type: rec.mimeType || "audio/webm" }));
-  };
-  rec.start();
-  const loop = () => {
-    if (rec.state !== "recording") return;
-    an.getByteTimeDomainData(buf);
-    let sum = 0;
-    for (const v of buf) sum += (v - 128) * (v - 128);
-    const rms = Math.sqrt(sum / buf.length) / 128;
-    level(rms * 6);
-    const now = performance.now();
-    if (rms > 0.035) { heard = true; quietSince = now; }
-    if ((heard && now - quietSince > 1100) || now - started > 15000) rec.stop(); else requestAnimationFrame(loop);
-  };
-  loop();
-  return { stop: (d) => { discarded = Boolean(d); if (rec.state === "recording") rec.stop(); } };
-}
-function level(v) {
-  const l = clamp(v, 0, 1);
-  document.querySelectorAll("#listen .bars b").forEach((b, i) => b.style.setProperty("--h", String(clamp(l * (0.55 + ((i * 37) % 5) / 6), 0, 1))));
-}
 let reqSeq = 0;
 const pending = new Map();
-async function transcribe(blob) {
-  listenUi("working", "Understanding");
-  let res;
-  if (NATIVE) {
-    res = await new Promise((resolve) => {
-      const id = `t${++reqSeq}`;
-      let body = "";
-      pending.set(id, { line: (l) => { body += l; }, end: (e) => resolve({ status: e.status, json: safeJson(body, {}), error: e.error }) });
-      native("transcribe", id);
-    });
-  } else {
-    try {
-      const r = await fetch("/api/tv/transcribe", { method: "POST", headers: { "x-hub": "1", "content-type": blob.type || "audio/webm" }, body: blob });
-      res = { status: r.status, json: await r.json().catch(() => ({})) };
-    } catch (err) { res = { status: 0, json: {}, error: err.message }; }
-  }
-  listenUi("idle");
-  if (res.status !== 200 || !res.json.ok) return toast(res.json.error || res.error || "Couldn't understand that");
-  const text = String(res.json.text || "").trim();
-  if (!text) return toast("Didn't catch that");
-  heard(text, true);
+const MIC = { wait: null };
+
+if (NATIVE) {
+  window.HubVoice = {
+    // Resolves with what was said ("" when nothing was), rejects when the TV has no mic it can use.
+    listen({ onLevel, onWorking } = {}) {
+      return new Promise((resolve, reject) => {
+        MIC.wait = { resolve, reject, onLevel, onWorking };
+        native("startListening");
+      });
+    },
+    stop() { native("stopListening"); },
+    cancel() { native("cancelListening"); MIC.wait?.resolve(""); MIC.wait = null; },
+    speak(text) { if (prefs.speak !== "Off") native("speak", text); },
+    hush() { native("stopSpeaking"); },
+  };
 }
+
+// The TV's mic finished a clip: Java holds it and sends it to the hub's Whisper itself.
+async function nativeClipReady() {
+  const w = MIC.wait;
+  if (!w) return;
+  w.onWorking?.();
+  const res = await new Promise((resolve) => {
+    const id = `t${++reqSeq}`;
+    let body = "";
+    pending.set(id, { line: (l) => { body += l; }, end: (e) => resolve({ status: e.status, json: safeJson(body, {}) || {}, error: e.error }) });
+    native("transcribe", id);
+  });
+  MIC.wait = null;
+  if (res.status !== 200 || !res.json.ok) return w.reject(new Error(res.json.error || res.error || "Couldn't write that down."));
+  w.resolve(String(res.json.text || ""));
+}
+
+function startVoice() {
+  if (!window.HubChat?.voice) { toast(NATIVE ? "Pair this TV with LocalHub first" : "Open this from LocalHub to talk to it"); return; }
+  if (S.overlay === "cc") closeCC();
+  if (S.overlay === "settings") closeSettings();
+  window.HubChat.voice();
+}
+
 
 /* "Open Netflix" and friends happen right here, typed or said; everything else goes to the hub. */
 function quickIntent(text) {
@@ -836,67 +846,25 @@ function runIntent(intent) {
   if (intent.type === "saver") return startSaver();
   if (intent.type === "sleep") return sleepNow();
 }
-function heard(text, spoken) {
-  const intent = quickIntent(text);
-  if (intent) return runIntent(intent);
-  askHubChat(text, spoken ? prefs.speak !== "Off" : prefs.speak === "Always");
-}
+// Every message the hub chat is about to send comes here first: TV commands run on the spot.
+window.HubChatHooks = {
+  intercept(text) {
+    const intent = quickIntent(text);
+    if (!intent) return false;
+    leaveBar();
+    runIntent(intent);
+    return true;
+  },
+};
 
-/* Puts the words in the hub's own bar and sends them, as if typed. */
-function askHubChat(text, speakIt) {
-  const ta = chatInput();
-  if (!ta) return toast("LocalHub's assistant isn't loaded");
-  ta.value = text;
-  ta.dispatchEvent(new Event("input", { bubbles: true }));
-  S.sending = true;
-  ta.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", bubbles: true, cancelable: true }));
-  S.sending = false;
-  if (speakIt) followReply();
-}
-
-/* Reads the answer aloud while it streams, a sentence at a time. */
-function followReply() {
-  const root = chatHost()?.shadowRoot;
-  if (!root) return;
-  VOICE.follow?.disconnect();
-  const log = root.querySelector(".clog");
-  const before = root.querySelectorAll(".clog .msg.a").length;
-  let spoken = 0, started = false;
-  const stop = root.querySelector(".sb");
-  const flush = (final) => {
-    const msgs = root.querySelectorAll(".clog .msg.a");
-    if (msgs.length <= before) return;
-    const text = plain(msgs[msgs.length - 1].querySelector(".bub")?.innerText || "");
-    const rest = text.slice(spoken);
-    const re = /[^.!?\n]+[.!?\n]+(\s|$)/g;
-    let m, chunk = "";
-    while ((m = re.exec(rest))) { chunk += m[0]; spoken += m[0].length; }
-    if (final && spoken < text.length) { chunk += text.slice(spoken); spoken = text.length; }
-    if (chunk.trim()) say(chunk.trim());
-  };
-  const obs = new MutationObserver(() => {
-    if (stop && !stop.hidden) started = true;
-    flush(false);
-    if (started && stop && stop.hidden) { flush(true); obs.disconnect(); VOICE.follow = null; }
-  });
-  obs.observe(log, { childList: true, subtree: true, characterData: true });
-  if (stop) obs.observe(stop, { attributes: true, attributeFilter: ["hidden"] });
-  VOICE.follow = obs;
-  setTimeout(() => { if (VOICE.follow === obs) { flush(true); obs.disconnect(); VOICE.follow = null; } }, 6 * 60e3);
-}
 const plain = (t) => t.replace(/`[^`]*`/g, "").replace(/https?:\/\/\S+/g, "").replace(/[*_#>|]/g, "").replace(/\s+\n/g, "\n");
 function say(text) {
   if (!text || prefs.speak === "Off") return;
+  if (window.HubChat?.say) return window.HubChat.say(text);
   if (NATIVE) return native("speak", text);
-  if (!("speechSynthesis" in window)) return;
-  const u = new SpeechSynthesisUtterance(text);
-  u.rate = 1.05;
-  speechSynthesis.speak(u);
+  if ("speechSynthesis" in window) speechSynthesis.speak(new SpeechSynthesisUtterance(text));
 }
-function stopSpeaking() {
-  if (NATIVE) native("stopSpeaking");
-  else if ("speechSynthesis" in window) speechSynthesis.cancel();
-}
+
 
 /* ── laptop → TV commands: Alexa, the agent's tv_control tool ──────────── */
 let commandLoop = false;
@@ -969,16 +937,17 @@ $("#pairBtn").addEventListener("click", () => (HUB.paired ? native("openHub") : 
 /* ── Java → page ───────────────────────────────────────────────────────── */
 window.haven = {
   key: (name) => handleKey(name),
+  closeHub: () => closeHub(),
   resumed: () => endLaunch(),
   appsChanged: () => { const keep = ITEMS[S.i]?.id; loadItems(); S.i = Math.max(0, ITEMS.findIndex((x) => x.id === keep)); S.shelfId = null; renderGrid(); },
   onNative(evt) {
     if (!evt) return;
     if (evt.type === "hubLine") return pending.get(evt.id)?.line(evt.line);
     if (evt.type === "hubEnd") { const p = pending.get(evt.id); pending.delete(evt.id); return p?.end(evt); }
-    if (evt.type === "level") return level(evt.value);
-    if (evt.type === "audio") return transcribe(null);
-    if (evt.type === "noSpeech") { listenUi("idle"); return toast("Didn't catch that"); }
-    if (evt.type === "micError") { listenUi("idle"); return toast(evt.message || "No microphone — try “Alexa, ask local hub …”"); }
+    if (evt.type === "level") return MIC.wait?.onLevel?.(evt.value);
+    if (evt.type === "audio") return nativeClipReady();
+    if (evt.type === "noSpeech") { MIC.wait?.resolve(""); MIC.wait = null; return; }
+    if (evt.type === "micError") { const w = MIC.wait; MIC.wait = null; return w ? w.reject(new Error(`${evt.message || "No microphone here."} Or say “Alexa, ask local hub …”.`)) : toast(evt.message || "No microphone"); }
     if (evt.type === "hub") {
       HUB.searching = false;
       HUB.url = evt.url || "";
@@ -1004,6 +973,7 @@ const KEYMAP = { ArrowLeft: "left", ArrowRight: "right", ArrowUp: "up", ArrowDow
 
 // Capture phase: tabs/chat.js keeps its own keys inside its shadow root, so this looks first.
 document.addEventListener("keydown", (e) => {
+  if (S.overlay === "hub") return;
   armSaver();
   hidePointer();
   if (S.overlay === "saver") { e.preventDefault(); e.stopPropagation(); return stopSaver(); }
@@ -1021,7 +991,6 @@ document.addEventListener("keydown", (e) => {
         leaveBar();
         return runIntent(intent);
       }
-      if (prefs.speak === "Always" && box.value.trim()) setTimeout(followReply, 0);
       return;
     }
     const open = root.querySelector(".card.on, .full.on, .menu:not([hidden])");
@@ -1049,12 +1018,13 @@ function handleKey(name) {
   armSaver();
   if (S.overlay === "saver") return stopSaver();
   if (S.overlay === "launch") return;
+  if (S.overlay === "hub") { if (name === "back") closeHub(); return; }
   if (name === "help") { prefs.help = !prefs.help; savePrefs(); return showKeys(prefs.help); }
   if (S.overlay === "modal") { if (name === "back") closeModal(false); return; }
   if (S.pendingOpen && name === "enter") { const app = S.pendingOpen; S.pendingOpen = null; return launch(app, () => openApp(app)); }
   S.pendingOpen = null;
   if (name === "ai") { if (S.overlay === "cc") closeCC(); if (S.overlay === "settings") closeSettings(); return startVoice(); }
-  if (VOICE.state === "listening" && (name === "back" || name === "enter")) return stopListening(name === "back");
+  if (window.HubChat?.listening?.() && name === "back") { window.HubVoice?.cancel?.(); return; }
   if (S.zone === "bar" && document.activeElement === chatHost()) {
     if (name === "back") {
       const root = chatHost().shadowRoot;

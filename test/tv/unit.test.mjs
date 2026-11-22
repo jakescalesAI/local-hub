@@ -80,6 +80,18 @@ test('an idle poll ends with 204, and bad commands are refused', async () => {
   })
 })
 
+test('the chat mic has its own voice routes', async () => {
+  await withServer(async (base, route) => {
+    // Too short to be speech: refused before Whisper is involved.
+    const tiny = await fetch(`${base}/api/voice/transcribe`, { method: 'POST', headers: { 'content-type': 'audio/wav' }, body: new Uint8Array(200) })
+    assert.equal(tiny.status, 400)
+    const notAudio = await fetch(`${base}/api/voice/transcribe`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' })
+    assert.equal(notAudio.status, 415)
+    assert.equal(typeof route.whisper.warm, 'function')
+    assert.equal((await fetch(`${base}/api/voice/nope`)).status, 404)
+  })
+})
+
 test('the TV interface is served from tv/ui and nowhere else', async () => {
   await withServer(async (base) => {
     const page = await fetch(`${base}/tv/`)

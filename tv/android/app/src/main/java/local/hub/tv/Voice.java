@@ -39,8 +39,8 @@ final class Voice {
     private static final int RATE = 16000;
     private static final int FRAME = 320;            // 20 ms
     private static final int CALIBRATE_FRAMES = 15;  // 300 ms of room noise
-    private static final int END_SILENCE = 45;       // 900 ms of quiet ends the turn
-    private static final int MAX_FRAMES = 600;       // 12 s
+    private static final int END_SILENCE = 33;       // 660 ms of quiet ends the turn
+    private static final int MAX_FRAMES = 1500;      // 30 s
     private static final int GIVE_UP_FRAMES = 350;   // 7 s without speech
 
     private final Handler main = new Handler(Looper.getMainLooper());

@@ -57,7 +57,7 @@ or open **http://localhost:3100/tv/** in any browser. The keyboard is the remote
 | Key | Does |
 | --- | --- |
 | Arrows | Move. Up from the top row reaches the status pill; Down from the last row reaches the bar |
-| Enter | Open. On the LocalHub tile it puts you in the "Ask anything" bar |
+| Enter | Open. On the LocalHub tile it opens LocalHub itself, on Home's TV view |
 | Esc | Back |
 | M | The top-right drop-down |
 | Space | Talk (the laptop's mic → Whisper → the hub's bar) |
@@ -116,11 +116,13 @@ answers on the laptop itself.
 
 - **Type:** Down from the apps lands in the hub's "Ask anything" bar; the Fire TV keyboard opens.
   The answer appears in the Hub Assistant card above it, exactly as on the laptop.
-- **Speak: the ⏯ (play/pause) button**, or *Ask LocalHub* in Control Center. A small "Listening" line
-  appears above the bar; the TV stops by itself a second after you stop talking, sends the clip to
-  Whisper on the laptop, and puts your words into the hub's bar as if typed. The answer is read aloud
-  with the TV's own voice, sentence by sentence as it streams (Settings → *Read answers aloud*:
-  After voice, Always or Off).
+- **Speak: the mic.** With nothing typed, the bar's send button is a mic — in the hub's own chat, so
+  the dashboard has it too. Tap it (or press ⏯ on the remote, Space on a laptop, or *Ask LocalHub* in
+  the drop-down): it turns red and pulses with your voice, stops by itself 0.7 s after you do,
+  Whisper on the laptop writes it down, and it sends. The answer is read aloud as it streams, starting
+  with the first phrase rather than waiting for a whole sentence — on a TV with the TV's own voice, on a
+  laptop with a local system voice, which starts at once. Settings → *Read answers aloud*: After
+  voice, Always or Off.
 - **“Open Netflix”, “switch to the PlayStation”, “go home”** never wait for a model: they're done on
   the TV in a fraction of a second.
 - **Anything else** goes to LocalHub's agent — the same one as the dashboard chat, so it can look
@@ -134,9 +136,30 @@ Fire TV keeps the remote's own mic button for Alexa, and Fire TV Sticks have no 
 a Stick ⏯ will say there's no mic: use Alexa, or type in the bar.
 Fire TV Omni and Cube have far-field mics, which may work — that's untested.
 
-Whisper setup, once, on the laptop: `pip install faster-whisper`. The first transcription downloads
-the `base.en` model (~145 MB). Options under `"tv": { "whisper": { … } }` in `config/hub.json`:
-`model` (`base.en`, `small.en`, …), `python`, `device` (`cpu` or `cuda`).
+Whisper setup, once, on the laptop: `pip install faster-whisper`. The models download on first use
+(`tiny.en` ~75 MB, `base.en` ~145 MB). How it stays quick:
+
+- Whisper starts loading the moment the mic is pressed (`POST /api/voice/warm`), so it's ready by the
+  time you stop talking, and stays loaded for 30 minutes after the last use.
+- Clips under 4 seconds — most of what's said to a TV — go to `tiny.en`; longer ones to `base.en`.
+- The browser records straight to 16 kHz WAV, so the hub doesn't decode anything; silence is trimmed
+  by the recorder, so Whisper skips its own voice detection and timestamps.
+
+Options under `"tv": { "whisper": { … } }` in `config/hub.json`: `model` (default `base.en`),
+`fast` (default `tiny.en`, `""` to use one model for everything), `python`, `device` (`cpu` or
+`cuda`). Timing depends on how busy the computer is: a 2-second clip took 0.7 s warm on `base.en` on a
+quiet laptop, and several seconds when other heavy programs were using every core.
+
+## LocalHub, as an app
+
+The LocalHub tile opens the whole hub on the TV, growing out of its tile like any app, landing on
+Home with the **TV** view selected — so Edit there changes what the TV shows, and Back (or the
+**‹ TV** button) comes straight back with the change already on the Top Shelf. On a TV the hub page is
+built for a pointer, so this is easiest from a laptop window (`npm run tv`).
+
+The other way round: the hub's Home has a **TV** app (next to Chat). On the dashboard it opens
+LocalHub TV in its own window; inside LocalHub TV it goes back to the TV. `/?view=tv` opens the
+dashboard's Home straight on the TV view.
 
 ## What's tested, and what isn't
 
@@ -145,6 +168,8 @@ the `base.en` model (~145 MB). Options under `"tv": { "whisper": { … } }` in `
 | The page: Top Shelf (LocalHub and app art), the grid scrolling over a blurred wallpaper, the top-right drop-down, Settings, focus moving between the grid, the status pill and the bar | In a browser at `/tv/`, with the keyboard remote, by hand, with screenshots (`tv/screenshots/`) |
 | The TV view in the hub's Home editor | Desktop · iPad · Mobile · **TV** toggle on a scratch hub; a TV layout set through `/api/home/layout` showed up on that hub's `/tv/` |
 | The hub's own assistant on the TV | `/tv/` against a real LocalHub: typed question, the Hub Assistant card answered "Looking at the TV tab", and the chat was in the hub's history. Asked it to use the browser: it opened example.com in the hub browser, the live card showed it, and it answered "Example Domain" |
+| Voice, end to end | On a scratch hub: a spoken clip fed in as the browser's mic → the mic button went red, stopped by itself, Whisper wrote "Open Netflix, please.", and LocalHub TV opened Netflix without the agent |
+| LocalHub as an app | The LocalHub tile opened the hub on Home's TV view; removed a widget in Edit, Done, ‹ TV: the Top Shelf already showed the change |
 | "open youtube" in the bar | Ran on the TV without the agent: focus moved to YouTube, the icon zoomed, the website was asked for (the test browser blocks pop-ups from automated keys, so the "Press Enter to open YouTube" fallback showed) |
 | The look following the hub | Changed the hub's wallpaper to Dusk and accent to orange through `/api/hub/settings`; the TV switched within 30 s, then back |
 | The TV app's sign-in | Paired through `/api/pair/start` + `/api/pair/claim`, opened `/tv/` with the key: the hub set its `hub_device` cookie (test device removed) |
