@@ -1,10 +1,11 @@
 # LocalHub TV
 
-LocalHub's Home, on your TV. Not a separate app with its own look: the TV shows a page served by
-your hub, so it has the hub's wallpaper and style, the hub's widgets, and the hub's own assistant —
-the same "Ask anything" bar and Hub Assistant card, with the same conversations as the laptop.
-What only a TV can do (your installed apps, launching them, HDMI inputs, the microphone, speech)
-comes from the Fire TV app underneath.
+The Apple TV home screen, with LocalHub inside. A Top Shelf across the top, a five-column grid of
+16:10 icons that lift, tilt and catch the light, a drop-down from the top right — and all of it the
+hub's own: its wallpaper and style, the widgets you pick for the TV in the hub's Home editor, and
+its assistant, the same "Ask anything" bar and Hub Assistant (browser, files, tools) with the same
+conversations as the laptop. The TV shows a page served by your hub; what only a TV can do (your
+installed apps, launching them, HDMI inputs, the microphone, speech) comes from the Fire TV app.
 
 ```
  Fire TV                                    your laptop
@@ -20,7 +21,8 @@ comes from the Fire TV app underneath.
 
 | Path | What it is |
 | --- | --- |
-| `ui/` | The TV page: LocalHub's Home at TV scale — large title, segmented control (Home · Apps · Inputs), the hub's glass app tiles, its Clock, Date and World clock widgets plus Recently opened, a Control Center menu, Settings as a grouped list, screensaver. It loads `/tabs/chat.js` and `/hub-config.js` from the hub. |
+| `ui/` | The TV page, tvOS-style. The top row starts with the **LocalHub** tile, whose Top Shelf is a greeting and the hub's TV widgets; every other app's Top Shelf is its own art. Below: all apps, the HDMI inputs and Settings. Top right: the status pill and its drop-down (the TV widgets, Ask LocalHub, Wi-Fi, sleep timer, screensaver, sleep, Bluetooth, inputs, Settings). It loads `/hub-config.js`, `/tabs/browser.js` and `/tabs/chat.js` from the hub. |
+| `open.mjs` | `npm run tv`: opens the TV page full screen in its own Edge or Chrome window, so a laptop shows what a TV would. |
 | `android/` | The Fire TV / Android TV app, Java 17, no third-party libraries. Opens the hub's `/tv/`; when the hub can't be reached, a bundled copy of `ui/` (with the hub's icon and wallpapers) that can pair and launch apps. |
 | `whisper.py` | Speech to text on the laptop (faster-whisper), kept warm by `tv.mjs`. |
 | `alexa/` | The Alexa skill: interaction model and setup steps. |
@@ -32,20 +34,39 @@ comes from the Fire TV app underneath.
   widget look (glass / solid / outline), blur, transparency, corner radius, shadow and font the way
   `tabs/custom.js` does on the laptop. Change them in the hub's Style panel; the TV follows. On a TV
   "auto" means dark.
-- **Widgets:** the hub's Desktop Home layout decides which of Clock & date, Date and World clock show,
-  in that order, with the world clocks from `config/hub.json`.
-- **Assistant:** it *is* `tabs/chat.js`. History, new chat, full chat, model picker and approvals are
-  the hub's; a conversation started on the TV is in the laptop's history and the other way round.
-  Each message says it came from the TV tab, so the agent keeps answers short enough to read aloud.
-- **Name and icon:** `HUB_CONF.name` and `icons/hub.svg`.
+- **Widgets:** the hub's Home editor has a fourth view, **TV**, next to Desktop, iPad and Mobile: a
+  16:9 screen on a stand. The widgets you put there are the ones the TV shows on the LocalHub tile's
+  Top Shelf and in the drop-down (Clock & date, Date and World clock today; others show a card saying
+  so), in that order. Stored as `widgets.tv` in the hub settings; a hub that had none starts with
+  Clock & date, Date and World clock.
+- **Assistant:** it *is* `tabs/chat.js`, with `tabs/browser.js` for the live browser. History, new
+  chat, full chat, model picker, approvals and the browser are the hub's; a conversation started on
+  the TV is in the laptop's history and the other way round. Each message says it came from the TV
+  tab, so the agent keeps answers short enough to read aloud.
+- **Name, icon, owner:** `HUB_CONF.name`, `icons/hub.svg`, and the greeting uses `owner`.
 
-## See it now
+## See it now, on this laptop
 
-With LocalHub running, open **http://localhost:3100/tv/**. Arrows move, Enter opens, Down from the
-apps reaches the hub's "Ask anything" bar (Up on an empty bar comes back), `M` opens Control Center,
-`I` talks (the browser's mic), `S` starts the screensaver. In a browser the apps are a demo catalogue
-drawn with Simple Icons (CC0) in the hub's tile style; the assistant, wallpaper and widgets are your
-hub's.
+```sh
+npm start        # LocalHub, if it isn't running
+npm run tv       # LocalHub TV, full screen in its own window (npm run tv -- --window for 1600×900)
+```
+
+or open **http://localhost:3100/tv/** in any browser. The keyboard is the remote:
+
+| Key | Does |
+| --- | --- |
+| Arrows | Move. Up from the top row reaches the status pill; Down from the last row reaches the bar |
+| Enter | Open. On the LocalHub tile it puts you in the "Ask anything" bar |
+| Esc | Back |
+| M | The top-right drop-down |
+| Space | Talk (the laptop's mic → Whisper → the hub's bar) |
+| ? | Shows or hides this list |
+
+The mouse works too: hovering focuses and tilts an icon, a click opens it, the wheel scrolls.
+On a laptop the apps open their **real websites** (Netflix, YouTube, Prime Video, Disney+, Max,
+Apple TV, Plex, Spotify, …) in a new window; come back to LocalHub TV and the icon settles back into
+the grid. Typing or saying **"open Netflix"** in the bar does the same at once, without the agent.
 
 ## Put it on the TV
 
@@ -121,8 +142,10 @@ the `base.en` model (~145 MB). Options under `"tv": { "whisper": { … } }` in `
 
 | Tested here | How |
 | --- | --- |
-| The page: Home, apps, widgets, Control Center, Settings, focus moving between the apps and the bar | In a browser at `/tv/`, with the remote's keys, by hand, with screenshots |
-| The hub's own assistant on the TV | `/tv/` against a real LocalHub: Down to the bar, typed question, the Hub Assistant card answered "Looking at the TV tab", and the chat was in the hub's history |
+| The page: Top Shelf (LocalHub and app art), the grid scrolling over a blurred wallpaper, the top-right drop-down, Settings, focus moving between the grid, the status pill and the bar | In a browser at `/tv/`, with the keyboard remote, by hand, with screenshots (`tv/screenshots/`) |
+| The TV view in the hub's Home editor | Desktop · iPad · Mobile · **TV** toggle on a scratch hub; a TV layout set through `/api/home/layout` showed up on that hub's `/tv/` |
+| The hub's own assistant on the TV | `/tv/` against a real LocalHub: typed question, the Hub Assistant card answered "Looking at the TV tab", and the chat was in the hub's history. Asked it to use the browser: it opened example.com in the hub browser, the live card showed it, and it answered "Example Domain" |
+| "open youtube" in the bar | Ran on the TV without the agent: focus moved to YouTube, the icon zoomed, the website was asked for (the test browser blocks pop-ups from automated keys, so the "Press Enter to open YouTube" fallback showed) |
 | The look following the hub | Changed the hub's wallpaper to Dusk and accent to orange through `/api/hub/settings`; the TV switched within 30 s, then back |
 | The TV app's sign-in | Paired through `/api/pair/start` + `/api/pair/claim`, opened `/tv/` with the key: the hub set its `hub_device` cookie (test device removed) |
 | The offline screen | The APK's bundled files served on their own: same Home, bundled Aurora, the pairing pill instead of the bar |

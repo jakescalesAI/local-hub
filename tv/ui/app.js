@@ -1,14 +1,17 @@
 // ============================================================================
-// LocalHub TV — the TV face of LocalHub.
+// LocalHub TV — the Apple TV home screen, with LocalHub inside.
 //
-// Served by LocalHub at /tv/. The Fire TV app opens that same page from the hub, signed in with
-// its device key, so everything here is the hub's own: its wallpaper and style
-// (/api/hub/settings, applied the way tabs/custom.js does), its Home widgets, and its assistant —
-// the real tabs/chat.js bar and card, sharing conversations with the laptop.
+// Served by LocalHub at /tv/. On a Fire TV the LocalHub TV app shows this same page from the hub,
+// signed in with its device key; on a laptop it's a browser window (npm run tv). Either way it's
+// the hub's own: its wallpaper and style, the widgets chosen for the TV in the hub's Home editor
+// (the TV view, next to Desktop, iPad and Mobile), and its assistant — the real tabs/chat.js, with
+// the browser and every tool the hub's agent has, sharing conversations with the laptop.
 //
-// What only a TV can do comes from Java through window.LocalHubNative: the installed apps and
-// their icons, launching them, HDMI inputs, the microphone and speech. When the hub can't be
-// reached, the app shows a bundled copy of this page that can pair and launch apps, nothing more.
+// Layout and motion are tvOS: a Top Shelf for whatever the top row has in focus, a five-column
+// grid of 16:10 icons that lift, tilt and catch the light, and a drop-down from the top right.
+//
+// What only a TV can do (its installed apps and their art, launching, HDMI inputs, its mic and
+// voice) comes from Java through window.LocalHubNative. On a laptop, apps open their websites.
 // ============================================================================
 
 const NATIVE = typeof window.LocalHubNative === "object" && window.LocalHubNative ? window.LocalHubNative : null;
@@ -22,11 +25,10 @@ const native = (name, ...args) => {
 };
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
-/* ── line icons, SF Symbols style (the hub's own set is drawn the same way) ── */
+/* ── line icons, SF Symbols style ─────────────────────────────────────────── */
 const sym = (d, w = 2) => `<svg class="sym" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
 const SYM = {
   gear: sym('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3 1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8 1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>'),
-  tv: sym('<rect x="2.5" y="4" width="19" height="13" rx="2.2"/><path d="M8 21h8"/>'),
   input: sym('<path d="M4 7h16v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M8 7V4h8v3"/><path d="M12 17v4"/>'),
   power: sym('<path d="M12 3v8"/><path d="M6.4 6.6a8 8 0 1 0 11.2 0"/>'),
   wifi: sym('<path d="M2.5 9a14 14 0 0 1 19 0"/><path d="M5.8 12.4a9.2 9.2 0 0 1 12.4 0"/><path d="M9 15.7a4.6 4.6 0 0 1 6 0"/><circle cx="12" cy="19" r=".9" fill="currentColor"/>'),
@@ -34,66 +36,65 @@ const SYM = {
   moon: sym('<path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5z"/>'),
   bt: sym('<path d="M7 7l10 10-5 4V3l5 4L7 17"/>'),
   mic: sym('<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>'),
-  grid: sym('<rect x="4" y="4" width="6.5" height="6.5" rx="1.6"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.6"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.6"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.6"/>'),
   sliders: sym('<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>'),
-  clock: sym('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
+  laptop: sym('<rect x="4" y="5" width="16" height="11" rx="1.6"/><path d="M2 19h20"/>'),
   chev: '<svg class="chev" viewBox="0 0 8 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 1.5 6.5 7l-5 5.5"/></svg>',
 };
 
-/* ── the TV's apps ─────────────────────────────────────────────────────────
-   In a browser there are no installed apps, so a demo catalogue stands in, drawn with Simple
-   Icons (CC0) in ./brands. On the TV the list and the art come from the apps themselves. */
-const DEMO_APPS = [
-  { id: "netflix", name: "Netflix", a1: "#e50914", a2: "#831010", icon: "netflix", recent: 2 },
-  { id: "youtube", name: "YouTube", a1: "#ff2d2d", a2: "#b80000", icon: "youtube", recent: 26 },
-  { id: "primevideo", name: "Prime Video", a1: "#1aa8f0", a2: "#0f5f9e", icon: "primevideo", wide: true, recent: 50 },
-  { id: "disney", name: "Disney+", a1: "#3d67e8", a2: "#0b1d5c", letter: "D+" },
-  { id: "max", name: "Max", a1: "#2f5bff", a2: "#0a1fb0", icon: "max" },
-  { id: "appletv", name: "Apple TV", a1: "#6e6e73", a2: "#1c1c1e", icon: "appletv" },
-  { id: "plex", name: "Plex", a1: "#f5b400", a2: "#a66f00", icon: "plex", recent: 72 },
-  { id: "spotify", name: "Spotify", a1: "#1ed760", a2: "#0e7a35", icon: "spotify", recent: 96 },
-  { id: "hulu", name: "Hulu", a1: "#1ce783", a2: "#0a8f4f", letter: "h" },
-  { id: "crunchyroll", name: "Crunchyroll", a1: "#ff8a3d", a2: "#c4510f", icon: "crunchyroll" },
-  { id: "paramountplus", name: "Paramount+", a1: "#2b7bff", a2: "#0038a8", icon: "paramountplus" },
-  { id: "twitch", name: "Twitch", a1: "#a970ff", a2: "#6227d6", icon: "twitch" },
-  { id: "tubi", name: "Tubi", a1: "#8f3dff", a2: "#4b0fb3", icon: "tubi" },
-  { id: "kodi", name: "Kodi", a1: "#30c4f2", a2: "#0d7fb0", icon: "kodi" },
-  { id: "steam", name: "Steam Link", a1: "#4c6b8a", a2: "#171a21", icon: "steam" },
-  { id: "vlc", name: "VLC", a1: "#ff9d2e", a2: "#d35f00", icon: "vlcmediaplayer" },
+/* ── apps ──────────────────────────────────────────────────────────────────
+   On a laptop there are no installed TV apps, so these stand in, drawn as tvOS icons with Simple
+   Icons (CC0) marks in ./brands, and opening one opens its website. On a TV the list and the art
+   are the apps' own. */
+const WEB_APPS = [
+  { id: "netflix", name: "Netflix", bg: "#000000", fg: "#e50914", icon: "netflix", url: "https://www.netflix.com/browse", recent: 2 },
+  { id: "youtube", name: "YouTube", bg: "#ffffff", fg: "#ff0000", icon: "youtube", url: "https://www.youtube.com/", recent: 26 },
+  { id: "primevideo", name: "Prime Video", bg: "#00050d", fg: "#1aa8f0", icon: "primevideo", wide: true, url: "https://www.primevideo.com/", recent: 50 },
+  { id: "disney", name: "Disney+", bg: "linear-gradient(160deg,#1f3fa3,#06123b)", fg: "#ffffff", letter: "Disney+", url: "https://www.disneyplus.com/" },
+  { id: "max", name: "Max", bg: "linear-gradient(160deg,#002be7,#000d6b)", fg: "#ffffff", icon: "max", url: "https://play.max.com/" },
+  { id: "appletv", name: "Apple TV", bg: "#000000", fg: "#ffffff", icon: "appletv", url: "https://tv.apple.com/" },
+  { id: "plex", name: "Plex", bg: "#1f1f1f", fg: "#ebaf00", icon: "plex", url: "https://app.plex.tv/", recent: 72 },
+  { id: "spotify", name: "Spotify", bg: "#121212", fg: "#1ed760", icon: "spotify", url: "https://open.spotify.com/", recent: 96 },
+  { id: "hulu", name: "Hulu", bg: "#1ce783", fg: "#0b0c0f", letter: "hulu", url: "https://www.hulu.com/" },
+  { id: "crunchyroll", name: "Crunchyroll", bg: "#f47521", fg: "#ffffff", icon: "crunchyroll", url: "https://www.crunchyroll.com/" },
+  { id: "paramountplus", name: "Paramount+", bg: "linear-gradient(160deg,#0064ff,#002a8f)", fg: "#ffffff", icon: "paramountplus", url: "https://www.paramountplus.com/" },
+  { id: "twitch", name: "Twitch", bg: "#9146ff", fg: "#ffffff", icon: "twitch", url: "https://www.twitch.tv/" },
+  { id: "tubi", name: "Tubi", bg: "#7408ff", fg: "#ffff13", icon: "tubi", url: "https://tubitv.com/" },
+  { id: "kodi", name: "Kodi", bg: "linear-gradient(160deg,#30c4f2,#0d6f9e)", fg: "#ffffff", icon: "kodi", url: "https://kodi.tv/" },
+  { id: "steam", name: "Steam", bg: "linear-gradient(160deg,#2a475e,#171a21)", fg: "#ffffff", icon: "steam", url: "https://store.steampowered.com/" },
+  { id: "vlc", name: "VLC", bg: "#ff8800", fg: "#ffffff", icon: "vlcmediaplayer", url: "https://www.videolan.org/vlc/" },
 ];
 const DEMO_INPUTS = [
   { id: "hdmi1", name: "Apple TV 4K", sub: "HDMI 1" },
   { id: "hdmi2", name: "PlayStation 5", sub: "HDMI 2" },
 ];
 
-/* ── prefs (this screen only; the look comes from the hub) ───────────────── */
+/* ── prefs (this screen only; the look and widgets come from the hub) ──── */
 const PREFS_KEY = "localhub.tv";
-const DEFAULTS = { clock: "12-hour", inputs: true, saver: "5 min", effects: "Full", speak: "After voice" };
-let prefs = { ...DEFAULTS, ...safeJson((() => { try { return localStorage.getItem(PREFS_KEY); } catch { return null; } })(), {}) };
+const DEFAULTS = { clock: "12-hour", inputs: true, saver: "5 min", effects: "Full", speak: "After voice", help: true };
+let prefs = { ...DEFAULTS, ...(safeJson((() => { try { return localStorage.getItem(PREFS_KEY); } catch { return null; } })(), {}) || {}) };
 const savePrefs = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)); } catch { /* storage off */ } };
 
 /* ── state ─────────────────────────────────────────────────────────────── */
+const COLS = 5;
 const S = {
-  view: "home",          // home | apps | inputs
-  zone: "apps",          // seg | apps | grid | bar
-  seg: 0,
-  app: 0,
-  grid: 0,
-  overlay: null,         // null | cc | settings | modal | launch | saver
+  zone: "grid",        // grid | status | bar
+  i: 0,                // focused item
+  overlay: null,       // null | cc | settings | modal | launch | saver
   cc: 0,
   set: 0,
-  modal: 1,
+  shelfId: null,
+  flip: false,
+  launched: null,
 };
+let ITEMS = [];
 let APPS = [];
 let INPUTS = [];
-let HOME = [];
-let SETTINGS = null;      // the hub's /api/hub/settings
-const HUB = { on: false, name: "LocalHub", paired: false, url: "", searching: false };
+let SETTINGS = null;
+const HUB = { on: false, name: "LocalHub", owner: "", paired: false, url: "", searching: false };
 
 /* ── the hub's look, applied the way tabs/custom.js applies it ──────────── */
 const STYLE_DEFAULT = { theme: "auto", accent: "system", widgetLook: "glass", blur: 20, transparency: 30, radius: 20, shadow: "soft", tabBar: "glass", effect: "none", font: "system", density: "regular" };
 const BUILTIN_WALLS = { aurora: "dark", dusk: "dark", graphite: "dark", ocean: "dark", sand: "light", "mono-light": "light", "mono-dark": "dark", noise: "light" };
-
 const hexRgb = (h) => { h = h.replace("#", ""); if (h.length === 3) h = h.replace(/./g, (c) => c + c); return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16) / 255); };
 const lum = (h) => { const [r, g, b] = hexRgb(h).map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4)); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
 const gradCss = (g) => {
@@ -102,7 +103,6 @@ const gradCss = (g) => {
     ? `radial-gradient(at 14% 18%, ${a} 0, transparent 58%), radial-gradient(at 86% 24%, ${b} 0, transparent 56%), radial-gradient(at 52% 100%, ${c} 0, transparent 62%), linear-gradient(${g.angle}deg, ${a}, ${b})`
     : `linear-gradient(${g.angle}deg, ${g.colors.join(", ")})`;
 };
-
 function wallFor(s) {
   const id = s?.wallpaper?.current ?? "aurora";
   if (!id || id === "none") return null;
@@ -113,17 +113,16 @@ function wallFor(s) {
   if (u && IN_HUB) return { image: `url("/api/hub/wallpapers/${u.file}")`, tone: "" };
   return { image: 'url("./wallpapers/aurora.svg")', tone: "dark" };
 }
-
 function applyLook() {
   const st = { ...STYLE_DEFAULT, ...(SETTINGS?.style || {}) };
   const r = document.documentElement;
-  // A TV is a dark room: "auto" means dark here, whatever the WebView reports.
-  const theme = st.theme === "auto" && NATIVE ? "dark" : st.theme;
-  if (theme === "auto") { r.removeAttribute("data-theme"); r.style.colorScheme = ""; } else { r.setAttribute("data-theme", theme); r.style.colorScheme = theme; }
+  // A TV is a dark room, and tvOS is dark: "auto" means dark here.
+  const theme = st.theme === "auto" ? "dark" : st.theme;
+  r.setAttribute("data-theme", theme);
+  r.style.colorScheme = theme;
   if (st.accent === "system") r.style.removeProperty("--blue"); else r.style.setProperty("--blue", st.accent);
   r.dataset.look = st.widgetLook;
   r.dataset.shadow = st.shadow;
-  r.dataset.tabbar = st.tabBar;
   r.dataset.effect = st.effect;
   r.dataset.font = st.font;
   r.style.setProperty("--hub-blur", `${st.blur}px`);
@@ -136,8 +135,8 @@ function applyLook() {
   r.dataset.wall = "1";
   wall.style.backgroundImage = w.image;
   $("#saverWall").style.backgroundImage = w.image;
-  const dark = theme === "dark" || (theme === "auto" && matchMedia("(prefers-color-scheme: dark)").matches);
-  r.style.setProperty("--hub-scrim", w.tone ? (w.tone === (dark ? "dark" : "light") ? ".22" : ".62") : ".45");
+  r.style.setProperty("--hub-scrim", w.tone ? (w.tone === theme ? ".18" : ".55") : ".4");
+  if (S.shelfId === "hub") paintShelf(true);
 }
 
 async function syncHub() {
@@ -146,94 +145,185 @@ async function syncHub() {
     const r = await fetch("/api/hub/settings", { cache: "no-store" });
     if (!r.ok) throw new Error(String(r.status));
     const next = await r.json();
-    const changed = JSON.stringify(next.style) + JSON.stringify(next.wallpaper) + JSON.stringify(next.widgets?.desktop) !==
-      JSON.stringify(SETTINGS?.style) + JSON.stringify(SETTINGS?.wallpaper) + JSON.stringify(SETTINGS?.widgets?.desktop);
+    const sig = (s) => JSON.stringify([s?.style, s?.wallpaper, s?.widgets?.tv]);
+    const changed = sig(next) !== sig(SETTINGS);
     SETTINGS = next;
     HUB.on = true;
-    if (changed) { applyLook(); renderWidgets(); }
+    if (changed) applyLook();
   } catch {
     HUB.on = false;
   }
   HUB.name = window.HUB_CONF?.name || HUB.name;
+  HUB.owner = window.HUB_CONF?.owner || "";
   paintChip();
 }
-
 function paintChip() {
   $("#hubName").textContent = HUB.name;
   $("#splashName").textContent = HUB.name;
   $("#hubChip").classList.toggle("on", HUB.on);
 }
 
-/* ── catalogue ─────────────────────────────────────────────────────────── */
+/* ── the items: LocalHub first, then the apps, the inputs, Settings ────── */
 
-function loadCatalogue() {
+function loadItems() {
   if (NATIVE) {
     APPS = safeJson(native("apps") || "[]", []).map((a) => ({
-      id: a.id, pkg: a.id, name: a.name, img: a.icon || a.banner || null,
-      a1: a.color || "#8e8e93", a2: a.color || "#48484a", recentAt: a.recent || 0,
+      id: a.id, pkg: a.id, name: a.name, banner: a.banner || null, img: a.icon || null,
+      bg: a.color || "#2c2c2e", fg: "#ffffff", recentAt: a.recent || 0,
     }));
     INPUTS = safeJson(native("inputs") || "[]", []);
   } else {
     const now = Date.now();
-    APPS = DEMO_APPS.map((a) => ({ ...a, recentAt: a.recentAt || (a.recent ? now - a.recent * 3600e3 : 0) }));
+    const opened = safeJson((() => { try { return localStorage.getItem("localhub.tv.opened"); } catch { return null; } })(), {}) || {};
+    APPS = WEB_APPS.map((a) => ({ ...a, recentAt: opened[a.id] || (a.recent ? now - a.recent * 3600e3 : 0) }));
     INPUTS = DEMO_INPUTS;
   }
   if (!prefs.inputs) INPUTS = [];
-  const recent = [...APPS].sort((a, b) => (b.recentAt || 0) - (a.recentAt || 0));
-  HOME = [...recent.slice(0, 7), { id: "all-apps", name: "All Apps", kind: "all" }];
+  const byRecent = [...APPS].sort((a, b) => (b.recentAt || 0) - (a.recentAt || 0) || a.name.localeCompare(b.name));
+  const top = byRecent.slice(0, COLS - 1);
+  const rest = APPS.filter((a) => !top.includes(a)).sort((a, b) => a.name.localeCompare(b.name));
+  ITEMS = [
+    { id: "hub", kind: "hub", name: HUB.name },
+    ...top,
+    ...rest,
+    ...INPUTS.map((i) => ({ ...i, kind: "input" })),
+    { id: "settings", kind: "settings", name: "Settings" },
+  ];
+  S.i = clamp(S.i, 0, ITEMS.length - 1);
 }
 
-function tileArt(app) {
-  if (app.kind === "all") return `<span class="hc-app" style="--a1:#8e8e93;--a2:#48484a;--fg:var(--label)">${SYM.grid}</span>`;
-  if (app.kind === "input") return `<span class="hc-app" style="--a1:#64d2ff;--a2:#0a84ff">${SYM.input}</span>`;
-  if (app.kind === "settings") return `<span class="hc-app" style="--a1:#8e8e93;--a2:#48484a;--fg:var(--label)">${SYM.gear}</span>`;
-  if (app.img) return `<span class="hc-app img"><img src="${esc(app.img)}" alt="" decoding="async"></span>`;
-  const colors = `--a1:${app.a1};--a2:${app.a2}`;
-  if (app.icon && !NATIVE) return `<span class="hc-app" style="${colors};--glyph:url('./brands/${app.icon}.svg')"><i class="glyph${app.wide ? " wide" : ""}"></i></span>`;
-  return `<span class="hc-app" style="${colors}"><b class="letter">${esc(app.letter || app.name.slice(0, 1))}</b></span>`;
+function iconHTML(it) {
+  if (it.kind === "hub") return `<div class="icon hub"><img src="./hub.svg" alt=""></div>`;
+  if (it.kind === "settings") return `<div class="icon" style="--a-bg:linear-gradient(160deg,#8e8e93,#3a3a3c);--a-fg:#fff">${SYM.gear}</div>`;
+  if (it.kind === "input") return `<div class="icon" style="--a-bg:linear-gradient(160deg,#2c2c2e,#0b0b0d);--a-fg:#fff">${SYM.input}<span class="sub">${esc(it.sub || "HDMI")}</span></div>`;
+  const colors = `--a-bg:${it.bg};--a-fg:${it.fg}`;
+  if (it.banner) return `<div class="icon" style="${colors}"><img src="${esc(it.banner)}" alt="" decoding="async"></div>`;
+  if (it.img) return `<div class="icon" style="${colors}"><img class="square" src="${esc(it.img)}" alt="" decoding="async"></div>`;
+  if (it.icon) return `<div class="icon" style="${colors}"><i class="glyph${it.wide ? " wide" : ""}" style="--glyph:url('./brands/${it.icon}.svg')"></i></div>`;
+  return `<div class="icon" style="${colors}"><b class="letter"${it.letter && it.letter.length > 4 ? ' style="font-size:58px"' : ""}>${esc(it.letter || it.name.slice(0, 1))}</b></div>`;
 }
 
-function tileHTML(app, i, zone, sub) {
-  return `<div class="app" data-zone="${zone}" data-i="${i}">${tileArt(app)}<span class="app-l">${esc(app.name)}</span>${sub ? `<span class="app-s">${esc(sub)}</span>` : ""}</div>`;
+function renderGrid() {
+  $("#grid").innerHTML = ITEMS.map((it, i) => `<div class="app" data-i="${i}">${iconHTML(it)}<span class="name">${esc(it.name)}</span></div>`).join("");
+  applyFocus(true);
 }
 
-/* ── the views ─────────────────────────────────────────────────────────── */
+/* ── focus: the tvOS lift, tilt and glare ──────────────────────────────── */
 
-const VIEWS = () => [
-  ["home", "Home"],
-  ["apps", "Apps"],
-  ...(INPUTS.length ? [["inputs", "Inputs"]] : []),
-];
+function applyFocus(instant) {
+  document.querySelectorAll(".app.is-focused").forEach((n) => n.classList.remove("is-focused"));
+  $("#hubChip").classList.toggle("focus", S.zone === "status" && !S.overlay);
+  $("#pairbar").classList.toggle("focus", S.zone === "bar" && !S.overlay);
+  if (S.zone === "grid" && !S.overlay) $(`.app[data-i="${S.i}"]`)?.classList.add("is-focused");
 
-function renderSeg() {
-  const views = VIEWS();
-  const seg = $("#seg");
-  seg.style.setProperty("--n", String(views.length));
-  seg.innerHTML = `<span class="seg-thumb"></span>` + views.map(([id, label]) => `<button type="button" data-view="${id}" aria-pressed="${S.view === id}">${label}</button>`).join("");
-  const i = Math.max(0, views.findIndex(([id]) => id === S.view));
-  seg.style.setProperty("--i", String(i));
-  $("#segHint").textContent = S.zone === "seg" ? "" : "";
+  const row = Math.floor(S.i / COLS);
+  const inGrid = S.zone === "grid" && row > 0;
+  document.body.classList.toggle("in-grid", inGrid || (S.zone === "bar" && !atTop()));
+  // Row 0 sits on the Top Shelf. Further down, the focused row rides about a third of the way up.
+  const y = inGrid ? -(648 + row * 252 - 400) : 0;
+  const page = $("#page");
+  if (instant) page.style.transition = "none";
+  page.style.transform = `translateY(${y}px)`;
+  if (instant) requestAnimationFrame(() => { page.style.transition = ""; });
+  if (S.zone === "grid" && row === 0) paintShelf();
+}
+const atTop = () => Math.floor(S.i / COLS) === 0;
+
+function tilt(dx, dy) {
+  const icon = $(`.app[data-i="${S.i}"] .icon`);
+  if (!icon) return;
+  icon.style.setProperty("--ry", `${dx * 7}deg`);
+  icon.style.setProperty("--rx", `${-dy * 7}deg`);
+  icon.style.setProperty("--gx", `${dx * 25}%`);
+  icon.style.setProperty("--gy", `${-30 + dy * 25}%`);
+  clearTimeout(tilt.t);
+  tilt.t = setTimeout(() => {
+    icon.style.setProperty("--ry", "0deg");
+    icon.style.setProperty("--rx", "0deg");
+    icon.style.setProperty("--gx", "0%");
+    icon.style.setProperty("--gy", "-30%");
+  }, 260);
 }
 
-function gridItems() {
-  if (S.view === "apps") return [...[...APPS].sort((a, b) => a.name.localeCompare(b.name)), { id: "tv-settings", name: "Settings", kind: "settings" }];
-  if (S.view === "inputs") return INPUTS.map((i) => ({ ...i, kind: "input" }));
-  return [];
-}
-
-function renderViews() {
-  $("#homeApps").innerHTML = HOME.map((a, i) => tileHTML(a, i, "apps")).join("");
-  $("#allApps").innerHTML = S.view === "apps" ? gridItems().map((a, i) => tileHTML(a, i, "grid")).join("") : "";
-  $("#inputGrid").innerHTML = S.view === "inputs" ? gridItems().map((a, i) => tileHTML(a, i, "grid", a.sub)).join("") : "";
-  for (const [id] of [["home"], ["apps"], ["inputs"]]) $(`#view-${id}`).classList.toggle("on", S.view === id);
-  $("#title").textContent = S.view === "home" ? "Home" : S.view === "apps" ? "Apps" : "Inputs";
-  renderSeg();
-  renderWidgets();
+function move(dx, dy) {
+  if (S.zone === "status") {
+    if (dy > 0) { S.zone = "grid"; return applyFocus(); }
+    return;
+  }
+  if (S.zone === "bar") {
+    if (dy < 0) { leaveBar(); S.zone = "grid"; return applyFocus(); }
+    return;
+  }
+  const n = ITEMS.length;
+  const row = Math.floor(S.i / COLS);
+  const lastRow = Math.floor((n - 1) / COLS);
+  if (dx) {
+    const next = S.i + dx;
+    if (next >= 0 && next < n && Math.floor(next / COLS) === row) S.i = next;
+    else return tilt(dx * 1.6, 0); // the edge: lean into it, like tvOS
+  }
+  if (dy < 0) {
+    if (row === 0) { S.zone = "status"; return applyFocus(); }
+    S.i -= COLS;
+  }
+  if (dy > 0) {
+    if (row === lastRow) return focusBar();
+    S.i = Math.min(S.i + COLS, n - 1);
+  }
   applyFocus();
+  tilt(dx, dy);
 }
 
-/* Home widgets: the ones on the hub's own Home (Desktop layout) that make sense on a TV,
-   drawn the way tabs/home.js draws them, then the TV's own "Recently opened". */
+/* ── the Top Shelf ─────────────────────────────────────────────────────── */
+
+function paintShelf(force) {
+  const it = ITEMS[S.i];
+  if (!it || (!force && it.id === S.shelfId)) return;
+  S.shelfId = it.id;
+  document.body.classList.toggle("shelf-hub", it.kind === "hub");
+  const on = $(S.flip ? "#shelfA" : "#shelfB");
+  const off = $(S.flip ? "#shelfB" : "#shelfA");
+  S.flip = !S.flip;
+
+  if (it.kind === "hub") {
+    on.innerHTML = ""; // the hub's own wallpaper shows through
+  } else if (it.banner) {
+    on.innerHTML = `<div class="bg blur" style="background-image:url('${esc(it.banner)}')"></div><div class="poster" style="background-image:url('${esc(it.banner)}')"></div>`;
+  } else if (it.kind === "app") {
+    on.innerHTML = "";
+  } else {
+    const tone = it.bg && !String(it.bg).includes("gradient") ? it.bg : null;
+    const fg = it.fg || "#fff";
+    const glow = tone && tone !== "#000000" && tone !== "#ffffff" ? tone : fg;
+    on.innerHTML = `<div class="bg" style="background:radial-gradient(70% 90% at 78% 30%, ${hexA(glow, 0.6)}, transparent 62%), radial-gradient(60% 70% at 10% 100%, ${hexA(glow, 0.22)}, transparent 70%), #05060a"></div>${
+      it.icon ? `<i class="glyph${it.wide ? " wide" : ""}" style="--glyph:url('./brands/${it.icon}.svg');color:${fg === "#ffffff" ? "#fff" : fg}"></i>` : ""}`;
+  }
+  on.classList.add("on");
+  off.classList.remove("on");
+
+  const body = $("#shelfBody");
+  body.innerHTML = it.kind === "hub" ? hubShelfHTML() : appShelfHTML(it);
+  body.classList.remove("swap");
+  void body.offsetWidth;
+  body.classList.add("swap");
+}
+
+function hexA(c, a) {
+  if (!/^#[0-9a-f]{3,8}$/i.test(c)) return `rgba(10,132,255,${a})`;
+  const [r, g, b] = hexRgb(c).map((v) => Math.round(v * 255));
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+function appShelfHTML(it) {
+  const title = it.icon && !it.banner
+    ? (it.wide ? `<i class="mark wide" style="--glyph:url('./brands/${it.icon}.svg')"></i>` : `<i class="mark" style="--glyph:url('./brands/${it.icon}.svg')"></i><h1>${esc(it.name)}</h1>`)
+    : `<h1>${esc(it.name)}</h1>`;
+  const when = it.kind === "input" ? esc(it.sub || "HDMI input") : it.kind === "settings" ? "LocalHub TV" : it.recentAt ? `Opened ${ago(it.recentAt)}` : "Not opened yet";
+  const how = NATIVE ? "Press OK to open" : it.url ? "Press Enter to open it in a new window" : it.kind === "settings" ? "Press Enter" : "Press Enter";
+  return `<div class="shelf-title">${title}</div><div class="shelf-meta"><span>${when}</span><i class="sep"></i><span>${how}</span></div>`;
+}
+
+/* The LocalHub tile: a greeting and the widgets picked for the TV in the hub's Home editor. */
 const ZONES = () => (window.HUB_CONF?.worldClock?.length ? window.HUB_CONF.worldClock : [["New York", "America/New_York"], ["London", "Europe/London"]]);
 const zoneTime = (tz) => { try { return new Date().toLocaleTimeString(undefined, { timeZone: tz, hour: "numeric", minute: "2-digit" }); } catch { return "–"; } };
 const WIDGETS = {
@@ -248,29 +338,36 @@ const WIDGETS = {
   "world-clock": { label: "World clock", tint: "var(--orange)", render() {
     return `<div class="w-list">${ZONES().slice(0, 3).map(([n, tz]) => `<div class="w-row"><span class="t">${esc(n)}</span><span class="v">${esc(zoneTime(tz))}</span></div>`).join("")}</div>`;
   } },
+  recent: { label: "Recently opened", tint: "var(--green)", wide: true, render() {
+    const list = [...APPS].filter((a) => a.recentAt).sort((a, b) => b.recentAt - a.recentAt).slice(0, 3);
+    if (!list.length) return `<div class="w-empty">Apps you open here show up in this card.</div>`;
+    return `<div class="w-list">${list.map((a) => `<div class="w-row"><span class="mini" style="--a-bg:${a.bg};--a-fg:${a.fg}">${miniArt(a)}</span><span class="t">${esc(a.name)}</span><span class="s">${esc(ago(a.recentAt))}</span></div>`).join("")}</div>`;
+  } },
 };
+const LABELS = { "next-event": "Next event", "claude-usage": "Claude usage", tokens: "Tokens", today: "Today", coolify: "Coolify", services: "Services", "server-health": "Server", drives: "Drives", "stripe-balance": "Stripe", icloud: "iCloud" };
 
-function renderWidgets() {
-  const layout = SETTINGS?.widgets?.desktop?.length ? SETTINGS.widgets.desktop : [{ id: "clock" }, { id: "date" }, { id: "world-clock" }];
-  const cards = layout.filter((w) => WIDGETS[w.id]).slice(0, 3).map((w) => {
-    const def = WIDGETS[w.id];
-    return `<div class="w card"><div class="w-label"><i class="dot" style="--c:${def.tint}"></i>${esc(def.label)}</div><div class="w-body">${def.render()}</div></div>`;
-  });
-  const recent = [...APPS].filter((a) => a.recentAt).sort((a, b) => b.recentAt - a.recentAt).slice(0, 4);
-  cards.push(`<div class="w wide card"><div class="w-label"><i class="dot" style="--c:var(--green)"></i>Recently opened</div><div class="w-body">${
-    recent.length
-      ? `<div class="w-list">${recent.map((a) => `<div class="w-row"><span class="mini">${miniArt(a)}</span><span class="t">${esc(a.name)}</span><span class="s">${esc(ago(a.recentAt))}</span></div>`).join("")}</div>`
-      : `<div class="w-empty">Apps you open on this TV show up here.</div>`
-  }</div></div>`);
-  $("#widgets").innerHTML = cards.join("");
+function tvWidgets() {
+  const layout = SETTINGS?.widgets?.tv?.length ? SETTINGS.widgets.tv : [{ id: "clock" }, { id: "date" }, { id: "world-clock" }];
+  return layout.filter((w) => w.id !== "app").map((w) => w.id);
+}
+function widgetCard(id) {
+  const def = WIDGETS[id];
+  if (!def) return `<div class="w card"><div class="w-label"><i class="dot"></i>${esc(LABELS[id] || id)}</div><div class="w-body"><div class="w-empty">Shown on LocalHub. TV support is coming.</div></div></div>`;
+  return `<div class="w card${def.wide ? " wide" : ""}"><div class="w-label"><i class="dot" style="--c:${def.tint}"></i>${esc(def.label)}</div><div class="w-body">${def.render()}</div></div>`;
+}
+function hubShelfHTML() {
+  const h = new Date().getHours();
+  const part = h < 5 ? "Good night" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
+  const first = (HUB.owner || "").split(/\s+/)[0];
+  const ids = tvWidgets().filter((id) => WIDGETS[id] || LABELS[id]).slice(0, 3);
+  return `<div class="hub-shelf"><div class="greet"><h1>${esc(part)}${first ? `, ${esc(first)}` : ""}</h1><p>${esc(HUB.name)}${HUB.on ? "" : " · not connected"} · Ask anything below, or press ${NATIVE ? "⏯" : "Space"} to talk</p></div><div class="widgets">${[...ids.map(widgetCard), widgetCard("recent")].join("")}</div></div>`;
 }
 
 function miniArt(a) {
   if (a.img) return `<img src="${esc(a.img)}" alt="">`;
-  if (a.icon && !NATIVE) return `<i class="glyph" style="--glyph:url('./brands/${a.icon}.svg');color:${a.a1}"></i>`;
-  return `<b style="font:700 26px var(--rounded);color:${a.a1}">${esc((a.letter || a.name).slice(0, 1))}</b>`;
+  if (a.icon) return `<i class="glyph" style="--glyph:url('./brands/${a.icon}.svg')"></i>`;
+  return `<b style="font:800 18px var(--display);color:${a.fg}">${esc((a.letter || a.name).slice(0, 1))}</b>`;
 }
-
 function ago(t) {
   const m = Math.round((Date.now() - t) / 60000);
   if (m < 1) return "just now";
@@ -281,134 +378,93 @@ function ago(t) {
   return d === 1 ? "yesterday" : `${d} days ago`;
 }
 
-/* ── focus ─────────────────────────────────────────────────────────────── */
-
-function applyFocus() {
-  document.querySelectorAll(".app.is-focused").forEach((n) => n.classList.remove("is-focused"));
-  $("#seg").classList.toggle("focus", S.zone === "seg" && !S.overlay);
-  $("#pairbar").classList.toggle("focus", S.zone === "bar" && !S.overlay);
-  if (S.overlay) return;
-  if (S.zone === "apps") $(`.app[data-zone="apps"][data-i="${S.app}"]`)?.classList.add("is-focused");
-  if (S.zone === "grid") {
-    const node = $(`.app[data-zone="grid"][data-i="${S.grid}"]`);
-    node?.classList.add("is-focused");
-    const grid = S.view === "apps" ? $("#allApps") : $("#inputGrid");
-    const row = Math.floor(S.grid / 8);
-    grid.style.transform = `translateY(${-Math.max(0, row - 1) * 236}px)`;
-  }
-}
-
-function focusedItem() {
-  if (S.zone === "apps") return HOME[S.app];
-  if (S.zone === "grid") return gridItems()[S.grid];
-  return null;
-}
-
-function setView(id) {
-  if (S.view === id) return;
-  S.view = id;
-  S.grid = 0;
-  renderViews();
-}
-
-function move(dx, dy) {
-  const views = VIEWS();
-  if (S.zone === "seg") {
-    if (dx) {
-      S.seg = clamp(views.findIndex(([id]) => id === S.view) + dx, 0, views.length - 1);
-      setView(views[S.seg][0]);
-    }
-    if (dy > 0) S.zone = S.view === "home" ? "apps" : gridItems().length ? "grid" : "bar";
-  } else if (S.zone === "apps") {
-    if (dx) S.app = clamp(S.app + dx, 0, HOME.length - 1);
-    if (dy < 0) S.zone = "seg";
-    if (dy > 0) return focusBar();
-  } else if (S.zone === "grid") {
-    const n = gridItems().length;
-    const col = S.grid % 8;
-    if (dx) { const next = S.grid + dx; if (next >= 0 && next < n && Math.floor(next / 8) === Math.floor(S.grid / 8)) S.grid = next; }
-    if (dy < 0) { if (S.grid < 8) S.zone = "seg"; else S.grid -= 8; }
-    if (dy > 0) { if (S.grid + 8 < n) S.grid += 8; else if (Math.floor(S.grid / 8) === Math.floor((n - 1) / 8)) return focusBar(); else S.grid = n - 1; }
-    void col;
-  } else if (S.zone === "bar") {
-    if (dy < 0) { leaveBar(); S.zone = S.view === "home" ? "apps" : gridItems().length ? "grid" : "seg"; }
-  }
-  applyFocus();
-}
-
-/* the assistant bar: the hub's own tabs/chat.js, or the pairing pill when there's no hub */
+/* ── the assistant bar: the hub's own tabs/chat.js ─────────────────────── */
 const chatHost = () => document.getElementById("hub-chat");
 const chatInput = () => chatHost()?.shadowRoot?.querySelector(".bta");
-
 function focusBar() {
   S.zone = "bar";
   applyFocus();
   const ta = chatInput();
   if (ta) { ta.focus(); native("setTyping", true); }
 }
-
 function leaveBar() {
-  const ta = chatInput();
-  if (ta) ta.blur();
+  chatInput()?.blur();
   native("setTyping", false);
 }
 
-/* ── activation ────────────────────────────────────────────────────────── */
+/* ── opening things ────────────────────────────────────────────────────── */
 
 function activate() {
-  if (S.zone === "seg") { S.zone = S.view === "home" ? "apps" : "grid"; return applyFocus(); }
+  if (S.zone === "status") return openCC();
   if (S.zone === "bar") return HUB.on ? focusBar() : openPairing();
-  const item = focusedItem();
-  if (!item) return;
-  if (item.kind === "all") { setView("apps"); S.zone = "grid"; return applyFocus(); }
-  if (item.kind === "settings") return openSettings();
-  if (item.kind === "input") return launch(item, () => (NATIVE ? native("switchInput", item.id) : true), `Switching to ${item.name}`);
-  return launch(item, () => openApp(item));
+  const it = ITEMS[S.i];
+  if (!it) return;
+  if (it.kind === "hub") return focusBar();
+  if (it.kind === "settings") return openSettings();
+  if (it.kind === "input") return launch(it, () => (NATIVE ? native("switchInput", it.id) : true), `Switching to ${it.name}`);
+  return launch(it, () => openApp(it));
 }
 
+/* On a TV, Java starts the app. On a laptop, the website opens in a new window; when you come
+   back to this one, the icon settles back into the grid. */
 function openApp(app) {
   if (NATIVE) return native("launch", app.pkg) !== false;
-  app.recentAt = Date.now();
+  if (!app.url) return false;
+  const w = window.open(app.url, "_blank", "noopener");
+  remember(app);
+  if (!w && !document.hidden) {
+    // A window opened from a laptop's own keypress always works; one asked for by Alexa or the
+    // agent may be blocked by the browser. Then one press of Enter does it.
+    S.pendingOpen = app;
+    toast(`Press Enter to open ${app.name}`);
+    return "pending";
+  }
   return true;
 }
-
-/* the tile grows to fill the screen, then the app takes over */
-function launch(app, go, note) {
-  const node = document.querySelector(".app.is-focused .hc-app");
-  const stage = $("#stage").getBoundingClientRect();
-  const k = stage.width / 1920;
-  const r = node ? node.getBoundingClientRect() : { left: stage.left + 892 * k, top: stage.top + 472 * k, width: 136 * k, height: 136 * k };
-  const layer = $("#launch");
-  layer.querySelector(".hc-app")?.remove();
-  const art = document.createElement("div");
-  art.innerHTML = tileArt(app);
-  const tile = art.firstElementChild;
-  tile.style.left = `${(r.left - stage.left) / k}px`;
-  tile.style.top = `${(r.top - stage.top) / k}px`;
-  tile.style.width = `${r.width / k}px`;
-  tile.style.height = `${r.height / k}px`;
-  tile.style.transition = "none";
-  layer.prepend(tile);
-  $("#launchNote").textContent = NATIVE ? "" : note ? `${note} on the TV` : `${app.name} opens here on the TV`;
-  setOverlay("launch");
-  layer.classList.add("on");
-  requestAnimationFrame(() => requestAnimationFrame(() => { tile.style.transition = ""; layer.classList.add("full"); }));
-  setTimeout(() => {
-    const ok = go();
-    if (NATIVE && ok !== false) return; // the app is on screen; haven.resumed() tidies up when we're back
-    if (ok === false) toast(`${app.name} didn't start`);
-    setTimeout(endLaunch, NATIVE ? 0 : 1300);
-  }, 480);
+function remember(app) {
+  app.recentAt = Date.now();
+  if (NATIVE) return;
+  const opened = safeJson((() => { try { return localStorage.getItem("localhub.tv.opened"); } catch { return null; } })(), {}) || {};
+  opened[app.id] = app.recentAt;
+  try { localStorage.setItem("localhub.tv.opened", JSON.stringify(opened)); } catch { /* storage off */ }
 }
 
+function launch(it, go, note) {
+  const node = $(`.app[data-i="${ITEMS.indexOf(it)}"] .icon`) || $(".app.is-focused .icon");
+  const stage = $("#stage").getBoundingClientRect();
+  const k = stage.width / 1920;
+  const r = node ? node.getBoundingClientRect() : { left: stage.left + 810 * k, top: stage.top + 450 * k, width: 300 * k, height: 180 * k };
+  const layer = $("#launch");
+  layer.querySelector(".icon")?.remove();
+  const holder = document.createElement("div");
+  holder.innerHTML = iconHTML(it);
+  const icon = holder.firstElementChild;
+  Object.assign(icon.style, { left: `${(r.left - stage.left) / k}px`, top: `${(r.top - stage.top) / k}px`, width: `${r.width / k}px`, height: `${r.height / k}px`, transition: "none" });
+  layer.prepend(icon);
+  $("#launchNote").textContent = NATIVE ? "" : note ? `${note} — on a TV this switches the input` : it.url ? `Opening ${it.name} in a new window…` : `${it.name} isn't on this laptop`;
+  setOverlay("launch");
+  layer.classList.add("on");
+  requestAnimationFrame(() => requestAnimationFrame(() => { icon.style.transition = ""; layer.classList.add("full"); }));
+  setTimeout(() => {
+    const ok = go();
+    if (NATIVE && ok !== false) return; // haven.resumed() tidies up when we're back
+    if (ok === false && it.url === undefined && it.kind !== "input" && !NATIVE) { setTimeout(endLaunch, 1100); return; }
+    if (ok === false) toast(`${it.name} didn't start`);
+    setTimeout(endLaunch, ok === "pending" ? 300 : document.hidden ? 0 : 1300);
+  }, 520);
+}
 function endLaunch() {
   const layer = $("#launch");
   if (!layer.classList.contains("on")) return;
   layer.classList.remove("full", "on");
   if (S.overlay === "launch") setOverlay(null);
-  loadCatalogue();
-  renderViews();
+  const keep = ITEMS[S.i]?.id;
+  loadItems();
+  S.i = Math.max(0, ITEMS.findIndex((x) => x.id === keep));
+  S.shelfId = null;
+  renderGrid();
 }
+document.addEventListener("visibilitychange", () => { if (!document.hidden) endLaunch(); });
 
 /* ── overlays ──────────────────────────────────────────────────────────── */
 
@@ -418,42 +474,60 @@ function setOverlay(name) {
   applyFocus();
 }
 
-/* Control Center, as a hub menu */
-function ccItems() {
+/* The drop-down from the top right: the hub's TV widgets, then the controls. */
+function ccTiles() {
   const net = NATIVE ? safeJson(native("network"), {}) : { connected: navigator.onLine, kind: "Wi-Fi" };
   return [
-    { id: "ask", ic: SYM.mic, t: "Ask LocalHub", v: "⏯" },
-    ...(INPUTS.length ? [{ id: "inputs", ic: SYM.input, t: "Inputs", v: `${INPUTS.length}` }] : []),
-    { sep: true },
-    { id: "saver", ic: SYM.moon, t: "Screensaver", v: "" },
-    { id: "timer", ic: SYM.timer, t: "Sleep timer", v: S.sleepAt ? clockText(new Date(S.sleepAt)) : "Off", on: !!S.sleepAt },
-    { id: "sleep", ic: SYM.power, t: "Sleep", v: "" },
-    { sep: true },
-    { id: "net", ic: SYM.wifi, t: net.kind || "Network", v: net.connected ? "Connected" : "Offline", on: !!net.connected },
-    { id: "bt", ic: SYM.bt, t: "Bluetooth", v: "" },
-    { id: "system", ic: SYM.sliders, t: "TV settings", v: "" },
-    { id: "settings", ic: SYM.gear, t: "LocalHub TV settings", v: "" },
+    { id: "ask", cls: "big", ic: SYM.mic, t1: "Ask LocalHub", t2: NATIVE ? "⏯ on the remote" : "Space on the keyboard" },
+    { id: "net", cls: "w2" + (net.connected ? " on" : ""), ic: SYM.wifi, t1: net.kind || "Network", t2: net.connected ? "Connected" : "Offline" },
+    { id: "timer", cls: "w2" + (S.sleepAt ? " on" : ""), ic: SYM.timer, t1: "Sleep Timer", t2: S.sleepAt ? `At ${clockText(new Date(S.sleepAt))}` : "Off" },
+    { id: "saver", cls: "", ic: SYM.moon, t1: "", t2: "" },
+    { id: "sleep", cls: "", ic: SYM.power, t1: "", t2: "" },
+    { id: "bt", cls: "", ic: SYM.bt, t1: "", t2: "" },
+    { id: "inputs", cls: "", ic: SYM.input, t1: "", t2: "" },
+    { id: "settings", cls: "w2", ic: SYM.gear, t1: "Settings", t2: "LocalHub TV" },
+    { id: "system", cls: "w2", ic: NATIVE ? SYM.sliders : SYM.laptop, t1: NATIVE ? "TV Settings" : "LocalHub", t2: NATIVE ? "Fire TV" : "Open the dashboard" },
   ];
 }
 let CC = [];
 function openCC() {
-  CC = ccItems();
+  CC = ccTiles();
   const n = new Date();
   $("#ccClock").textContent = clockText(n);
   $("#ccDate").textContent = n.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
-  $("#ccList").innerHTML = CC.map((it, i) => (it.sep ? `<div class="menu-sep"></div>` : `<div class="mi${it.on ? " on" : ""}" data-i="${i}"><span class="ic">${it.ic}</span><span class="t">${esc(it.t)}</span><span class="v">${esc(it.v)}</span></div>`)).join("");
-  if (CC[S.cc]?.sep || !CC[S.cc]) S.cc = 0;
+  const widgets = tvWidgets().filter((id) => WIDGETS[id]).slice(0, 2);
+  $("#ccGrid").innerHTML =
+    widgets.map((id) => `<div class="cc-tile w2 widget" style="height:auto;min-height:220px;padding:20px 24px;align-items:stretch;flex-direction:column;gap:8px"><div class="w-label" style="font-size:20px"><i class="dot" style="--c:${WIDGETS[id].tint}"></i>${esc(WIDGETS[id].label)}</div><div class="w-body" style="transform:scale(.72);transform-origin:0 50%;margin:-14px 0">${WIDGETS[id].render()}</div></div>`).join("") +
+    CC.map((t, i) => `<div class="cc-tile ${t.cls}" data-i="${i}" title="${esc({ saver: "Screensaver", sleep: "Sleep", bt: "Bluetooth", inputs: "Inputs" }[t.id] || t.t1)}"><span class="ic">${t.ic}</span>${t.t1 ? `<span><div class="t1">${esc(t.t1)}</div><div class="t2">${esc(t.t2)}</div></span>` : ""}</div>`).join("");
+  S.cc = 0;
   $("#cc").classList.add("on");
   $("#scrim").classList.add("on");
   setOverlay("cc");
   paintCC();
 }
-function closeCC() { $("#cc").classList.remove("on"); $("#scrim").classList.remove("on"); setOverlay(null); }
-function paintCC() { document.querySelectorAll(".mi").forEach((n) => n.classList.toggle("is-sel", Number(n.dataset.i) === S.cc)); }
-function ccMove(d) {
-  let i = S.cc;
-  do { i += d; } while (CC[i]?.sep);
-  if (CC[i]) S.cc = i;
+function closeCC() {
+  $("#cc").classList.remove("on");
+  $("#scrim").classList.remove("on");
+  if (S.zone === "status") S.zone = "grid";
+  setOverlay(null);
+}
+function paintCC() { document.querySelectorAll(".cc-tile[data-i]").forEach((n) => n.classList.toggle("is-sel", Number(n.dataset.i) === S.cc)); }
+function ccMove(dx, dy) {
+  const tiles = [...document.querySelectorAll(".cc-tile[data-i]")];
+  const a = tiles[S.cc]?.getBoundingClientRect();
+  if (!a) return;
+  let best = S.cc, score = Infinity;
+  tiles.forEach((n, i) => {
+    if (i === S.cc) return;
+    const b = n.getBoundingClientRect();
+    const ddx = b.left + b.width / 2 - (a.left + a.width / 2);
+    const ddy = b.top + b.height / 2 - (a.top + a.height / 2);
+    if ((dx && Math.sign(ddx) !== dx) || (dy && Math.sign(ddy) !== dy) || (dx && Math.abs(ddx) < 4) || (dy && Math.abs(ddy) < 4)) return;
+    const s = (dx ? Math.abs(ddx) : Math.abs(ddy)) + (dx ? Math.abs(ddy) : Math.abs(ddx)) * 2.2;
+    if (s < score) { score = s; best = i; }
+  });
+  if (dy < 0 && best === S.cc) return closeCC();
+  S.cc = best;
   paintCC();
 }
 function ccActivate() {
@@ -461,17 +535,16 @@ function ccActivate() {
   if (id === "timer") return cycleSleepTimer();
   closeCC();
   if (id === "ask") return startVoice();
-  if (id === "inputs") { setView("inputs"); S.zone = "grid"; return applyFocus(); }
+  if (id === "inputs") { const i = ITEMS.findIndex((x) => x.kind === "input"); if (i < 0) return toast("This TV reports no HDMI inputs"); S.zone = "grid"; S.i = i; return applyFocus(); }
   if (id === "saver") return startSaver();
   if (id === "sleep") return sleepNow();
-  if (id === "net") return NATIVE ? native("openNetworkSettings") : toast("Opens network settings on the TV");
-  if (id === "bt") return NATIVE ? native("openBluetoothSettings") : toast("Opens Bluetooth settings on the TV");
-  if (id === "system") return NATIVE ? native("openSystemSettings") : toast("Opens Fire TV settings on the TV");
+  if (id === "net") return NATIVE ? native("openNetworkSettings") : toast(navigator.onLine ? "This laptop is online" : "This laptop is offline");
+  if (id === "bt") return NATIVE ? native("openBluetoothSettings") : toast("Bluetooth is in the TV's settings");
+  if (id === "system") return NATIVE ? native("openSystemSettings") : window.open("/", "_blank");
   if (id === "settings") return openSettings();
 }
-
 function sleepNow() {
-  if (!NATIVE) return toast("The TV would go to sleep");
+  if (!NATIVE) return toast("A TV would go to sleep now");
   if (native("sleep") === false) toast("Sleep needs the LocalHub home-button service");
 }
 const TIMER_STEPS = [0, 30, 60, 90, 120];
@@ -482,10 +555,13 @@ function cycleSleepTimer() {
   S.sleepAt = next ? Date.now() + next * 60000 : 0;
   if (next) S.sleepTimer = setTimeout(sleepNow, next * 60000);
   toast(next ? `Sleeping in ${next} minutes` : "Sleep timer off");
+  const keep = S.cc;
   openCC();
+  S.cc = keep;
+  paintCC();
 }
 
-/* Settings: an inset grouped list */
+/* Settings: tvOS — the icon on the left, the list on the right */
 function settingsModel() {
   const st = NATIVE ? safeJson(native("status"), {}) : {};
   const hubRows = NATIVE
@@ -497,42 +573,34 @@ function settingsModel() {
     ]
     : [{ info: true, t1: "LocalHub", t2: IN_HUB ? "This screen is served by LocalHub" : "Open it from LocalHub at /tv/", v: HUB.on ? "Connected" : "Not connected", on: HUB.on }];
   return [
+    { title: "Settings" },
     { group: "Home Screen" },
     { key: "clock", t1: "Clock", t2: "Top right, and on the screensaver", values: ["12-hour", "24-hour"] },
-    { key: "inputs", t1: "HDMI inputs", t2: INPUTS.length || !prefs.inputs ? "Shown as their own tab" : "This TV reports none", toggle: true },
+    { key: "inputs", t1: "HDMI inputs", t2: "Shown as icons after the apps", toggle: true },
     { key: "saver", t1: "Screensaver", t2: "After the remote has been still", values: ["Off", "2 min", "5 min", "10 min", "15 min"] },
     { key: "effects", t1: "Glass", t2: "Light is quicker on older Fire TV sticks", values: ["Full", "Light"] },
-    { info: true, t1: "Wallpaper and style", t2: "Follow LocalHub. Change them in the hub's Style panel", v: SETTINGS?.wallpaper?.current ? cap(SETTINGS.wallpaper.current) : "Aurora" },
+    { info: true, t1: "Wallpaper, style and widgets", t2: "Follow LocalHub: Home → Edit → TV on the laptop", v: SETTINGS?.wallpaper?.current ? cap(SETTINGS.wallpaper.current) : "Aurora" },
     { group: "Assistant" },
     ...hubRows,
-    { key: "speak", t1: "Read answers aloud", t2: "Uses the TV's voice", values: ["After voice", "Always", "Off"] },
+    { key: "speak", t1: "Read answers aloud", t2: NATIVE ? "With the TV's voice" : "With this computer's voice", values: ["After voice", "Always", "Off"] },
     { info: true, t1: "Alexa", t2: "“Alexa, ask local hub to open Netflix”", v: "tv/alexa" },
+    ...(!NATIVE ? [{ key: "help", t1: "Keyboard help", t2: "The remote's keys, bottom left", toggle: true }] : []),
     { group: "About" },
     ...(NATIVE ? [{ info: true, t1: "Home button", t2: "Brings LocalHub back when Home is pressed", v: st.homeService ? "On" : "Off", on: st.homeService }] : []),
-    { info: true, t1: "Version", t2: NATIVE ? "LocalHub TV for Fire TV" : "In a browser", v: NATIVE ? st.version || "?" : "0.3.0" },
+    { info: true, t1: "Version", t2: NATIVE ? "LocalHub TV for Fire TV" : "LocalHub TV on this laptop", v: NATIVE ? st.version || "?" : "0.3.0" },
   ];
 }
 const cap = (s) => String(s).replace(/(^|-)(\w)/g, (_, a, b) => (a ? " " : "") + b.toUpperCase());
-const selectable = (it) => it && !it.group && !it.info;
-
-function valueOf(it) {
-  if (it.toggle) return prefs[it.key] ? "On" : "Off";
-  if (it.values) return prefs[it.key];
-  return it.v ?? "";
-}
-
+const selectable = (it) => it && !it.group && !it.info && !it.title;
+const valueOf = (it) => (it.toggle ? (prefs[it.key] ? "On" : "Off") : it.values ? prefs[it.key] : it.v ?? "");
 function renderSettings() {
   const model = (S.setModel = settingsModel());
-  let html = `<div class="set-title"><img src="./hub.svg" alt=""><h1>Settings</h1></div>`;
-  let open = false;
-  model.forEach((it, i) => {
-    if (it.group) { if (open) html += "</div>"; html += `<div class="set-group">${esc(it.group)}</div><div class="list card">`; open = true; return; }
+  $("#setTrack").innerHTML = model.map((it, i) => {
+    if (it.title) return `<h1 class="set-title">${esc(it.title)}</h1>`;
+    if (it.group) return `<div class="set-group">${esc(it.group)}</div>`;
     const v = valueOf(it);
-    const on = it.on || v === "On";
-    html += `<div class="row${it.info ? " info" : ""}" data-i="${i}"><div class="txt"><div class="t1">${esc(it.t1)}</div>${it.t2 ? `<div class="t2">${esc(it.t2)}</div>` : ""}</div><div class="v${on ? " on" : ""}">${esc(v)}${SYM.chev}</div></div>`;
-  });
-  if (open) html += "</div>";
-  $("#setTrack").innerHTML = html;
+    return `<div class="row${it.info ? " info" : ""}" data-i="${i}"><div class="txt"><div class="t1">${esc(it.t1)}</div>${it.t2 ? `<div class="t2">${esc(it.t2)}</div>` : ""}</div><div class="v${it.on || v === "On" ? " on" : ""}">${esc(v)}${SYM.chev}</div></div>`;
+  }).join("");
   if (!selectable(model[S.set])) S.set = model.findIndex(selectable);
   paintSettings();
 }
@@ -540,11 +608,10 @@ function paintSettings() {
   document.querySelectorAll("#setTrack .row").forEach((n) => n.classList.toggle("is-sel", Number(n.dataset.i) === S.set));
   const row = $(`#setTrack .row[data-i="${S.set}"]`);
   if (!row) return;
-  // Measured against the list itself (a blurred card is its own offset parent), in canvas pixels.
   const track = $("#setTrack");
   const k = $("#stage").getBoundingClientRect().width / 1920 || 1;
   const y = (row.getBoundingClientRect().top - track.getBoundingClientRect().top) / k;
-  track.style.transform = `translateY(${-Math.max(0, y - 360)}px)`;
+  track.style.transform = `translateY(${-Math.max(0, y - 380)}px)`;
 }
 function openSettings() { renderSettings(); $("#settings").classList.add("on"); setOverlay("settings"); }
 function closeSettings() { $("#settings").classList.remove("on"); setOverlay(null); }
@@ -564,13 +631,16 @@ function settingsActivate() {
   else if (it.id === "forget") { native("forgetHub"); HUB.paired = false; toast("This TV forgot LocalHub"); }
   savePrefs();
   applyLook();
-  loadCatalogue();
-  renderViews();
+  $("#keys").hidden = NATIVE || !prefs.help;
+  const keep = ITEMS[S.i]?.id;
+  loadItems();
+  S.i = Math.max(0, ITEMS.findIndex((x) => x.id === keep));
+  renderGrid();
   armSaver();
   renderSettings();
 }
 
-/* the hub's alert: title, message, field, Cancel | Done */
+/* the hub's alert */
 let modalDone = null;
 function openModal(title, hint, value, onDone) {
   $("#modalTitle").textContent = title;
@@ -600,18 +670,16 @@ $("#modalInput").addEventListener("keydown", (e) => {
   if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); closeModal(false); }
 });
 
-/* toast */
 let toastTimer = 0;
 function toast(msg) {
   const n = $("#toast");
   n.textContent = msg;
   n.classList.add("on");
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => n.classList.remove("on"), 2200);
+  toastTimer = setTimeout(() => n.classList.remove("on"), 2400);
 }
 
 /* ── clock + screensaver ───────────────────────────────────────────────── */
-
 function clockParts(d) {
   let h = d.getHours();
   const m = String(d.getMinutes()).padStart(2, "0");
@@ -623,14 +691,11 @@ function clockParts(d) {
 const clockText = (d) => { const p = clockParts(d); return p.ap ? `${p.hm} ${p.ap}` : p.hm; };
 function tick() {
   const d = new Date();
-  const p = clockParts(d);
-  $("#clock").innerHTML = `${p.hm}${p.ap ? `<small>${p.ap}</small>` : ""}`;
-  $("#navSub").textContent = d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
-  $("#saverTime").textContent = p.hm;
+  $("#clock").textContent = clockText(d);
+  $("#saverTime").textContent = clockParts(d).hm;
   $("#saverDate").textContent = d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
-  if (S.view === "home" && !S.overlay) renderWidgets();
+  if (S.shelfId === "hub" && !S.overlay) $("#shelfBody").innerHTML = hubShelfHTML();
 }
-
 let saverTimer = 0;
 function armSaver() {
   clearTimeout(saverTimer);
@@ -641,10 +706,9 @@ function armSaver() {
 function startSaver() { tick(); $("#saver").classList.add("on"); setOverlay("saver"); }
 function stopSaver() { $("#saver").classList.remove("on"); setOverlay(null); armSaver(); }
 
-/* ── voice: the TV's mic (or the browser's) → Whisper on the laptop → the hub's chat ── */
+/* ── voice: the TV's mic (or the laptop's) → Whisper → the hub's chat ──── */
 
-const VOICE = { rec: null, state: "idle", speaking: false, follow: null };
-
+const VOICE = { rec: null, state: "idle", follow: null };
 function listenUi(state, text) {
   VOICE.state = state;
   const n = $("#listen");
@@ -652,7 +716,6 @@ function listenUi(state, text) {
   n.classList.toggle("busy", state === "working");
   $("#listenText").textContent = text || "";
 }
-
 function startVoice() {
   if (VOICE.state === "listening") return stopListening(false);
   stopSpeaking();
@@ -661,13 +724,11 @@ function startVoice() {
   if (NATIVE) return native("startListening");
   browserRecord().then((r) => { VOICE.rec = r; }).catch((err) => { listenUi("idle"); toast(`Microphone: ${err.message || err}`); });
 }
-
 function stopListening(discard) {
   if (NATIVE) native(discard ? "cancelListening" : "stopListening");
   else VOICE.rec?.stop(discard);
   if (discard) listenUi("idle");
 }
-
 async function browserRecord() {
   const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
   const ctx = new AudioContext();
@@ -703,12 +764,10 @@ async function browserRecord() {
   loop();
   return { stop: (d) => { discarded = Boolean(d); if (rec.state === "recording") rec.stop(); } };
 }
-
 function level(v) {
   const l = clamp(v, 0, 1);
   document.querySelectorAll("#listen .bars b").forEach((b, i) => b.style.setProperty("--h", String(clamp(l * (0.55 + ((i * 37) % 5) / 6), 0, 1))));
 }
-
 let reqSeq = 0;
 const pending = new Map();
 async function transcribe(blob) {
@@ -731,76 +790,78 @@ async function transcribe(blob) {
   if (res.status !== 200 || !res.json.ok) return toast(res.json.error || res.error || "Couldn't understand that");
   const text = String(res.json.text || "").trim();
   if (!text) return toast("Didn't catch that");
-  heard(text);
+  heard(text, true);
 }
 
-/* "Open Netflix" and friends happen right here; everything else goes to the hub's chat. */
+/* "Open Netflix" and friends happen right here, typed or said; everything else goes to the hub. */
 function quickIntent(text) {
   const t = text.toLowerCase().replace(/[.,!?]+/g, " ").replace(/\b(please|thanks|thank you|for me|now)\b/g, " ").replace(/\s+/g, " ").trim();
-  const open = t.match(/^(?:can you\s+|could you\s+)?(?:open|launch|start|play|put on|go to|switch to)\s+(?:the\s+|my\s+)?(.+?)(?:\s+app)?(?:\s+on (?:the )?tv)?$/);
+  const open = t.match(/^(?:hey\s+|ok\s+)?(?:can you\s+|could you\s+)?(?:open|launch|start|play|put on|go to|switch to|show me)\s+(?:the\s+|my\s+)?(.+?)(?:\s+app)?(?:\s+on (?:the )?tv)?$/);
   if (open) {
     const what = open[1];
     const input = INPUTS.find((i) => i.name.toLowerCase().includes(what) || (i.sub || "").toLowerCase().replace(/\s/g, "") === what.replace(/\s/g, ""));
     if (input) return { type: "input", input };
     const app = findApp(what);
     if (app) return { type: "launch", app };
+    if (/^(settings|tv settings)$/.test(what)) return { type: "settings" };
   }
   if (/^(?:go )?home$/.test(t)) return { type: "home" };
   if (/screen ?saver/.test(t)) return { type: "saver" };
   if (/^(?:go to )?sleep$|turn (?:the )?tv off/.test(t)) return { type: "sleep" };
   return null;
 }
-
 function findApp(name) {
   const n = String(name).toLowerCase().replace(/[^a-z0-9+]/g, "");
   if (!n) return null;
   const key = (a) => a.name.toLowerCase().replace(/[^a-z0-9+]/g, "");
   return APPS.find((a) => key(a) === n) || APPS.find((a) => key(a).startsWith(n)) || APPS.find((a) => key(a).includes(n)) || APPS.find((a) => (a.pkg || "").toLowerCase().includes(n));
 }
-
 function runIntent(intent) {
   if (intent.type === "launch") {
     say(`Opening ${intent.app.name}.`);
-    const i = HOME.indexOf(intent.app);
-    if (i >= 0) { setView("home"); S.zone = "apps"; S.app = i; } else { setView("apps"); S.zone = "grid"; S.grid = Math.max(0, gridItems().indexOf(intent.app)); }
+    S.zone = "grid";
+    S.i = ITEMS.indexOf(intent.app);
     applyFocus();
     return launch(intent.app, () => openApp(intent.app));
   }
   if (intent.type === "input") {
     say(`Switching to ${intent.input.name}.`);
-    return launch({ ...intent.input, kind: "input" }, () => (NATIVE ? native("switchInput", intent.input.id) : true), `Switching to ${intent.input.name}`);
+    S.zone = "grid";
+    S.i = ITEMS.findIndex((x) => x.id === intent.input.id);
+    applyFocus();
+    return launch(ITEMS[S.i] || { ...intent.input, kind: "input" }, () => (NATIVE ? native("switchInput", intent.input.id) : true), `Switching to ${intent.input.name}`);
   }
-  if (intent.type === "home") { setView("home"); S.zone = "apps"; return applyFocus(); }
+  if (intent.type === "home") { S.zone = "grid"; S.i = 0; return applyFocus(); }
+  if (intent.type === "settings") return openSettings();
   if (intent.type === "saver") return startSaver();
   if (intent.type === "sleep") return sleepNow();
 }
-
-function heard(text) {
+function heard(text, spoken) {
   const intent = quickIntent(text);
   if (intent) return runIntent(intent);
-  askHubChat(text, prefs.speak !== "Off");
+  askHubChat(text, spoken ? prefs.speak !== "Off" : prefs.speak === "Always");
 }
 
-/* Puts the words in the hub's own bar and sends them, as if typed: the conversation, the card,
-   tool rows and history are tabs/chat.js's own, and the laptop sees the same chat. */
+/* Puts the words in the hub's own bar and sends them, as if typed. */
 function askHubChat(text, speakIt) {
   const ta = chatInput();
   if (!ta) return toast("LocalHub's assistant isn't loaded");
   ta.value = text;
   ta.dispatchEvent(new Event("input", { bubbles: true }));
+  S.sending = true;
   ta.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", bubbles: true, cancelable: true }));
+  S.sending = false;
   if (speakIt) followReply();
 }
 
-/* Reads the answer aloud as it streams: whole sentences as soon as they're complete. */
+/* Reads the answer aloud while it streams, a sentence at a time. */
 function followReply() {
   const root = chatHost()?.shadowRoot;
   if (!root) return;
   VOICE.follow?.disconnect();
   const log = root.querySelector(".clog");
   const before = root.querySelectorAll(".clog .msg.a").length;
-  let spoken = 0;
-  let started = false;
+  let spoken = 0, started = false;
   const stop = root.querySelector(".sb");
   const flush = (final) => {
     const msgs = root.querySelectorAll(".clog .msg.a");
@@ -824,9 +885,8 @@ function followReply() {
   setTimeout(() => { if (VOICE.follow === obs) { flush(true); obs.disconnect(); VOICE.follow = null; } }, 6 * 60e3);
 }
 const plain = (t) => t.replace(/`[^`]*`/g, "").replace(/https?:\/\/\S+/g, "").replace(/[*_#>|]/g, "").replace(/\s+\n/g, "\n");
-
 function say(text) {
-  if (!text) return;
+  if (!text || prefs.speak === "Off") return;
   if (NATIVE) return native("speak", text);
   if (!("speechSynthesis" in window)) return;
   const u = new SpeechSynthesisUtterance(text);
@@ -838,17 +898,7 @@ function stopSpeaking() {
   else if ("speechSynthesis" in window) speechSynthesis.cancel();
 }
 
-/* Speak every answer, not just spoken questions, when Settings says Always. */
-function watchTypedReplies() {
-  const root = chatHost()?.shadowRoot;
-  if (!root) return;
-  root.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && !e.shiftKey && e.isTrusted && prefs.speak === "Always") setTimeout(followReply, 0);
-  }, true);
-}
-
-/* ── laptop → TV commands: Alexa, the agent's tv_control tool, the dashboard ── */
-
+/* ── laptop → TV commands: Alexa, the agent's tv_control tool ──────────── */
 let commandLoop = false;
 async function startCommandLoop() {
   if (commandLoop || !IN_HUB) return;
@@ -865,54 +915,50 @@ async function startCommandLoop() {
     } catch { await wait(5000); }
   }
 }
-
 function runCommand(cmd) {
   if (!cmd || typeof cmd !== "object") return;
   if (S.overlay === "saver") stopSaver();
-  if (cmd.type === "launch") { const app = findApp(cmd.app); return app ? runIntent({ type: "launch", app }) : toast(`No app called “${cmd.app}” on this TV`); }
+  if (S.overlay === "cc") closeCC();
+  if (S.overlay === "settings") closeSettings();
+  if (cmd.type === "launch") { const app = findApp(cmd.app); return app ? runIntent({ type: "launch", app }) : toast(`No app called “${cmd.app}” here`); }
   if (cmd.type === "input") {
     const want = String(cmd.name || "").toLowerCase();
     const input = INPUTS.find((i) => i.id === cmd.id || i.name.toLowerCase().includes(want) || (i.sub || "").toLowerCase().includes(want));
-    return input ? runIntent({ type: "input", input }) : toast("That input isn't on this TV");
+    return input ? runIntent({ type: "input", input }) : toast("That input isn't here");
   }
   if (cmd.type === "home") return runIntent({ type: "home" });
   if (cmd.type === "saver") return startSaver();
   if (cmd.type === "sleep") return sleepNow();
   if (cmd.type === "say") return say(String(cmd.text || ""));
   if (cmd.type === "answer") {
-    // An answer that came in through Alexa: show it in the hub's own card and say it.
     toast(cmd.heard ? `“${cmd.heard}”` : "From LocalHub");
-    if (cmd.speak !== false && prefs.speak !== "Off") say(plain(String(cmd.text || "")));
+    if (cmd.speak !== false) say(plain(String(cmd.text || "")));
   }
 }
 
 /* ── pairing (the TV app, before it can reach the hub) ─────────────────── */
-
 function openPairing() {
-  if (!NATIVE) return toast("Open http://localhost:3100/tv/ on the laptop running LocalHub");
+  if (!NATIVE) return toast("Open http://localhost:3100/tv/ on the computer running LocalHub");
   if (!HUB.url) { native("findHub"); HUB.searching = true; toast("Looking for LocalHub on this network…"); return; }
   openModal("Pair this TV", "On the laptop, open localhost:3100/pair/new and type the code it shows.", "", (code) => native("pair", code.trim()));
 }
-
 async function probeNative() {
   if (!NATIVE) return;
   const st = safeJson(native("status"), {});
   HUB.url = st.hub || "";
   HUB.paired = Boolean(st.paired);
   HUB.name = st.hubName || HUB.name;
-  if (!IN_HUB && HUB.paired && HUB.url) native("openHub"); // the hub is the real home: go there when we can
+  if (!IN_HUB && HUB.paired && HUB.url) native("openHub");
   if (!HUB.url && !HUB.searching) { HUB.searching = true; native("findHub"); }
   paintChip();
   paintPairbar();
 }
-
 function paintPairbar() {
   const bar = $("#pairbar");
-  const show = !IN_HUB;
-  bar.hidden = !show;
-  if (!show) return;
+  bar.hidden = IN_HUB;
+  if (IN_HUB) return;
   $("#pairText").textContent = !NATIVE
-    ? "Open this page from LocalHub to ask anything."
+    ? "Open this from LocalHub (localhost:3100/tv/) to ask anything."
     : HUB.searching ? "Looking for LocalHub on your network…"
       : !HUB.url ? "LocalHub isn't on this network yet."
         : HUB.paired ? `Can't reach ${HUB.name} right now.` : `Found ${HUB.name}. Pair this TV to ask anything.`;
@@ -921,11 +967,10 @@ function paintPairbar() {
 $("#pairBtn").addEventListener("click", () => (HUB.paired ? native("openHub") : openPairing()));
 
 /* ── Java → page ───────────────────────────────────────────────────────── */
-
 window.haven = {
   key: (name) => handleKey(name),
-  resumed: () => { endLaunch(); },
-  appsChanged: () => { loadCatalogue(); renderViews(); },
+  resumed: () => endLaunch(),
+  appsChanged: () => { const keep = ITEMS[S.i]?.id; loadItems(); S.i = Math.max(0, ITEMS.findIndex((x) => x.id === keep)); S.shelfId = null; renderGrid(); },
   onNative(evt) {
     if (!evt) return;
     if (evt.type === "hubLine") return pending.get(evt.id)?.line(evt.line);
@@ -954,27 +999,37 @@ window.haven = {
   },
 };
 
-/* ── keys: the remote (through Java) and a keyboard ────────────────────── */
+/* ── keys: the remote (through Java), or a laptop's keyboard ───────────── */
+const KEYMAP = { ArrowLeft: "left", ArrowRight: "right", ArrowUp: "up", ArrowDown: "down", Enter: "enter", Escape: "back", Backspace: "back", m: "menu", M: "menu", " ": "ai", MediaPlayPause: "ai", s: "saver", S: "saver", "?": "help" };
 
-const KEYMAP = { ArrowLeft: "left", ArrowRight: "right", ArrowUp: "up", ArrowDown: "down", Enter: "enter", Escape: "back", m: "menu", M: "menu", c: "menu", C: "menu", i: "ai", I: "ai", MediaPlayPause: "ai", s: "saver", S: "saver" };
-
-// Capture phase: tabs/chat.js stops its own keys inside its shadow root, so this has to look first.
+// Capture phase: tabs/chat.js keeps its own keys inside its shadow root, so this looks first.
 document.addEventListener("keydown", (e) => {
   armSaver();
+  hidePointer();
   if (S.overlay === "saver") { e.preventDefault(); e.stopPropagation(); return stopSaver(); }
-  const inChat = document.activeElement === chatHost();
-  if (inChat) {
-    // The hub's chat handles its own keys. Up on an empty box, or Esc with nothing open, comes
-    // back to the screen; the media key still talks.
+  if (document.activeElement === chatHost()) {
     const root = chatHost().shadowRoot;
-    const typingIn = root.activeElement;
-    const emptyBox = typingIn?.matches?.(".bta") && !typingIn.value;
+    const box = root.activeElement;
+    // "open netflix" typed in the hub's bar opens it here and now.
+    if (e.key === "Enter" && !e.shiftKey && !S.sending && box?.matches?.(".bta, .fta")) {
+      const intent = quickIntent(box.value || "");
+      if (intent) {
+        e.preventDefault();
+        e.stopPropagation();
+        box.value = "";
+        box.dispatchEvent(new Event("input", { bubbles: true }));
+        leaveBar();
+        return runIntent(intent);
+      }
+      if (prefs.speak === "Always" && box.value.trim()) setTimeout(followReply, 0);
+      return;
+    }
     const open = root.querySelector(".card.on, .full.on, .menu:not([hidden])");
-    if ((e.key === "ArrowUp" && emptyBox && !root.querySelector(".full.on")) || (e.key === "Escape" && !open)) {
+    if ((e.key === "ArrowUp" && box?.matches?.(".bta") && !box.value && !root.querySelector(".full.on")) || (e.key === "Escape" && !open)) {
       e.preventDefault();
       e.stopPropagation();
       leaveBar();
-      S.zone = S.view === "home" ? "apps" : "grid";
+      S.zone = "grid";
       applyFocus();
     } else if (e.key === "MediaPlayPause") {
       e.preventDefault();
@@ -994,29 +1049,28 @@ function handleKey(name) {
   armSaver();
   if (S.overlay === "saver") return stopSaver();
   if (S.overlay === "launch") return;
-  if (S.overlay === "modal") {
-    if (name === "back") return closeModal(false);
-    return;
-  }
-  if (name === "ai") { if (S.overlay) closeAll(); return startVoice(); }
+  if (name === "help") { prefs.help = !prefs.help; savePrefs(); return showKeys(prefs.help); }
+  if (S.overlay === "modal") { if (name === "back") closeModal(false); return; }
+  if (S.pendingOpen && name === "enter") { const app = S.pendingOpen; S.pendingOpen = null; return launch(app, () => openApp(app)); }
+  S.pendingOpen = null;
+  if (name === "ai") { if (S.overlay === "cc") closeCC(); if (S.overlay === "settings") closeSettings(); return startVoice(); }
   if (VOICE.state === "listening" && (name === "back" || name === "enter")) return stopListening(name === "back");
   if (S.zone === "bar" && document.activeElement === chatHost()) {
-    // Java forwards Back and Menu even while the keyboard is up.
     if (name === "back") {
       const root = chatHost().shadowRoot;
-      const open = root.querySelector(".full.on") || root.querySelector(".card.on");
-      // tabs/chat.js closes its card or full chat on Esc, so Back does exactly that.
-      if (open) { (root.activeElement || chatInput())?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", code: "Escape", bubbles: true, cancelable: true })); return; }
-      leaveBar(); S.zone = S.view === "home" ? "apps" : "grid"; return applyFocus();
+      if (root.querySelector(".full.on, .card.on")) { (root.activeElement || chatInput())?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", code: "Escape", bubbles: true, cancelable: true })); return; }
+      leaveBar(); S.zone = "grid"; return applyFocus();
     }
     if (name === "menu") { leaveBar(); return openCC(); }
     return;
   }
   if (S.overlay === "cc") {
     if (name === "back" || name === "menu") return closeCC();
-    if (name === "up") return ccMove(-1);
-    if (name === "down") return ccMove(1);
     if (name === "enter") return ccActivate();
+    if (name === "left") return ccMove(-1, 0);
+    if (name === "right") return ccMove(1, 0);
+    if (name === "up") return ccMove(0, -1);
+    if (name === "down") return ccMove(0, 1);
     return;
   }
   if (S.overlay === "settings") {
@@ -1035,52 +1089,77 @@ function handleKey(name) {
     case "menu": return openCC();
     case "saver": return startSaver();
     case "back":
-      if (S.zone === "bar") { leaveBar(); S.zone = "apps"; return applyFocus(); }
-      if (S.view !== "home") { setView("home"); S.zone = "apps"; return applyFocus(); }
-      if (S.zone !== "apps") { S.zone = "apps"; return applyFocus(); }
+      if (S.zone !== "grid") { S.zone = "grid"; return applyFocus(); }
+      if (S.i >= COLS) { S.i = S.i % COLS; return applyFocus(); }
+      if (S.i !== 0) { S.i = 0; return applyFocus(); }
       return;
     default:
   }
 }
-
-function closeAll() {
-  if (S.overlay === "cc") closeCC();
-  if (S.overlay === "settings") closeSettings();
-}
-
 function press(fn) {
   const node = $(".app.is-focused");
   if (!node) return fn();
   node.classList.add("pressed");
-  setTimeout(() => { node.classList.remove("pressed"); fn(); }, 110);
+  setTimeout(() => { node.classList.remove("pressed"); fn(); }, 120);
 }
 
-/* pointer, for the browser: click focuses, a second click opens */
+/* ── the mouse, on a laptop: hover focuses, click opens, the icon follows ─ */
+let pointerTimer = 0;
+function hidePointer() { document.body.classList.add("pointer-hidden"); }
+document.addEventListener("mousemove", (e) => {
+  document.body.classList.remove("pointer-hidden");
+  clearTimeout(pointerTimer);
+  pointerTimer = setTimeout(hidePointer, 3000);
+  if (S.overlay) return;
+  const app = e.target.closest?.(".app");
+  if (!app) return;
+  const i = Number(app.dataset.i);
+  if (S.zone !== "grid" || S.i !== i) {
+    if (S.zone === "bar") leaveBar();
+    S.zone = "grid";
+    S.i = i;
+    applyFocus();
+  }
+  const r = app.getBoundingClientRect();
+  const x = ((e.clientX - r.left) / r.width - 0.5) * 2;
+  const y = ((e.clientY - r.top) / r.height - 0.5) * 2;
+  const icon = app.querySelector(".icon");
+  clearTimeout(tilt.t);
+  icon.style.setProperty("--ry", `${x * 8}deg`);
+  icon.style.setProperty("--rx", `${-y * 8}deg`);
+  icon.style.setProperty("--gx", `${x * 30}%`);
+  icon.style.setProperty("--gy", `${-30 + y * 30}%`);
+}, { passive: true });
+document.addEventListener("mouseout", (e) => {
+  const app = e.target.closest?.(".app");
+  if (app && !app.contains(e.relatedTarget)) tilt(0, 0);
+});
+document.addEventListener("wheel", (e) => {
+  if (S.overlay || Math.abs(e.deltaY) < 20 || document.activeElement === chatHost()) return;
+  clearTimeout(document.wheelT);
+  document.wheelT = setTimeout(() => move(0, Math.sign(e.deltaY)), 30);
+}, { passive: true });
 document.addEventListener("click", (e) => {
   if (S.overlay === "saver") return stopSaver();
-  const tile = e.target.closest(".app");
-  if (tile && !S.overlay) {
-    const zone = tile.dataset.zone;
-    const i = Number(tile.dataset.i);
-    const same = S.zone === zone && (zone === "apps" ? S.app : S.grid) === i;
-    S.zone = zone;
-    if (zone === "apps") S.app = i; else S.grid = i;
-    applyFocus();
-    if (same) activate();
-    return;
-  }
-  const segBtn = e.target.closest("#seg button");
-  if (segBtn) { setView(segBtn.dataset.view); S.zone = "seg"; return applyFocus(); }
-  const mi = e.target.closest(".mi");
-  if (mi) { S.cc = Number(mi.dataset.i); paintCC(); return ccActivate(); }
+  const app = e.target.closest(".app");
+  if (app && !S.overlay) { S.zone = "grid"; S.i = Number(app.dataset.i); applyFocus(); return press(activate); }
+  const tile = e.target.closest(".cc-tile[data-i]");
+  if (tile) { S.cc = Number(tile.dataset.i); paintCC(); return ccActivate(); }
   const row = e.target.closest("#setTrack .row");
   if (row) { S.set = Number(row.dataset.i); paintSettings(); return settingsActivate(); }
   if (e.target.id === "scrim") return closeCC();
-  if (e.target.closest("#hubChip")) return openSettings();
+  if (e.target.closest("#hubChip, #clock")) return S.overlay === "cc" ? closeCC() : openCC();
+  if (S.overlay === "settings" && !e.target.closest(".settings-side")) return closeSettings();
 });
 
-/* ── boot ──────────────────────────────────────────────────────────────── */
+function showKeys(on) {
+  const k = $("#keys");
+  if (NATIVE) { k.hidden = true; return; }
+  k.hidden = false;
+  k.classList.toggle("gone", !on);
+}
 
+/* ── boot ──────────────────────────────────────────────────────────────── */
 function showError(err) {
   const box = $("#fatal");
   box.hidden = false;
@@ -1102,19 +1181,25 @@ function loadScript(src) {
 
 async function boot() {
   applyLook();
+  loadItems();
+  renderGrid();
   tick();
-  loadCatalogue();
-  renderViews();
   setInterval(tick, 10_000);
-  setTimeout(() => { document.body.classList.add("booted"); $("#splash").classList.add("is-gone"); }, 2500);
+  setTimeout(() => { document.body.classList.add("booted"); $("#splash").classList.add("is-gone"); }, 2300);
+  if (!NATIVE) { showKeys(prefs.help); if (prefs.help) setTimeout(() => showKeys(false), 12000); }
 
   if (IN_HUB) {
-    // The hub's own config and assistant: same name, same agent, same conversations.
+    // The hub's own config, browser and assistant: the same agent, tools and conversations.
     await loadScript("/hub-config.js");
     HUB.name = window.HUB_CONF?.name || HUB.name;
+    HUB.owner = window.HUB_CONF?.owner || "";
     await syncHub();
-    if (await loadScript("/tabs/chat.js")) watchTypedReplies();
-    setInterval(syncHub, 30_000); // the look follows the hub's Style panel
+    ITEMS[0].name = HUB.name;
+    S.shelfId = null;
+    renderGrid();
+    await loadScript("/tabs/browser.js");
+    await loadScript("/tabs/chat.js");
+    setInterval(syncHub, 30_000);
     startCommandLoop();
     if (NATIVE) { const st = safeJson(native("status"), {}); HUB.paired = Boolean(st.paired); HUB.url = st.hub || ""; }
   } else {

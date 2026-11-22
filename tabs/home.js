@@ -16,7 +16,7 @@
   const mq = q => (window.matchMedia ? window.matchMedia(q) : { matches: false, addEventListener() {} })
   const PHONE = mq('(max-width: 720px)')
   const TABLET = mq('(pointer: coarse) and (hover: none) and (min-width: 721px)')
-  const VIEWS = ['desktop', 'ipad', 'mobile']
+  const VIEWS = ['desktop', 'ipad', 'mobile', 'tv']
   const REDUCED = mq('(prefers-reduced-motion: reduce)')
   const pref = (k, d, ok) => { try { const v = localStorage.getItem(k); return ok.includes(v) ? v : d } catch { return d } }
   const save = (k, v) => { try { localStorage.setItem(k, v) } catch {} }
@@ -124,7 +124,7 @@
 .hw-page[aria-selected="true"] { background: var(--blue); color: #fff; }
 .hw-file { display: block; flex: 1; width: 100%; height: 100%; min-height: 0; border: 0; border-radius: 10px; background: transparent; }
 .hw-prev .hw-file, .hw-drag-on .hw-file { pointer-events: none; }
-.seg.hw-seg { min-width: 0; width: 246px; margin: 0; flex: none; }
+.seg.hw-seg { min-width: 0; width: 320px; margin: 0; flex: none; }
 .hw-root[data-phone="1"] .hw-seg { display: none; }
 .hw-hint { flex: 1 1 180px; min-width: 0; color: var(--label-2); font-size: 13px; letter-spacing: -0.006em; }
 .hw-hint:empty { display: none; }
@@ -159,6 +159,10 @@ html:has(.hw-root) .page { padding-bottom: 0 !important; }
 .hw-root[data-framed="1"][data-view="mobile"] .hw-device::before { content: ""; position: absolute; z-index: 3; top: 11px; left: 50%; width: 112px; height: 32px; margin-left: -56px; border-radius: 99px; background: #101012; pointer-events: none; }
 .hw-root[data-framed="1"] .hw-device::after { content: ""; position: absolute; z-index: 3; bottom: 8px; left: 50%; width: 134px; height: 5px; margin-left: -67px; border-radius: 99px; background: var(--label); opacity: .35; pointer-events: none; }
 .hw-root[data-framed="1"][data-view="ipad"] .hw-device::after { width: 220px; margin-left: -110px; }
+/* TV: a 16:9 screen on a stand. The layout is what LocalHub TV puts on its Top Shelf. */
+.hw-root[data-framed="1"][data-view="tv"] .hw-device { overflow: visible; }
+.hw-root[data-framed="1"][data-view="tv"] .hw-device::after { bottom: -46px; width: 260px; height: 12px; margin-left: -130px; border-radius: 0 0 10px 10px; background: #2c2c2e; opacity: 1; box-shadow: 0 -30px 0 -2px #1c1c1e; }
+.hw-root[data-framed="1"][data-view="tv"] .hw-frame { border-radius: var(--fr); overflow: hidden; }
 /* One grid for apps and widgets, like an iPhone: an app takes one slot, a small widget 2 by 2, medium 4 by 2, large 4 by 4. */
 /* A page reaches the edges of the window or device, so one sliding away leaves the whole screen. */
 .hw-pager { position: relative; flex: 1 1 0; min-height: 0; margin-left: calc(var(--hw-bl, 0px) * -1); margin-right: calc(var(--hw-br, 0px) * -1); padding-left: var(--hw-bl, 0px); padding-right: var(--hw-br, 0px); overflow-x: clip; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
@@ -678,10 +682,10 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
   const S = {
     page: savedPage(), pages: [], layouts: null,
     root: null, layout: null, layoutErr: '', mode: pref('hub-home-mode', 'desktop', VIEWS), editing: false,
-    framed: false, frameK: 1, dirty: { desktop: false, ipad: false, mobile: false }, timers: {}, saving: {}, lastLoad: 0, src: {}, sig: '', drag: null, overlay: null,
+    framed: false, frameK: 1, dirty: { desktop: false, ipad: false, mobile: false, tv: false }, timers: {}, saving: {}, lastLoad: 0, src: {}, sig: '', drag: null, overlay: null,
     pending: false, started: false, hubSig: '', raf: 0,
     // Sideways pages: the one on screen in each view, an empty one just added, how far the grid is moved, and what fits.
-    at: { desktop: 0, ipad: 0, mobile: 0 }, extra: 0, px: 0, sheets: [[]], q: '', geo: { w: 0, h: 0, gap: 22, unit: 84, bleed: 0, cols: 8, rows: 6, stride: 0 },
+    at: { desktop: 0, ipad: 0, mobile: 0, tv: 0 }, extra: 0, px: 0, sheets: [[]], q: '', geo: { w: 0, h: 0, gap: 22, unit: 84, bleed: 0, cols: 8, rows: 6, stride: 0 },
   }
   const onMain = () => S.page === 'main'
   const rec = id => (S.src[id] ||= { data: null, err: '', missing: false, at: 0, p: null })
@@ -737,16 +741,18 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
 
   const DEFAULTS = {
     desktop: [['claude-usage', 'm'], ['clock', 's'], ['next-event', 's'], ['tokens', 'm'], ['coolify', 's'], ['services', 's'], ['today', 'm'], ['stripe-balance', 's'], ['openrouter', 's'], ['server-health', 'm'], ['deepseek', 's'], ['icloud', 's'], ['drives', 'm'], ['backup-drive', 's'], ['laptop-health', 's'], ['servers', 'l'], ['revenue', 'm'], ['clients', 'm']],
+    tv: [['clock', 's'], ['date', 's'], ['world-clock', 's'], ['next-event', 's'], ['claude-usage', 's']],
     mobile: [['claude-usage', 's'], ['clock', 's'], ['next-event', 's'], ['coolify', 's'], ['today', 'm'], ['tokens', 'm'], ['openrouter', 's'], ['deepseek', 's'], ['stripe-balance', 's'], ['icloud', 's'], ['server-health', 'm'], ['drives', 'm'], ['services', 's'], ['backup-drive', 's'], ['servers', 'm']],
   }
   const PLAIN = {
     desktop: [['clock', 's'], ['date', 's'], ['world-clock', 's']],
     mobile: [['clock', 's'], ['date', 's'], ['world-clock', 'm']],
+    tv: [['clock', 's'], ['date', 's'], ['world-clock', 's']],
   }
   const startLayout = name => {
     if (name === 'ipad') name = 'desktop'
     const on = DEFAULTS[name].filter(([id]) => { const w = Object.values(window.HOME_WIDGETS || {}).find(x => x?.id === id); return w && widgetOn(normWidget(w)) })
-    return on.length >= 4 ? on : PLAIN[name]
+    return on.length >= (name === 'tv' ? 3 : 4) ? on : PLAIN[name]
   }
   const seedLayout = name => startLayout(name).map(([id, size], i) => ({ key: `${name[0]}${i + 1}-${id}`.slice(0, 40), id, size }))
   // A real phone or iPad always shows its own layout, full screen. On a bigger screen the toggle picks one.
@@ -793,7 +799,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
 
   // Home and each extra page have their own three layouts; S.layout is always the one on screen.
   function takeLayout(pid, src, force) {
-    const l = (S.layouts[pid] ||= { desktop: [], mobile: [] }), live = pid === S.page
+    const l = (S.layouts[pid] ||= { desktop: [], mobile: [], tv: [] }), live = pid === S.page
     for (const k of VIEWS) if ((force || !live || (!S.dirty[k] && !S.editing)) && Array.isArray(src[k])) l[k] = withKeys(src[k])
     l.ipad ||= l.desktop.map(it => ({ ...it }))
   }
@@ -816,7 +822,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
       S.layoutErr = isNet(e) ? 'reconnecting' : e.message || 'unreachable'
       if (!S.layout) {
         S.page = 'main'
-        S.layouts = { main: { desktop: seedLayout('desktop'), ipad: seedLayout('ipad'), mobile: seedLayout('mobile') } }
+        S.layouts = { main: { desktop: seedLayout('desktop'), ipad: seedLayout('ipad'), mobile: seedLayout('mobile'), tv: seedLayout('tv') } }
         S.layout = S.layouts.main
       }
       clearTimeout(S.layoutRetry)
@@ -859,14 +865,14 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     if (!S.layouts) { S.page = id; return }
     if (id !== 'main' && !S.layouts[id]) {
       if (!window.HUB?.pageOf?.(id)) return
-      S.layouts[id] = { desktop: [], ipad: [], mobile: [] }
+      S.layouts[id] = { desktop: [], ipad: [], mobile: [], tv: [] }
     }
     if (id === S.page) return
     for (const k of VIEWS) if (S.dirty[k]) { clearTimeout(S.timers[k]); flush(k) }
     for (let i = 0; i < 40 && VIEWS.some(k => S.saving[k]); i++) await new Promise(r => setTimeout(r, 50))
     S.page = id
     S.layout = S.layouts[id]
-    S.at = { desktop: 0, ipad: 0, mobile: 0 }
+    S.at = { desktop: 0, ipad: 0, mobile: 0, tv: 0 }
     S.extra = 0
     try { localStorage.setItem('hub-home-page', id) } catch {}
     S.apps = null
@@ -894,7 +900,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
 
   /* ---------- widget card html ---------- */
 
-  const DIMS = { desktop: { s: [234, 190], m: [490, 190], l: [490, 402] }, ipad: { s: [234, 190], m: [490, 190], l: [490, 402] }, mobile: { s: [164, 198], m: [343, 198], l: [343, 410] } }
+  const DIMS = { desktop: { s: [234, 190], m: [490, 190], l: [490, 402] }, ipad: { s: [234, 190], m: [490, 190], l: [490, 402] }, tv: { s: [234, 190], m: [490, 190], l: [490, 402] }, mobile: { s: [164, 198], m: [343, 198], l: [343, 410] } }
   const SIZE_NAME = { s: 'Small', m: 'Medium', l: 'Large' }
 
   const stateBody = (w, ids = w.sources) => {
@@ -1023,7 +1029,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     const root = document.createElement('div')
     root.className = 'hw-root'
     root.innerHTML = `<div class="hw-bar">
-      <div class="seg hw-seg" role="tablist" aria-label="Layout" style="--n:3;--i:0"><span class="seg-thumb"></span><button type="button" role="tab" data-hw-mode="desktop">Desktop</button><button type="button" role="tab" data-hw-mode="ipad">iPad</button><button type="button" role="tab" data-hw-mode="mobile">Mobile</button></div>
+      <div class="seg hw-seg" role="tablist" aria-label="Layout" style="--n:4;--i:0"><span class="seg-thumb"></span><button type="button" role="tab" data-hw-mode="desktop">Desktop</button><button type="button" role="tab" data-hw-mode="ipad">iPad</button><button type="button" role="tab" data-hw-mode="mobile">Mobile</button><button type="button" role="tab" data-hw-mode="tv">TV</button></div>
       <div class="hw-hint" data-hw-hint></div>
       <div class="hw-bar-r"><button type="button" class="hw-btn red" data-hw-act="reset" hidden>Reset</button><button type="button" class="hw-btn tint hw-iconly" data-hw-act="tabs" aria-label="Edit Tabs" hidden>${hic('tabs', 15)}<span class="hw-btn-t">Edit Tabs</span></button><button type="button" class="hw-btn tint hw-iconly" data-hw-act="style" aria-label="Edit Style" hidden>${hic('palette', 15)}<span class="hw-btn-t">Edit Style</span></button><button type="button" class="hw-btn tint hw-iconly" data-hw-act="pages" aria-label="Named Pages" hidden>${icon('layers', 15)}<span class="hw-btn-t">Named Pages</span></button><button type="button" class="hw-btn tint" data-hw-act="add" hidden>${icon('plus', 15)}Add</button><button type="button" class="hw-btn tint" data-hw-act="edit">Edit</button></div>
     </div>
@@ -1033,7 +1039,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
   }
 
   // Logical size of each device, its bezel, corners, and the insets of its screen.
-  const FRAME = { ipad: { w: 1024, h: 768, b: 13, r: 26, pt: 26, px: 26 }, mobile: { w: 390, h: 844, b: 11, r: 48, pt: 58, px: 20 } }
+  const FRAME = { ipad: { w: 1024, h: 768, b: 13, r: 26, pt: 26, px: 26 }, tv: { w: 1280, h: 720, b: 12, r: 10, pt: 30, px: 40 }, mobile: { w: 390, h: 844, b: 11, r: 48, pt: 58, px: 20 } }
   // Fits the device between the toggle and the chat bar. Off a device, Home takes what's left of the window.
   function frameFit() {
     const root = S.root, vk = viewKey(), f = !realDevice() && FRAME[vk]
@@ -3902,7 +3908,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     paint()
   }
   async function resetLayout() {
-    const vk = viewKey(), name = { desktop: 'desktop', ipad: 'iPad', mobile: 'phone' }[vk]
+    const vk = viewKey(), name = { desktop: 'desktop', ipad: 'iPad', mobile: 'phone', tv: 'TV' }[vk]
     const ok = typeof alertBox === 'function'
       ? await alertBox({ title: `Reset the ${name} layout?`, message: onMain() ? 'Widgets go back to the new default arrangement. The other layout stays as it is.' : 'Everything comes off this page in this layout. The other layouts stay as they are.', ok: 'Reset', danger: true })
       : confirm(`Reset the ${name} layout?`)
