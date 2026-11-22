@@ -6,6 +6,8 @@ name: TV
 
 on:
   push:
+    # Branches as well as tags: with only tags listed, GitHub runs this for tags alone.
+    branches: ['**']
     paths:
       - 'tv/**'
       - 'tv.mjs'
