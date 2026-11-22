@@ -23,10 +23,13 @@ echo "device: $(adb shell getprop ro.product.model) / Android $(adb shell getpro
 echo "WebView: $(adb shell dumpsys webviewupdate | grep -m1 'Current WebView package')"
 
 # ── install and start ─────────────────────────────────────────────────────────────────────────
-# Restored from a snapshot, the emulator says it has booted before the package manager answers,
-# and a streamed install then waits forever. So: wait for pm, push the APK whole, and retry.
+# This image has Play Store, and Play Protect verifies sideloaded APKs: once it's up, it opens its
+# PackageWarningDialog and the install waits on a button nobody will press. A real TV owner taps
+# through it; here adb installs skip verification. Also wait until pm answers, push the APK whole.
 step "wait for the package manager"
 for i in $(seq 1 60); do timeout 10 adb shell pm path android 2>/dev/null | grep -q '^package:' && break; sleep 2; done
+adb shell settings put global verifier_verify_adb_installs 0
+adb shell settings put global package_verifier_enable 0
 step "install"
 installed=
 for i in 1 2 3; do

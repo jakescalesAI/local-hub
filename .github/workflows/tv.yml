@@ -97,8 +97,8 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      # No AVD cache: this image cold-boots in about 30 s, and an emulator restored from a cached
-      # snapshot accepted the APK but never finished installing it (pm install hung, twice).
+      # No AVD cache: the image cold-boots in about 25 s with KVM, and a cached snapshot would cost
+      # an extra emulator boot to make on every cache miss for little gain.
       # The runner runs each script line on its own, so the checks live in one script.
       - name: Install, start and check LocalHub TV
         uses: reactivecircus/android-emulator-runner@v2
