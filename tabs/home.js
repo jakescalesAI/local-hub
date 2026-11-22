@@ -4117,7 +4117,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
       saverPreview()
     } catch (e) {
       // Kept on screen, so nothing chosen is lost while the hub catches up.
-      S.tvSaverErr = /tv\.saver/.test(e.message) ? 'This hub can’t keep screensaver settings yet. Update LocalHub, then choose again.' : `Couldn’t save: ${e.message}`
+      S.tvSaverErr = /tv\.saver is not a known key/.test(e.message) ? 'This hub can’t keep screensaver settings yet. Update LocalHub, then choose again.' : `Couldn’t save: ${e.message}`
     }
     paintTvSide()
   }

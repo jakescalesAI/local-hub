@@ -267,7 +267,8 @@ export function create({ here, dataDir = path.join(here, 'data', 'tv-stream'), f
         `--user-data-dir=${dir}`,
         '--remote-debugging-port=0', '--remote-debugging-address=127.0.0.1',
         '--no-first-run', '--no-default-browser-check', '--hide-crash-restore-bubble',
-        ...(process.getuid?.() === 0 ? ['--no-sandbox'] : []),
+        // Root can't use the sandbox, and neither can CI runners whose kernel blocks it (LOCALHUB_NO_SANDBOX=1 there).
+        ...(process.getuid?.() === 0 || process.env.LOCALHUB_NO_SANDBOX === '1' ? ['--no-sandbox'] : []),
         '--disable-blink-features=AutomationControlled',
         '--disable-features=CalculateNativeWinOcclusion,Translate,MediaRouter',
         '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding', '--disable-background-timer-throttling',

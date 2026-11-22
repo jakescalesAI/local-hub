@@ -300,6 +300,14 @@ The hub's look and layout are stored in `data/hub-settings.json`. The previous v
 - `scroll`: `{ desktop, ipad, mobile, tv }`, each `pages` or `infinite`: how that view moves through what doesn't fit, sideways a page at a time or one long vertical scroll. Desktop, iPad and Mobile default to `pages`, the TV to `infinite`. `/api/home/layout` takes and returns it too. Edit mode on Home has the switch.
 - `tv`: what LocalHub TV shows, edited in Home's TV view.
   - `apps`: the TV's app tiles in order, as the TV's own app ids (a laptop's stand-ins such as `netflix`, or a Fire TV's package names). `hidden`: ids left off. An app in neither list follows the listed ones. `null` or `[]` gives the default order: the four opened last, then A to Z.
+  - `saver`: the TV's screensaver, `{ source, folder, interval, shuffle, motion, widgets }`. A patch sends any of them; the rest stay.
+    - `source`: `wallpapers` (default: the hub's uploads, then its built-in wallpapers), `pictures` (this computer's Pictures folder), `icloud` (iCloud Photos as iCloud for Windows syncs it, under Pictures › iCloud Photos; a Mac's Photos library isn't a folder, so export an album and use `folder`) or `folder`.
+    - `folder`: an absolute folder path on the computer LocalHub runs on, or `""`. Only that computer can change it (403 from anywhere else); a reset keeps it, and an export leaves it out.
+    - `interval`: seconds per photo, 5-300 (default 12). `shuffle`: true (default) or false, newest first. `motion`: `kenburns` (default) or `fade`; the TV's Light glass always fades.
+    - `widgets`: up to 4 of clock, date, world-clock, recent (default clock, date). Clock and date are the big time and date bottom left; the rest are glass cards beside them.
+    - `GET /api/tv/saver` → `{ settings, photos: [{ id, url }], source: { id, label, ok, error?, count, fallback, heic, truncated } }`. Folders are scanned for jpg, png, webp, gif and avif, up to 2000, and again when the setting changes or after 5 minutes (`?refresh=1` now). HEIC is counted, not shown. An empty or unreadable source sends the wallpapers with `fallback: true` and the reason in `error`.
+    - `GET /api/tv/saver/photo/<id>` serves one photo. Ids come from the last scan; a path is never accepted. `GET /api/tv/saver/sources` says which sources this computer has, with their paths only for this computer.
+    - Google Photos and other cloud-only libraries need their own sign-in and aren't sources yet. A folder they sync to works.
 - Widget `opts`:
   - `tint`: a hex colour, on any widget.
   - clock: `face` digital|analog, `seconds` true|false.
@@ -331,7 +339,7 @@ The hub's look and layout are stored in `data/hub-settings.json`. The previous v
 - `pages`: older named Home pages, at most 40, each `{ id: "page-<name>", name, widgets: { desktop, ipad, mobile } }`. They keep working, but Home makes no new ones.
   - A patch sends `{ add: { name }, rename: { id, name }, remove: [ids], order: [ids], layout: { id, desktop?, ipad?, mobile? } }`.
 - `files`: your own files, added through the upload route below, never by a patch.
-- `reset`: `[parts]`, where a part is tabs, apps, widgets, style, wallpaper, pages or all. Resetting the wallpaper keeps saved gradients and uploads.
+- `reset`: `[parts]`, where a part is tabs, apps, widgets, scroll, tv, style, wallpaper, pages or all. Resetting the wallpaper keeps saved gradients and uploads; resetting tv keeps the screensaver's folder.
 - `undo`: `{"undo": true}` swaps the settings with the previous version. Undo again is redo.
 
 ### Exporting and importing settings
@@ -370,6 +378,7 @@ The hub's look and layout are stored in `data/hub-settings.json`. The previous v
 - "Put Work in the header": send `tabs.order` with its id in the place you want.
 - "Call the Server tab Box": `{"tabs":{"names":{"server":"Box"}}}`
 - "Undo that": `{"undo":true}`
+- "Show my iCloud photos on the TV's screensaver, 20 seconds each": `{"tv":{"saver":{"source":"icloud","interval":20}}}`
 
 ### On the page
 
