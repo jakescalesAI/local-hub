@@ -12,6 +12,7 @@
 //   connections_list {}             the services in the hub and what each one can do. Never a key.
 //   connection_call { connection, action, params }  runs one action here, with the key added here. A write waits for a card.
 //   connection_offer { id }         shows the user a Connect card. The key goes in the hub's sheet, never in chat.
+//   tv_control      { action, … }   LocalHub TV: open an app, switch input, go home, screensaver, say or show text
 //
 // The settings API keeps the previous version in data/hub-settings.prev.json, so every change can
 // be undone with another patch.
@@ -161,6 +162,21 @@ TOOLS.push(
       additionalProperties: false,
     },
   },
+  {
+    name: 'tv_control',
+    description: 'Control the TV running LocalHub TV: open one of its apps by name (open_app with app, like "Netflix"), switch to an HDMI input (switch_input with name, like "PlayStation" or "HDMI 2"), go back to the home screen (home), start the screensaver (screensaver), speak a sentence on the TV (say with text), or put text on the TV screen and read it aloud (show with text). Use it when the user asks for something on the TV.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        action: { type: 'string', enum: ['open_app', 'switch_input', 'home', 'screensaver', 'say', 'show'] },
+        app: { type: 'string', description: 'The app to open, by its name on the TV' },
+        name: { type: 'string', description: 'The input to switch to' },
+        text: { type: 'string', description: 'What to say or show' },
+      },
+      required: ['action'],
+      additionalProperties: false,
+    },
+  },
 )
 
 const text = (t, isError = false) => ({ content: [{ type: 'text', text: t }], ...(isError ? { isError: true } : {}) })
@@ -275,7 +291,17 @@ const connectionsList = async () => {
 const connectionCall = ({ connection, action, params } = {}) => acted('/api/connections/call', { connection, action, params })
 const connectionOffer = ({ id } = {}) => (/^[a-z0-9-]{1,40}$/.test(String(id)) ? text(`The card is on screen. The user connects it there.\n[connect:${id}]`) : text('id must come from connections_list.', true))
 
-const HANDLERS = { attach_file: attachFile, connections_list: connectionsList, connection_call: connectionCall, connection_offer: connectionOffer, hub_read: hubRead, settings_update: settingsUpdate, show_site: showSite, system_info: systemInfo, git_read: gitRead, file_op: fileOp, hub_action: hubAction }
+// LocalHub TV (tv.mjs). Every TV showing LocalHub gets the command; tvs:false means none is on right now.
+async function tvControl({ action, app, name, text: words } = {}) {
+  const map = { open_app: { type: 'launch', app }, switch_input: { type: 'input', name }, home: { type: 'home' }, screensaver: { type: 'saver' }, say: { type: 'say', text: words }, show: { type: 'answer', text: words, from: 'hub' } }
+  const command = map[action]
+  if (!command) return text(`action must be one of ${Object.keys(map).join(', ')}.`, true)
+  const { status, body } = await hub('/api/tv/command', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(command) })
+  if (status !== 200) return text(body?.error || `HTTP ${status}`, true)
+  return text(body.tvs ? 'Sent to the TV.' : 'Sent, but no TV is showing LocalHub right now, so nothing happened yet. Tell the user to open LocalHub on the TV.')
+}
+
+const HANDLERS = { tv_control: tvControl, attach_file: attachFile, connections_list: connectionsList, connection_call: connectionCall, connection_offer: connectionOffer, hub_read: hubRead, settings_update: settingsUpdate, show_site: showSite, system_info: systemInfo, git_read: gitRead, file_op: fileOp, hub_action: hubAction }
 
 function reply(id, result, error) {
   process.stdout.write(JSON.stringify({ jsonrpc: '2.0', id, ...(error ? { error } : { result }) }) + '\n')

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 320x180 TV banner: the house mark on the hub's dark blue, with the name beside it. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="320dp"
+    android:height="180dp"
+    android:viewportWidth="320"
+    android:viewportHeight="180">
+    <path android:fillColor="#0B0F16" android:pathData="M0,0 H320 V180 H0 Z" />
+    <path android:fillColor="#1B2230" android:pathData="M0,0 H320 V90 H0 Z" android:fillAlpha="0.6" />
+    <group android:translateX="112" android:translateY="42" android:scaleX="0.1875" android:scaleY="0.1875">
+        <path
+            android:fillColor="#1B2230"
+            android:pathData="M114,0 H398 A114,114 0 0 1 512,114 V398 A114,114 0 0 1 398,512 H114 A114,114 0 0 1 0,398 V114 A114,114 0 0 1 114,0 Z" />
+        <path
+            android:fillColor="#F2F5F9"
+            android:strokeColor="#F2F5F9"
+            android:strokeWidth="26"
+            android:strokeLineJoin="round"
+            android:pathData="M256,124 L398,244 H358 V382 H154 V244 H114 Z" />
+        <path
+            android:fillColor="#1B2230"
+            android:pathData="M220,396 V322 A36,36 0 0 1 292,322 V396 Z" />
+    </group>
+</vector>

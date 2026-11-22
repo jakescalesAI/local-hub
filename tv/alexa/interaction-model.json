@@ -1,0 +1,108 @@
+{
+  "interactionModel": {
+    "languageModel": {
+      "invocationName": "local hub",
+      "intents": [
+        { "name": "AMAZON.CancelIntent", "samples": [] },
+        { "name": "AMAZON.HelpIntent", "samples": [] },
+        { "name": "AMAZON.StopIntent", "samples": [] },
+        { "name": "AMAZON.NavigateHomeIntent", "samples": [] },
+        { "name": "AMAZON.FallbackIntent", "samples": [] },
+        {
+          "name": "OpenAppIntent",
+          "slots": [{ "name": "app", "type": "APP_NAME" }],
+          "samples": [
+            "open {app}",
+            "launch {app}",
+            "start {app}",
+            "put on {app}",
+            "play {app}",
+            "go to {app}",
+            "open {app} on the tv",
+            "put {app} on"
+          ]
+        },
+        {
+          "name": "SwitchInputIntent",
+          "slots": [{ "name": "input", "type": "INPUT_NAME" }],
+          "samples": [
+            "switch to {input}",
+            "switch to the {input}",
+            "change to {input}",
+            "change the input to {input}",
+            "switch the tv to {input}"
+          ]
+        },
+        {
+          "name": "GoHomeIntent",
+          "samples": ["go home", "go to the home screen", "show the home screen", "back to home"]
+        },
+        {
+          "name": "AskIntent",
+          "slots": [{ "name": "query", "type": "PHRASE" }],
+          "samples": ["{query}", "to {query}", "about {query}", "for {query}"]
+        }
+      ],
+      "types": [
+        {
+          "name": "APP_NAME",
+          "values": [
+            { "name": { "value": "Netflix" } },
+            { "name": { "value": "YouTube" } },
+            { "name": { "value": "Prime Video", "synonyms": ["Amazon Prime", "Prime"] } },
+            { "name": { "value": "Disney Plus", "synonyms": ["Disney"] } },
+            { "name": { "value": "Max", "synonyms": ["HBO Max", "HBO"] } },
+            { "name": { "value": "Hulu" } },
+            { "name": { "value": "Plex" } },
+            { "name": { "value": "Spotify" } },
+            { "name": { "value": "Apple TV" } },
+            { "name": { "value": "Crunchyroll" } },
+            { "name": { "value": "Paramount Plus", "synonyms": ["Paramount"] } },
+            { "name": { "value": "Peacock" } },
+            { "name": { "value": "Twitch" } },
+            { "name": { "value": "Tubi" } },
+            { "name": { "value": "Pluto TV", "synonyms": ["Pluto"] } },
+            { "name": { "value": "Kodi" } },
+            { "name": { "value": "Steam Link", "synonyms": ["Steam"] } },
+            { "name": { "value": "VLC" } },
+            { "name": { "value": "Stremio" } },
+            { "name": { "value": "Silk Browser", "synonyms": ["the browser", "Silk"] } }
+          ]
+        },
+        {
+          "name": "INPUT_NAME",
+          "values": [
+            { "name": { "value": "HDMI 1", "synonyms": ["HDMI one", "input one"] } },
+            { "name": { "value": "HDMI 2", "synonyms": ["HDMI two", "input two"] } },
+            { "name": { "value": "HDMI 3", "synonyms": ["HDMI three", "input three"] } },
+            { "name": { "value": "PlayStation", "synonyms": ["PS5", "PlayStation 5"] } },
+            { "name": { "value": "Xbox" } },
+            { "name": { "value": "Nintendo Switch", "synonyms": ["Switch", "Nintendo"] } },
+            { "name": { "value": "cable box", "synonyms": ["cable", "TV box"] } }
+          ]
+        },
+        {
+          "name": "PHRASE",
+          "values": [
+            { "name": { "value": "what is on my calendar today" } },
+            { "name": { "value": "what should I watch tonight" } },
+            { "name": { "value": "how much did I spend on subscriptions this month" } },
+            { "name": { "value": "find me a good documentary about space" } },
+            { "name": { "value": "check if my server is up" } },
+            { "name": { "value": "summarise my unread email" } },
+            { "name": { "value": "look up the score of the game" } },
+            { "name": { "value": "when does the next episode come out" } },
+            { "name": { "value": "remind me what I was working on yesterday" } },
+            { "name": { "value": "search the web for the best pizza near me" } },
+            { "name": { "value": "how long is the movie" } },
+            { "name": { "value": "who directed this film" } },
+            { "name": { "value": "is it going to rain tomorrow" } },
+            { "name": { "value": "tell me something interesting" } },
+            { "name": { "value": "what time is my first meeting" } },
+            { "name": { "value": "go to the website and check the price" } }
+          ]
+        }
+      ]
+    }
+  }
+}

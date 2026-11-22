@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- LocalHub's house mark (icons/hub.svg), with solid fills so it draws on Fire OS 5 (API 22) too. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+    <path
+        android:fillColor="#1B2230"
+        android:pathData="M114,0 H398 A114,114 0 0 1 512,114 V398 A114,114 0 0 1 398,512 H114 A114,114 0 0 1 0,398 V114 A114,114 0 0 1 114,0 Z" />
+    <path
+        android:fillColor="#F2F5F9"
+        android:strokeColor="#F2F5F9"
+        android:strokeWidth="26"
+        android:strokeLineJoin="round"
+        android:pathData="M256,124 L398,244 H358 V382 H154 V244 H114 Z" />
+    <path
+        android:fillColor="#1B2230"
+        android:pathData="M220,396 V322 A36,36 0 0 1 292,322 V396 Z" />
+</vector>
