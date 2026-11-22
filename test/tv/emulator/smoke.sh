@@ -30,10 +30,15 @@ for i in $(seq 1 60); do timeout 10 adb shell pm path android 2>/dev/null | grep
 step "install"
 installed=
 for i in 1 2 3; do
-  timeout 120 adb install --no-streaming -r "$APK" && { installed=1; break; }
+  timeout 90 adb install --no-streaming -r "$APK" && { installed=1; break; }
   echo "install attempt $i failed, retrying"; sleep 5
 done
-[ -n "$installed" ] || { echo "::error::adb install failed three times"; exit 1; }
+if [ -z "$installed" ]; then
+  adb logcat -d -v threadtime > "$OUT/logcat-all.txt"
+  grep -iE "PackageManager|PackageInstaller|installd|verif|dex2oat" "$OUT/logcat-all.txt" | tail -n 60
+  echo "::error::adb install failed three times"
+  exit 1
+fi
 adb logcat -c
 adb logcat -b crash -c 2>/dev/null || true
 step "start"; timeout 60 adb shell am start -W -n "$ACTIVITY" | tee "$OUT/am-start.txt"
