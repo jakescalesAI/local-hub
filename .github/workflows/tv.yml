@@ -102,6 +102,7 @@ jobs:
       # The runner runs each script line on its own, so the checks live in one script.
       - name: Install, start and check LocalHub TV
         uses: reactivecircus/android-emulator-runner@v2
+        timeout-minutes: 15 # a passing run takes about 2
         with:
           api-level: ${{ env.API_LEVEL }}
           target: android-tv

@@ -18,6 +18,16 @@ fail() { echo "::error::$1"; failures+=("$1"); }
 step() { echo "[$(date +%T)] $1"; }
 shot() { timeout 30 adb exec-out screencap -p > "$OUT/$1.png" && echo "screenshot $1.png ($(stat -c %s "$OUT/$1.png") bytes)"; }
 
+# After this script the runner sends "adb emu kill" and waits for the emulator to go. Once in a
+# while it says "OK" and never exits, and the step hangs until the job times out with every check
+# already passed. So a detached watcher gives it two minutes, then kills it. ([/] keeps pgrep from
+# matching the watcher's own command line.)
+reap() {
+  setsid bash -c 'for i in $(seq 60); do pgrep -f "[/]sdk/emulator/" >/dev/null || exit 0; sleep 2; done
+                  pkill -9 -f "[/]sdk/emulator/"' </dev/null >/dev/null 2>&1 &
+}
+trap reap EXIT
+
 step "wait for device"; timeout 120 adb wait-for-device
 echo "device: $(adb shell getprop ro.product.model) / Android $(adb shell getprop ro.build.version.release) (API $(adb shell getprop ro.build.version.sdk))"
 echo "WebView: $(adb shell dumpsys webviewupdate | grep -m1 'Current WebView package')"
