@@ -42,18 +42,36 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run dist
-      # The real app through Playwright's Electron driver, including the packaged build in dist/win-unpacked.
-      - run: npm run test:e2e
       # What a user does: install silently, start it, and check the bundled Hub answers, TV page included.
-      # Then uninstall and check the Hub's data folder stays, as the README promises.
+      # Then uninstall and check the Hub's data folder stays, as the README promises. Runs before the
+      # end-to-end suite because it is much quicker to fail.
       - name: Install, launch and uninstall the real installer
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          Start-Process dist\LocalHub-Setup.exe -ArgumentList '/S' -Wait
-          $dir = Join-Path $env:LOCALAPPDATA 'Programs\LocalHub'
+          $setup = (Resolve-Path dist\LocalHub-Setup.exe).Path
+          "installer: $setup ($([math]::Round((Get-Item $setup).Length/1MB,1)) MB)"
+          $p = Start-Process $setup -ArgumentList '/S' -PassThru
+          $p.WaitForExit()
+          "installer exit code: $($p.ExitCode)"
+          # The installer records where it put the app; read that rather than guess the folder.
+          $entry = $null
+          foreach ($i in 1..45) {
+            $entry = Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*', 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*' -ErrorAction SilentlyContinue |
+              Where-Object { $_.DisplayName -like 'LocalHub*' } | Select-Object -First 1
+            if ($entry -and $entry.InstallLocation -and (Test-Path (Join-Path $entry.InstallLocation 'LocalHub.exe'))) { break }
+            Start-Sleep -Seconds 2
+          }
+          if (-not $entry) {
+            'no uninstall entry for LocalHub. Programs folder:'
+            Get-ChildItem (Join-Path $env:LOCALAPPDATA 'Programs') -Depth 1 -ErrorAction SilentlyContinue | Select-Object FullName
+            'Processes:'; Get-Process | Where-Object { $_.ProcessName -match 'LocalHub|Setup|nsis|Un_' } | Select-Object ProcessName, Id
+            throw 'the installer left no uninstall entry'
+          }
+          $entry | Select-Object DisplayName, DisplayVersion, InstallLocation, UninstallString | Format-List | Out-String
+          $dir = $entry.InstallLocation.Trim('"')
           $exe = Join-Path $dir 'LocalHub.exe'
-          if (-not (Test-Path $exe)) { Get-ChildItem (Join-Path $env:LOCALAPPDATA 'Programs') -Recurse -Depth 1 | Select FullName; throw "not installed at $exe" }
+          if (-not (Test-Path $exe)) { Get-ChildItem $dir -ErrorAction SilentlyContinue | Select-Object Name; throw "no LocalHub.exe in $dir" }
           if (-not (Test-Path (Join-Path $dir 'resources\hub\server.mjs'))) { throw 'the installer has no bundled Hub' }
           if (-not (Test-Path (Join-Path $dir 'resources\hub\tv\ui'))) { throw 'the installer has no TV page' }
           Start-Process $exe -ArgumentList '--hidden'
@@ -76,6 +94,8 @@ jobs:
           if (Test-Path $exe) { throw 'uninstall left the app behind' }
           if (-not (Test-Path $data)) { throw 'uninstall removed the Hub data folder' }
           'installed, served / and /tv/, uninstalled, data kept'
+      # The real app through Playwright's Electron driver, including the packaged build in dist/win-unpacked.
+      - run: npm run test:e2e
       - uses: actions/upload-artifact@v4
         with:
           name: LocalHub-Windows
