@@ -25,6 +25,8 @@
 //   * Each message carries the tab the user is looking at ({ tab, tabTitle, narrow }).
 //   * The reply streams as NDJSON: session, text_start, delta, text_end, tool, tool_result, error,
 //     ping, done. Every string is escaped before it reaches the DOM.
+//   * Live: every open chat (this hub page, LocalHub TV, a phone) shows the one current conversation, kept in step over
+//     /api/chat/live (chat.mjs): a message sent anywhere, and its reply as it streams, show everywhere at once.
 // Uses the main script's globals only at call time: env, TABS.
 ;(() => {
   if (window.__hubChat) return
@@ -218,7 +220,9 @@
 
   const svg = (d, w = 20) => `<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`
   const IC = {
-    chat: svg('<path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.7 8.7 0 0 1-3.6-.8L3 21l1.9-5.1A8.3 8.3 0 0 1 3 11.5 8.5 8.5 0 0 1 12 3a8.5 8.5 0 0 1 9 8.5z"/>', 24),
+    // LocalHub's own tile (icons/hub.svg), drawn here so the chat needs no request for it.
+    hub: '<svg viewBox="0 0 512 512" aria-hidden="true"><defs><linearGradient id="hcb" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="512"><stop offset="0" stop-color="#2c3648"/><stop offset="1" stop-color="#0b0f16"/></linearGradient><linearGradient id="hch" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#d9e1ec"/></linearGradient></defs><rect width="512" height="512" rx="114" fill="url(#hcb)"/><path d="M256 124 398 244H358V382H154V244H114Z" fill="url(#hch)" stroke="url(#hch)" stroke-width="26" stroke-linejoin="round"/><path d="M220 396V322a36 36 0 0 1 72 0V396Z" fill="url(#hcb)"/></svg>',
+    globe: svg('<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>', 16),
     plus: svg('<path d="M12 5v14M5 12h14"/>'),
     history: svg('<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/>'),
     close: svg('<path d="M18 6 6 18M6 6l12 12"/>', 18),
@@ -265,7 +269,7 @@ textarea, textarea:focus, textarea:focus-visible { outline: none; box-shadow: no
 /* ----- the bar ----- */
 .bar { position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom) + var(--kb)); width: min(640px, calc(100vw - 32px)); transform: translateX(-50%); pointer-events: auto; transition: opacity .2s, transform .38s var(--ease, ease); }
 .bar.away { opacity: 0; transform: translateX(-50%) translateY(20px); pointer-events: none; }
-.pill { display: flex; align-items: flex-end; gap: 2px; min-height: 54px; padding: 5px; border-radius: 27px; box-shadow: 0 0 0 .5px var(--sep, rgba(60, 60, 67, .18)), 0 10px 32px rgba(0, 0, 0, .16), 0 2px 6px rgba(0, 0, 0, .06); transition: border-radius .2s, box-shadow .2s; }
+.pill { position: relative; display: flex; align-items: flex-end; gap: 2px; min-height: 54px; padding: 5px; border-radius: 27px; box-shadow: 0 0 0 .5px var(--sep, rgba(60, 60, 67, .18)), 0 10px 32px rgba(0, 0, 0, .16), 0 2px 6px rgba(0, 0, 0, .06); transition: border-radius .2s, box-shadow .2s; }
 .pill:focus-within { box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--blue, #007aff) 55%, transparent), 0 10px 32px rgba(0, 0, 0, .16); }
 .pill.multi { border-radius: 24px; }
 .ib { flex: none; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; color: var(--label-2, rgba(60, 60, 67, .6)); }
@@ -280,9 +284,18 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
 /* an empty composer: the send button is a mic */
 .send.voice { background: var(--fill-2, rgba(118, 118, 128, .2)); color: var(--label, #000); }
 .send.voice:hover { background: var(--blue, #007aff); color: #fff; }
-.send.voice.rec { background: var(--red, #ff3b30); color: #fff; box-shadow: 0 0 0 calc(3px + var(--lvl, 0) * 12px) color-mix(in srgb, var(--red, #ff3b30) 28%, transparent); transition: box-shadow .08s linear, background .15s; }
-.send.voice.wait { background: var(--blue, #007aff); color: #fff; opacity: 1; }
+.send.voice.rec, .send.voice.wait { background: var(--blue, #007aff); color: #fff; opacity: 1; }
 .send.voice.wait .vspin { width: 18px; height: 18px; border-radius: 50%; border: 2.5px solid rgba(255, 255, 255, .35); border-top-color: #fff; animation: spin .7s linear infinite; }
+/* Voice mode (Quartzi's recorder): while you talk the pill is Cancel, the live wave, the time, and Send. */
+.vbar { position: absolute; left: 5px; right: 51px; top: 5px; bottom: 5px; display: flex; align-items: center; gap: 6px; opacity: 0; pointer-events: none; transition: opacity .18s; }
+.pill.voicing .vbar { opacity: 1; pointer-events: auto; }
+.pill.voicing > .plus, .pill.voicing > textarea { opacity: 0; pointer-events: none; }
+.vbar .vx { flex: none; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; color: var(--label-2, rgba(60, 60, 67, .6)); }
+.vbar .vx:hover { background: var(--fill, rgba(118, 118, 128, .12)); color: var(--label, #000); }
+.vwave { flex: 1; min-width: 0; height: 30px; display: block; color: var(--label, #000); -webkit-mask-image: linear-gradient(to right, transparent, #000 18%); mask-image: linear-gradient(to right, transparent, #000 18%); }
+.vword { flex: 1; min-width: 0; padding-left: 4px; font-size: 15px; color: var(--label-2, rgba(60, 60, 67, .6)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vbar .vword[hidden], .vbar .vwave[hidden] { display: none; }
+.vclock { flex: none; min-width: 36px; padding-right: 4px; text-align: right; font-size: 14px; font-variant-numeric: tabular-nums; color: var(--label-2, rgba(60, 60, 67, .6)); }
 
 /* ----- the answer card ----- */
 .card { position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom) + var(--kb) + var(--barh) + 10px); width: min(640px, calc(100vw - 32px)); max-height: clamp(254px, calc(33vh + 54px), 434px); display: flex; flex-direction: column; border-radius: 22px; overflow: hidden; transform: translate(-50%, 16px) scale(.98); transform-origin: 50% 100%; opacity: 0; visibility: hidden; pointer-events: none; background: color-mix(in srgb, var(--surface, #fff) 86%, transparent); -webkit-backdrop-filter: saturate(180%) blur(24px); backdrop-filter: saturate(180%) blur(24px); box-shadow: 0 0 0 .5px var(--sep, rgba(60, 60, 67, .18)), 0 18px 50px rgba(0, 0, 0, .22), 0 3px 10px rgba(0, 0, 0, .08); transition: opacity .2s, transform .38s var(--ease, ease), visibility 0s .38s; }
@@ -456,11 +469,12 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
 .tool .det pre:last-child { margin-bottom: 0; }
 .spin { width: 13px; height: 13px; border-radius: 50%; border: 2px solid var(--fill-2, rgba(118, 118, 128, .2)); border-top-color: var(--label-2, rgba(60, 60, 67, .6)); animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
-.confirm { align-self: stretch; display: grid; gap: 6px; padding: 12px; border-radius: 14px; font-size: 14px; background: var(--fill, rgba(120,120,128,.12)); }
+.confirm { align-self: stretch; display: grid; gap: 6px; padding: 12px; border-radius: 14px; font-size: 14px; background: var(--surface, #fff); box-shadow: 0 0 0 .5px var(--sep, rgba(60, 60, 67, .18)); flex: none; }
+.clog .confirm { background: var(--fill, rgba(118, 118, 128, .12)); box-shadow: none; }
 .confirm-what { font-weight: 600; }
-.confirm-on { color: var(--label-2, #6b6b72); overflow-wrap: anywhere; max-height: 40vh; overflow-y: auto; overscroll-behavior-y: contain; }
+.confirm-on { color: var(--label-2, rgba(60, 60, 67, .6)); overflow-wrap: anywhere; max-height: 40vh; overflow-y: auto; overscroll-behavior-y: contain; }
 .confirm-row { display: flex; gap: 8px; margin-top: 4px; }
-.confirm-row button { flex: 1; min-height: 36px; border: 0; border-radius: 10px; font: inherit; font-weight: 600; cursor: pointer; color: var(--label, #111); background: var(--fill, rgba(120,120,128,.16)); }
+.confirm-row button { flex: 1; min-height: 36px; border: 0; border-radius: 10px; font: inherit; font-weight: 600; cursor: pointer; color: var(--label, #000); background: var(--fill, rgba(118, 118, 128, .12)); }
 .confirm-row button.yes { color: #fff; background: var(--blue, #007aff); }
 .confirm-row button:disabled { opacity: .5; cursor: default; }
 .err { align-self: stretch; padding: 8px 12px; border-radius: 12px; font-size: 13.5px; color: var(--red, #ff3b30); background: color-mix(in srgb, var(--red, #ff3b30) 12%, transparent); overflow-wrap: anywhere; flex: none; }
@@ -486,15 +500,15 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
 .rq button:hover { background: var(--fill, rgba(118, 118, 128, .12)); color: var(--label, #000); }
 .bub .rqt { display: block; margin: 0 0 6px; padding-left: 8px; border-left: 2px solid rgba(255, 255, 255, .55); font-size: 13px; line-height: 1.35; opacity: .85; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; white-space: normal; }
 .clog .bub .rqt { border-left-color: var(--sep, rgba(60, 60, 67, .18)); }
-.msg.site { align-items: stretch; max-width: 100%; }
-.msg.site > .hc-sitecard { width: 100%; }
-.sitelink { color: var(--blue, #007aff); font-weight: 500; }
-/* Hub browser card: one per turn, live while the assistant works, its last step's screenshot after. */
-.msg.bro { align-items: stretch; max-width: 100%; }
+/* Hub browser card: one per turn, live while the assistant works, its last step's screenshot after. A site the
+   assistant opened (show_site) is the same card, live for as long as it is the latest thing in the chat. */
+.msg.bro { align-items: stretch; max-width: 100%; flex: none; }
 .brc { border-radius: 14px; overflow: hidden; background: var(--surface, #fff); box-shadow: 0 0 0 .5px var(--sep, rgba(60, 60, 67, .18)), 0 2px 8px rgba(0, 0, 0, .08); }
-.brb { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 5px 5px 5px 12px; font-size: 13px; }
-.brb .live { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--label-3, rgba(60, 60, 67, .3)); }
-.msg.bro.on .live { background: #34c759; animation: brpulse 1.4s ease-in-out infinite; }
+.brb { display: flex; align-items: center; gap: 9px; min-height: 44px; padding: 6px 6px 6px 10px; font-size: 13px; }
+.brf { position: relative; flex: none; width: 24px; height: 24px; border-radius: 6px; overflow: hidden; display: grid; place-items: center; color: var(--label-2, rgba(60, 60, 67, .6)); background: var(--fill, rgba(118, 118, 128, .12)); }
+.brf img { position: absolute; inset: 0; width: 100%; height: 100%; padding: 3px; object-fit: contain; background: #fff; }
+.brf .live { position: absolute; right: -1px; bottom: -1px; width: 9px; height: 9px; border-radius: 50%; background: var(--label-3, rgba(60, 60, 67, .3)); box-shadow: 0 0 0 2px var(--surface, #fff); opacity: 0; }
+.msg.bro.on .live { opacity: 1; background: var(--green, #34c759); animation: brpulse 1.4s ease-in-out infinite; }
 @keyframes brpulse { 50% { opacity: .35; } }
 .brt { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; color: var(--label, #000); }
 .brt small { margin-left: 6px; font-weight: 400; color: var(--label-2, rgba(60, 60, 67, .6)); }
@@ -518,12 +532,14 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
 .qi button:hover { background: var(--fill, rgba(118, 118, 128, .12)); color: var(--label, #000); }
 .qi button.go { color: var(--blue, #007aff); }
 .empty { margin: auto; text-align: center; padding: 24px 16px; max-width: 340px; }
-.empty .logo { width: 56px; height: 56px; margin: 0 auto 12px; border-radius: 16px; display: grid; place-items: center; color: #fff; background: linear-gradient(160deg, var(--blue, #007aff), var(--indigo, #5856d6)); }
+.empty .logo { display: block; width: 60px; height: 60px; margin: 0 auto 14px; border-radius: 13px; box-shadow: 0 0 0 .5px var(--sep, rgba(60, 60, 67, .18)), 0 6px 18px rgba(0, 0, 0, .18); }
+.empty .logo svg { display: block; width: 100%; height: 100%; }
 .empty h3 { margin: 0 0 4px; font: 600 20px/1.2 var(--display, inherit); letter-spacing: -0.022em; }
 .empty p { margin: 0 0 16px; color: var(--label-2, rgba(60, 60, 67, .6)); font-size: 14px; }
 .chips { display: flex; flex-direction: column; gap: 8px; }
 .chip { padding: 9px 14px; border-radius: 14px; background: var(--surface, #fff); box-shadow: 0 0 0 .5px var(--sep, rgba(60, 60, 67, .18)); font-size: 14px; text-align: left; color: var(--blue, #007aff); }
 .chip:hover { background: var(--press, #e5e5ea); }
+.chip:active { transform: scale(.985); }
 
 /* ----- history ----- */
 .hist { position: absolute; inset: 0; z-index: 1; background: var(--bg, #f2f2f7); overflow-y: auto; overscroll-behavior-y: contain; padding: 10px 16px 16px; display: none; }
@@ -553,7 +569,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
   .acts button { padding: 0 7px; }
   .acts button span { display: none; } /* icons only on a phone so the row stays on one line */
 }
-@media (prefers-reduced-motion: reduce) { .bar, .card, .card.on, .fp, .full.on .fp, .scrim, .ghead::after, .ghead .ib, .ghead .sb { transition: none; } .spin, .dots i, .menu, .plus.rec { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .bar, .card, .card.on, .fp, .full.on .fp, .scrim, .ghead::after, .ghead .ib, .ghead .sb { transition: none; } .spin, .dots i, .menu, .plus.rec, .msg.bro.on .live { animation: none; } .vbar { transition: none; } }
 `
 
   /* ---------- DOM ---------- */
@@ -583,6 +599,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
       <button type="button" class="ib plus bplus" aria-label="Attach, model, effort, mode, dictate, full screen" aria-haspopup="menu" aria-expanded="false" title="Attach, model, effort, mode, dictate, full screen">${IC.plus22}</button>
       <textarea class="bta" rows="1" placeholder="Ask anything" aria-label="Message" enterkeyhint="send" autocomplete="off" autocapitalize="sentences"></textarea>
       <button type="button" class="send bsend" aria-label="Send" disabled>${IC.up}</button>
+      <div class="vbar" aria-hidden="true"><button type="button" class="vx" aria-label="Cancel" title="Cancel (Esc)" tabindex="-1">${IC.close}</button><canvas class="vwave"></canvas><span class="vword" role="status" hidden></span><span class="vclock">0:00</span></div>
     </div>
   </div>
   <div class="full" inert>
@@ -607,6 +624,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
           <button type="button" class="ib plus fplus" aria-label="Attach, model, effort, mode, dictate, full screen" aria-haspopup="menu" aria-expanded="false" title="Attach, model, effort, mode, dictate, full screen">${IC.plus22}</button>
           <textarea class="fta" rows="1" placeholder="Ask anything" aria-label="Message" enterkeyhint="send" autocomplete="off" autocapitalize="sentences"></textarea>
           <button type="button" class="send fsend" aria-label="Send" disabled>${IC.up}</button>
+          <div class="vbar" aria-hidden="true"><button type="button" class="vx" aria-label="Cancel" title="Cancel (Esc)" tabindex="-1">${IC.close}</button><canvas class="vwave"></canvas><span class="vword" role="status" hidden></span><span class="vclock">0:00</span></div>
         </div>
       </footer>
     </section>
@@ -636,7 +654,9 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
 
   /* ---------- state ---------- */
 
-  const S = { busy: false, conv: '', info: null, ctrl: null, cardOn: false, full: false, hist: false, poll: 0, ctxTimer: 0, gen: 0, model: '', files: [], rec: null, noteTimer: 0, reply: '', queue: [], qid: 0, stopped: false }
+  // busy: a reply is running in this chat. remote: it was sent from another device (or before this page loaded), so it
+  // arrives over the live channel instead of this page's own stream. client: this page, so the hub can tell it apart.
+  const S = { busy: false, remote: false, conv: '', info: null, ctrl: null, cardOn: false, full: false, hist: false, ctxTimer: 0, gen: 0, model: '', files: [], rec: null, noteTimer: 0, reply: '', queue: [], qid: 0, stopped: false, client: `p${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36)}` }
 
   const copyText = async t => {
     try { await navigator.clipboard.writeText(t) } catch {
@@ -729,19 +749,6 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
     }
   }
 
-  // Site cards come from tabs/custom.js and are styled by its #hc-style sheet, which can't reach
-  // into this shadow root, so a copy of it goes in once. Its favicon load/error listeners sit on
-  // document and image events don't leave a shadow root, so the same two go here.
-  function siteStyles() {
-    if (shadow.getElementById('hc-style-copy')) return
-    const src = document.getElementById('hc-style')
-    if (!src) return
-    const s = document.createElement('style'); s.id = 'hc-style-copy'; s.textContent = src.textContent
-    shadow.append(s)
-    shadow.addEventListener('error', e => { if (e.target?.classList?.contains('hc-fav')) e.target.remove() }, true)
-    shadow.addEventListener('load', e => { const i = e.target; if (i?.classList?.contains('hc-fav') && i.naturalWidth >= 120) i.classList.add('full') }, true)
-  }
-
   /* ---------- views: the card and the full chat render the same events ---------- */
 
   function makeView(log) {
@@ -778,7 +785,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
       requestAnimationFrame(() => { log.scrollTop = log.scrollHeight })
     }
     v.clearEmpty = () => log.querySelector('.empty')?.remove()
-    v.clear = () => { cancelAnimationFrame(v.raf); v.raf = 0; v.live.length = 0; v.browser?.mini?.close(); v.browser = null; log.replaceChildren(); v.cur = null; v.pending = null; v.stick = true; v.top = 0 }
+    v.clear = () => { cancelAnimationFrame(v.raf); v.raf = 0; v.live.length = 0; v.browser?.mini?.close(); v.browser = null; log.replaceChildren(); v.cur = null; v.pending = null; v.lastA = null; v.stick = true; v.top = 0 }
     /* Text reaches the reader at an even rate, whatever the shape of the stream. New text goes into a small buffer and each
        animation frame shows as much as the rate allows. The rate tracks how fast text is arriving, and steers the buffer
        towards enough text to ride out the longest recent gap between chunks. */
@@ -859,7 +866,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
     v.addUser = (text, files, reply) => {
       v.clearEmpty()
       v.lastA = null
-      v.endBrowser()
+      v.endBrowser(true)
       const m = document.createElement('div'); m.className = 'msg u'
       const b = document.createElement('div'); b.className = 'bub'; b.textContent = text
       if (reply) { const q = document.createElement('span'); q.className = 'rqt'; q.textContent = reply; b.prepend(q) }
@@ -940,45 +947,50 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
       const d2 = el.querySelector('.d2')
       if (text) { d2.textContent = String(text); d2.hidden = false }
     }
-    // show_site: the hub's own site card (tabs/custom.js), a live preview or an Open in New Tab row.
-    v.addSite = s => {
-      v.clearEmpty()
-      const m = document.createElement('div'); m.className = 'msg site'
-      if (window.hub?.siteCard) {
-        siteStyles()
-        m.append(window.hub.siteCard(s.url, { name: s.name, icon: s.icon, height: log === clogEl ? 170 : 300 }))
-      } else {
-        const a = document.createElement('a'); a.className = 'sitelink'; a.href = s.url; a.target = '_blank'; a.rel = 'noopener noreferrer'
-        a.textContent = `Open ${s.name || s.url} in a new tab`
-        m.append(a)
-      }
-      log.append(m); v.scrollEnd(true)
-    }
     // Hub browser: one card per turn. While the turn runs it streams live (HubBrowser.mini, only in the
     // view on screen, so one stream); after, it keeps the last step's screenshot. History shows that too.
+    // show_site opens a site in the same browser, so its card is this one too: the site's icon, name and host, the
+    // page live while it is the latest thing in the chat, and Open. Every device shows the same card.
     v.browser = null
-    const watch = () => { if (S.full) setFull(false); window.HubBrowser?.open() }
+    const watch = c => { if (S.full) setFull(false); const d = c?.b || {}; if (d.site && d.url && !c.el.classList.contains('on')) window.HubBrowser?.open(d.url, { name: d.title, icon: d.icon }); else window.HubBrowser?.open() }
+    v.addSite = (s, live) => {
+      v.endBrowser(true)
+      const c = v.addBrowser({ url: s.url, title: s.name, icon: s.icon, site: true }, live)
+      c.keep = true
+      if (live) v.browser = c
+      return c
+    }
     v.addBrowser = (b, live) => {
       v.clearEmpty()
       const m = document.createElement('div'); m.className = 'msg bro'
-      m.innerHTML = '<div class="brc"><div class="brb"><i class="live" aria-hidden="true"></i><span class="brt"></span><button type="button" class="brw">Watch</button></div><div class="brm" title="Open the Browser tab"></div><div class="brh" role="status" hidden><span></span><button type="button">Take control</button></div></div>'
-      m.querySelector('.brw').addEventListener('click', watch)
-      m.querySelector('.brh button').addEventListener('click', watch)
-      m.querySelector('.brm').addEventListener('click', e => { if (e.target.tagName === 'IMG') watch() })
+      m.innerHTML = '<div class="brc"><div class="brb"><span class="brf" aria-hidden="true"><i class="live"></i></span><span class="brt"></span><button type="button" class="brw">Watch</button></div><div class="brm" title="Open the hub browser"></div><div class="brh" role="status" hidden><span></span><button type="button">Take control</button></div></div>'
+      const c = { el: m, mini: null, b: {}, icon: '' }
+      m.querySelector('.brw').addEventListener('click', () => watch(c))
+      m.querySelector('.brh button').addEventListener('click', () => watch(c))
+      m.querySelector('.brm').addEventListener('click', e => { if (e.target.tagName === 'IMG') watch(c) })
       log.append(m)
-      const c = { el: m, mini: null, b: {} }
       v.setBrowser(c, b, live)
       v.scrollEnd(true)
       return c
     }
     v.setBrowser = (c, b, live) => {
-      for (const k of ['shot', 'url', 'title', 'handoff']) if (b[k] != null) c.b[k] = b[k]
+      for (const k of ['shot', 'url', 'title', 'handoff', 'icon', 'site']) if (b[k] != null) c.b[k] = b[k]
       const { el } = c, d = c.b
       let host = ''
-      try { host = new URL(d.url).host } catch {}
+      try { host = new URL(d.url).hostname.replace(/^www\./, '') } catch {}
       const t = el.querySelector('.brt')
       t.textContent = d.title || host || 'Hub browser'
       if (d.title && host) { const s = document.createElement('small'); s.textContent = host; t.append(s) }
+      // The page's icon: the site's own (a saved website app), else the hub's lookup of any page's, else a globe.
+      const icon = typeof d.icon === 'string' && d.icon.startsWith('/api/hub/') ? d.icon : d.url ? `/api/hub/site-icon?url=${encodeURIComponent(d.url)}` : ''
+      if (icon !== c.icon) {
+        c.icon = icon
+        const f = el.querySelector('.brf')
+        f.querySelector('img, svg')?.remove()
+        if (icon) { const img = document.createElement('img'); img.alt = ''; img.decoding = 'async'; img.referrerPolicy = 'no-referrer'; img.addEventListener('error', () => { img.remove(); f.insertAdjacentHTML('afterbegin', IC.globe) }); img.src = icon; f.prepend(img) }
+        else f.insertAdjacentHTML('afterbegin', IC.globe)
+      }
+      el.querySelector('.brw').textContent = d.site && !live ? 'Open' : 'Watch'
       const media = el.querySelector('.brm')
       const onScreen = log === flogEl ? S.full : !S.full
       if (live && onScreen && window.HubBrowser?.mini) {
@@ -996,7 +1008,10 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
       h.hidden = !d.handoff
       if (d.handoff) h.querySelector('span').textContent = `Your turn: ${d.handoff}`
     }
-    v.endBrowser = () => { if (v.browser) v.setBrowser(v.browser, {}, false); v.browser = null }
+    // The turn is over (a site the assistant opened stays live until the next message), or a new message starts one.
+    v.endBrowser = force => { if (!v.browser || (v.browser.keep && !force)) return; v.setBrowser(v.browser, {}, false); v.browser = null }
+    // The full chat opened or closed: the live view moves to the one on screen, so there's only ever one stream.
+    v.restream = () => { if (v.browser?.el.classList.contains('on')) v.setBrowser(v.browser, {}, true) }
     // A send, buy or delete in the browser waits for this. Allow is the only yes the hub accepts.
     v.addConfirm = (c, answered) => {
       v.clearEmpty()
@@ -1064,7 +1079,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
       const list = SUGGEST[curEnv()] || SUGGEST.home
       const box = document.createElement('div'); box.className = 'empty'
       box.dataset.tabk = curEnv()
-      box.innerHTML = `<div class="logo">${IC.chat}</div><h3>${esc(AGENT)}</h3><p>Ask me anything. I can research the web, write, use the browser, and I know this hub best: usage, servers, storage, the calendar, and its look and layout.</p><div class="chips">${list.map(t => `<button type="button" class="chip">${esc(t)}</button>`).join('')}</div>`
+      box.innerHTML = `<div class="logo">${IC.hub}</div><h3>${esc(AGENT)}</h3><p>Ask me anything. I can research the web, write, use the browser, and I know this hub best: usage, servers, storage, the calendar, and its look and layout.</p><div class="chips">${list.map(t => `<button type="button" class="chip">${esc(t)}</button>`).join('')}</div>`
       log.append(box)
     }
     log.addEventListener('click', e => {
@@ -1133,7 +1148,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
 
   function updateSub() {
     const t = curTitle()
-    const text = window.HubBrowser?.isOpen?.() ? 'Looking at the browser' : t ? `Looking at the ${t} tab` : (window.HUB_CONF?.name || 'LocalHub')
+    const text = window.HubBrowser?.isOpen?.() ? 'Looking at the browser' : curEnv() === 'tv' ? 'Looking at the TV' : t ? `Looking at the ${t} tab` : (window.HUB_CONF?.name || 'LocalHub')
     ctxEls.forEach(el => { if (el.textContent !== text) el.textContent = text })
   }
   setInterval(() => { if (S.cardOn && !S.full) updateSub() }, 1500)
@@ -1141,7 +1156,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
   function updateCtx() {
     updateSub()
     const em = flogEl.querySelector('.empty')
-    const has = flogEl.querySelector('.msg, .tool, .err')
+    const has = flogEl.querySelector('.msg, .tool, .err, .confirm')
     if (!S.conv && !S.busy && !has && (!em || em.dataset.tabk !== curEnv())) fullView.empty()
   }
   function setFull(on) {
@@ -1174,6 +1189,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
       setTimeout(() => bta.focus({ preventScroll: true }), 80)
     }
     syncCard()
+    views.forEach(v => v.restream())
   }
   cExpand.addEventListener('click', () => setFull(true))
   fX.addEventListener('click', () => setFull(false))
@@ -1203,6 +1219,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
   rootEl.addEventListener('keydown', e => {
     if (e.key !== 'Escape') return
     if (S.rec) { e.preventDefault(); stopDictate(); return }
+    if (V.state === 'rec') { e.preventDefault(); cancelVoice(); return }
     if (S.full) { e.preventDefault(); if (S.hist) toggleHist(false); else setFull(false) }
     else if (S.cardOn) { e.preventDefault(); S.cardOn = false; syncCard() }
     else if (e.target === bta) bta.blur()
@@ -1684,15 +1701,126 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
   // Speech to text runs on the hub computer (Whisper, /api/voice/*): it works on plain http and
   // nothing goes to a cloud. A page with its own mic and voice (the LocalHub TV app) sets
   // window.HubVoice = { listen({ onLevel, onWorking }) -> Promise<text>, cancel(), speak(text), hush() }.
-  const V = { state: 'idle', rec: null, speak: false, said: 0, text: '', voice: undefined }
+  const V = { state: 'idle', rec: null, speak: false, said: 0, text: '', voice: undefined, cancelled: false, since: 0, clock: 0 }
 
-  function level(v) { for (const b of [bsend, fsend]) b.style.setProperty('--lvl', String(Math.max(0, Math.min(1, v || 0)))) }
+  // The live wave (Quartzi's recorder, in plain canvas): each bar is the loudness of one 70 ms slice on a decibel scale,
+  // eased up fast and down nearly as fast, so the gaps between words dip. Bars enter at the right and glide left by a
+  // sub-pixel step each frame, so the line scrolls instead of stepping, and the left edge fades out. The scale starts a
+  // few dB above the room's quietest moment of the last two seconds, so a steady noise lies flat while speech rises out
+  // of it. Levels come from either mic: recordWav on this page, or window.HubVoice's onLevel (the TV's own microphone).
+  function makeWave(cv) {
+    const BAR = 3, PITCH = 6, HEADROOM = 0.8, STEP = 70, ATTACK = 30, RELEASE = 70
+    const FLOOR = -54, CEIL = -2, MARGIN = 4, SPAN = 24, NOISE_N = Math.round(2000 / STEP)
+    const ctx = cv.getContext('2d')
+    const bars = [], quietest = []
+    let raf = 0, on = false, prev = 0, pushed = 0, now = 0, peak = 0, sum = 0, count = 0, db = -100, noise = NaN, sliceQuiet = Infinity
+    let w = 0, h = 0, ratio = 1, color = ''
+    const measure = () => {
+      const r = cv.getBoundingClientRect()
+      ratio = window.devicePixelRatio || 1
+      w = r.width; h = r.height
+      cv.width = Math.max(1, Math.round(w * ratio)); cv.height = Math.max(1, Math.round(h * ratio))
+      const room = Math.ceil(w / PITCH) + 2
+      while (bars.length < room) bars.push(NaN)
+      if (bars.length > room) bars.length = room
+      color = getComputedStyle(cv).color
+    }
+    const frame = t => {
+      if (!on) return
+      const dt = prev ? Math.min(100, t - prev) : 16
+      prev = t
+      sliceQuiet = Math.min(sliceQuiet, db)
+      const room = Math.min(sliceQuiet, ...quietest)
+      noise = Number.isNaN(noise) ? FLOOR - MARGIN : noise + (room - noise) * (1 - Math.exp(-dt / (room < noise ? 120 : 400)))
+      const low = Math.max(FLOOR, noise + MARGIN), high = Math.max(low + SPAN, CEIL)
+      const target = Math.min(1, Math.max(0, (db - low) / (high - low)))
+      now += (target - now) * (1 - Math.exp(-dt / (target > now ? ATTACK : RELEASE)))
+      sum += now; count++; peak = sum / count
+      if (!pushed) pushed = t
+      if (t - pushed > STEP * 64) pushed = t - STEP // back from a hidden tab
+      while (t - pushed >= STEP) {
+        bars.unshift(peak); bars.pop()
+        peak = now; sum = count = 0; pushed += STEP
+        if (sliceQuiet !== Infinity) { quietest.push(sliceQuiet); if (quietest.length > NOISE_N) quietest.shift(); sliceQuiet = Infinity }
+      }
+      if (!w) measure()
+      if (w > 0) {
+        ctx.setTransform(ratio, 0, 0, ratio, 0, 0)
+        ctx.clearRect(0, 0, w, h)
+        ctx.fillStyle = color
+        const entered = Math.min(1, (t - pushed) / STEP)
+        // Slot 0 is the slice still being heard: it fades in whole at the right edge.
+        for (let slot = 0; slot <= bars.length; slot++) {
+          const x = w - BAR - entered * PITCH - slot * PITCH
+          if (x < -BAR) break
+          const val = slot === 0 ? peak : bars[slot - 1]
+          if (Number.isNaN(val)) break
+          const tall = Math.max(BAR, val * h * HEADROOM)
+          ctx.globalAlpha = slot === 0 ? entered : 1
+          ctx.beginPath()
+          if (ctx.roundRect) ctx.roundRect(x, (h - tall) / 2, BAR, tall, BAR / 2); else ctx.rect(x, (h - tall) / 2, BAR, tall)
+          ctx.fill()
+        }
+        ctx.globalAlpha = 1
+      }
+      raf = requestAnimationFrame(frame)
+    }
+    if (window.ResizeObserver) new ResizeObserver(() => { if (on) measure() }).observe(cv)
+    return {
+      start() {
+        if (on) return
+        on = true
+        bars.length = 0; quietest.length = 0
+        prev = pushed = 0; now = peak = sum = count = 0; db = -100; noise = NaN; sliceQuiet = Infinity
+        measure()
+        raf = requestAnimationFrame(frame)
+      },
+      stop() { on = false; cancelAnimationFrame(raf) },
+      // v: the mic's level, 0 to about 1 (the rms scaled by ~10, as both mics report it).
+      level(v) { db = Math.max(-100, 20 * Math.log10(Math.max(Number(v) || 0, 1e-5))) },
+    }
+  }
+  const vbars = [[barPill, $('.bar .vbar')], [fPill, $('.ffoot .vbar')]].map(([pill, el]) => ({ pill, el, wave: makeWave(el.querySelector('.vwave')), word: el.querySelector('.vword'), clock: el.querySelector('.vclock') }))
+  for (const vb of vbars) vb.el.querySelector('.vx').addEventListener('click', () => cancelVoice())
+
+  function level(v) { for (const vb of vbars) vb.wave.level(v) }
+  const mmss = ms => { const s = Math.max(0, Math.floor(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` }
+  // The pill's voice face: the wave while you talk, words while it's written down.
+  function syncVoice() {
+    const on = V.state !== 'idle'
+    for (const vb of vbars) {
+      vb.pill.classList.toggle('voicing', on)
+      vb.el.setAttribute('aria-hidden', String(!on))
+      vb.el.querySelector('.vx').tabIndex = V.state === 'rec' ? 0 : -1
+      vb.el.querySelector('.vx').hidden = V.state === 'wait'
+      const talking = V.state === 'rec'
+      vb.el.querySelector('.vwave').hidden = !talking
+      vb.word.hidden = talking
+      vb.word.textContent = V.state === 'wait' ? 'Turning it into words…' : ''
+      vb.clock.hidden = !talking
+      if (talking) vb.wave.start(); else vb.wave.stop()
+    }
+    clearInterval(V.clock)
+    if (V.state === 'rec') {
+      const tick = () => { const t = mmss(Date.now() - V.since); for (const vb of vbars) if (vb.clock.textContent !== t) vb.clock.textContent = t }
+      tick()
+      V.clock = setInterval(tick, 250)
+    }
+  }
+  // Cancel: nothing is written down or sent.
+  function cancelVoice() {
+    if (V.state !== 'rec') return
+    V.cancelled = true
+    if (window.HubVoice?.listen) window.HubVoice.cancel?.()
+    else V.rec?.cancel()
+  }
 
   async function toggleVoice(t) {
     if (V.state === 'rec') { if (window.HubVoice?.listen) window.HubVoice.stop?.(); else V.rec?.stop(); return }
     if (V.state === 'wait') return
     hush()
     if (S.rec) stopDictate()
+    V.cancelled = false
     // Wakes Whisper on the hub. If it isn't installed there, the browser's own dictation takes over,
     // so the mic works out of the box (install faster-whisper on the hub to keep it all local).
     let warm = null
@@ -1701,6 +1829,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
       return startDictate({ send: true })
     }
     V.state = 'rec'
+    V.since = Date.now()
     syncSend()
     let text = ''
     try {
@@ -1708,7 +1837,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
         text = await window.HubVoice.listen({ onLevel: level, onWorking: () => { V.state = 'wait'; level(0); syncSend() } })
       } else {
         const wav = await recordWav()
-        if (!wav) { V.state = 'idle'; syncSend(); return flash('Didn’t catch that. Tap the mic and talk.') }
+        if (!wav) { V.state = 'idle'; syncSend(); return V.cancelled ? undefined : flash('Didn’t catch that. Tap the mic and talk.') }
         V.state = 'wait'
         syncSend()
         text = await transcribe(wav)
@@ -1723,6 +1852,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
     level(0)
     syncSend()
     text = String(text || '').trim()
+    if (V.cancelled) return
     if (!text) return flash('Didn’t catch that. Tap the mic and talk.')
     V.speak = true
     V.said = 0
@@ -1765,13 +1895,14 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
         const sec = d.length / rate
         total += sec
         if (total < 0.25) floor = Math.max(floor, rms * 1.8)
-        level(Math.min(1, rms * 9))
+        level(rms * 9)
         if (rms > Math.max(0.018, floor)) { heard = true; quiet = 0 } else if (heard) quiet += sec
         if ((heard && quiet > 0.7) || total > 30 || (!heard && total > 7)) finish(true)
       }
       src.connect(node)
       node.connect(ctx.destination)
       V.rec = { stop: () => finish(true), cancel: () => finish(false) }
+      if (V.cancelled) finish(false) // Cancel came while the browser was still asking for the mic
     })
   }
 
@@ -1878,12 +2009,13 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
       b.classList.toggle('voice', voice)
       b.classList.toggle('rec', voice && V.state === 'rec')
       b.classList.toggle('wait', voice && V.state === 'wait')
-      b.innerHTML = halt ? IC.stop : voice ? (V.state === 'rec' ? IC.stop : V.state === 'wait' ? '<i class="vspin"></i>' : IC.mic22) : IC.up
-      b.setAttribute('aria-label', halt ? 'Stop' : voice ? (V.state === 'rec' ? 'Stop listening' : V.state === 'wait' ? 'Writing down what you said' : 'Talk') : S.busy ? 'Queue this message' : 'Send')
-      b.title = halt ? 'Stop' : voice ? (V.state === 'rec' ? 'Listening… tap to stop' : V.state === 'wait' ? '' : 'Talk') : S.busy ? 'Queue: sends when this reply finishes' : ''
+      b.innerHTML = halt ? IC.stop : voice ? (V.state === 'rec' ? IC.up : V.state === 'wait' ? '<i class="vspin"></i>' : IC.mic22) : IC.up
+      b.setAttribute('aria-label', halt ? 'Stop' : voice ? (V.state === 'rec' ? 'Send what you said' : V.state === 'wait' ? 'Writing down what you said' : 'Talk') : S.busy ? 'Queue this message' : 'Send')
+      b.title = halt ? 'Stop' : voice ? (V.state === 'rec' ? 'Send (it also sends when you stop talking)' : V.state === 'wait' ? '' : 'Talk') : S.busy ? 'Queue: sends when this reply finishes' : ''
       b.disabled = voice ? V.state === 'wait' : !S.busy && empty
-      if (!S.rec) t.placeholder = V.state === 'rec' ? 'Listening…' : V.state === 'wait' ? 'Writing it down…' : S.mode === 'plan' ? 'Ask anything (Plan mode)' : 'Ask anything'
+      if (!S.rec) t.placeholder = S.mode === 'plan' ? 'Ask anything (Plan mode)' : 'Ask anything'
     }
+    syncVoice()
     syncCard()
   }
   const submit = text => {
@@ -1983,8 +2115,13 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
     if (S.rec) stopDictate()
     closeMenu()
     if (S.hist) toggleHist(false)
-    clearInterval(S.poll)
+    // LocalHub TV's "Read answers aloud" (window.HubSpeech): Off never speaks, Always speaks typed questions' answers
+    // too, After voice is the default everywhere. The hub page has no such setting.
+    const aloud = window.HubSpeech?.mode?.()
+    if (aloud === 'Off') V.speak = false
+    else if (aloud === 'Always' && !V.speak) { V.speak = true; V.said = 0; V.text = '' }
     S.busy = true
+    S.remote = false
     S.stopped = false
     const gen = ++S.gen
     let reply = q ? q.reply || '' : S.reply
@@ -2013,7 +2150,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
       const res = await fetch('/api/chat/send', {
         method: 'POST',
         headers: { 'content-type': 'application/json', 'x-hub': '1' },
-        body: JSON.stringify({ text, test: isTest() || undefined, files: files.length ? files : undefined, sessionId: S.conv || undefined, tab: curEnv(), tabTitle: curTitle(), narrow: PHONE.matches, model: S.model || undefined, effort: S.effort || undefined, mode: S.mode === 'auto' ? undefined : S.mode, reply: reply || undefined }),
+        body: JSON.stringify({ text, client: S.client, test: isTest() || undefined, files: files.length ? files : undefined, sessionId: S.conv || undefined, tab: curEnv(), tabTitle: curTitle(), narrow: PHONE.matches, model: S.model || undefined, effort: S.effort || undefined, mode: S.mode === 'auto' ? undefined : S.mode, reply: reply || undefined }),
         signal: ctrl.signal,
       })
       if (!res.ok || !res.body) {
@@ -2058,14 +2195,18 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
         if (S.queue.length && !S.stopped) { const n = S.queue.shift(); setTimeout(() => send(n.text, n), 60) }
         else if (S.queue.length) flash('Queue paused. Tap the arrow on a queued message to send it.')
         renderQueue()
+        // Another device made a different chat current while this reply ran: follow it now.
+        if (!S.queue.length && L.current !== S.conv && L.ready) followCurrent(L.current)
       }
     }
   }
 
-  // Returns true on the final "done" event.
-  function handle(ev) {
+  // Returns true on the final "done" event. remote: it came over the live channel (another device's reply), so this
+  // page only shows it: the browser pop-up and reading aloud stay with the device that asked.
+  function handle(ev, remote = false) {
     switch (ev.type) {
       case 'session':
+        if (remote) break
         S.conv = ev.sessionId || S.conv
         if (ev.atts?.length) {
           eachView(v => v.setFiles(ev.atts))
@@ -2081,7 +2222,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
         break
       case 'delta':
         eachView(v => { if (!v.cur) v.cur = v.addAssistant('', false); v.feed(String(ev.text || '')) })
-        if (V.speak) voiceFeed(String(ev.text || ''), false)
+        if (V.speak && !remote) voiceFeed(String(ev.text || ''), false)
         break
       case 'text_end':
         eachView(v => { if (!v.cur) { v.hidePending(); v.cur = v.addAssistant('', false) } if (typeof ev.text === 'string') v.setText(ev.text); v.finishCur() })
@@ -2097,8 +2238,8 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
         break
       case 'site':
         if (ev.url) {
-          eachView(v => { v.hidePending(); v.finishCur(); v.addSite(ev); v.showPending() })
-          window.HubBrowser?.open(ev.url, { name: ev.name, icon: ev.icon })
+          eachView(v => { v.hidePending(); v.finishCur(); v.addSite(ev, true); v.showPending() })
+          if (!remote) window.HubBrowser?.open(ev.url, { name: ev.name, icon: ev.icon })
         }
         break
       case 'confirm':
@@ -2120,7 +2261,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
         break
       case 'done':
         eachView(v => { v.hidePending(); v.finishCur(); v.endBrowser(); v.setMeta(ev.meta) })
-        if (V.speak) { voiceFeed('', true); V.speak = false }
+        if (V.speak && !remote) { voiceFeed('', true); V.speak = false }
         return true
     }
     return false
@@ -2137,14 +2278,16 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
 
   /* ---------- conversations: new, load, history ---------- */
 
-  function newChat() {
+  // announce: tell the hub, so every other open chat starts a new one too. A new chat from another device doesn't.
+  function newChat(announce = true) {
     if (S.busy) {
       S.gen++
       S.ctrl?.abort()
-      fetch('/api/chat/stop', { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: JSON.stringify({ sessionId: S.conv || undefined }) }).catch(() => {})
-      S.busy = false; S.ctrl = null
+      if (announce) fetch('/api/chat/stop', { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: JSON.stringify({ sessionId: S.conv || undefined }) }).catch(() => {})
+      S.busy = false; S.remote = false; S.ctrl = null
     }
-    clearInterval(S.poll)
+    if (announce && S.conv) setCurrent('')
+    L.current = ''
     S.conv = ''
     S.cardOn = false
     clearFiles()
@@ -2157,44 +2300,149 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
     syncSend()
     if (S.full) fta.focus({ preventScroll: true })
   }
-  fNew.addEventListener('click', newChat)
+  fNew.addEventListener('click', () => newChat())
 
-  async function openConv(id) {
-    if (S.busy) { fullView.addError('Stop the current reply first.'); if (S.hist) toggleHist(false); return }
+  // A saved chat into one view. running: its reply is still coming, so the turn's browser card stays live and the text
+  // so far (partial) becomes the answer that the next deltas continue.
+  function renderItems(v, items, running, partial) {
+    v.clear()
+    let card = null
+    for (const [n, it] of items.entries()) {
+      if (it.kind === 'confirm') v.addConfirm(it, items.slice(n + 1).some(x => x.kind === 'user'))
+      else if (it.kind === 'connect') v.addConnect(it)
+      else if (it.kind === 'user') { v.addUser(it.text || '', it.atts || it.files, it.reply); card = null }
+      else if (it.kind === 'attachment') v.addAttachment(it)
+      else if (it.kind === 'assistant') v.addAssistant(it.text || '', true, it.meta || (it.at ? { at: it.at } : null))
+      else if (it.kind === 'tool') v.addTool(it)
+      else if (it.kind === 'site') card = v.addSite(it, false)
+      else if (it.kind === 'browser') card = v.addBrowser(it, false)
+      else if (it.kind === 'error') v.addError(it.text || '')
+    }
+    if (running && card) { v.browser = card; v.setBrowser(card, {}, true) }
+    if (running && typeof partial === 'string') {
+      const c = v.cur = v.addAssistant(partial, false)
+      c.shown = partial.length
+      v.draw(c, false)
+    } else if (running) v.showPending()
+  }
+
+  // Opens a chat in this page. announce: make it the current chat on every device (picked from History here). Without
+  // it, this page is following the hub's current chat. Live lines that arrive while it loads wait, then the ones newer
+  // than what the hub answered with are played on top, so nothing is shown twice or missed.
+  async function openConv(id, { announce = true } = {}) {
+    if (S.busy && !S.remote) { if (announce) { fullView.addError('Stop the current reply first.'); if (S.hist) toggleHist(false) } return }
+    const turn = ++L.turn
+    L.loading = true
     try {
       const r = await hubFetch(`/api/chat/sessions/${encodeURIComponent(id)}`)
-      if (!r.ok) throw new Error('gone')
+      if (!r.ok) throw Object.assign(new Error('gone'), { gone: r.status === 404 })
       const c = await r.json()
+      if (turn !== L.turn) return
+      if (S.busy && !S.remote) return // this page sent something while it loaded; that goes on
+      if (typeof c.seq === 'number') L.seq = c.seq
+      if (S.conv !== c.id) { clearQueue(); S.reply = ''; renderReply() }
       S.conv = c.id
-      S.cardOn = false
-      cardView.clear()
-      fullView.clear()
-      for (const [n, it] of (c.items || []).entries()) {
-        if (it.kind === 'confirm') fullView.addConfirm(it, c.items.slice(n + 1).some(x => x.kind === 'user'))
-        else if (it.kind === 'connect') fullView.addConnect(it)
-        else if (it.kind === 'user') fullView.addUser(it.text || '', it.atts || it.files, it.reply)
-        else if (it.kind === 'attachment') fullView.addAttachment(it)
-        else if (it.kind === 'assistant') fullView.addAssistant(it.text || '', true, it.meta || (it.at ? { at: it.at } : null))
-        else if (it.kind === 'tool') fullView.addTool(it)
-        else if (it.kind === 'site') fullView.addSite(it)
-        else if (it.kind === 'browser') fullView.addBrowser(it, false)
-        else if (it.kind === 'error') fullView.addError(it.text || '')
-      }
+      L.current = announce ? c.id : L.current
+      S.busy = S.remote = !!c.running
+      const items = c.items || []
+      const cut = items.map(i => i.kind).lastIndexOf('user')
+      renderItems(fullView, items, c.running, c.partial)
+      renderItems(cardView, cut < 0 ? [] : items.slice(cut), c.running, c.partial)
       if (!flogEl.children.length) fullView.empty()
-      if (c.running) {
-        fullView.showPending()
-        clearInterval(S.poll)
-        S.poll = setInterval(async () => {
-          if (S.busy || S.conv !== c.id) return clearInterval(S.poll)
-          try { const rr = await (await hubFetch(`/api/chat/sessions/${encodeURIComponent(id)}`)).json(); if (!rr.running) { clearInterval(S.poll); openConv(id) } } catch {}
-        }, 2000)
-      }
+      // Following a reply that's still coming shows it in the card too; a chat from History opens in the full chat.
+      S.cardOn = !announce && !!c.running
       if (S.hist) toggleHist(false)
       fullView.scrollEnd(true)
+      cardView.scrollEnd(true)
       syncSend()
+      renderQueue()
+      if (announce) setCurrent(c.id)
     } catch (e) {
+      if (turn !== L.turn) return
+      if (e.gone && !announce) { if (S.conv) newChat(false); return }
       console.warn('openConv', e)
-      fullView.addError('That chat could not be opened.')
+      if (announce) fullView.addError('That chat could not be opened.')
+    } finally {
+      if (turn === L.turn) {
+        L.loading = false
+        const held = L.held
+        L.held = []
+        for (const m of held) onLive(m)
+      }
+    }
+  }
+
+  /* ---------- live: every open chat follows the one current conversation ---------- */
+  // /api/chat/live (chat.mjs) says which chat is current and streams every message and reply as it happens, whichever
+  // device sent it. This page shows its own sends from their own stream, so it skips the lines that carry its id.
+  const L = { es: null, seq: 0, current: '', ready: false, loading: false, held: [], turn: 0, retry: 0 }
+  function setCurrent(id) {
+    L.current = id
+    if (isTest()) return
+    fetch('/api/chat/current', { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: JSON.stringify({ sessionId: id || undefined, client: S.client }) }).catch(() => {})
+  }
+  function connectLive() {
+    if (L.es || !window.EventSource || isTest()) return
+    const es = L.es = new EventSource('/api/chat/live')
+    es.onmessage = e => { let m = null; try { m = JSON.parse(e.data) } catch {} if (m && m.ev) onLive(m) }
+    es.onerror = () => {
+      // EventSource comes back by itself after a hub restart, and its hello brings this page up to date.
+      if (es.readyState !== EventSource.CLOSED) return
+      L.es = null
+      clearTimeout(L.retry)
+      L.retry = setTimeout(connectLive, 3000)
+    }
+  }
+  function followCurrent(id) {
+    L.current = id || ''
+    if (S.busy && !S.remote) return // this page's own reply is streaming; it follows when that ends
+    if (!id) { if (S.conv || S.remote) newChat(false); return }
+    return openConv(id, { announce: false })
+  }
+  function onLive(m) {
+    const ev = m.ev
+    if (ev.type === 'hello') { L.ready = true; L.seq = m.seq; return followCurrent(m.conv) }
+    if (L.loading) { L.held.push(m); return }
+    if (m.seq <= L.seq) return
+    L.seq = m.seq
+    if (ev.type === 'current') {
+      if (m.from === S.client) { L.current = m.conv; return }
+      if (m.conv !== S.conv) followCurrent(m.conv)
+      else L.current = m.conv
+      return
+    }
+    if (m.from === S.client) return
+    if (m.conv !== S.conv) {
+      // A chat this page isn't showing: it follows the current one, and only when its own reply isn't running.
+      if (m.conv === L.current && (!S.busy || S.remote)) followCurrent(m.conv)
+      return
+    }
+    if (S.busy && !S.remote) return
+    remoteEvent(ev)
+  }
+  // Another device's message or reply, in this page's chat.
+  function remoteEvent(ev) {
+    if (ev.type === 'user') {
+      // A new message answers any card still waiting, as it does in History.
+      for (const el of shadow.querySelectorAll('.confirm[data-confirm]')) if (el.querySelector('.confirm-row')) settleConfirm(el.dataset.confirm, 'Answered')
+      S.busy = S.remote = true
+      S.stopped = false
+      S.cardOn = true
+      cardView.clear()
+      eachView(v => { v.addUser(ev.text || '', ev.atts, ev.reply); v.showPending() })
+      syncSend()
+      renderQueue()
+      return
+    }
+    if (ev.type === 'session' || ev.type === 'ping') return
+    if (!S.remote) { S.busy = S.remote = true; syncSend() }
+    if (handle(ev, true)) {
+      eachView(v => { v.hidePending(); v.finishCur(); v.endBrowser() })
+      S.busy = S.remote = false
+      syncSend()
+      // What this page queued while the other device's reply ran goes now.
+      if (S.queue.length && !S.stopped) { const n = S.queue.shift(); setTimeout(() => send(n.text, n), 60) }
+      renderQueue()
     }
   }
 
@@ -2275,7 +2523,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
       }
       const wasCurrent = s.id === S.conv
       row.remove()
-      if (wasCurrent) { const keep = S.hist; newChat(); if (keep) toggleHist(true) }
+      if (wasCurrent) { const keep = S.hist; newChat(false); if (keep) toggleHist(true) }
       else if (!box.children.length) loadHist()
     })
     return row
@@ -2293,6 +2541,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
   syncSend()
   measureBar()
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', loadInfo, { once: true }); else loadInfo()
+  connectLive()
 
   // A tiny handle for other tabs or tests: HubChat.open(), HubChat.ask('...').
   // voice/hush/say/listening are for pages around the chat: LocalHub TV's ⏯ key and Control Center talk through them.
