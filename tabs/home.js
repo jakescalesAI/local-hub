@@ -159,10 +159,44 @@ html:has(.hw-root) .page { padding-bottom: 0 !important; }
 .hw-root[data-framed="1"][data-view="mobile"] .hw-device::before { content: ""; position: absolute; z-index: 3; top: 11px; left: 50%; width: 112px; height: 32px; margin-left: -56px; border-radius: 99px; background: #101012; pointer-events: none; }
 .hw-root[data-framed="1"] .hw-device::after { content: ""; position: absolute; z-index: 3; bottom: 8px; left: 50%; width: 134px; height: 5px; margin-left: -67px; border-radius: 99px; background: var(--label); opacity: .35; pointer-events: none; }
 .hw-root[data-framed="1"][data-view="ipad"] .hw-device::after { width: 220px; margin-left: -110px; }
-/* TV: a 16:9 screen on a stand. The layout is what LocalHub TV puts on its Top Shelf. */
-.hw-root[data-framed="1"][data-view="tv"] .hw-device { overflow: visible; }
-.hw-root[data-framed="1"][data-view="tv"] .hw-device::after { bottom: -46px; width: 260px; height: 12px; margin-left: -130px; border-radius: 0 0 10px 10px; background: #2c2c2e; opacity: 1; box-shadow: 0 -30px 0 -2px #1c1c1e; }
-.hw-root[data-framed="1"][data-view="tv"] .hw-frame { border-radius: var(--fr); overflow: hidden; }
+/* Infinite scroll: the pages become one long grid that scrolls down, and there are no page dots. */
+.hw-root[data-scroll="infinite"] .hw-pager { overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
+.hw-root[data-scroll="infinite"] .hw-pager::-webkit-scrollbar { display: none; }
+.hw-root[data-scroll="infinite"] .hw-grid { padding-bottom: var(--gap); }
+.hw-root[data-scroll="infinite"] .hw-dots { display: none; }
+.seg.hw-scroll { flex: none; width: 236px; min-width: 0; margin: 0; }
+.seg.hw-scroll[hidden] { display: none; }
+/* TV: LocalHub TV itself (/tv/), live and scaled onto a 16:9 screen on a stand, with what it uses beside it in Edit. */
+.hw-tv { display: flex; justify-content: center; align-items: flex-start; gap: 28px; height: var(--tvh, 600px); min-width: 0; }
+.hw-tv[hidden], .hw-root[data-view="tv"] .hw-stage, .hw-root[data-view="tv"] .hw-pages { display: none; }
+.hw-tv-screen { flex: none; display: flex; flex-direction: column; align-items: center; width: var(--tvw, 960px); padding: 12px 12px 0; }
+.hw-tv-glass { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 10px; overflow: hidden; background: #000; box-shadow: 0 0 0 1px rgba(255, 255, 255, .14), 0 0 0 12px #101012, 0 0 0 13px rgba(255, 255, 255, .16), 0 18px 60px rgba(0, 0, 0, .4); }
+.hw-tv-float { position: fixed; z-index: 9; border-radius: 10px; overflow: hidden; background: #000; visibility: hidden; }
+.hw-tv-float iframe { width: 100%; height: 100%; border: 0; display: block; }
+.hw-tv-neck { width: 70px; height: 30px; margin-top: 12px; background: #1c1c1e; }
+.hw-tv-base { width: 260px; height: 12px; border-radius: 0 0 10px 10px; background: #2c2c2e; }
+.hw-tv-side { flex: 0 1 360px; min-width: 280px; height: 100%; overflow-y: auto; overscroll-behavior: contain; padding: 0 2px 24px; scrollbar-width: thin; }
+.hw-tv-side[hidden] { display: none; }
+.hw-tv-side .hw-dsec + .hw-dsec { margin-top: 22px; }
+.hw-tv-side .hw-dsec > p { margin: 8px 2px 0; font-size: 13px; line-height: 1.35; color: var(--label-2); letter-spacing: -0.006em; }
+.hw-tv-side .hw-applist .hw-row .t { flex: 1; max-width: none; }
+.hw-tv-mini { flex: none; position: relative; width: 44px; height: 28px; border-radius: 7px; overflow: hidden; display: grid; place-items: center; background: var(--a-bg, #2c2c2e); color: var(--a-fg, #fff); box-shadow: inset 0 0 0 .5px rgba(255, 255, 255, .18); font: 800 13px var(--font); }
+.hw-tv-mini i { width: 70%; height: 66%; background: currentColor; -webkit-mask: var(--glyph) center / contain no-repeat; mask: var(--glyph) center / contain no-repeat; }
+.hw-tv-mini img { width: 100%; height: 100%; object-fit: cover; }
+.hw-tv-side .seg.hw-tv-seg { min-width: 0; width: 100%; margin: 0; }
+.hw-tv-side p.err { color: var(--red); }
+.hw-tv-side input[type="range"] { flex: 1 1 auto; min-width: 0; accent-color: var(--blue); }
+.hw-tv-side .hw-row .s.hw-tv-secs { flex: none; width: 44px; max-width: none; text-align: right; font-variant-numeric: tabular-nums; }
+.hw-tv-input { flex: 1 1 auto; min-width: 0; height: 30px; padding: 0 10px; border-radius: 8px; border: 0; background: var(--fill); color: var(--label); font: 14px var(--font); }
+.hw-tv-input:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
+.hw-tv-photos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 10px; }
+.hw-tv-photos img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 8px; background: var(--fill); display: block; }
+.hw-tv-wait { padding: 28px 4px; color: var(--label-2); font-size: 15px; }
+.hw-root[data-intv="1"] .hw-tv-side { flex: 1 1 auto; max-width: 720px; }
+@media (max-width: 900px) {
+  .hw-tv { flex-direction: column; align-items: center; overflow-y: auto; }
+  .hw-tv-side { flex: none; width: 100%; max-width: 560px; height: auto; overflow: visible; }
+}
 /* One grid for apps and widgets, like an iPhone: an app takes one slot, a small widget 2 by 2, medium 4 by 2, large 4 by 4. */
 /* A page reaches the edges of the window or device, so one sliding away leaves the whole screen. */
 .hw-pager { position: relative; flex: 1 1 0; min-height: 0; margin-left: calc(var(--hw-bl, 0px) * -1); margin-right: calc(var(--hw-br, 0px) * -1); padding-left: var(--hw-bl, 0px); padding-right: var(--hw-br, 0px); overflow-x: clip; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
@@ -760,6 +794,11 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
   const IN_TV = (() => { try { return window.parent !== window && !!window.parent.haven } catch { return false } })()
   const realDevice = () => !IN_TV && (PHONE.matches || TABLET.matches)
   const viewKey = () => (realDevice() ? (PHONE.matches ? 'mobile' : 'ipad') : S.mode)
+  // Pages (sideways, like an iPhone) or one long vertical scroll, chosen per view in Edit and kept on the hub.
+  // The TV scrolls by default, like tvOS; its view here is LocalHub TV itself.
+  const SCROLL_DEFAULT = { desktop: 'pages', ipad: 'pages', mobile: 'pages', tv: 'infinite' }
+  const scrollOf = vk => S.scroll?.[vk] || SCROLL_DEFAULT[vk] || 'pages'
+  const infinite = () => viewKey() !== 'tv' && scrollOf(viewKey()) === 'infinite'
   const layoutItems = vk => (S.layout ? S.layout[vk] || [] : [])
   // A layout holds widgets and app places ({ id: 'app', app }); in memory an app place has the key app:<id>.
   const isAppItem = it => it?.id === 'app'
@@ -817,6 +856,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
       const j = await fetchJson('/api/home/layout')
       S.layoutErr = ''
       S.layoutAt = Number(j.at) || S.layoutAt
+      if (j.scroll && !S.scrollSaving) S.scroll = { ...SCROLL_DEFAULT, ...j.scroll }
       S.layouts ||= {}
       takeLayout('main', j, force)
       takePages(j.pages || [], force)
@@ -1033,19 +1073,21 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     root.innerHTML = `<div class="hw-bar">
       <div class="seg hw-seg" role="tablist" aria-label="Layout" style="--n:4;--i:0"><span class="seg-thumb"></span><button type="button" role="tab" data-hw-mode="desktop">Desktop</button><button type="button" role="tab" data-hw-mode="ipad">iPad</button><button type="button" role="tab" data-hw-mode="mobile">Mobile</button><button type="button" role="tab" data-hw-mode="tv">TV</button></div>
       <div class="hw-hint" data-hw-hint></div>
-      <div class="hw-bar-r"><button type="button" class="hw-btn red" data-hw-act="reset" hidden>Reset</button><button type="button" class="hw-btn tint hw-iconly" data-hw-act="tabs" aria-label="Edit Tabs" hidden>${hic('tabs', 15)}<span class="hw-btn-t">Edit Tabs</span></button><button type="button" class="hw-btn tint hw-iconly" data-hw-act="style" aria-label="Edit Style" hidden>${hic('palette', 15)}<span class="hw-btn-t">Edit Style</span></button><button type="button" class="hw-btn tint hw-iconly" data-hw-act="pages" aria-label="Named Pages" hidden>${icon('layers', 15)}<span class="hw-btn-t">Named Pages</span></button><button type="button" class="hw-btn tint" data-hw-act="add" hidden>${icon('plus', 15)}Add</button><button type="button" class="hw-btn tint" data-hw-act="edit">Edit</button></div>
+      <div class="hw-bar-r"><div class="seg hw-scroll" role="radiogroup" aria-label="Scrolling" style="--n:2;--i:0" hidden><span class="seg-thumb"></span><button type="button" role="radio" data-hw-scroll="pages">Pages</button><button type="button" role="radio" data-hw-scroll="infinite">Infinite Scroll</button></div><button type="button" class="hw-btn red" data-hw-act="reset" hidden>Reset</button><button type="button" class="hw-btn tint hw-iconly" data-hw-act="tabs" aria-label="Edit Tabs" hidden>${hic('tabs', 15)}<span class="hw-btn-t">Edit Tabs</span></button><button type="button" class="hw-btn tint hw-iconly" data-hw-act="style" aria-label="Edit Style" hidden>${hic('palette', 15)}<span class="hw-btn-t">Edit Style</span></button><button type="button" class="hw-btn tint hw-iconly" data-hw-act="pages" aria-label="Named Pages" hidden>${icon('layers', 15)}<span class="hw-btn-t">Named Pages</span></button><button type="button" class="hw-btn tint" data-hw-act="add" hidden>${icon('plus', 15)}Add</button><button type="button" class="hw-btn tint" data-hw-act="edit">Edit</button></div>
     </div>
     <div class="hw-pages" data-hw-pages role="tablist" aria-label="Home Pages" hidden></div>
-    <div class="hw-stage"><div class="hw-device"><div class="hw-frame"><div class="hw-pager"><div class="hw-grid" data-hw-grid role="list" aria-label="Home"></div></div><div class="hw-dots" data-hw-dots></div></div></div></div>`
+    <div class="hw-stage"><div class="hw-device"><div class="hw-frame"><div class="hw-pager"><div class="hw-grid" data-hw-grid role="list" aria-label="Home"></div></div><div class="hw-dots" data-hw-dots></div></div></div></div>
+    <div class="hw-tv" data-hw-tv hidden></div>`
     return root
   }
 
   // Logical size of each device, its bezel, corners, and the insets of its screen.
-  const FRAME = { ipad: { w: 1024, h: 768, b: 13, r: 26, pt: 26, px: 26 }, tv: { w: 1280, h: 720, b: 12, r: 10, pt: 30, px: 40 }, mobile: { w: 390, h: 844, b: 11, r: 48, pt: 58, px: 20 } }
+  const FRAME = { ipad: { w: 1024, h: 768, b: 13, r: 26, pt: 26, px: 26 }, mobile: { w: 390, h: 844, b: 11, r: 48, pt: 58, px: 20 } }
   // Fits the device between the toggle and the chat bar. Off a device, Home takes what's left of the window.
   function frameFit() {
     const root = S.root, vk = viewKey(), f = !realDevice() && FRAME[vk]
     if (!root?.isConnected || S.drag?.on) return
+    if (vk === 'tv') { S.framed = false; root.dataset.framed = '0'; return tvFit() }
     S.framed = !!f
     root.dataset.framed = f ? '1' : '0'
     const stage = root.querySelector('.hw-stage'), frame = root.querySelector('.hw-frame'), top = stage.getBoundingClientRect().top
@@ -1062,11 +1104,12 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
   }
   // What a drag's numbers are measured in. In a device they are the device's own pixels, so a move stays arithmetic.
   // The pages moving under a held card count as its scroll.
+  // In one long scroll the pager's own scroll is the drag's.
   function view() {
-    const el = S.framed && S.root?.querySelector('.hw-frame')
-    if (!el) return { el: null, k: 1, left: 0, top: 0, x: () => S.px, y: () => 0 }
+    const el = S.framed && S.root?.querySelector('.hw-frame'), pg = infinite() ? S.root?.querySelector('.hw-pager') : null, y = () => (pg ? pg.scrollTop : 0)
+    if (!el) return { el: null, pg, k: 1, left: 0, top: 0, x: () => S.px, y }
     const r = el.getBoundingClientRect()
-    return { el, k: S.frameK, left: r.left, top: r.top, x: () => S.px, y: () => 0 }
+    return { el, pg, k: S.frameK, left: r.left, top: r.top, x: () => S.px, y }
   }
 
   /* ---------- pages: Home moves sideways, a page at a time ---------- */
@@ -1183,6 +1226,13 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     const vk = viewKey()
     root.dataset.view = vk
     root.dataset.phone = realDevice() ? '1' : '0'
+    root.dataset.scroll = infinite() ? 'infinite' : 'pages'
+    root.dataset.intv = IN_TV ? '1' : '0'
+    root.querySelector('[data-hw-tv]').hidden = vk !== 'tv'
+    const sc = root.querySelector('.hw-scroll'), how = scrollOf(vk)
+    sc.hidden = !S.editing
+    sc.style.setProperty('--i', how === 'infinite' ? 1 : 0)
+    sc.querySelectorAll('[data-hw-scroll]').forEach(b => b.setAttribute('aria-checked', String(b.dataset.hwScroll === how)))
     frameFit()
     root.classList.toggle('hw-edit', S.editing)
     if (S.stripEditing !== S.editing) { S.stripEditing = S.editing; window.HUB?.setTabsEditing?.(S.editing) }
@@ -1194,7 +1244,8 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     edit.classList.toggle('solid', S.editing)
     edit.classList.toggle('tint', !S.editing)
     paintPages(root)
-    for (const a of ['add', 'reset', 'style', 'tabs', 'pages']) root.querySelector(`[data-hw-act=${a}]`).hidden = !S.editing || (a !== 'add' && a !== 'reset' && !window.HUB) || (a === 'pages' && !S.pages.length)
+    // The TV view edits LocalHub TV beside its screen; of the rest, only the look (the hub's own) applies to it.
+    for (const a of ['add', 'reset', 'style', 'tabs', 'pages']) root.querySelector(`[data-hw-act=${a}]`).hidden = !S.editing || (a !== 'add' && a !== 'reset' && !window.HUB) || (a === 'pages' && !S.pages.length) || (vk === 'tv' && a !== 'style')
     const hint = root.querySelector('[data-hw-hint]')
     const bad = S.layoutErr
     hint.classList.toggle('err', !!bad)
@@ -1226,8 +1277,9 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     if (!root) return
     updateBar()
     const grid = root.querySelector('[data-hw-grid]')
-    if (!S.layout) { grid.innerHTML = '<div class="hw-empty">Loading your homescreen…</div>'; S.sig = ''; return }
     const vk = viewKey()
+    if (vk === 'tv') return paintTv()
+    if (!S.layout) { grid.innerHTML = '<div class="hw-empty">Loading your homescreen…</div>'; S.sig = ''; return }
     const items = homeItems(vk)
     const wm = widgetMap()
     setCols(grid)
@@ -1278,7 +1330,8 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
   function place(grid, cells = [...grid.querySelectorAll('.hw-cell')]) {
     const g = S.geo, cols = viewKey() === 'mobile' ? 4 : Number(grid.style.getPropertyValue('--cols')) || 8, shown = cells.filter(el => el.style.display !== 'none')
     // Every size has to fit on a page, so a short window makes the rows shorter rather than clipping a large widget.
-    const need = shown.reduce((m, el) => Math.max(m, spanOf(el)[1]), 1), fits = g.h ? Math.floor((g.h + g.gap) / (g.unit + g.gap)) : 999
+    // In one long scroll there's no bottom: rows keep their height and nothing goes to a next page.
+    const inf = infinite(), need = shown.reduce((m, el) => Math.max(m, spanOf(el)[1]), 1), fits = inf ? 1e4 : g.h ? Math.floor((g.h + g.gap) / (g.unit + g.gap)) : 999
     const rows = Math.max(1, need, fits), rh = rows > fits ? Math.max(44, (g.h - (rows - 1) * g.gap) / rows) : g.unit
     const used = new Set(), key = (r, c) => r * 64 + c
     const free = (r, c, w, h) => { for (let y = r; y < r + h; y++) for (let x = c; x < c + w; x++) if (used.has(key(y, x))) return false; return true }
@@ -1287,7 +1340,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     const next = over => { sheets.push([]); used.clear(); top = 0; height = 1; apps = false; spilled = over }
     for (const el of shown) {
       const [w, h] = spanOf(el)
-      if (el.hwBr && !S.q && sheets.at(-1).length) { if (spilled) spilled = false; else next(false) }
+      if (el.hwBr && !S.q && !inf && sheets.at(-1).length) { if (spilled) spilled = false; else next(false) }
       let spot = null
       for (let r = top; r < top + height && !spot; r++) {
         if (r + h > rows || (r + h > top + height && (r !== top || apps))) continue
@@ -1308,7 +1361,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
       if (el.hwArea !== area) { el.hwArea = area; el.style.gridArea = area }
     }
     S.sheets = sheets
-    if (S.q || !S.editing) S.extra = 0
+    if (S.q || !S.editing || inf) S.extra = 0
     const n = pageCount()
     // One set of columns per page, with a spacer so the next page starts off the screen.
     const cw = g.w ? (g.w - (cols - 1) * g.gap) / cols : 0, gutter = Math.max(0, g.bleed - 2 * g.gap + 4)
@@ -2822,7 +2875,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     return now - d.hover.at < 150
   }
   // Marks where each page starts now, so it stays that way when a card leaves or joins.
-  const pinPages = () => S.sheets.forEach((sheet, n) => sheet.forEach((el, i) => { el.hwBr = n > 0 && i === 0 }))
+  const pinPages = () => !infinite() && S.sheets.forEach((sheet, n) => sheet.forEach((el, i) => { el.hwBr = n > 0 && i === 0 }))
   // Held at the side of the page for a moment, the card goes on to the next page, as on an iPhone.
   // It lands first on that page and the rest make room; past the last page there's a new one.
   function dragTurn(d, dir) {
@@ -2854,7 +2907,12 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
   const EDGE = 28, EDGE_MS = 420
   function dragFrame(d) {
     const py = vy(d), vxx = vx(d), now = performance.now(), g = S.geo
-    const side = S.q ? 0 : vxx < g.left + EDGE ? -1 : vxx > g.left + g.w - EDGE ? 1 : 0
+    const side = S.q || d.v.pg ? 0 : vxx < g.left + EDGE ? -1 : vxx > g.left + g.w - EDGE ? 1 : 0
+    // In one long scroll, a card held near the top or bottom scrolls the grid under it.
+    if (d.v.pg) {
+      const r = d.v.pg.getBoundingClientRect(), v = d.y < r.top + 48 ? -1 : d.y > r.bottom - 48 ? 1 : 0
+      if (v) { const was = d.v.pg.scrollTop; d.v.pg.scrollTop += v * 9; if (d.v.pg.scrollTop !== was) { d.py = d.v.y(); dragPlace(d) } }
+    }
     if (side !== d.side) {
       d.side = side
       d.sideAt = now
@@ -2991,7 +3049,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
 
   let swipe = null
   function swipeStart(e) {
-    if (S.overlay || swipe || S.drag?.on || appDrag || (e.pointerType === 'mouse' && e.button !== 0) || !e.isPrimary) return
+    if (infinite() || S.overlay || swipe || S.drag?.on || appDrag || (e.pointerType === 'mouse' && e.button !== 0) || !e.isPrimary) return
     if (!e.target.closest('.hw-frame') || e.target.closest('.hw-ctl, input, textarea, select, [data-hw-pagebtn]')) return
     // With a mouse, a card in edit mode moves the card. A finger has a moment first, so a quick swipe still turns the page.
     if (S.editing && e.pointerType === 'mouse' && e.target.closest('.hw-cell')) return
@@ -3053,7 +3111,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
   }
   let wheel = { sum: 0, at: 0, quiet: 0 }
   function onWheel(e) {
-    if (S.overlay || S.drag?.on || swipe?.on || e.ctrlKey) return
+    if (infinite() || S.overlay || S.drag?.on || swipe?.on || e.ctrlKey) return
     const unit = e.deltaMode === 1 ? 32 : e.deltaMode === 2 ? innerHeight : 1, dx = e.deltaX * unit, dy = e.deltaY * unit, sideways = Math.abs(dx) >= Math.abs(dy)
     if (!sideways && wheelScroller(e.target, S.root)) return
     e.preventDefault()
@@ -3222,7 +3280,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
   addEventListener('scroll', e => {
     const d = S.drag
     if (e.target === document && showing() && S.root?.isConnected && scrollY) scrollTo(0, 0)
-    if (d?.on && (e.target === document || e.target === d.v.el)) { d.px = d.v.x(); d.py = d.v.y(); dragPlace(d) }
+    if (d?.on && (e.target === document || e.target === d.v.el || e.target === d.v.pg)) { d.px = d.v.x(); d.py = d.v.y(); dragPlace(d) }
     if (appDrag?.on) { appMeasure(appDrag); appPlace(appDrag) }
   }, { capture: true, passive: true })
   addEventListener('resize', () => {
@@ -3884,6 +3942,254 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     if (moved && onMain()) { scheduleRepaint(); loadSources(neededSources()) }
   })
 
+  /* ---------- scrolling: pages or one long scroll, per view ---------- */
+
+  async function setScroll(vk, how) {
+    if (scrollOf(vk) === how || !SCROLL_DEFAULT[vk]) return
+    S.scroll = { ...SCROLL_DEFAULT, ...S.scroll, [vk]: how }
+    S.at[vk] = 0
+    S.extra = 0
+    S.sig = ''
+    const pager = S.root?.querySelector('.hw-pager')
+    if (pager) pager.scrollTop = 0
+    if (S.kept) S.kept['hw-pager'] = 0
+    pagerSet(0)
+    paint()
+    if (vk === 'tv') tvPush()
+    S.scrollSaving = (S.scrollSaving || 0) + 1
+    try {
+      const out = await api('/api/home/layout', { scroll: { [vk]: how } })
+      if (out?.scroll && S.scrollSaving === 1) S.scroll = { ...SCROLL_DEFAULT, ...out.scroll }
+      S.layoutAt = Number(out?.at) || S.layoutAt
+      hud(how === 'infinite' ? 'Infinite scroll' : 'Pages')
+    } catch (e) { hud(`Couldn’t save: ${e.message}`) }
+    S.scrollSaving--
+    if (vk === 'tv') tvPush(true)
+  }
+
+  /* ---------- TV: LocalHub TV as it really is, and what it uses ----------
+     The TV view is the real /tv/ page in preview mode, scaled onto a screen, so it can't drift from
+     the TV. Edit shows beside it what the TV takes from the hub: its apps and their order (tv.apps,
+     tv.hidden) and how it scrolls (scroll.tv); the look and wallpaper are the hub's own. Opened
+     inside LocalHub TV, the TV itself is the preview. */
+
+  const tvTarget = () => { try { return IN_TV ? window.parent.LocalHubTV : S.tvHost?.firstChild?.contentWindow?.LocalHubTV } catch { return null } }
+  // What the TV uses, with edits on their way to the hub on top.
+  function tvState() {
+    const st = window.HUB?.settings || {}
+    return {
+      apps: S.tvApps?.apps ?? st.tv?.apps ?? [],
+      hidden: S.tvApps?.hidden ?? st.tv?.hidden ?? [],
+    }
+  }
+  // Shows an edit on the TV at once (the preview, or the TV around this page); sync reads the hub again.
+  function tvPush(sync) {
+    const tv = tvTarget()
+    if (!tv) return
+    if (sync || !window.HUB?.settings) return void tv.sync?.()
+    const st = window.HUB.settings, cur = tvState()
+    tv.apply?.({ ...st, tv: { ...(st.tv || {}), apps: cur.apps, hidden: cur.hidden, saver: saverOf() }, scroll: { ...SCROLL_DEFAULT, ...(st.scroll || {}), ...S.scroll } })
+  }
+
+  function paintTv() {
+    const box = S.root.querySelector('[data-hw-tv]')
+    if (!box.firstChild) {
+      box.innerHTML = (IN_TV ? '' : '<div class="hw-tv-screen"><div class="hw-tv-glass"></div><div class="hw-tv-neck"></div><div class="hw-tv-base"></div></div>') +
+        '<aside class="hw-tv-side" data-hw-tvside aria-label="What LocalHub TV shows" hidden></aside>'
+    }
+    // The hub puts Home back into the page every few seconds, and a moved iframe starts over. So the TV
+    // lives in a frame of its own on <body>, kept over the screen drawn here.
+    if (!IN_TV && !S.tvHost) {
+      S.tvHost = document.createElement('div')
+      S.tvHost.className = 'hw-tv-float'
+      S.tvHost.innerHTML = '<iframe src="/tv/?preview" title="LocalHub TV, as it looks now"></iframe>'
+      S.tvHost.firstChild.addEventListener('load', () => { const side = S.root?.querySelector('[data-hw-tvside]'); if (side) side._sig = ''; paintTvSide() })
+      document.body.append(S.tvHost)
+    }
+    const side = box.querySelector('[data-hw-tvside]'), opening = side.hidden && (S.editing || IN_TV)
+    side.hidden = !S.editing && !IN_TV
+    if (opening) saverPreview()
+    paintTvSide()
+    tvFit()
+    tvTrack()
+  }
+  // Follows the screen while Home's TV view is showing, and hides when it isn't.
+  function tvTrack() {
+    if (!S.tvHost || S.tvRaf) return
+    const host = S.tvHost, step = () => {
+      const glass = S.root?.querySelector('.hw-tv-glass'), box = glass?.closest('.hw-tv')
+      if (!glass?.isConnected || !showing() || viewKey() !== 'tv' || !box || box.hidden) { host.style.visibility = 'hidden'; S.tvRaf = 0; return }
+      const r = glass.getBoundingClientRect(), b = box.getBoundingClientRect()
+      const k = `${r.left}|${r.top}|${r.width}|${r.height}|${b.top}|${b.bottom}`
+      if (host._k !== k) {
+        host._k = k
+        Object.assign(host.style, { left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px`, clipPath: `inset(${Math.max(0, b.top - r.top)}px 0 ${Math.max(0, r.bottom - b.bottom)}px 0 round 10px)` })
+      }
+      host.style.visibility = 'visible'
+      S.tvRaf = requestAnimationFrame(step)
+    }
+    S.tvRaf = requestAnimationFrame(step)
+  }
+  // The screen as big as fits between the bar and the chat bar, beside the panel when it's open.
+  function tvFit() {
+    const root = S.root, box = root?.querySelector('[data-hw-tv]')
+    if (!box || box.hidden) return
+    const h = Math.max(260, innerHeight - box.getBoundingClientRect().top - 84), side = box.querySelector('[data-hw-tvside]')
+    const beside = side && !side.hidden && innerWidth > 900 ? 360 + 28 : 0
+    const w = Math.max(280, Math.min(root.clientWidth - beside - 8, (h - 66) * 16 / 9 + 24))
+    box.style.setProperty('--tvh', `${Math.floor(h)}px`)
+    box.style.setProperty('--tvw', `${Math.floor(w)}px`)
+  }
+
+  const tvMini = a => `<span class="hw-tv-mini" style="--a-bg:${esc(a.bg || '#2c2c2e')};--a-fg:${esc(a.fg || '#fff')}" aria-hidden="true">${a.img ? `<img src="${esc(a.img)}" alt="">` : a.icon ? `<i style="--glyph:url('/tv/brands/${esc(a.icon)}.svg')"></i>` : esc((a.letter || a.name || '?').slice(0, 1))}</span>`
+  // The apps as the TV draws them: its order, then the ones it leaves out.
+  function tvLists() {
+    const tv = tvTarget()
+    if (!tv?.apps) return null
+    const all = tv.apps(), st = tvState()
+    const byId = new Map(all.map(a => [a.id, a])), hidden = new Set(st.hidden), listed = st.apps.filter(id => byId.has(id))
+    const shown = [...listed, ...all.map(a => a.id).filter(id => !listed.includes(id))].filter(id => !hidden.has(id))
+    return { all, byId, st, shown, off: all.filter(a => hidden.has(a.id)).map(a => a.id) }
+  }
+  function paintTvSide() {
+    const side = S.root?.querySelector('[data-hw-tvside]')
+    if (!side || side.hidden || side.querySelector('.hc-sorting')) return
+    const L = tvLists()
+    if (!L) { if (!side.querySelector('.hw-tv-wait')) { side._sig = ''; side.innerHTML = '<div class="hw-tv-wait">Loading LocalHub TV…</div>' } return }
+    // A field being typed in keeps its text: the panel waits until it's left.
+    if (side.contains(document.activeElement) && document.activeElement.matches('input[type="text"]')) return
+    const sig = JSON.stringify([L.shown, L.off, saverOf(), S.tvSaverErr || '', S.tvSaverPrev || null, Object.keys(tvTarget()?.widgets?.() || {})])
+    if (side._sig === sig) return
+    side._sig = sig
+    const grip = (kind, id, label) => `<span class="hc-grip" tabindex="0" role="button" data-hw-tvgrip="${kind}" data-id="${esc(id)}" title="Drag to reorder" aria-label="Move ${esc(label)}, with the arrow keys">${hic('grip', 18)}</span>`
+    const apps = L.shown.map(id => { const a = L.byId.get(id); return `<div class="hw-row hc-trow" data-id="${esc(id)}">${grip('apps', id, a.name)}${tvMini(a)}<span class="t ell">${esc(a.name)}</span><button type="button" class="hw-ib" data-hw-tvact="app-hide" data-id="${esc(id)}" aria-label="Hide ${esc(a.name)} on the TV" title="Hide">${icon('minus', 17)}</button></div>` }).join('')
+    const off = L.off.map(id => { const a = L.byId.get(id); return `<div class="hw-row">${tvMini(a)}<span class="t ell">${esc(a.name)}</span><button type="button" class="hw-pill" data-hw-tvact="app-show" data-id="${esc(id)}" aria-label="Show ${esc(a.name)} on the TV">${icon('plus', 14)}Show</button></div>` }).join('')
+    const name = esc(window.HUB_CONF?.name || 'LocalHub'), y = side.scrollTop
+    side.innerHTML =
+      dsec('Apps', `<div class="hw-dlist hw-applist" data-hw-tvlist="apps">${apps || '<div class="hw-row"><span class="t">No apps on the TV</span></div>'}</div><p>After ${name}, in this order. Inputs and Settings follow them.</p>`) +
+      (off ? dsec('Hidden Apps', `<div class="hw-dlist hw-applist">${off}</div>`) : '') +
+      `<button type="button" class="hw-wide" data-hw-tvact="apps-reset" style="margin-top:22px">${hic('reset', 17)}Default Order</button>` +
+      (window.HUB?.openStyle ? `<button type="button" class="hw-wide" data-hw-tvact="style">${hic('palette', 17)}Wallpaper and Style</button>` : '') +
+      saverHtml() +
+      (IN_TV ? '' : `<button type="button" class="hw-wide" data-hw-tvact="open" style="margin-top:22px">${icon('open', 17)}Open LocalHub TV</button>`) +
+      `<section class="hw-dsec"><p>Saved on the hub. A TV showing LocalHub picks it up within 30 seconds. The wallpaper and style are the hub’s own.</p></section>`
+    side.scrollTop = y
+    if (window.HUB?.sortable) {
+      const al = side.querySelector('[data-hw-tvlist="apps"]')
+      if (al) window.HUB.sortable(al, { item: '.hc-trow', handle: '.hc-grip', scroller: side, onDrop: ids => tvSaveOrder(ids) })
+    }
+  }
+
+  /* The TV's screensaver (tv.saver): photos from a library, how they move, and the widgets over them.
+     The screensaver itself (GET /api/tv/saver and the TV's drawing of it) is its own part of the hub;
+     this only edits the setting and shows a few of the photos it would use. */
+  const SAVER_DEFAULT = { source: 'wallpapers', folder: '', interval: 12, shuffle: true, motion: 'kenburns', widgets: ['clock', 'date'] }
+  const SAVER_SOURCES = [['wallpapers', 'Wallpapers'], ['folder', 'Folder'], ['icloud', 'iCloud'], ['pictures', 'Pictures']]
+  const SAVER_MAX = 4
+  const saverOf = () => ({ ...SAVER_DEFAULT, ...(window.HUB?.settings?.tv?.saver || {}), ...(S.tvSaver || {}) })
+  const segOf = (field, opts, cur, label) => `<div class="seg hw-tv-seg" role="radiogroup" aria-label="${esc(label)}" style="--n:${opts.length};--i:${Math.max(0, opts.findIndex(([v]) => v === cur))}"><span class="seg-thumb"></span>${opts.map(([v, t]) => `<button type="button" role="radio" aria-checked="${v === cur}" data-hw-tvact="saver-${field}" data-id="${esc(v)}">${esc(t)}</button>`).join('')}</div>`
+  function saverHtml() {
+    const v = saverOf(), wid = tvTarget()?.widgets?.() || {}, on = v.widgets.filter(id => wid[id]), full = on.length >= SAVER_MAX, P = S.tvSaverPrev
+    const widgets = Object.entries(wid).map(([id, label]) => { const has = on.includes(id); return `<div class="hw-row"><span class="t">${esc(label)}</span><button type="button" class="hc-switch" role="switch" aria-label="${esc(label)} on the screensaver" aria-checked="${has}" data-hw-tvact="saver-widget" data-id="${esc(id)}"${!has && full ? ' disabled' : ''}></button></div>` }).join('')
+    const photos = P?.photos?.length ? `<div class="hw-tv-photos">${P.photos.slice(0, 6).map(ph => `<img src="${esc(ph.url)}" alt="" loading="lazy">`).join('')}</div>` : ''
+    const src = P?.source ? `<p${P.source.ok === false ? ' class="err"' : ''}>${esc(P.source.ok === false ? P.source.error || `${P.source.label || 'This library'} can’t be read.` : P.source.label || '')}</p>` : ''
+    return dsec('Screensaver', `${segOf('source', SAVER_SOURCES, v.source, 'Photos from')}` +
+      (v.source === 'folder' ? `<div class="hw-dlist" style="margin-top:8px"><label class="hw-row"><span class="t">Folder</span><input type="text" class="hw-tv-input" data-hw-saver="folder" value="${esc(v.folder || '')}" placeholder="A folder on this computer" spellcheck="false" autocomplete="off"></label></div><p>A folder on this computer, read by the hub.</p>` : '') +
+      photos + src +
+      `<div class="hw-dlist" style="margin-top:12px"><label class="hw-row"><span class="t">Each photo</span><input type="range" min="5" max="300" step="1" value="${Number(v.interval) || 12}" data-hw-saver="interval" aria-label="Seconds each photo shows"><span class="s hw-tv-secs" data-hw-secs>${Number(v.interval) || 12} s</span></label>` +
+      `<div class="hw-row"><span class="t">Shuffle</span><button type="button" class="hc-switch" role="switch" aria-label="Shuffle" aria-checked="${!!v.shuffle}" data-hw-tvact="saver-shuffle"></button></div></div>` +
+      `<div style="margin-top:12px">${segOf('motion', [['kenburns', 'Ken Burns'], ['fade', 'Fade']], v.motion, 'Motion')}</div>` +
+      (widgets ? `<h3 style="margin-top:18px">On the Screensaver</h3><div class="hw-dlist">${widgets}</div><p>Up to ${SAVER_MAX}.</p>` : '') +
+      (S.tvSaverErr ? `<p class="err">${esc(S.tvSaverErr)}</p>` : ''))
+  }
+  // Shown at once, then saved whole; the hub's answer (or its refusal) comes back to the panel.
+  async function tvSaveSaver(change) {
+    const next = { ...saverOf(), ...change }, seq = (S.tvSaverSeq = (S.tvSaverSeq || 0) + 1)
+    S.tvSaver = next
+    tvPush()
+    paintTvSide()
+    try {
+      if (window.HUB?.patch) await window.HUB.patch({ tv: { saver: next } })
+      else await api('/api/hub/settings', { tv: { saver: next } })
+      S.tvSaverErr = ''
+      if (seq === S.tvSaverSeq) S.tvSaver = null
+      tvPush(true)
+      saverPreview()
+    } catch (e) {
+      // Kept on screen, so nothing chosen is lost while the hub catches up.
+      S.tvSaverErr = /tv\.saver/.test(e.message) ? 'This hub can’t keep screensaver settings yet. Update LocalHub, then choose again.' : `Couldn’t save: ${e.message}`
+    }
+    paintTvSide()
+  }
+  // A few of the photos the screensaver would show. A hub without the screensaver has no preview.
+  function saverPreview() {
+    clearTimeout(S.tvSaverT)
+    S.tvSaverT = setTimeout(async () => {
+      let next = null
+      try {
+        const r = await fetch('/api/tv/saver', { cache: 'no-store' })
+        const j = r.ok ? await r.json().catch(() => null) : null
+        if (j && (Array.isArray(j.photos) || j.source)) next = { photos: (j.photos || []).filter(p => p && typeof p.url === 'string').slice(0, 6), source: j.source || null }
+      } catch {}
+      S.tvSaverPrev = next
+      paintTvSide()
+    }, 250)
+  }
+  function saverField(field, value) {
+    if (field === 'interval') return tvSaveSaver({ interval: Math.max(5, Math.min(300, Math.round(Number(value) || 12))) })
+    if (field === 'folder') { const f = String(value || '').trim(); if (f !== (saverOf().folder || '')) tvSaveSaver({ folder: f }) }
+  }
+
+  // tv.apps keeps the ids this screen doesn't have (another TV's apps), so one TV's edit keeps the other's order.
+  async function tvSaveApps(shown, off) {
+    const L = tvLists()
+    if (!L) return
+    const mine = new Set(L.all.map(a => a.id)), seq = (S.tvSeq = (S.tvSeq || 0) + 1)
+    const apps = [...shown, ...L.st.apps.filter(id => !mine.has(id))], hidden = [...off, ...L.st.hidden.filter(id => !mine.has(id))]
+    S.tvApps = { apps, hidden }
+    tvPush()
+    paintTvSide()
+    try {
+      if (window.HUB?.patch) await window.HUB.patch({ tv: { apps, hidden } })
+      else await api('/api/hub/settings', { tv: { apps, hidden } })
+      tvPush(true)
+    } catch (e) { hud(`Couldn’t save: ${e.message}`) }
+    if (seq === S.tvSeq) { S.tvApps = null; paintTvSide() }
+  }
+  const tvSaveOrder = ids => { const L = tvLists(); if (L) tvSaveApps(ids, L.off) }
+  function tvAction(act, id) {
+    if (act === 'style') return window.HUB?.openStyle?.()
+    if (act === 'open') return void window.open('/tv/', '_blank', 'noopener')
+    if (act === 'saver-source') return tvSaveSaver({ source: id })
+    if (act === 'saver-motion') return tvSaveSaver({ motion: id })
+    if (act === 'saver-shuffle') return tvSaveSaver({ shuffle: !saverOf().shuffle })
+    if (act === 'saver-widget') { const cur = saverOf().widgets, w = cur.filter(x => x !== id); return tvSaveSaver({ widgets: w.length === cur.length ? [...w, id].slice(0, SAVER_MAX) : w }) }
+    const L = tvLists()
+    if (!L) return
+    if (act === 'app-hide') return tvSaveApps(L.shown.filter(x => x !== id), [...L.off, id])
+    if (act === 'app-show') return tvSaveApps(L.shown.includes(id) ? L.shown : [...L.shown, id], L.off.filter(x => x !== id))
+    if (act === 'apps-reset') {
+      const seq = (S.tvSeq = (S.tvSeq || 0) + 1)
+      S.tvApps = { apps: [], hidden: [] }
+      tvPush()
+      paintTvSide()
+      const done = () => { if (seq === S.tvSeq) { S.tvApps = null; paintTvSide() } tvPush(true) }
+      const body = { tv: { apps: null, hidden: null } }
+      return (window.HUB?.patch ? window.HUB.patch(body) : api('/api/hub/settings', body)).then(() => { hud('Default order'); done() }, e => { hud(`Couldn’t save: ${e.message}`); done() })
+    }
+  }
+  // The arrow keys on a grip move that row, for anyone not dragging.
+  function tvMove(kind, id, dir) {
+    const L = tvLists()
+    if (!L) return
+    const list = [...L.shown], i = list.indexOf(id), j = i + dir
+    if (i < 0 || j < 0 || j >= list.length) return
+    list.splice(i, 1)
+    list.splice(j, 0, id)
+    tvSaveOrder(list)
+    requestAnimationFrame(() => S.root?.querySelector(`[data-hw-tvgrip="${kind}"][data-id="${CSS.escape(id)}"]`)?.focus())
+  }
+
   /* ---------- actions ---------- */
 
   function setMode(m) {
@@ -3893,11 +4199,15 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     S.extra = 0
     S.sig = ''
     scrollTo(0, 0)
+    const pager = S.root?.querySelector('.hw-pager')
+    if (pager) pager.scrollTop = 0
+    S.kept = {}
     paint()
     const dev = S.root?.querySelector('.hw-device'), grid = S.root?.querySelector('[data-hw-grid]')
+    if (m === 'tv') { const tv = S.root?.querySelector('[data-hw-tv]'); if (tv?.animate && !REDUCED.matches) tv.animate([{ opacity: 0, transform: 'scale(.98)' }, { opacity: 1, transform: 'none' }], { duration: 260, easing: EASE }) }
     if (S.framed) {
       if (dev.animate && !REDUCED.matches) dev.animate([{ opacity: 0, transform: `scale(${S.frameK * 0.96})` }, { opacity: 1, transform: `scale(${S.frameK})` }], { duration: 280, easing: EASE })
-    } else if (grid?.animate && !REDUCED.matches) grid.animate([{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: 240, easing: EASE })
+    } else if (m !== 'tv' && grid?.animate && !REDUCED.matches) grid.animate([{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: 240, easing: EASE })
     loadSources(neededSources())
   }
   function toggleEdit() {
@@ -3933,6 +4243,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     hud('Layout reset')
   }
   const neededSources = () => {
+    if (viewKey() === 'tv') return []
     const wm = widgetMap(), ids = new Set()
     for (const it of flatItems(viewKey())) for (const s of (wm.get(it.id) ? srcOf(wm.get(it.id)) : [])) ids.add(s)
     return [...ids]
@@ -3943,6 +4254,10 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
       const t = e.target
       const mode = t.closest('[data-hw-mode]')
       if (mode) return setMode(mode.dataset.hwMode)
+      const how = t.closest('[data-hw-scroll]')
+      if (how) return setScroll(viewKey(), how.dataset.hwScroll)
+      const tvAct = t.closest('[data-hw-tvact]')
+      if (tvAct) return tvAction(tvAct.dataset.hwTvact, tvAct.dataset.id)
       const act = t.closest('[data-hw-act]')
       if (act) {
         const a = act.dataset.hwAct
@@ -3974,6 +4289,8 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
       if (cell && !S.editing && t.closest('.hw-card')) openDetail(t.closest('[data-hw-wkey]')?.dataset.hwWkey || cell.dataset.hwKey)
     })
     root.addEventListener('keydown', e => {
+      const grip = e.target.closest?.('[data-hw-tvgrip]')
+      if (grip && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) { e.preventDefault(); return tvMove(grip.dataset.hwTvgrip, grip.dataset.id, e.key === 'ArrowUp' ? -1 : 1) }
       const ao = S.editing && e.target.closest?.('[data-hw-appopen]')
       if (ao && /^Arrow(Left|Right|Up|Down)$/.test(e.key)) { e.preventDefault(); return moveApp(ao.dataset.hwAppopen, /Left|Up/.test(e.key) ? -1 : 1) }
       if (ao && (e.key === 'Delete' || e.key === 'Backspace')) { e.preventDefault(); return removeApp(ao.dataset.hwAppopen) }
@@ -3989,6 +4306,10 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     // Tabbing to a card on another page brings that page.
     root.addEventListener('focusin', e => { const c = e.target.closest?.('.hw-cell'); if (c && !S.drag?.on && c.hwPage != null && c.hwPage !== at()) pagerGo(c.hwPage) })
     root.addEventListener('scroll', onStackScroll, true)
+    // The screensaver's slider shows its value as it moves, and saves where it stops; the folder saves when left.
+    root.addEventListener('input', e => { if (e.target.dataset?.hwSaver === 'interval') { const o = e.target.parentElement.querySelector('[data-hw-secs]'); if (o) o.textContent = `${e.target.value} s` } })
+    root.addEventListener('change', e => { const f = e.target.dataset?.hwSaver; if (f) saverField(f, e.target.value) })
+    root.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.dataset?.hwSaver === 'folder') { e.preventDefault(); e.target.blur() } })
     root.addEventListener('contextmenu', e => {
       // A held finger means edit, never the phone's own menu.
       if (e.pointerType === 'touch' && e.target.closest('.hw-cell')) { e.preventDefault(); e.stopPropagation(); return }
@@ -4040,11 +4361,13 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     scheduleRepaint()
   }
 
+  const KEEP_SCROLL = ['hw-pager', 'hw-tv', 'hw-tv-side']
   function mount() {
     const slot = document.getElementById('hw-slot')
     if (!slot || !S.root) return
     slot.replaceWith(S.root)
     if (scrollY) scrollTo(0, 0)
+    for (const k of KEEP_SCROLL) { const el = S.root.querySelector(`.${k}`); if (el && S.kept?.[k] && el.scrollTop !== S.kept[k]) el.scrollTop = S.kept[k] }
     // The hub replaces the page every few seconds; cards update only if the hub's own data moved.
     const st = typeof data !== 'undefined' && data ? `${data.laptop?.at}:${data.server?.at}:${data.syncs?.at}` : ''
     const moved = st !== S.hubSig
@@ -4060,6 +4383,9 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
 
   function render() {
     if (!S.root) { S.root = buildRoot(); wireRoot(S.root); startTimers() }
+    // The hub puts Home back into the page every few seconds, which starts every scroller at the top
+    // again: what was scrolled is noted here, while Home is still in the page, and put back in mount.
+    else if (S.root.isConnected) for (const k of KEEP_SCROLL) { const el = S.root.querySelector(`.${k}`); if (el) (S.kept ||= {})[k] = el.scrollTop }
     queueMicrotask(mount)
     return '<div id="hw-slot"></div>'
   }
