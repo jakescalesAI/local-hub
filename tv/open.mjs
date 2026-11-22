@@ -1,11 +1,13 @@
-// npm run tv — LocalHub TV on this computer, full screen, in its own window.
+// npm run tv — LocalHub TV on this computer, in its own window.
 //
 // Opens http://localhost:<port>/tv/ as an app window (no tabs or address bar) in Edge or Chrome,
 // so a laptop shows exactly what a TV would. The keyboard is the remote: arrows, Enter, Esc,
-// M for the drop-down, Space to talk. F11 leaves full screen; Alt+F4 closes it.
+// M for Control Center, Space to talk. It opens maximised with a normal title bar, so nothing on the
+// page sits under the window's controls; F11 (or --fullscreen) goes full screen like a real TV.
 //
-//   npm run tv              full screen
-//   npm run tv -- --window  in a window, 1600×900
+//   npm run tv                  maximised, with a title bar
+//   npm run tv -- --fullscreen  full screen
+//   npm run tv -- --window      in a window, 1600×900
 import { spawn } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -14,6 +16,7 @@ import { PORT } from '../config.mjs'
 
 const url = `http://localhost:${PORT}/tv/`
 const windowed = process.argv.includes('--window')
+const fullscreen = process.argv.includes('--fullscreen')
 
 async function hubUp() {
   try {
@@ -49,7 +52,7 @@ if (!bin) {
 // Its own profile, so the TV window keeps its settings and never mixes with your browsing.
 const profile = path.join(os.homedir(), '.localhub-tv-window')
 const args = [`--app=${url}`, `--user-data-dir=${profile}`, '--no-first-run', '--no-default-browser-check', '--autoplay-policy=no-user-gesture-required']
-args.push(windowed ? '--window-size=1600,900' : '--start-fullscreen')
+args.push(windowed ? '--window-size=1600,900' : fullscreen ? '--start-fullscreen' : '--start-maximized')
 spawn(bin, args, { detached: true, stdio: 'ignore' }).unref()
-console.log(`LocalHub TV is open${windowed ? '' : ' full screen'}: ${url}`)
+console.log(`LocalHub TV is open${windowed ? ' in a window' : fullscreen ? ' full screen' : ''}: ${url}${fullscreen ? '' : ' (F11 for full screen)'}`)
 console.log('Keys: arrows move, Enter opens, Esc goes back, M opens the drop-down, Space talks, ? shows the keys.')
