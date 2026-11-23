@@ -385,7 +385,7 @@ export function create({ run, sshHost, here }) {
   const file = (id, test) => path.join(test ? TEST_DIR : DIR, `${id}.json`)
   const newId = () => 'c' + Date.now().toString(36) + crypto.randomBytes(3).toString('hex')
   function load(id) {
-    if (!ID_RE.test(id)) return null
+    if (!ID_RE.test(id) || id === 'current') return null // current.json says which chat is current; it isn't one
     let c = null
     for (const test of [false, true]) {
       try { c = JSON.parse(fs.readFileSync(file(id, test), 'utf8')); break } catch {}
