@@ -307,7 +307,10 @@ html.lite .saver .w.card { --lg-tint: rgba(22, 22, 28, .72); }
 .saver-note.on { opacity: 1; }
 
 /* ── toast ─────────────────────────────────────────────────────────────────── */
-.toast { position: fixed; left: 50%; bottom: 96px; z-index: 2147483500; transform: translate(-50%, 10px) scale(.94); padding: 10px 18px; border-radius: 20px; font-size: 15px; font-weight: 600; background: var(--menu-bg); box-shadow: 0 0 0 .5px var(--sep), 0 10px 30px rgba(0, 0, 0, .2); opacity: 0; transition: opacity .2s, transform .3s var(--ease); pointer-events: none; }
+/* Touch: a long press on a tile is the remote's held OK; the iPad's own picture menu stays out of it. */
+.app, .app img { -webkit-touch-callout: none; -webkit-user-drag: none; }
+.app img { pointer-events: none; }
+.toast { position: fixed; left: 50%; bottom: 3.5vh; z-index: 2147483500; transform: translate(-50%, 10px) scale(.94); padding: 10px 18px; border-radius: 20px; font-size: 15px; font-weight: 600; background: var(--menu-bg); box-shadow: 0 0 0 .5px var(--sep), 0 10px 30px rgba(0, 0, 0, .2); opacity: 0; transition: opacity .2s, transform .3s var(--ease); pointer-events: none; }
 .toast.on { opacity: 1; transform: translate(-50%, 0); }
 
 /* ── splash: the hub's house ───────────────────────────────────────────────── */

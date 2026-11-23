@@ -1934,7 +1934,8 @@ function tileMenuKey(name) {
     if (S.zone === "favs" && S.f >= favs.length - 1) S.f = Math.max(0, S.f - 1);
     return saveTv({ favorites: favs.filter((x) => x !== it.id) }, `Removed ${it.name} from Favorites`);
   }
-  if (act === "move") { S.moving = it.id; paintMoving(); return toast("Move it with the arrows, then press OK"); }
+  const howToMove = S.touch ? "Tap where it should go" : "Move it with the arrows, then press OK";
+  if (act === "move") { S.moving = it.id; paintMoving(); return toast(howToMove); }
   if (act === "hide") {
     const hidden = [...new Set([...(SETTINGS?.tv?.hidden || []), it.id])];
     return saveTv({ hidden }, `Hid ${it.name}. Settings, Hidden apps brings it back`);
@@ -2023,12 +2024,61 @@ document.addEventListener("wheel", (e) => {
   clearTimeout(document.wheelT);
   document.wheelT = setTimeout(() => move(0, Math.sign(e.deltaY)), 30);
 }, { passive: true });
+function pickTile(a) {
+  if (a.dataset.f !== undefined) { S.zone = "favs"; S.f = Number(a.dataset.f); } else { S.zone = "grid"; S.i = Number(a.dataset.i); }
+  applyFocus();
+}
+// Touch (an iPad) and the mouse: holding a tile is the remote's held OK, the tile menu. A right-click too.
+const HOLD = { t: null, x: 0, y: 0, fired: false };
+document.addEventListener("pointerdown", (e) => {
+  S.touch = e.pointerType === "touch";
+  HOLD.fired = false;
+  clearTimeout(HOLD.t);
+  const app = e.target.closest?.(".app");
+  if (!app || S.overlay || S.moving || PREVIEW) return;
+  HOLD.x = e.clientX; HOLD.y = e.clientY;
+  HOLD.t = setTimeout(() => { HOLD.fired = true; pickTile(app); openTileMenu(); }, 550);
+}, { passive: true });
+document.addEventListener("pointermove", (e) => { if (HOLD.t && Math.hypot(e.clientX - HOLD.x, e.clientY - HOLD.y) > 12) clearTimeout(HOLD.t); }, { passive: true });
+document.addEventListener("pointerup", () => clearTimeout(HOLD.t), { passive: true });
+document.addEventListener("pointercancel", () => clearTimeout(HOLD.t), { passive: true });
+document.addEventListener("contextmenu", (e) => {
+  const app = e.target.closest?.(".app");
+  if (!app) return;
+  e.preventDefault();
+  if (S.overlay || S.moving || PREVIEW || HOLD.fired) return;
+  pickTile(app);
+  openTileMenu();
+});
+// Moving by touch: tap where the tile should go (in the same row of Favorites, or among the apps).
+function moveTo(app) {
+  if (S.zone === "favs") {
+    if (app.dataset.f === undefined) return toast("Tap a spot in Favorites to put it there");
+    const from = FAVS.findIndex((a) => a.id === S.moving), to = Number(app.dataset.f);
+    if (from >= 0 && to !== from) { const [m] = FAVS.splice(from, 1); FAVS.splice(to, 0, m); S.f = to; renderFavs(); applyFocus(); }
+    return moveKey("enter");
+  }
+  const target = ITEMS[Number(app.dataset.i)];
+  if (app.dataset.f !== undefined || !movable(target)) return toast("Tap another app to put it there");
+  const apps = ITEMS.filter(movable);
+  const from = apps.findIndex((a) => a.id === S.moving), to = apps.indexOf(target);
+  if (from >= 0 && to !== from) { const [m] = apps.splice(from, 1); apps.splice(to, 0, m); ITEMS = [...apps, ...ITEMS.filter((x) => !movable(x))]; S.i = to; renderGrid(); }
+  return moveKey("enter");
+}
+
 document.addEventListener("click", (e) => {
-  const pick = (a) => { if (a.dataset.f !== undefined) { S.zone = "favs"; S.f = Number(a.dataset.f); } else { S.zone = "grid"; S.i = Number(a.dataset.i); } applyFocus(); };
-  if (PREVIEW) { const a = e.target.closest(".app"); if (a) pick(a); return; }
+  if (HOLD.fired) { HOLD.fired = false; return; } // the long press already opened the menu
+  if (PREVIEW) { const a = e.target.closest(".app"); if (a) pickTile(a); return; }
   if (S.overlay === "saver") return stopSaver();
+  if (S.overlay === "tilemenu") {
+    const item = e.target.closest(".tilemenu-item");
+    if (item) { S.menuAt = Number(item.dataset.m); paintTileMenu(); return tileMenuKey("enter"); }
+    if (!e.target.closest(".tilemenu-card")) return closeTileMenu();
+    return;
+  }
   const app = e.target.closest(".app");
-  if (app && !S.overlay) { pick(app); return press(activate); }
+  if (app && S.moving && !S.overlay) return moveTo(app);
+  if (app && !S.overlay) { pickTile(app); return press(activate); }
   const tile = e.target.closest(".cc-tile[data-i]");
   if (tile) { S.cc = Number(tile.dataset.i); paintCC(); return ccActivate(); }
   const row = e.target.closest("#setTrack .row");
@@ -2081,6 +2131,7 @@ let splashReady = null;
 async function boot() {
   applyLook();
   loadItems();
+  if (hasFavs()) S.zone = "favs"; // like Home: the first thing is your Favorites
   renderGrid();
   renderRail();
   setView("home");
@@ -2103,6 +2154,8 @@ async function boot() {
     if (NATIVE && !S.walked && !document.body.classList.contains("booted")) { S.walked = true; window.__boot.walk = Math.round(performance.now()); await walkRows(); }
     window.__boot.home = Math.round(performance.now());
     window.LocalHubSplash?.release?.();
+    // Home's cover (the TV app's) waits for this on a page that was still loading.
+    window.LocalHubSplash?.done?.then(() => native("drawn"));
   });
   if (PREVIEW) { $("#keys").style.transition = "none"; showKeys(false); }
   else if (!NATIVE) { showKeys(prefs.help); if (prefs.help) setTimeout(() => showKeys(false), 12000); }

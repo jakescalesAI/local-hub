@@ -109,11 +109,17 @@ public class HomeWatchService extends Service {
      *  or after 2.5 s at most. Redrawing after the background took the stick about a second of 200-400 ms frames. */
     static void localHubShown() {
         HomeWatchService s = self;
-        if (s != null) s.main.postDelayed(s::hideCover, 2500);
+        // A page that's still loading (Fire OS had closed LocalHub) says drawn() once its home screen is up; until
+        // then the cover stays, rather than leaving a blank screen.
+        if (s != null && pageReady) s.main.postDelayed(s::hideCover, 2500);
     }
+
+    /** False from when LocalHub's page starts loading until it has drawn its home screen. */
+    static volatile boolean pageReady = false;
 
     /** The page has drawn its home screen smoothly again: the cover can go now. */
     static void drawn() {
+        pageReady = true;
         HomeWatchService s = self;
         if (s != null) s.main.post(s::hideCover);
     }
@@ -166,7 +172,7 @@ public class HomeWatchService extends Service {
         try {
             ((WindowManager) getSystemService(WINDOW_SERVICE)).addView(box, lp);
             cover = box;
-            main.postDelayed(this::hideCover, 8000);
+            main.postDelayed(this::hideCover, 15000); // never longer than this, whatever happens
         } catch (Exception ignored) { }
     }
 

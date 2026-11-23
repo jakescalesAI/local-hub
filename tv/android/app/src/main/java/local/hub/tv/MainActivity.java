@@ -106,6 +106,7 @@ public class MainActivity extends Activity {
             @Override
             public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
                 pageTrusted = url != null && trusted(Uri.parse(url));
+                HomeWatchService.pageReady = false; // Home's cover waits for this page to say drawn()
             }
 
             // The hub didn't answer: show the bundled screen, which can pair and launch apps.
