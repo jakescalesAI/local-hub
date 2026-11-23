@@ -304,10 +304,24 @@ html.lite .settings::before { background: var(--bg); -webkit-backdrop-filter: no
 /* Over moving photos the glass blurs less: a big blur recomputed every frame is what a Fire TV can't afford. */
 .saver .w.card { --lg-blur: saturate(160%) blur(20px); --lg-tint: rgba(16, 16, 22, .2); width: 320px; height: 250px; padding: 26px 28px; }
 .saver .w.card.wide { width: 520px; }
-.w-wx-now { display: flex; align-items: baseline; gap: 14px; margin-bottom: 6px; }
-.w-wx-now .t { font: 700 64px/1 var(--display); letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
-.w-wx-now .d { font-size: 24px; font-weight: 600; color: rgba(255, 255, 255, .8); }
-.w-wx-sub { font-size: 21px; color: rgba(255, 255, 255, .7); }
+/* The screensaver's widgets are panels like Settings' and the tile menu's: deep, rounded, a fine light edge, big type. */
+.saver .w.card, html.lite .saver .w.card { width: 500px; height: auto; padding: 30px 34px 32px; gap: 18px; border-radius: 36px; background: rgba(24, 25, 31, .82) !important; box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .14), 0 30px 70px -20px rgba(0, 0, 0, .55) !important; }
+.saver .w.card .w-label { font: 600 24px/1 var(--display); letter-spacing: .005em; color: rgba(255, 255, 255, .62); }
+.saver .w.card .w-label .dot { display: none; }
+.saver .w.card .w-label .sym { width: 26px; height: 26px; color: rgba(255, 255, 255, .62); }
+.wx-top { display: flex; align-items: center; gap: 22px; }
+.wx-icon { width: 96px; height: 96px; flex: none; color: #fff; }
+.wx-icon .sym { width: 100%; height: 100%; }
+.wx-temp { font: 700 96px/.9 var(--display); letter-spacing: -0.04em; font-variant-numeric: tabular-nums; color: #fff; }
+.wx-now { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.wx-cond { font: 600 30px/1.1 var(--display); color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wx-hilo { font-size: 24px; font-weight: 500; color: rgba(255, 255, 255, .66); font-variant-numeric: tabular-nums; }
+.wx-days { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; padding-top: 22px; border-top: 1.5px solid rgba(255, 255, 255, .1); }
+.wx-day { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.wx-day .n { font: 600 22px/1 var(--display); color: rgba(255, 255, 255, .66); }
+.wx-day .sym { width: 40px; height: 40px; color: #fff; }
+.wx-day .v { font: 600 24px/1 var(--display); color: #fff; font-variant-numeric: tabular-nums; }
+.wx-day .v small { font-size: 22px; font-weight: 500; color: rgba(255, 255, 255, .55); }
 html.lite .saver .w.card { --lg-tint: rgba(22, 22, 28, .72); }
 .saver-note { position: absolute; z-index: 5; right: 4vw; top: 5vh; max-width: 36vw; padding: 1.1vh 1.6vh; border-radius: 1.6vh; font-size: 1.9vh; line-height: 1.4; font-weight: 500; color: rgba(255, 255, 255, .86); background: rgba(16, 16, 22, .55); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .14); opacity: 0; transition: opacity .8s ease; }
 .saver-note.on { opacity: 1; }

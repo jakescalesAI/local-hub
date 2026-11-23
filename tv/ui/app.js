@@ -612,7 +612,9 @@ const WIDGETS = {
   weather: { label: "Weather", tint: "var(--blue)", render() {
     const w = WX.body;
     if (!w) { loadWeather(); return `<div class="w-empty">${WX.err ? "Weather isn’t available right now" : "Finding the weather…"}</div>`; }
-    return `<div class="w-wx-now"><span class="t">${esc(String(w.now.temp))}°</span><span class="d">${esc(w.now.text)}</span></div><div class="w-wx-sub">${esc(w.place)} · H ${esc(String(w.high))}° L ${esc(String(w.low))}°</div>`;
+    const day = (d) => new Date(d.date + "T12:00").toLocaleDateString(undefined, { weekday: "short" });
+    return `<div class="wx-top"><span class="wx-icon">${wxIcon(w.now.code, w.now.day)}</span><div class="wx-now"><span class="wx-temp">${esc(String(w.now.temp))}°</span><span class="wx-cond">${esc(w.now.text)}</span><span class="wx-hilo">H ${esc(String(w.high))}°  L ${esc(String(w.low))}°</span></div></div>`
+      + `<div class="wx-days">${w.days.slice(1, 4).map((d) => `<div class="wx-day"><span class="n">${esc(day(d))}</span>${wxIcon(d.code, true)}<span class="v">${esc(String(d.high))}° <small>${esc(String(d.low))}°</small></span></div>`).join("")}</div>`;
   } },
   recent: { label: "Recently opened", tint: "var(--green)", wide: true, render() {
     const list = [...APPS].filter((a) => a.recentAt).sort((a, b) => b.recentAt - a.recentAt).slice(0, 3);
@@ -620,6 +622,23 @@ const WIDGETS = {
     return `<div class="w-list">${list.map((a) => `<div class="w-row"><span class="mini" style="--a-bg:${a.bg};--a-fg:${a.fg}">${miniArt(a)}</span><span class="t">${esc(a.name)}</span><span class="s">${esc(ago(a.recentAt))}</span></div>`).join("")}</div>`;
   } },
 };
+// Weather icons, drawn like the rest of the TV's symbols (one stroke), from Open-Meteo's WMO codes.
+const WX_SUN = '<circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/>';
+const WX_MOON = '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>';
+const WX_CLOUD = '<path d="M7 18.5h10a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.2 11.6 3.5 3.5 0 0 0 7 18.5z"/>';
+const WX_PART = '<path d="M8.5 3.5v1.2M3.6 8.6h1.2M5 5.1l.9.9M12.2 5.1l-.9.9"/><path d="M5.6 11.2a3.6 3.6 0 0 1 6.5-2.6"/><path d="M9 20h8.5a3.5 3.5 0 0 0 .5-6.96A5 5 0 0 0 8.6 13.9 3 3 0 0 0 9 20z"/>';
+const WX_HI = '<path d="M7 14.5h10a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.2 7.6 3.5 3.5 0 0 0 7 14.5z"/>';
+function wxIcon(code, day = true) {
+  const c = Number(code);
+  const d = c === 0 || c === 1 ? (day ? WX_SUN : WX_MOON)
+    : c === 2 ? WX_PART
+      : c === 45 || c === 48 ? '<path d="M4 9h16M3 13h18M5 17h14"/>'
+        : c >= 95 ? `${WX_HI}<path d="M12.5 15.5 10.5 19h3l-2 3"/>`
+          : (c >= 71 && c <= 77) || c === 85 || c === 86 ? `${WX_HI}<path d="M8 18.5h.01M12 20.5h.01M16 18.5h.01"/>`
+            : c >= 51 ? `${WX_HI}<path d="M8.5 17.5 7.5 20M12.5 17.5l-1 2.5M16.5 17.5l-1 2.5"/>`
+              : WX_CLOUD;
+  return sym(d, 1.8);
+}
 // Weather where the laptop is (the hub's /api/tv/weather), kept 15 minutes.
 const WX = { body: null, at: 0, busy: false, err: null };
 function loadWeather() {
@@ -638,7 +657,8 @@ function tvWidgets() {
 function widgetCard(id) {
   const def = WIDGETS[id];
   if (!def) return `<div class="w card"><div class="w-label"><i class="dot"></i>${esc(LABELS[id] || id)}</div><div class="w-body"><div class="w-empty">Shown on LocalHub. TV support is coming.</div></div></div>`;
-  return `<div class="w card${def.wide ? " wide" : ""}"><div class="w-label"><i class="dot" style="--c:${def.tint}"></i>${esc(def.label)}</div><div class="w-body">${def.render()}</div></div>`;
+  const mark = id === "weather" ? sym('<path d="M7 18.5h10a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.2 11.6 3.5 3.5 0 0 0 7 18.5z"/>', 2) : id === "recent" ? sym('<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>', 2) : "";
+  return `<div class="w card${def.wide ? " wide" : ""}"><div class="w-label">${mark || `<i class="dot" style="--c:${def.tint}"></i>`}${esc(def.label)}</div><div class="w-body">${def.render()}</div></div>`;
 }
 function hubShelfHTML() {
   const h = new Date().getHours();
