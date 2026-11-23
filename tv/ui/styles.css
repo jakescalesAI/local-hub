@@ -295,9 +295,9 @@ html.lite .settings::before { background: var(--bg); -webkit-backdrop-filter: no
 /* Opening an app: the screen goes to black while the app's tile glides to the middle and grows a little, then the
    app comes up out of that black. The tile is drawn once at its final size and starts scaled down (no 7x blow-up
    of a picture to redraw mid-animation); the black is one opacity fade. Coming back, both fade away over home. */
-.launch::before { content: ""; position: absolute; inset: 0; background: #000; opacity: 0; transition: opacity .34s var(--ease); will-change: opacity; }
+.launch::before { content: ""; position: absolute; inset: 0; background: #000; opacity: 0; transition: opacity .22s var(--ease); will-change: opacity; }
 .launch.full::before { opacity: .985; } /* not quite 1: fully covered, the TV stops drawing home and must redraw it all as the black fades */
-.launch .icon { position: absolute; left: 0; top: 0; transform-origin: 0 0; transition: transform .38s var(--ease), opacity .3s var(--ease) !important; will-change: transform, opacity; }
+.launch .icon { position: absolute; left: 0; top: 0; transform-origin: 0 0; transition: transform .26s var(--ease), opacity .3s var(--ease) !important; will-change: transform, opacity; }
 .launch.back .icon { opacity: 0; }
 .launch-note { position: absolute; left: 0; right: 0; bottom: 150px; text-align: center; font-size: 28px; font-weight: 500; color: rgba(255, 255, 255, .85); opacity: 0; transition: opacity .4s var(--ease) .3s; }
 .launch.full .launch-note { opacity: 1; }
@@ -587,6 +587,7 @@ body.shelf-hub .shelf-fade { background: none; }
    the wrapper, since the mask would cut it off. */
 .shelf-title .banner-mark { display: block; }
 .shelf-title .banner-mark img { display: block; max-width: 680px; max-height: 200px; }
+.shelf-title .banner-mark img.cut { max-width: 640px; max-height: 170px; object-fit: contain; object-position: left bottom; }
 .shelf-title .banner-mark i { display: block; width: 680px; height: 200px; background: #fff; -webkit-mask: var(--glyph) left bottom/contain no-repeat; mask: var(--glyph) left bottom/contain no-repeat; }
 .shelf-title .banner-text { font: 800 150px/.95 var(--display); letter-spacing: -0.045em; color: #fff; white-space: nowrap; }
 

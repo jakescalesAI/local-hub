@@ -46,6 +46,9 @@ final class Apps {
         final boolean hasIcon;
         final int color;
         int edge; // the banner's own edge colour, for the strips above and below it; 0 not worked out yet, 1 none
+        float[] fit; // where the banner's logo is (x0, y0, x1, y1, 0..1), so a tile can zoom to it; null: the whole banner
+        boolean hasMark; // a white version of the logo (art/<pkg>/mark.png), for the home screen's header
+        boolean marked; // the logo has been looked for (false in a list saved before this existed: look again)
         long stamp; // the package's lastUpdateTime: unchanged means its saved art is still right
 
         App(String label, String packageName, String activityName, boolean hasBanner, boolean hasIcon, int color) {
@@ -122,6 +125,10 @@ final class Apps {
                         o.optBoolean("banner"), o.optBoolean("icon"), o.optInt("color", 0xFF2C2C2E));
                 a.stamp = o.optLong("stamp");
                 a.edge = o.optInt("edge", 0);
+                JSONArray fitArr = o.optJSONArray("fit");
+                if (fitArr != null && fitArr.length() == 4) a.fit = new float[]{(float) fitArr.optDouble(0), (float) fitArr.optDouble(1), (float) fitArr.optDouble(2), (float) fitArr.optDouble(3)};
+                a.hasMark = o.optBoolean("mark");
+                a.marked = o.has("mark");
                 out.add(a);
             }
             synchronized (this) { if (apps.isEmpty()) apps = out; }
@@ -144,7 +151,8 @@ final class Apps {
             for (App a : list) {
                 JSONObject o = new JSONObject();
                 o.put("label", a.label).put("pkg", a.packageName).put("activity", a.activityName)
-                        .put("banner", a.hasBanner).put("icon", a.hasIcon).put("color", a.color).put("stamp", a.stamp).put("edge", a.edge);
+                        .put("banner", a.hasBanner).put("icon", a.hasIcon).put("color", a.color).put("stamp", a.stamp).put("edge", a.edge).put("mark", a.hasMark);
+                if (a.fit != null) o.put("fit", new JSONArray().put(a.fit[0]).put(a.fit[1]).put(a.fit[2]).put(a.fit[3]));
                 arr.put(o);
             }
             File tmp = new File(context.getCacheDir(), "apps.json.tmp");
@@ -189,6 +197,8 @@ final class Apps {
                 if (a.hasIcon) o.put("icon", "http://localhub.tv/art/" + a.packageName + "/icon.png");
                 o.put("color", String.format(Locale.US, "#%06X", a.color & 0xFFFFFF));
                 if (a.hasBanner && (a.edge >>> 24) == 0xFF) o.put("edge", String.format(Locale.US, "#%06X", a.edge & 0xFFFFFF));
+                if (a.hasBanner && a.fit != null) o.put("fit", new JSONArray().put(a.fit[0]).put(a.fit[1]).put(a.fit[2]).put(a.fit[3]));
+                if (a.hasMark) o.put("mark", "http://localhub.tv/art/" + a.packageName + "/mark.png");
                 long at = prefs.openedAt(a.packageName);
                 if (at > 0) o.put("recent", at);
                 arr.put(o);
@@ -249,7 +259,7 @@ final class Apps {
             try { stamp = pm.getPackageInfo(pkg, 0).lastUpdateTime; } catch (Exception ignored) { }
             App old = saved.get(pkg);
             if (old != null && stamp != 0 && old.stamp == stamp && ri.activityInfo.name.equals(old.activityName)
-                    && (!old.hasBanner || (old.edge != 0 && artFile(pkg + "/banner").length() > 0)) && (!old.hasIcon || artFile(pkg + "/icon").length() > 0)) {
+                    && (!old.hasBanner || (old.edge != 0 && old.marked && artFile(pkg + "/banner").length() > 0)) && (!old.hasIcon || artFile(pkg + "/icon").length() > 0)) {
                 out.add(old); // unchanged since it was drawn
                 continue;
             }
@@ -274,6 +284,9 @@ final class Apps {
 
             int color = dominant(banner != null ? banner : icon); // before png(), which recycles the bitmap
             int edge = edge(banner);
+            float[] fit = banner != null ? logoBox(banner, edge) : null;
+            Bitmap mark = fit != null ? whiteMark(banner, edge, fit) : null;
+            byte[] markPng = mark != null ? png(mark) : null;
             // Some apps hand Android a banner that won't encode (Amazon's hedwig gave 0 bytes): no banner, then.
             byte[] bannerPng = banner != null ? png(banner) : null, iconPng = icon != null ? png(icon) : null;
             boolean hasBanner = bannerPng != null && bannerPng.length > 0, hasIcon = iconPng != null && iconPng.length > 0;
@@ -282,6 +295,10 @@ final class Apps {
             App a = new App(label, pkg, ri.activityInfo.name, hasBanner, hasIcon, color);
             a.stamp = stamp;
             a.edge = hasBanner ? edge : 0;
+            a.fit = hasBanner ? fit : null;
+            a.hasMark = hasBanner && markPng != null && markPng.length > 0;
+            a.marked = true;
+            if (a.hasMark) images.put(pkg + "/mark", markPng);
             out.add(a);
         }
     }
@@ -300,6 +317,47 @@ final class Apps {
         b.compress(Bitmap.CompressFormat.PNG, 100, out);
         b.recycle();
         return out.toByteArray();
+    }
+
+    // How far a pixel is from the banner's background (0..1): its colour away from the edge colour, or, on a
+    // see-through banner, its own opacity.
+    private static float ink(int p, int edge) {
+        int a = (p >>> 24) & 0xFF;
+        if ((edge >>> 24) != 0xFF) return a / 255f;
+        int d = Math.max(Math.abs(((p >> 16) & 0xFF) - ((edge >> 16) & 0xFF)), Math.max(Math.abs(((p >> 8) & 0xFF) - ((edge >> 8) & 0xFF)), Math.abs((p & 0xFF) - (edge & 0xFF))));
+        return Math.max(0f, Math.min(1f, (d - 36) / 70f)) * (a / 255f);
+    }
+
+    /** Where the logo is on a banner with a plain background: the box around everything that isn't background.
+     *  Null when the background isn't plain (a photo) or the logo already fills it: the tile shows the banner whole. */
+    static float[] logoBox(Bitmap b, int edge) {
+        if (b == null || b.isRecycled() || edge == 0) return null;
+        int w = b.getWidth(), h = b.getHeight();
+        int[] px = new int[w * h];
+        b.getPixels(px, 0, w, 0, 0, w, h);
+        // A plain background: the edge rows hardly differ from their own colour.
+        if ((edge >>> 24) == 0xFF) {
+            int off = 0, n = 0;
+            for (int x = 0; x < w; x += 3) { for (int y : new int[]{0, h - 1}) { n++; if (ink(px[y * w + x], edge) > 0.3f) off++; } }
+            if (off > n / 12) return null;
+        }
+        int x0 = w, y0 = h, x1 = -1, y1 = -1;
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {
+            if (ink(px[y * w + x], edge) > 0.5f) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+        }
+        if (x1 < 0 || (x1 - x0) * (y1 - y0) > w * h * 0.86f || (x1 - x0) < w / 12) return null;
+        return new float[]{x0 / (float) w, y0 / (float) h, (x1 + 1) / (float) w, (y1 + 1) / (float) h};
+    }
+
+    /** The logo in white, cut out of its banner by how far each pixel is from the background. */
+    static Bitmap whiteMark(Bitmap b, int edge, float[] box) {
+        int w = b.getWidth(), h = b.getHeight();
+        int x0 = (int) (box[0] * w), y0 = (int) (box[1] * h), x1 = (int) Math.ceil(box[2] * w), y1 = (int) Math.ceil(box[3] * h);
+        int mw = Math.max(1, x1 - x0), mh = Math.max(1, y1 - y0);
+        int[] px = new int[mw * mh];
+        b.getPixels(px, 0, mw, x0, y0, mw, mh);
+        for (int i = 0; i < px.length; i++) px[i] = (Math.round(ink(px[i], edge) * 255) << 24) | 0xFFFFFF;
+        return Bitmap.createBitmap(px, mw, mh, Bitmap.Config.ARGB_8888);
     }
 
     /** The banner's top and bottom rows, averaged: a tile shows the whole banner and fills above and below with it. */

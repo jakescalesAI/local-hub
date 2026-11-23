@@ -220,6 +220,21 @@ function paintChip() {
 
 // An installed app gets the same wordmark as its stand-in when the names match ("Disney+", "Apple TV").
 const nameKey = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+// Apps whose own banner doesn't do them justice: our picture of their logo for the tile, and its white version.
+const TILE_ART = {
+  "com.amazon.firetv.youtube.tv": { banner: "./brands/youtubetv-tile.png", edge: "#000000", fit: null, mark: "./brands/youtubetv-mark.png", bg: "#000000" },
+};
+// A tile zooms to its banner's logo (the TV app measures where it is): a logo with wide empty margins fills its
+// tile like the others. The tile is 276x172; a banner is 16:9.
+function fitStyle(fit) {
+  if (!Array.isArray(fit) || fit.length !== 4) return "";
+  const [x0, y0, x1, y1] = fit, bw = Math.max(0.05, x1 - x0), bh = Math.max(0.05, y1 - y0);
+  const TA = 276 / 172, BA = 9 / 16;
+  const wf = Math.max(1, Math.min(2.6, Math.min(0.8 / bw, (0.62 / TA) / (BA * bh)))); // the picture's width, in tile widths
+  const hf = wf * BA * TA; // its height, in tile heights
+  const left = 50 - (x0 + bw / 2) * wf * 100, top = 50 - (y0 + bh / 2) * hf * 100;
+  return `inset:auto;left:${left.toFixed(2)}%;top:${top.toFixed(2)}%;width:${(wf * 100).toFixed(2)}%;height:${(hf * 100).toFixed(2)}%;object-fit:fill`;
+}
 const wordmarkFor = (name) => WEB_APPS.find((w) => nameKey(w.name) === nameKey(name))?.wordmark || null;
 
 /* Your own websites: the hub's website apps (Home editor, or "Add website" here), opened in the laptop's
@@ -265,7 +280,8 @@ async function addSite(text) {
 function loadItems() {
   if (NATIVE) {
     APPS = safeJson(native("apps") || "[]", []).map((a) => ({
-      id: a.id, pkg: a.id, name: a.name, banner: a.banner || null, img: a.icon || null, edge: a.edge || null,
+      id: a.id, pkg: a.id, name: a.name, banner: a.banner || null, img: a.icon || null, edge: a.edge || null, mark: a.mark || null, fit: a.fit || null,
+      ...(TILE_ART[a.id] || {}),
       bg: a.color || "#2c2c2e", fg: "#ffffff", recentAt: a.recent || 0, wordmark: wordmarkFor(a.name),
     }));
     if (IN_HUB) APPS.push(...Stream.STREAM_APPS.map((a) => ({ ...a, note: Stream.noteFor(a) })), ...siteApps());
@@ -341,7 +357,7 @@ function iconHTML(it) {
   // A banner that won't load (an app can hand Android an empty one) falls back to its icon, or its colour.
   const fallback = it.img ? `this.onerror=null;this.className='square';this.src='${esc(it.img)}'` : "this.remove()";
   // The whole banner, never cropped: a 16:9 banner on a slightly taller tile, the strips above and below in its own edge colour.
-  if (it.banner) return `<div class="icon" style="--a-bg:${it.edge || it.bg};--a-fg:${it.fg}"><i class="fill flat"></i><img class="banner" src="${esc(it.banner)}" alt="" decoding="async" onerror="${fallback}"></div>`;
+  if (it.banner) return `<div class="icon" style="--a-bg:${it.edge || it.bg};--a-fg:${it.fg}"><i class="fill flat"></i><img class="banner" src="${esc(it.banner)}" alt="" decoding="async"${it.fit ? ` style="${fitStyle(it.fit)}"` : ""} onerror="${fallback}"></div>`;
   if (it.img) return `<div class="icon" style="${colors}">${fill}<img class="square" src="${esc(it.img)}" alt="" decoding="async"></div>`;
   if (it.icon) return `<div class="icon" style="${colors}">${fill}<i class="glyph${it.wide ? " wide" : ""}" style="--glyph:url('./brands/${it.icon}.svg')"></i>${it.note ? `<span class="sub">${esc(it.note)}</span>` : ""}</div>`;
   return `<div class="icon" style="${colors}">${fill}<b class="letter"${it.letter && it.letter.length > 4 ? ' style="font-size:58px"' : ""}>${esc(it.letter || it.name.slice(0, 1))}</b></div>`;
@@ -632,8 +648,11 @@ async function bakeMark(name) {
 function appShelfHTML(it) {
   const baked = it.wordmark && MARKS.get(it.wordmark);
   if (it.wordmark && !MARKS.has(it.wordmark)) bakeMark(it.wordmark).then((url) => { if (url && S.shelfId === it.id) paintShelf(true); });
+  // The app's logo in white: our own wordmark, or the one the TV app cut out of its banner; its name if neither.
   const mark = baked
     ? `<span class="banner-mark"><img src="${baked}" alt=""></span>`
+    : it.mark && !it.wordmark
+      ? `<span class="banner-mark"><img class="cut" src="${esc(it.mark)}" alt=""></span>`
     : it.wordmark
       ? `<span class="banner-mark"><i style="--glyph:url('./brands/${esc(it.wordmark)}.svg')"></i></span>`
       : `<h1 class="banner-text">${esc(it.name)}</h1>`;
@@ -850,7 +869,7 @@ function launch(it, go, note) {
     if (ok === false && it.url === undefined && it.kind !== "input" && !NATIVE) { setTimeout(endLaunch, 1100); return; }
     if (ok === false) toast(`${it.name} didn't start`);
     setTimeout(endLaunch, ok === "pending" ? 300 : document.hidden ? 0 : 1300);
-  }, 380); // the app starts while the tile is still finishing its grow
+  }, 200); // the app starts as the screen goes black: Android takes its own time to show it, so start early
 }
 // Back from the app: the tiles are put in their new order while the black still covers them, then the black and
 // the app's tile fade away together over the home screen.
