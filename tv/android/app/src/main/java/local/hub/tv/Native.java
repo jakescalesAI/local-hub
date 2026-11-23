@@ -47,7 +47,12 @@ final class Native {
         if (!activity.pageTrusted) return false;
         if (packageName == null) return false;
         activity.prefs.recordLaunch(packageName, System.currentTimeMillis());
-        return activity.apps.launch(packageName);
+        // Started on another thread, so the page's grow animation doesn't wait on Android (an 80-100 ms frame on
+        // the stick); a launch that fails says so with a "launchFailed" event.
+        activity.io.execute(() -> {
+            if (!activity.apps.launch(packageName)) activity.emit(event("launchFailed").put("pkg", packageName));
+        });
+        return true;
     }
 
     @JavascriptInterface

@@ -14,6 +14,10 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -27,6 +31,10 @@ import java.util.Set;
  * the app ships for Fire TV / Android TV (that is what every TV launcher shows for it), and its
  * icon as a fallback. Art is encoded to PNG once and served to the UI at
  * http://localhub.tv/art/&lt;package&gt;/banner.png and …/icon.png.
+ *
+ * Drawing and encoding every app's art took ~2 s on a Fire TV Stick at each start, so the list and the PNGs are
+ * kept in the app's cache: the home screen shows the saved list at once, and a reload only draws apps that were
+ * installed or updated since.
  */
 final class Apps {
 
@@ -37,6 +45,7 @@ final class Apps {
         final boolean hasBanner;
         final boolean hasIcon;
         final int color;
+        long stamp; // the package's lastUpdateTime: unchanged means its saved art is still right
 
         App(String label, String packageName, String activityName, boolean hasBanner, boolean hasIcon, int color) {
             this.label = label;
@@ -73,7 +82,73 @@ final class Apps {
     }
 
     synchronized byte[] art(String key) {
-        return art.get(key);
+        byte[] b = art.get(key);
+        if (b != null) return b;
+        try {
+            File f = artFile(key);
+            if (f.isFile()) { b = readFile(f); art.put(key, b); }
+        } catch (Exception ignored) { }
+        return b;
+    }
+
+    private File artFile(String key) {
+        return new File(new File(context.getCacheDir(), "art"), key.replace('/', '_') + ".png");
+    }
+
+    private static byte[] readFile(File f) throws java.io.IOException {
+        try (FileInputStream in = new FileInputStream(f)) {
+            ByteArrayOutputStream out = new ByteArrayOutputStream((int) f.length());
+            byte[] buf = new byte[16384];
+            for (int n; (n = in.read(buf)) > 0; ) out.write(buf, 0, n);
+            return out.toByteArray();
+        }
+    }
+
+    private File index() {
+        return new File(context.getCacheDir(), "apps.json");
+    }
+
+    /** The list saved by the last reload, so the home screen has its apps without waiting. False if there's none. */
+    boolean loadSaved() {
+        try {
+            File f = index();
+            if (!f.isFile()) return false;
+            JSONArray arr = new JSONArray(new String(readFile(f), StandardCharsets.UTF_8));
+            List<App> out = new ArrayList<>();
+            for (int i = 0; i < arr.length(); i++) {
+                JSONObject o = arr.getJSONObject(i);
+                App a = new App(o.getString("label"), o.getString("pkg"), o.getString("activity"),
+                        o.optBoolean("banner"), o.optBoolean("icon"), o.optInt("color", 0xFF2C2C2E));
+                a.stamp = o.optLong("stamp");
+                out.add(a);
+            }
+            synchronized (this) { if (apps.isEmpty()) apps = out; }
+            return !out.isEmpty();
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /** What the page sees of the list: equal means nothing to redraw. */
+    synchronized String signature() {
+        StringBuilder sb = new StringBuilder();
+        for (App a : apps) sb.append(a.packageName).append('|').append(a.label).append('|').append(a.stamp).append('|').append(a.hasBanner).append(a.hasIcon).append(';');
+        return sb.toString();
+    }
+
+    private void save(List<App> list) {
+        try {
+            JSONArray arr = new JSONArray();
+            for (App a : list) {
+                JSONObject o = new JSONObject();
+                o.put("label", a.label).put("pkg", a.packageName).put("activity", a.activityName)
+                        .put("banner", a.hasBanner).put("icon", a.hasIcon).put("color", a.color).put("stamp", a.stamp);
+                arr.put(o);
+            }
+            File tmp = new File(context.getCacheDir(), "apps.json.tmp");
+            try (FileOutputStream out = new FileOutputStream(tmp)) { out.write(arr.toString().getBytes(StandardCharsets.UTF_8)); }
+            tmp.renameTo(index());
+        } catch (Exception ignored) { }
     }
 
     /** Re-reads PackageManager. Slow-ish (icons are drawn), so call it off the UI thread. */
@@ -82,13 +157,21 @@ final class Apps {
         List<App> out = new ArrayList<>();
         Map<String, byte[]> images = new HashMap<>();
         Set<String> seen = new HashSet<>();
+        Map<String, App> saved = new HashMap<>();
+        for (App a : list()) saved.put(a.packageName, a);
 
-        collect(pm, new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER), out, images, seen);
-        collect(pm, new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), out, images, seen);
+        collect(pm, new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER), out, images, seen, saved);
+        collect(pm, new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), out, images, seen, saved);
 
+        File dir = new File(context.getCacheDir(), "art");
+        dir.mkdirs();
+        for (Map.Entry<String, byte[]> e : images.entrySet()) {
+            try (FileOutputStream f = new FileOutputStream(artFile(e.getKey()))) { f.write(e.getValue()); } catch (Exception ignored) { }
+        }
+        save(out);
         synchronized (this) {
             apps = out;
-            art.clear();
+            art.keySet().removeIf(k -> !seen.contains(k.substring(0, k.indexOf('/'))));
             art.putAll(images);
         }
     }
@@ -144,7 +227,7 @@ final class Apps {
         }
     }
 
-    private void collect(PackageManager pm, Intent intent, List<App> out, Map<String, byte[]> images, Set<String> seen) {
+    private void collect(PackageManager pm, Intent intent, List<App> out, Map<String, byte[]> images, Set<String> seen, Map<String, App> saved) {
         List<ResolveInfo> found;
         try {
             found = pm.queryIntentActivities(intent, 0);
@@ -158,6 +241,15 @@ final class Apps {
             String pkg = ri.activityInfo.packageName;
             if (pkg == null || pkg.equals(context.getPackageName()) || seen.contains(pkg)) continue;
             seen.add(pkg);
+
+            long stamp = 0;
+            try { stamp = pm.getPackageInfo(pkg, 0).lastUpdateTime; } catch (Exception ignored) { }
+            App old = saved.get(pkg);
+            if (old != null && stamp != 0 && old.stamp == stamp && ri.activityInfo.name.equals(old.activityName)
+                    && (!old.hasBanner || artFile(pkg + "/banner").isFile()) && (!old.hasIcon || artFile(pkg + "/icon").isFile())) {
+                out.add(old); // unchanged since it was drawn
+                continue;
+            }
 
             String label = pkg;
             try {
@@ -177,10 +269,13 @@ final class Apps {
                 icon = draw(ri.loadIcon(pm), ICON, ICON);
             } catch (Exception ignored) { }
 
-            if (banner != null) images.put(pkg + "/banner", png(banner));
-            if (icon != null) images.put(pkg + "/icon", png(icon));
-            int color = dominant(banner != null ? banner : icon);
-            out.add(new App(label, pkg, ri.activityInfo.name, banner != null, icon != null, color));
+            int color = dominant(banner != null ? banner : icon); // before png(), which recycles the bitmap
+            boolean hasBanner = banner != null, hasIcon = icon != null;
+            if (hasBanner) images.put(pkg + "/banner", png(banner));
+            if (hasIcon) images.put(pkg + "/icon", png(icon));
+            App a = new App(label, pkg, ri.activityInfo.name, hasBanner, hasIcon, color);
+            a.stamp = stamp;
+            out.add(a);
         }
     }
 

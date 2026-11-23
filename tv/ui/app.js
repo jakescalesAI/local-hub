@@ -325,7 +325,6 @@ function renderGrid() {
   if (!same) grid.replaceChildren(...nodes);
   applyFocus(true);
   warmTiles();
-  if (NATIVE && !S.walked && APPS.some((a) => a.pkg) && !document.body.classList.contains("booted")) { S.walked = true; walkRows(); }
 }
 // While the opening still covers the screen, step the page through every row once, so the TV draws each row's
 // tiles now rather than on the first scroll down (that first pass stalled up to 400 ms on a Fire TV Stick).
@@ -334,10 +333,10 @@ async function walkRows() {
   const rows = Math.ceil(ITEMS.length / COLS);
   const frame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
   page.style.transition = "none";
-  for (let row = 1; row < rows; row++) {
+  // Two rows a step: the screen shows about two and a half, and the TV also draws a margin around what it shows.
+  for (let row = 1; row < rows; row += 2) {
     if (document.body.classList.contains("booted")) break;
     page.style.transform = `translateY(${-(648 + row * 236 - 400)}px)`;
-    await frame();
     await frame();
   }
   // Settings and the assistant too: their first opening otherwise drew a whole screen at 4K (100-480 ms frames).
@@ -1449,6 +1448,7 @@ window.haven = {
     if (evt.type === "level") return MIC.wait?.onLevel?.(evt.value);
     if (evt.type === "audio") return nativeClipReady();
     if (evt.type === "noSpeech") { MIC.wait?.resolve(""); MIC.wait = null; return; }
+    if (evt.type === "launchFailed") { const app = APPS.find((a) => a.pkg === evt.pkg); toast(`${app?.name || "That app"} didn't start`); return endLaunch(); }
     if (evt.type === "micError") { const w = MIC.wait; MIC.wait = null; return w ? w.reject(new Error(`${evt.message || "No microphone here."} Or say “Alexa, ask local hub …”.`)) : toast(evt.message || "No microphone"); }
     if (evt.type === "hub") {
       HUB.searching = false;
@@ -1824,16 +1824,25 @@ async function boot() {
   // Boot timings, for the harness (window.__boot): when the apps, the hub and the home screen were ready.
   window.__boot = { start: Math.round(performance.now()) };
   appsReady?.then(() => { window.__boot.apps = Math.round(performance.now()); });
-  splashReady.then(() => { window.__boot.home = Math.round(performance.now()); window.LocalHubSplash?.release?.(); });
+  // Once the grid is final (the TV's apps and the hub's settings, which add the browser and your websites), every row
+  // and Settings are drawn once behind the opening, then it leaves. Walking earlier drew a grid that then changed,
+  // and slowed the settings down by competing with them.
+  splashReady.then(async () => {
+    if (NATIVE && !S.walked && !document.body.classList.contains("booted")) { S.walked = true; window.__boot.walk = Math.round(performance.now()); await walkRows(); }
+    window.__boot.home = Math.round(performance.now());
+    window.LocalHubSplash?.release?.();
+  });
   if (PREVIEW) { $("#keys").style.transition = "none"; showKeys(false); }
   else if (!NATIVE) { showKeys(prefs.help); if (prefs.help) setTimeout(() => showKeys(false), 12000); }
 
   if (IN_HUB) {
     // The hub's own config, browser and assistant: the same agent, tools and conversations.
     await loadScript("/hub-config.js");
+    window.__boot.config = Math.round(performance.now());
     HUB.name = window.HUB_CONF?.name || HUB.name;
     HUB.owner = window.HUB_CONF?.owner || "";
     await syncHub();
+    window.__boot.hub = Math.round(performance.now());
     HUB_READY.resolve?.();
     Stream.init({ toast, native, NATIVE, setOverlay, closed: () => { S.zone = "grid"; setOverlay(null); window.focus(); }, changed: () => window.haven.appsChanged() });
     if (!PREVIEW) loadSaverPhotos();

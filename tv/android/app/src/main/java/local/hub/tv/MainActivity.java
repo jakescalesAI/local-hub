@@ -126,11 +126,13 @@ public class MainActivity extends Activity {
         });
         setContentView(web);
         web.requestFocus();
+        apps.loadSaved(); // the last list and its art, read from the cache: the home screen doesn't wait for PackageManager
         if (hub.paired()) loadHub(); else loadLocal();
 
         io.execute(() -> {
+            String before = apps.signature();
             apps.reload();
-            js("window.haven&&haven.appsChanged()");
+            if (!before.equals(apps.signature()) || before.isEmpty()) js("window.haven&&haven.appsChanged()");
         });
 
         packageReceiver = new BroadcastReceiver() {
