@@ -581,3 +581,38 @@ html.lite #page { transition-duration: .28s !important; }
 /* Layers that stay: creating and dropping a GPU layer for every focus change means re-rasterising it at 4K. */
 html.lite #page { will-change: transform; }
 html.native #hub-chat { zoom: calc(var(--k, .5) * 1.25); }
+
+/* ══ The TV version: a Netflix-style sidebar over an Apple TV-style home ═════════════════════════════
+   Built to stay light at 4K: the sidebar's glass is the frozen wallpaper (no live blur), it opens with a
+   transform, and the only things that ever move are layers that were drawn once. */
+:root { --rail-w: 140px; --side: 212px; --icon-w: 276px; --icon-h: 172px; --gap-x: 44px; --pitch: 236px; }
+.gear, .cc, .scrim, .hubapp { display: none !important; }
+.when { left: auto; right: 84px; }
+
+.rail { position: absolute; left: 0; top: 0; bottom: 0; width: var(--rail-w); z-index: 30; display: flex; flex-direction: column; align-items: stretch; padding: 56px 0; }
+.rail-panel { position: absolute; left: 0; top: 0; bottom: 0; width: 460px; z-index: -1; border-radius: 0 40px 40px 0; will-change: transform;
+  background: linear-gradient(90deg, rgba(10, 12, 18, .82), rgba(10, 12, 18, .62)), var(--frozen, none) 0 0 / 1920px 1080px no-repeat, #12141b;
+  box-shadow: inset -1.5px 0 0 rgba(255, 255, 255, .14);
+  transform: translateX(calc(var(--rail-w) - 460px)); transition: transform .32s var(--ease); }
+body.rail-open .rail-panel { transform: none; }
+.rail-logo { width: 64px; height: 64px; border-radius: 16px; margin: 0 0 0 38px; }
+.rail-items { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 10px; padding: 0 22px; }
+.rail-item { position: relative; display: flex; align-items: center; gap: 26px; height: 80px; padding: 0 26px; border-radius: 22px; color: rgba(255, 255, 255, .62); white-space: nowrap; width: 96px; transition: width .32s var(--ease), background .15s, color .15s; }
+.rail-item .ic { flex: none; width: 44px; height: 44px; display: grid; place-items: center; }
+.rail-item .ic .sym { width: 40px; height: 40px; }
+.rail-item .lb { font: 600 32px/1 var(--display); letter-spacing: -0.01em; opacity: 0; transform: translateX(-12px); transition: opacity .2s, transform .32s var(--ease); }
+.rail-item.here { color: #fff; }
+.rail-item.here::after { content: ""; position: absolute; left: 30px; right: auto; bottom: 10px; width: 36px; height: 4px; border-radius: 2px; background: var(--red, #ff453a); }
+body.rail-open .rail-item { width: 416px; }
+body.rail-open .rail-item .lb { opacity: 1; transform: none; }
+.rail-item.sel { background: #f2f2f5; color: #000; }
+.rail-item.sel::after { display: none; }
+.rail.busy .rail-item[data-id="assistant"] .ic::after { content: ""; position: absolute; left: 58px; top: 18px; width: 12px; height: 12px; border-radius: 50%; background: var(--green, #30d158); }
+/* The home dims a little while the sidebar is open: one opacity change on an existing layer. */
+body.rail-open .page { opacity: .55; }
+.page { transition: opacity .25s var(--ease); }
+
+/* Views: Home is the page; the assistant has its own screen, right of the sidebar. */
+.view { position: absolute; left: var(--rail-w); top: 0; right: 0; bottom: 0; z-index: 20; display: none; background: #0b0d12; }
+body[data-view="assistant"] #assistantView { display: block; }
+body[data-view="assistant"] .page, body[data-view="assistant"] .when { visibility: hidden; }

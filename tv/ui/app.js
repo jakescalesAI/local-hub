@@ -15,6 +15,8 @@
 // ============================================================================
 
 import * as Stream from "./stream.js";
+// The TV's own assistant screen (assistant.js): the hub's agent and conversation, without the hub's chat UI.
+let Assistant = null;
 
 const NATIVE = typeof window.LocalHubNative === "object" && window.LocalHubNative ? window.LocalHubNative : null;
 const IN_HUB = location.pathname.startsWith("/tv");
@@ -148,6 +150,7 @@ function applyLook() {
   if (!w) { delete r.dataset.wall; wall.style.backgroundImage = ""; return; }
   r.dataset.wall = "1";
   wall.style.backgroundImage = w.image;
+  bakeGlass();
   r.style.setProperty("--hub-scrim", w.tone ? (w.tone === theme ? ".18" : ".55") : ".4");
   if (S.shelfId === "hub") paintShelf(true);
 }
@@ -270,7 +273,7 @@ function applyFocus(instant) {
   // focused row rides about a third of the way up; in pages the rows move three at a time.
   const paged = SETTINGS?.scroll?.tv === "pages";
   const first = 1 + Math.floor((row - 1) / 3) * 3;
-  const y = !inGrid ? 0 : paged ? -(648 + first * 252 - 190) : -(648 + row * 252 - 400);
+  const y = !inGrid ? 0 : paged ? -(648 + first * 236 - 190) : -(648 + row * 236 - 400);
   // A page shows its own rows: the ones before it leave with it instead of hanging under the clock.
   document.querySelectorAll(".app").forEach((n) => {
     const off = paged && inGrid && Math.floor(Number(n.dataset.i) / COLS) < first;
@@ -315,14 +318,15 @@ function move(dx, dy) {
   if (dx) {
     const next = S.i + dx;
     if (next >= 0 && next < n && Math.floor(next / COLS) === row) S.i = next;
+    else if (dx < 0) return openRail();
     else return tilt(dx * 1.6, 0); // the edge: lean into it, like tvOS
   }
   if (dy < 0) {
-    if (row === 0) { S.zone = "status"; return applyFocus(); }
+    if (row === 0) return tilt(0, -1.6);
     S.i -= COLS;
   }
   if (dy > 0) {
-    if (row === lastRow) return PREVIEW ? tilt(0, 1.6) : focusBar(); // a preview has no assistant bar
+    if (row === lastRow) return tilt(0, 1.6);
     S.i = Math.min(S.i + COLS, n - 1);
   }
   applyFocus();
@@ -1375,6 +1379,96 @@ document.addEventListener("keydown", (e) => {
   handleKey(name);
 }, true);
 
+/* ── the sidebar (Netflix-style): Home, Assistant, Browser, Screensaver, Settings ─────────────────
+   Collapsed it is a column of icons; with focus on it, a panel slides out with the labels. Both are
+   transforms and opacity only, over the frozen glass, so opening it costs the GPU nothing to draw. */
+const RAIL = [
+  { id: "home", label: "Home", ic: sym('<path d="M3 11 12 3l9 8"/><path d="M5 10v10h5v-6h4v6h5V10"/>') },
+  { id: "assistant", label: "Assistant", ic: sym('<path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z"/><path d="M19 11a7 7 0 0 1-14 0M12 18v3"/>') },
+  { id: "browser", label: "Browser", ic: sym('<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>') },
+  { id: "saver", label: "Screensaver", ic: sym('<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>') },
+  { id: "settings", label: "Settings", ic: sym('<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>') },
+];
+S.view = "home";
+S.rail = 0;
+function renderRail() {
+  $("#railItems").innerHTML = RAIL.map((r, i) => `<div class="rail-item" data-r="${i}" data-id="${r.id}"><span class="ic">${r.ic}</span><span class="lb">${esc(r.label)}</span></div>`).join("");
+  paintRail();
+}
+function paintRail() {
+  document.querySelectorAll(".rail-item").forEach((n) => {
+    n.classList.toggle("sel", S.zone === "rail" && Number(n.dataset.r) === S.rail);
+    n.classList.toggle("here", n.dataset.id === S.view);
+  });
+}
+function openRail() {
+  if (S.overlay && S.overlay !== "settings") return;
+  if (S.overlay === "settings") closeSettings();
+  S.railFrom = S.zone;
+  S.zone = "rail";
+  S.rail = Math.max(0, RAIL.findIndex((r) => r.id === S.view));
+  document.body.classList.add("rail-open");
+  document.querySelectorAll(".app.is-focused").forEach((n) => n.classList.remove("is-focused"));
+  paintRail();
+}
+function closeRail() {
+  if (S.zone !== "rail") return;
+  document.body.classList.remove("rail-open");
+  S.zone = "grid";
+  paintRail();
+  if (S.view === "home") applyFocus();
+  else if (S.view === "assistant") Assistant?.show();
+}
+function showView(id) {
+  S.view = id;
+  document.body.dataset.view = id;
+  if (id === "assistant") { Assistant ? Assistant.show() : toast("The assistant needs LocalHub on the laptop"); }
+  else Assistant?.hide();
+  if (id === "home") { S.zone = "grid"; applyFocus(); }
+  paintRail();
+}
+function railKey(name) {
+  if (name === "up") { S.rail = Math.max(0, S.rail - 1); return paintRail(); }
+  if (name === "down") { S.rail = Math.min(RAIL.length - 1, S.rail + 1); return paintRail(); }
+  if (name === "right" || name === "back" || name === "menu") return closeRail();
+  if (name !== "enter") return;
+  const id = RAIL[S.rail].id;
+  document.body.classList.remove("rail-open");
+  S.zone = "grid";
+  if (id === "home" || id === "assistant") return showView(id);
+  paintRail();
+  if (S.view === "home") applyFocus();
+  if (id === "browser") { const app = APPS.find((a) => a.id === "browser") || Stream.STREAM_APPS.find((a) => a.id === "browser"); return app ? openApp(app) : toast("The browser runs on the laptop: open LocalHub TV from the hub"); }
+  if (id === "saver") return startSaver();
+  if (id === "settings") return openSettings();
+}
+
+/* ── frozen glass (after APL Launcher's): the wallpaper blurred once, by shrinking it to 48×27 and back
+   up to 480×270, then shown behind each glass surface at the stage position it sits over. Nothing
+   filters live, so focus moves and panels slide without the GPU redrawing a blur. */
+async function bakeGlass() {
+  const m = /url\(["']?([^"')]+)["']?\)/.exec(getComputedStyle($("#hub-wall")).backgroundImage || "");
+  if (m?.[1] === bakeGlass.url) return;
+  bakeGlass.url = m?.[1];
+  if (!m) return document.documentElement.style.removeProperty("--frozen");
+  try {
+    const img = new Image();
+    img.decoding = "async";
+    img.src = m[1];
+    await img.decode();
+    const tiny = document.createElement("canvas");
+    tiny.width = 48; tiny.height = 27;
+    tiny.getContext("2d").drawImage(img, 0, 0, 48, 27);
+    const big = document.createElement("canvas");
+    big.width = 480; big.height = 270;
+    const g = big.getContext("2d");
+    g.imageSmoothingEnabled = true;
+    g.imageSmoothingQuality = "high";
+    g.drawImage(tiny, 0, 0, 480, 270);
+    document.documentElement.style.setProperty("--frozen", `url(${big.toDataURL("image/jpeg", 0.85)})`);
+  } catch (e) { console.warn("glass", e); }
+}
+
 function handleKey(name) {
   armSaver();
   if (S.overlay === "saver") return stopSaver();
@@ -1385,7 +1479,14 @@ function handleKey(name) {
   if (S.overlay === "modal") { if (name === "back") closeModal(false); return; }
   if (S.pendingOpen && name === "enter") { const app = S.pendingOpen; S.pendingOpen = null; return launch(app, () => openApp(app)); }
   S.pendingOpen = null;
-  if (name === "ai") { if (S.overlay === "cc") closeCC(); if (S.overlay === "settings") closeSettings(); return startVoice(); }
+  if (name === "ai") { if (S.overlay === "settings") closeSettings(); closeRail(); showView("assistant"); return Assistant?.voice(); }
+  if (S.zone === "rail") return railKey(name);
+  if (S.view === "assistant" && !S.overlay) {
+    if (Assistant?.key(name)) return;
+    if (name === "left" || name === "menu") return openRail();
+    if (name === "back") return showView("home");
+    return;
+  }
   if (window.HubChat?.listening?.() && name === "back") { if (window.HubChat.cancelVoice) window.HubChat.cancelVoice(); else window.HubVoice?.cancel?.(); return; }
   if (S.zone === "bar" && document.activeElement === chatHost()) {
     if (name === "back") {
@@ -1418,10 +1519,11 @@ function handleKey(name) {
     case "up": return move(0, -1);
     case "down": return move(0, 1);
     case "enter": return press(activate);
-    case "menu": return openCC();
+    case "menu": return openRail();
     case "saver": return startSaver();
     case "back":
       if (S.zone !== "grid") { S.zone = "grid"; return applyFocus(); }
+      if (S.i === 0) return openRail();
       if (S.i >= COLS) { S.i = S.i % COLS; return applyFocus(); }
       if (S.i !== 0) { S.i = 0; return applyFocus(); }
       return;
@@ -1527,6 +1629,9 @@ async function boot() {
   applyLook();
   loadItems();
   renderGrid();
+  renderRail();
+  document.body.dataset.view = "home";
+  bakeGlass();
   tick();
   setInterval(tick, 10_000);
   // The opening (splash.js, the same one trylocalhub.com plays) decides when the home screen shows.
@@ -1545,8 +1650,14 @@ async function boot() {
     S.shelfId = null;
     renderGrid();
     if (PREVIEW) { setInterval(syncHub, 30_000); return paintChip(); }
-    await loadScript("/tabs/browser.js");
-    await loadScript("/tabs/chat.js");
+    // The TV is its own light app: the hub's chat.js and browser.js stay on the laptop.
+    Assistant = await import("./assistant.js?v=1").catch((e) => { console.warn("assistant", e); return null; });
+    Assistant?.init({
+      el: $("#assistantView"), toast, native, NATIVE,
+      intercept: (t) => Boolean(window.HubChatHooks?.intercept?.(t)),
+      speechMode: () => prefs.speak || "After voice",
+      onActivity: (on) => $("#rail").classList.toggle("busy", Boolean(on)),
+    });
     setInterval(syncHub, 30_000);
     startCommandLoop();
     if (NATIVE) { const st = safeJson(native("status"), {}); HUB.paired = Boolean(st.paired); HUB.url = st.hub || ""; }
