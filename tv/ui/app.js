@@ -14,7 +14,7 @@
 // voice) comes from Java through window.LocalHubNative. On a laptop, apps open their websites.
 // ============================================================================
 
-import * as Stream from "./stream.js?v=2";
+import * as Stream from "./stream.js?v=3";
 // The TV's own assistant screen (assistant.js): the hub's agent and conversation, without the hub's chat UI.
 let Assistant = null;
 
@@ -1422,6 +1422,21 @@ async function probeNative() {
 /* ── Java → page ───────────────────────────────────────────────────────── */
 window.haven = {
   key: (name) => handleKey(name),
+  // The remote's Home: back to the first row of the home screen, with nothing open over it.
+  home: () => {
+    if (S.overlay === "saver") stopSaver();
+    if (S.overlay === "launch") endLaunch();
+    if (S.overlay === "stream") Stream.close?.();
+    if (S.overlay === "hub") closeHub();
+    if (S.overlay === "modal") closeModal(false);
+    if (S.overlay === "settings") closeSettings();
+    if (S.overlay === "cc") closeCC();
+    closeRail();
+    if (S.view !== "home") showView("home");
+    S.zone = "grid";
+    S.i = 0;
+    applyFocus();
+  },
   closeHub: () => closeHub(),
   resumed: () => endLaunch(),
   // Until the first key press, the list filling in (the TV's apps arrive a moment after the page) keeps focus on
@@ -1625,6 +1640,7 @@ function handleKey(name) {
   if (S.pendingOpen && name === "enter") { const app = S.pendingOpen; S.pendingOpen = null; return launch(app, () => openApp(app)); }
   S.pendingOpen = null;
   if (name === "ai") { if (S.overlay === "settings") closeSettings(); closeRail(); showView("assistant"); return Assistant?.voice(); }
+  if (name === "settings") { if (S.overlay === "settings") return closeSettings(); closeRail(); if (S.view !== "home") showView("home"); return openSettings(); }
   if (S.zone === "rail") return railKey(name);
   if (S.view === "assistant" && !S.overlay) {
     if (Assistant?.key(name)) return;
@@ -1655,6 +1671,7 @@ function handleKey(name) {
     if (name === "back" || name === "menu") return closeSettings();
     if (name === "up") return settingsMove(-1);
     if (name === "down") return settingsMove(1);
+    if (name === "rew" || name === "ff") { for (let i = 0; i < 5; i++) settingsMove(name === "ff" ? 1 : -1); return; }
     if (name === "enter") return settingsActivate();
     return;
   }
@@ -1671,6 +1688,15 @@ function handleKey(name) {
       return openRail();
     }
     case "saver": return startSaver();
+    case "rew":
+    case "ff": {
+      // A page at a time: three rows, landing in the same column.
+      if (S.zone !== "grid") { S.zone = "grid"; return applyFocus(); }
+      const n = ITEMS.length, col = S.i % COLS, lastRow = Math.floor((n - 1) / COLS);
+      const row = Math.max(0, Math.min(lastRow, Math.floor(S.i / COLS) + (name === "ff" ? 3 : -3)));
+      S.i = Math.min(row * COLS + col, n - 1);
+      return applyFocus();
+    }
     case "back":
       if (S.zone !== "grid") { S.zone = "grid"; return applyFocus(); }
       if (S.i === 0) return openRail();
@@ -1815,7 +1841,7 @@ async function boot() {
     renderGrid();
     if (PREVIEW) { setInterval(syncHub, 30_000); return paintChip(); }
     // The TV is its own light app: the hub's chat.js and browser.js stay on the laptop.
-    Assistant = await import("./assistant.js?v=2").catch((e) => { console.warn("assistant", e); return null; });
+    Assistant = await import("./assistant.js?v=3").catch((e) => { console.warn("assistant", e); return null; });
     Assistant?.init({
       el: $("#assistantView"), toast, native, NATIVE,
       intercept: (t) => Boolean(window.HubChatHooks?.intercept?.(t)),

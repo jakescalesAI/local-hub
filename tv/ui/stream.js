@@ -443,6 +443,7 @@ export function key(name) {
   else if (name === "back") goBack();
   else if (name === "menu") setMode(P.mode === "links" ? "cursor" : "links");
   else if (name === "ai") send([{ type: "key", key: " " }]);
+  else if (name === "rew" || name === "ff") send([{ type: "key", key: name === "ff" ? "ArrowRight" : "ArrowLeft" }]); // seek a video
   return true;
 }
 

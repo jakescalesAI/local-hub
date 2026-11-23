@@ -247,6 +247,7 @@ export function focus() {
 
 function routeKey(name) {
   if (name === 'ai') { voice(); return true }
+  if (name === 'rew' || name === 'ff') { R.log.scrollBy({ top: (name === 'ff' ? 0.8 : -0.8) * R.log.clientHeight, behavior: 'smooth' }); return true }
   if (name === 'back' && V.state === 'rec') { cancelVoice(); return true }
   if (F.zone === 'list') return listKey(name)
   if (F.zone === 'log') return logKey(name)

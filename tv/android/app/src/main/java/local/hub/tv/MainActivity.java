@@ -266,6 +266,14 @@ public class MainActivity extends Activity {
         return true;
     }
 
+    /** Home, from another app or from LocalHub itself, lands on the home screen: first row, nothing open. */
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        if (intent != null && intent.getBooleanExtra("fromHomeKey", false)) js("window.haven&&haven.home&&haven.home()");
+    }
+
     private static String keyName(int code) {
         switch (code) {
             case KeyEvent.KEYCODE_DPAD_LEFT: return "left";
@@ -282,7 +290,16 @@ public class MainActivity extends Activity {
             case KeyEvent.KEYCODE_MENU: return "menu";
             case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
             case KeyEvent.KEYCODE_MEDIA_PLAY:
+            case KeyEvent.KEYCODE_MEDIA_PAUSE:
             case KeyEvent.KEYCODE_SEARCH: return "ai";
+            // ⏪ ⏩: a page at a time (three rows, a screen of settings or messages); in the browser, seek a video.
+            case KeyEvent.KEYCODE_MEDIA_REWIND:
+            case KeyEvent.KEYCODE_MEDIA_PREVIOUS:
+            case KeyEvent.KEYCODE_PAGE_UP: return "rew";
+            case KeyEvent.KEYCODE_MEDIA_FAST_FORWARD:
+            case KeyEvent.KEYCODE_MEDIA_NEXT:
+            case KeyEvent.KEYCODE_PAGE_DOWN: return "ff";
+            case KeyEvent.KEYCODE_SETTINGS: return "settings";
             default: return null;
         }
     }
