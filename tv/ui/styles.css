@@ -497,6 +497,7 @@ body.shelf-hub .shelf-fade { background: none; }
    the same box, set on its bottom left so every banner sits on the same line. The shadow is on
    the wrapper, since the mask would cut it off. */
 .shelf-title .banner-mark { display: block; }
+.shelf-title .banner-mark img { display: block; max-width: 680px; max-height: 200px; }
 .shelf-title .banner-mark i { display: block; width: 680px; height: 200px; background: #fff; -webkit-mask: var(--glyph) left bottom/contain no-repeat; mask: var(--glyph) left bottom/contain no-repeat; }
 .shelf-title .banner-text { font: 800 150px/.95 var(--display); letter-spacing: -0.045em; color: #fff; white-space: nowrap; }
 

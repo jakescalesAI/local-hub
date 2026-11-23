@@ -349,6 +349,7 @@ async function walkRows() {
   }
   // Settings and the assistant too: their first opening otherwise drew a whole screen at 4K (100-480 ms frames).
   if (!document.body.classList.contains("booted")) {
+    await Promise.all([...new Set(ITEMS.map((x) => x.wordmark).filter(Boolean))].map(bakeMark));
     renderSettings(); // Settings stays drawn, a hair above invisible (styles.css), from here on
     setView("assistant");
     await frame();
@@ -497,12 +498,45 @@ function hexA(c, a) {
   return `rgba(${r},${g},${b},${a})`;
 }
 
+/* Wordmarks drawn once, in white, into a picture: as a CSS mask the stick redrew the logo through a mask layer
+   each time the header changed (~100 ms of GPU work for YouTube's); a picture it draws in a few. */
+const MARKS = new Map(); // name -> data: URL once baked, null while baking or if it failed
+async function bakeMark(name) {
+  if (MARKS.has(name)) return MARKS.get(name);
+  MARKS.set(name, null);
+  try {
+    const svg = await (await fetch(`./brands/${name}.svg`)).text();
+    const vb = /viewBox="([^"]+)"/.exec(svg)?.[1].trim().split(/[\s,]+/).map(Number);
+    if (!vb || !(vb[2] > 0) || !(vb[3] > 0)) return null;
+    const W = 680, H = 200; // .banner-mark's box: contained, at its bottom left
+    const k = Math.min(W / vb[2], H / vb[3]);
+    const w = Math.round(vb[2] * k), h = Math.round(vb[3] * k);
+    const img = new Image();
+    img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg.replace("<svg ", `<svg width="${w}" height="${h}" preserveAspectRatio="none" `));
+    await img.decode();
+    const c = document.createElement("canvas");
+    c.width = w; c.height = h;
+    const g = c.getContext("2d");
+    g.drawImage(img, 0, 0, w, h);
+    g.globalCompositeOperation = "source-in";
+    g.fillStyle = "#fff";
+    g.fillRect(0, 0, w, h);
+    const url = c.toDataURL("image/png");
+    MARKS.set(name, url);
+    return url;
+  } catch { return null; }
+}
+
 /* The header is the app's banner in white, like tvOS: its own wordmark where we have one
    (./brands/<id>-wordmark.svg), and otherwise its name set large in its place. No icon, no caption. */
 function appShelfHTML(it) {
-  const mark = it.wordmark
-    ? `<span class="banner-mark"><i style="--glyph:url('./brands/${esc(it.wordmark)}.svg')"></i></span>`
-    : `<h1 class="banner-text">${esc(it.name)}</h1>`;
+  const baked = it.wordmark && MARKS.get(it.wordmark);
+  if (it.wordmark && !MARKS.has(it.wordmark)) bakeMark(it.wordmark).then((url) => { if (url && S.shelfId === it.id) paintShelf(true); });
+  const mark = baked
+    ? `<span class="banner-mark"><img src="${baked}" alt=""></span>`
+    : it.wordmark
+      ? `<span class="banner-mark"><i style="--glyph:url('./brands/${esc(it.wordmark)}.svg')"></i></span>`
+      : `<h1 class="banner-text">${esc(it.name)}</h1>`;
   return `<div class="shelf-title" aria-label="${esc(it.name)}">${mark}</div>`;
 }
 
