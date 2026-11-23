@@ -13,8 +13,9 @@ function fakeFetch(calls, { country = 'US' } = {}) {
     return {
       ok: true,
       json: async () => ({
-        current: { temperature_2m: 39.6, weather_code: 3, is_day: 1 },
-        daily: { time: ['2026-11-23', '2026-11-24'], weather_code: [3, 61], temperature_2m_max: [41.2, 38], temperature_2m_min: [30.1, 29.6] },
+        current: { time: '2026-11-23T16:30', temperature_2m: 39.6, apparent_temperature: 31.2, weather_code: 3, is_day: 1 },
+        hourly: { time: ['2026-11-23T15:00', '2026-11-23T16:00', '2026-11-23T17:00'], temperature_2m: [41, 39.5, 37.2], weather_code: [2, 3, 61], precipitation_probability: [0, 10, 40], is_day: [1, 1, 0] },
+        daily: { time: ['2026-11-23', '2026-11-24'], weather_code: [3, 61], temperature_2m_max: [41.2, 38], temperature_2m_min: [30.1, 29.6], precipitation_probability_max: [10, 70] },
       }),
     }
   }
@@ -27,7 +28,11 @@ test('weather finds the place once, then keeps the forecast for 15 minutes', asy
   const a = await w()
   assert.equal(a.place, 'Plainfield')
   assert.equal(a.unit, 'F')
-  assert.deepEqual(a.now, { temp: 40, code: 3, text: 'Cloudy', day: true })
+  assert.deepEqual(a.now, { temp: 40, feels: 31, code: 3, text: 'Cloudy', day: true })
+  // The hours start at this one; each has its rain chance.
+  assert.deepEqual(a.hours.map(h => [h.time.slice(11), h.temp, h.rain, h.day]), [['16:00', 40, 10, true], ['17:00', 37, 40, false]])
+  assert.equal(a.rain, 10)
+  assert.equal(a.days[1].rain, 70)
   assert.equal(a.high, 41)
   assert.equal(a.low, 30)
   assert.equal(a.days[1].text, 'Light rain')
