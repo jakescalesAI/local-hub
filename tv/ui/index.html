@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="./hub.svg">
 <meta name="theme-color" content="#0b0f16">
-<link rel="stylesheet" href="./styles.css?v=24">
+<link rel="stylesheet" href="./styles.css?v=25">
 </head>
 <body>
 <div id="hub-wall"></div>
@@ -24,7 +24,7 @@
   </main>
 
   <!-- Netflix-style sidebar: icons, opening into labels when focus moves onto it. -->
-  <nav class="rail" id="rail" aria-label="LocalHub TV"><div class="rail-panel" id="railPanel"></div><img class="rail-logo" src="./hub.svg" alt=""><div class="rail-items" id="railItems"></div></nav>
+  <nav class="rail" id="rail" aria-label="LocalHub TV"><div class="rail-panel" id="railPanel"></div><div class="rail-brand"><img class="rail-logo" src="./hub.svg" alt=""><span class="rail-name">LocalHub</span></div><div class="rail-items" id="railItems"></div><div class="rail-foot" id="railFoot"></div></nav>
   <section class="view" id="assistantView" aria-label="Assistant"></section>
 
   <header class="when"><span class="when-time" id="clock"></span><span class="when-date" id="today"></span></header>
@@ -87,6 +87,6 @@
   /* The hub page defines hubFetch for chat.js (it waits out hub restarts); the TV only needs plain fetch. */
   if (typeof window.hubFetch !== "function") window.hubFetch = function (url, init) { return fetch(url, init); };
 </script>
-<script type="module" src="./app.js?v=21"></script>
+<script type="module" src="./app.js?v=22"></script>
 </body>
 </html>

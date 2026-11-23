@@ -1387,12 +1387,15 @@ const RAIL = [
   { id: "assistant", label: "Assistant", ic: sym('<path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z"/><path d="M19 11a7 7 0 0 1-14 0M12 18v3"/>') },
   { id: "browser", label: "Browser", ic: sym('<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>') },
   { id: "saver", label: "Screensaver", ic: sym('<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>') },
-  { id: "settings", label: "Settings", ic: sym('<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>') },
+  { id: "settings", label: "Settings", ic: SYM.gear, foot: true },
 ];
 S.view = "home";
 S.rail = 0;
 function renderRail() {
-  $("#railItems").innerHTML = RAIL.map((r, i) => `<div class="rail-item" data-r="${i}" data-id="${r.id}"><span class="ic">${r.ic}</span><span class="lb">${esc(r.label)}</span></div>`).join("");
+  // Settings sits on its own at the foot of the rail, like Netflix; up and down still walk the whole list.
+  const item = (r, i) => `<div class="rail-item" data-r="${i}" data-id="${r.id}"><span class="ic">${r.ic}</span><span class="lb">${esc(r.label)}</span></div>`;
+  $("#railItems").innerHTML = RAIL.map((r, i) => (r.foot ? "" : item(r, i))).join("");
+  $("#railFoot").innerHTML = RAIL.map((r, i) => (r.foot ? item(r, i) : "")).join("");
   paintRail();
 }
 function paintRail() {
