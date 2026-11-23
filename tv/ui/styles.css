@@ -225,6 +225,16 @@ html.lite .settings::before { background: var(--bg); -webkit-backdrop-filter: no
 
 
 /* ── modal (hub alert) ─────────────────────────────────────────────────────── */
+/* Hold OK on a tile: Open, Move, Hide (and Remove, for your websites). */
+.tilemenu { position: absolute; inset: 0; z-index: 40; display: grid; place-items: center; background: rgba(0, 0, 0, .55); opacity: 0; pointer-events: none; transition: opacity .18s var(--ease); }
+.tilemenu.on { opacity: 1; pointer-events: auto; }
+.tilemenu-card { width: 560px; padding: 34px 28px 28px; border-radius: 36px; background: #1c1d22; box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .14); color: #fff; }
+.tilemenu-name { font: 700 40px/1.1 var(--display); letter-spacing: -0.02em; margin: 0 14px 22px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tilemenu-item { display: flex; align-items: center; gap: 22px; height: 76px; padding: 0 24px; border-radius: 20px; font: 600 30px/1 var(--display); color: rgba(255, 255, 255, .78); }
+.tilemenu-item .sym { width: 34px; height: 34px; }
+.tilemenu-item.sel { background: #f2f2f5; color: #000; }
+/* Moving a tile: it wears a blue ring and the arrows carry it. */
+.app.moving .icon, html.lite .app.is-focused.moving .icon { box-shadow: 0 0 0 5px #0a84ff, 0 14px 28px rgba(0, 0, 0, .5) !important; }
 .modal { position: absolute; inset: 0; z-index: 40; display: grid; place-items: center; background: rgba(0, 0, 0, .35); opacity: 0; pointer-events: none; transition: opacity .2s var(--ease); }
 .modal.on { opacity: 1; pointer-events: auto; }
 .modal-card { width: 760px; border-radius: 40px; overflow: hidden; text-align: center; background: var(--menu-bg); box-shadow: 0 0 0 1px var(--sep), 0 40px 100px rgba(0, 0, 0, .35); transform: scale(1.06); transition: transform .3s var(--ease); }

@@ -6,10 +6,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="./hub.svg">
 <meta name="theme-color" content="#0b0f16">
-<link rel="stylesheet" href="./styles.css?v=38">
+<link rel="stylesheet" href="./styles.css?v=40">
 <link rel="stylesheet" href="./assistant.css?v=4">
 <!-- Fetched alongside app.js instead of after it has been parsed: ~0.9 s sooner to a home screen on a Fire TV Stick. -->
-<link rel="modulepreload" href="./app.js?v=56">
+<link rel="modulepreload" href="./app.js?v=57">
 <link rel="modulepreload" href="./stream.js?v=3">
 </head>
 <body>
@@ -47,6 +47,7 @@
     <div class="settings-side"><div class="set-track" id="setTrack"></div></div>
   </section>
 
+  <div class="tilemenu" id="tileMenu"><div class="tilemenu-card"><div class="tilemenu-name" id="tileMenuName"></div><div id="tileMenuList"></div></div></div>
   <div class="modal" id="modal">
     <div class="modal-card">
       <div class="modal-in">
@@ -89,6 +90,6 @@
   /* The hub page defines hubFetch for chat.js (it waits out hub restarts); the TV only needs plain fetch. */
   if (typeof window.hubFetch !== "function") window.hubFetch = function (url, init) { return fetch(url, init); };
 </script>
-<script type="module" src="./app.js?v=56"></script>
+<script type="module" src="./app.js?v=57"></script>
 </body>
 </html>

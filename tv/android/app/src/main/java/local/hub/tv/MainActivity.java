@@ -264,9 +264,21 @@ public class MainActivity extends Activity {
         // Back, Menu and ⏯ always come to the page, so Back never closes the home screen.
         if (typing && !"back".equals(name) && !"menu".equals(name) && !"ai".equals(name)) return super.dispatchKeyEvent(event);
         if (name == null) return super.dispatchKeyEvent(event);
+        // OK goes on release, so holding it can mean something else: held half a second, it's "hold" (the tile menu).
+        if ("enter".equals(name)) {
+            if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                if (event.getRepeatCount() == 0) okHeld = false;
+                else if (!okHeld) { okHeld = true; js("window.haven&&haven.key('hold')"); }
+            } else if (event.getAction() == KeyEvent.ACTION_UP && !okHeld) {
+                js("window.haven&&haven.key('enter')");
+            }
+            return true;
+        }
         if (event.getAction() == KeyEvent.ACTION_DOWN) js("window.haven&&haven.key('" + name + "')");
         return true;
     }
+
+    private boolean okHeld;
 
     /** Home, from another app or from LocalHub itself, lands on the home screen: first row, nothing open. */
     @Override

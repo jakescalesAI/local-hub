@@ -47,6 +47,10 @@ const SYM = {
   sliders: sym('<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>'),
   laptop: sym('<rect x="4" y="5" width="16" height="11" rx="1.6"/><path d="M2 19h20"/>'),
   chev: '<svg class="chev" viewBox="0 0 8 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 1.5 6.5 7l-5 5.5"/></svg>',
+  open: sym('<path d="M8 5v14l11-7z"/>'),
+  move: sym('<path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/>'),
+  hide: sym('<path d="M3 3l18 18"/><path d="M10.6 6.1A10 10 0 0 1 12 6c5 0 9 6 9 6a17 17 0 0 1-2.6 3.2M6.6 6.6C4.3 8.2 3 12 3 12s4 6 9 6a9 9 0 0 0 4.4-1.1"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/>'),
+  trash: sym('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>'),
 };
 
 /* ── apps ──────────────────────────────────────────────────────────────────
@@ -892,6 +896,8 @@ function settingsModel() {
     IN_HUB && !PREVIEW
       ? { id: "saverSource", t1: "Screensaver photos", t2: saverSourceNote(), v: saverSourceName() }
       : { info: true, t1: "Screensaver photos", t2: "Chosen in LocalHub", v: "Wallpapers" },
+    ...((SETTINGS?.tv?.hidden || []).length ? [{ id: "unhide", t1: "Hidden apps", t2: "Hold OK on a tile to hide it. This shows them all again", v: `${SETTINGS.tv.hidden.length} hidden` }] : []),
+    ...(Array.isArray(SETTINGS?.tv?.apps) && SETTINGS.tv.apps.length ? [{ id: "reorder", t1: "App order", t2: "Hold OK on a tile to move it. This goes back to recent first", v: "Your order" }] : []),
     { id: "look", t1: "Wallpaper, style and widgets", t2: "Opens LocalHub, where you change the TV", v: SETTINGS?.wallpaper?.current ? cap(SETTINGS.wallpaper.current) : "Aurora" },
     { group: "Assistant" },
     ...hubRows,
@@ -950,6 +956,8 @@ function settingsActivate() {
   else if (it.id === "address") return openModal("LocalHub address", "The laptop's address on your network, and the hub's port.", HUB.url.replace(/^https?:\/\//, ""), (v) => { native("setHub", v.trim()); HUB.paired = false; probeNative(); });
   else if (it.id === "pair") return openPairing();
   else if (it.id === "saverSource") return cycleSaverSource();
+  else if (it.id === "unhide") return saveTv({ hidden: null }, "Every app is back").then(renderSettings);
+  else if (it.id === "reorder") return saveTv({ apps: null }, "Apps are back in recent order").then(renderSettings);
   else if (it.id === "look") { closeSettings(); return openHubApp(); }
   else if (it.id === "tvsetup") { closeSettings(); return openHubApp("/#tv-setup"); }
   else if (it.id === "forget") { native("forgetHub"); HUB.paired = false; toast("This TV forgot LocalHub"); }
@@ -1652,6 +1660,8 @@ function handleKey(name) {
   if (S.overlay === "hub") { if (name === "back") closeHub(); return; }
   if (name === "help") { prefs.help = !prefs.help; savePrefs(); return showKeys(prefs.help); }
   if (S.overlay === "modal") { if (name === "back") closeModal(false); return; }
+  if (S.overlay === "tilemenu") return tileMenuKey(name);
+  if (S.moving) return moveKey(name);
   if (S.pendingOpen && name === "enter") { const app = S.pendingOpen; S.pendingOpen = null; return launch(app, () => openApp(app)); }
   S.pendingOpen = null;
   if (name === "ai") { if (S.overlay === "settings") closeSettings(); closeRail(); showView("assistant"); return Assistant?.voice(); }
@@ -1696,6 +1706,7 @@ function handleKey(name) {
     case "up": return move(0, -1);
     case "down": return move(0, 1);
     case "enter": return press(activate);
+    case "hold": return openTileMenu();
     case "menu": {
       // On one of your websites, ☰ twice removes it (from the hub, so everywhere); anywhere else ☰ opens the sidebar.
       const it = ITEMS[S.i];
@@ -1725,7 +1736,82 @@ function press(fn) {
   const node = $(".app.is-focused");
   if (!node) return fn();
   node.classList.add("pressed");
-  setTimeout(() => { node.classList.remove("pressed"); fn(); }, 120);
+  setTimeout(() => { node.classList.remove("pressed"); fn(); }, 80); // OK already waits for the key to come up
+}
+
+/* ── hold OK on a tile: Open, Move, Hide ───────────────────────────────── */
+const movable = (it) => it && APPS.includes(it);
+async function saveTv(patch, done) {
+  try {
+    const r = await fetch("/api/hub/settings", { method: "POST", headers: { "content-type": "application/json", "x-hub": "1" }, body: JSON.stringify({ tv: patch }) });
+    if (!r.ok) return toast("LocalHub couldn't save that");
+    await syncHub();
+    if (done) toast(done);
+  } catch { toast("LocalHub didn't answer"); }
+}
+function openTileMenu() {
+  const it = ITEMS[S.i];
+  if (S.zone !== "grid" || !movable(it)) return activate();
+  if (!IN_HUB) return toast("Pair this TV with LocalHub to arrange apps");
+  S.menu = [
+    { id: "open", label: "Open", ic: SYM.open },
+    { id: "move", label: "Move", ic: SYM.move },
+    { id: "hide", label: "Hide", ic: SYM.hide },
+    ...(it.kind === "site" ? [{ id: "remove", label: "Remove website", ic: SYM.trash }] : []),
+  ];
+  S.menuAt = 0;
+  S.menuFor = it;
+  $("#tileMenuName").textContent = it.name;
+  $("#tileMenuList").innerHTML = S.menu.map((m, i) => `<div class="tilemenu-item" data-m="${i}">${m.ic}<span>${esc(m.label)}</span></div>`).join("");
+  paintTileMenu();
+  $("#tileMenu").classList.add("on");
+  setOverlay("tilemenu");
+}
+function paintTileMenu() {
+  document.querySelectorAll(".tilemenu-item").forEach((n) => n.classList.toggle("sel", Number(n.dataset.m) === S.menuAt));
+}
+function closeTileMenu() {
+  $("#tileMenu").classList.remove("on");
+  setOverlay(null);
+}
+function tileMenuKey(name) {
+  if (name === "up") { S.menuAt = Math.max(0, S.menuAt - 1); return paintTileMenu(); }
+  if (name === "down") { S.menuAt = Math.min(S.menu.length - 1, S.menuAt + 1); return paintTileMenu(); }
+  if (name === "back" || name === "menu" || name === "hold") return closeTileMenu();
+  if (name !== "enter") return;
+  const it = S.menuFor, act = S.menu[S.menuAt].id;
+  closeTileMenu();
+  if (act === "open") return press(activate);
+  if (act === "move") { S.moving = it.id; paintMoving(); return toast("Move it with the arrows, then press OK"); }
+  if (act === "hide") {
+    const hidden = [...new Set([...(SETTINGS?.tv?.hidden || []), it.id])];
+    return saveTv({ hidden }, `Hid ${it.name}. Settings, Hidden apps brings it back`);
+  }
+  if (act === "remove") { S.removeAsk = { id: it.id, at: Date.now() }; return removeSitePress(it); }
+}
+function paintMoving() {
+  document.querySelectorAll(".app.moving").forEach((n) => n.classList.remove("moving"));
+  if (S.moving) $(`.app[data-i="${S.i}"]`)?.classList.add("moving");
+}
+// Moving: the arrows swap the tile with its neighbour among the apps; OK or Back keeps the new order.
+function moveKey(name) {
+  const apps = ITEMS.filter(movable);
+  const from = apps.findIndex((a) => a.id === S.moving);
+  if (name === "enter" || name === "back" || name === "hold") {
+    S.moving = null;
+    paintMoving();
+    return saveTv({ apps: apps.map((a) => a.id) }, "Saved the new order");
+  }
+  const d = { left: -1, right: 1, up: -COLS, down: COLS }[name];
+  if (!d || from < 0) return;
+  const to = Math.max(0, Math.min(apps.length - 1, from + d));
+  if (to === from) return;
+  const [moved] = apps.splice(from, 1);
+  apps.splice(to, 0, moved);
+  ITEMS = [...apps, ...ITEMS.filter((x) => !movable(x))];
+  S.i = to;
+  renderGrid();
+  paintMoving();
 }
 
 /* ── the mouse, on a laptop: hover focuses, click opens, the icon follows ─ */
