@@ -80,6 +80,15 @@ public class HomeWatchService extends Service {
                 .build();
         startForeground(7, n);
         self = this;
+        // Android restarted this after LocalHub's process died while it was on screen (a graphics driver crash on the
+        // Fire TV Stick): open it again, so the TV doesn't sit on Amazon's home screen. Quietly: no logo.
+        Prefs prefs = new Prefs(this);
+        if (prefs.inFront()) {
+            prefs.setInFront(false);
+            try {
+                startActivity(new Intent(this, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK).putExtra("fromHomeKey", true));
+            } catch (Exception ignored) { }
+        }
         Thread t = new Thread(this::watch, "home-watch");
         t.setDaemon(true);
         t.start();

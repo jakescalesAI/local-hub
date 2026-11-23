@@ -314,6 +314,9 @@ html:has(.hw-root) .page { padding-bottom: 0 !important; }
 .hw-month .dn.off { color: var(--label-3); }
 .hw-month .dn i { position: absolute; bottom: 0; width: 5px; height: 5px; border-radius: 50%; background: var(--blue); }
 .hw-bigdate { display: flex; flex-direction: column; gap: 2px; }
+.hw-wx-now { display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px; }
+.hw-wx-now .t { font: 700 48px/1 var(--rounded); letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.hw-wx-now .d { font-size: 15px; font-weight: 600; color: var(--label-2, inherit); }
 .hw-bigdate .n { font: 700 56px/1 var(--rounded); letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
 .hw-bigdate .w { font-size: 15px; font-weight: 600; color: var(--red); text-transform: uppercase; letter-spacing: .04em; }
 .hw-bigdate .m { font-size: 15px; color: var(--label-2); letter-spacing: -0.016em; }
@@ -2440,6 +2443,30 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     render(d, size) {
       const zs = size === 's' ? ZONES.slice(0, 2) : ZONES
       return `<div class="hw-list" data-fit-list>${zs.map(([n, tz]) => `<div class="hw-row hw-wc" style="font-size:${size === 's' ? 15 : 17}px"><span class="t ell">${esc(n)}</span><span class="r" style="font-size:${size === 's' ? 17 : 19}px" data-hw-tz="${esc(tz)}">${esc(zoneTime(tz))}</span></div>`).join('')}</div>`
+    },
+  })
+  // Weather where the laptop is (weather.mjs: the place from its IP, the forecast from Open-Meteo), kept 15 minutes.
+  const WX = { body: null, at: 0, busy: false }
+  const wxFill = () => document.querySelectorAll('[data-hw-weather]').forEach(el => { el.innerHTML = wxHTML(el.dataset.hwWeather) })
+  function wxHTML(size) {
+    const w = WX.body
+    if (!w) return `<div class="hw-sub" data-fit>${WX.err ? 'Weather isn’t available right now' : 'Finding the weather…'}</div>`
+    const now = `<div class="hw-wx-now" data-fit><span class="t">${esc(String(w.now.temp))}°</span><span class="d">${esc(w.now.text)}</span></div>`
+    const sub = `<div class="hw-sub ell">${esc(w.place)} · H ${esc(String(w.high))}° L ${esc(String(w.low))}°</div>`
+    if (size === 's') return now + sub
+    const days = w.days.slice(1, 4).map(d => row({ t: new Date(d.date + 'T12:00').toLocaleDateString(undefined, { weekday: 'short' }), r: esc(`${d.high}° / ${d.low}° · ${d.text}`) })).join('')
+    return now + sub + list([days])
+  }
+  reg({
+    id: 'weather', label: 'Weather', cat: 'Utility', icon: 'cloud', tint: 'var(--blue)', tab: null,
+    sizes: ['s', 'm'], defaultSize: 's', sources: [], blurb: 'Now and the next few days, where the laptop is.',
+    render(d, size) {
+      if (!WX.busy && Date.now() - WX.at > 15 * 60_000) {
+        WX.busy = true
+        fetch('/api/tv/weather', { cache: 'no-store' }).then(r => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+          .then(b => { WX.body = b; WX.err = null }).catch(e => { WX.err = e }).finally(() => { WX.at = Date.now(); WX.busy = false; wxFill() })
+      }
+      return `<div data-hw-weather="${esc(size)}">${wxHTML(size)}</div>`
     },
   })
   const LINKS = [['laptop', 'Laptop', 'laptop'], ['server', 'Server', 'server'], ['drives', 'Drives', 'drive'], ['ai', 'AI', 'gauge'], ['cloud', 'Cloud', 'cloud'], ['calendar', 'Calendar', 'calendar'], ['stripe', 'Stripe', 'card']]

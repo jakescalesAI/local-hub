@@ -48,7 +48,7 @@ export const WIDGET_IDS = [
   'coolify', 'coolify-apps', 'coolify-down', 'deploys', 'servers', 'clients', 'client-sites', 'cloudflare', 'cloud-providers', 'euronodes',
   'drives', 'backup-drive', 'icloud',
   'services', 'server-health', 'laptop-health', 'tunnels', 'syncs', 'tailnet',
-  'clock', 'date', 'world-clock', 'quick-links', 'hub-status',
+  'clock', 'date', 'world-clock', 'weather', 'quick-links', 'hub-status',
   'next-event', 'event-countdown', 'today', 'tomorrow', 'week', 'month',
   'stripe-balance', 'revenue', 'mrr', 'customers', 'payouts', 'invoices', 'payments',
 ]

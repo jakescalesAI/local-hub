@@ -362,6 +362,7 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         resumed = true;
+        prefs.setInFront(true);
         if (hub.paired() && web != null && web.getUrl() != null && !onHubPage()) ui.post(retryHub);
         js("window.haven&&haven.resumed()");
         HomeWatchService.localHubShown();
@@ -371,6 +372,7 @@ public class MainActivity extends Activity {
     protected void onPause() {
         resumed = false;
         quickStart = true;
+        prefs.setInFront(false);
         prefs.seen(System.currentTimeMillis());
         ui.removeCallbacks(retryHub);
         super.onPause();

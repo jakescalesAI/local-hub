@@ -28,6 +28,7 @@ import crypto from 'node:crypto'
 import { spawn } from 'node:child_process'
 import { hubConfig, PORT } from './config.mjs'
 import { create as createStream } from './stream.mjs'
+import { create as createWeather } from './weather.mjs'
 
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
@@ -54,6 +55,7 @@ export function create({ here }) {
   const uiDir = path.join(here, 'tv', 'ui')
   const whisper = createWhisper(here)
   const stream = createStream({ here }) // /api/tv/stream/*: the TV's browsers (stream.mjs)
+  const weather = createWeather({ here }) // /api/tv/weather: the weather widget's (weather.mjs)
   const commands = []
   const waiters = new Set()
   let seq = 0
@@ -148,6 +150,10 @@ export function create({ here }) {
       } finally {
         fs.rm(file, { force: true }, () => {})
       }
+    }
+
+    if (p === '/api/tv/weather' && req.method === 'GET') {
+      try { return send(res, 200, await weather()), true } catch (e) { return send(res, 502, { error: `Weather isn't available: ${e.message}` }), true }
     }
 
     if (p === '/api/tv/status' && req.method === 'GET') {

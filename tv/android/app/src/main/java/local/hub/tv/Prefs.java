@@ -33,6 +33,11 @@ final class Prefs {
 
     /** When LocalHub was last on screen: coming back soon after (Fire OS often closes it behind a big app) isn't a fresh start. */
     long lastSeen() { return sp.getLong("lastSeen", 0); }
+
+    /** True while LocalHub is on screen: if its process dies then (the Fire TV Stick's graphics driver crashes now and
+     *  then), the restarted Home watcher brings it straight back. */
+    boolean inFront() { return sp.getBoolean("inFront", false); }
+    void setInFront(boolean on) { sp.edit().putBoolean("inFront", on).commit(); }
     void seen(long now) { sp.edit().putLong("lastSeen", now).apply(); }
 
     /** The wallpaper the Home cover shows (its path on the hub), saved as cacheDir/cover.jpg. */

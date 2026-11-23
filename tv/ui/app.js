@@ -609,12 +609,26 @@ const WIDGETS = {
   "world-clock": { label: "World clock", tint: "var(--orange)", render() {
     return `<div class="w-list">${ZONES().slice(0, 3).map(([n, tz]) => `<div class="w-row"><span class="t">${esc(n)}</span><span class="v">${esc(zoneTime(tz))}</span></div>`).join("")}</div>`;
   } },
+  weather: { label: "Weather", tint: "var(--blue)", render() {
+    const w = WX.body;
+    if (!w) { loadWeather(); return `<div class="w-empty">${WX.err ? "Weather isn’t available right now" : "Finding the weather…"}</div>`; }
+    return `<div class="w-wx-now"><span class="t">${esc(String(w.now.temp))}°</span><span class="d">${esc(w.now.text)}</span></div><div class="w-wx-sub">${esc(w.place)} · H ${esc(String(w.high))}° L ${esc(String(w.low))}°</div>`;
+  } },
   recent: { label: "Recently opened", tint: "var(--green)", wide: true, render() {
     const list = [...APPS].filter((a) => a.recentAt).sort((a, b) => b.recentAt - a.recentAt).slice(0, 3);
     if (!list.length) return `<div class="w-empty">Apps you open here show up in this card.</div>`;
     return `<div class="w-list">${list.map((a) => `<div class="w-row"><span class="mini" style="--a-bg:${a.bg};--a-fg:${a.fg}">${miniArt(a)}</span><span class="t">${esc(a.name)}</span><span class="s">${esc(ago(a.recentAt))}</span></div>`).join("")}</div>`;
   } },
 };
+// Weather where the laptop is (the hub's /api/tv/weather), kept 15 minutes.
+const WX = { body: null, at: 0, busy: false, err: null };
+function loadWeather() {
+  if (!IN_HUB || WX.busy || Date.now() - WX.at < 15 * 60_000) return;
+  WX.busy = true;
+  fetch("/api/tv/weather", { cache: "no-store" }).then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+    .then((b) => { WX.body = b; WX.err = null; }).catch((e) => { WX.err = e; })
+    .finally(() => { WX.at = Date.now(); WX.busy = false; if (S.overlay === "saver") paintSaverHud(); });
+}
 const LABELS = { "next-event": "Next event", "claude-usage": "Claude usage", tokens: "Tokens", today: "Today", coolify: "Coolify", services: "Services", "server-health": "Server", drives: "Drives", "stripe-balance": "Stripe", icloud: "iCloud" };
 
 function tvWidgets() {
@@ -1014,6 +1028,7 @@ function settingsModel() {
     IN_HUB && !PREVIEW
       ? { id: "saverSource", t1: "Screensaver photos", t2: saverSourceNote(), v: saverSourceName() }
       : { info: true, t1: "Screensaver photos", t2: "Chosen in LocalHub", v: "Wallpapers" },
+
     ...((SETTINGS?.tv?.hidden || []).length ? [{ id: "unhide", t1: "Hidden apps", t2: "Hold OK on a tile to hide it. This shows them all again", v: `${SETTINGS.tv.hidden.length} hidden` }] : []),
     ...(Array.isArray(SETTINGS?.tv?.apps) && SETTINGS.tv.apps.length ? [{ id: "reorder", t1: "App order", t2: "Hold OK on a tile to move it. This goes back to recent first", v: "Your order" }] : []),
     { id: "look", t1: "Wallpaper, style and widgets", t2: "Opens LocalHub, where you change the TV", v: SETTINGS?.wallpaper?.current ? cap(SETTINGS.wallpaper.current) : "Aurora" },
@@ -1075,6 +1090,7 @@ function settingsActivate() {
   else if (it.id === "address") return openModal("LocalHub address", "The laptop's address on your network, and the hub's port.", HUB.url.replace(/^https?:\/\//, ""), (v) => { native("setHub", v.trim()); HUB.paired = false; probeNative(); });
   else if (it.id === "pair") return openPairing();
   else if (it.id === "saverSource") return cycleSaverSource();
+
   else if (it.id === "unhide") return saveTv({ hidden: null }, "Every app is back").then(renderSettings);
   else if (it.id === "reorder") return saveTv({ apps: null }, "Apps are back in recent order").then(renderSettings);
   else if (it.id === "look") { closeSettings(); return openHubApp(); }
@@ -1175,6 +1191,7 @@ const KB = [
 ];
 const SAVER = { photos: [], source: null, at: 0, loading: null, order: [], last: -1, gen: 0, timer: 0, front: null, fails: 0, preload: null };
 const saverSettings = () => ({ ...SAVER_DEFAULT, ...(SETTINGS?.tv?.saver || {}) });
+
 const saverLayers = () => [$("#saverA"), $("#saverB")];
 
 function loadSaverPhotos(force) {
@@ -1278,8 +1295,10 @@ function paintSaverHud() {
   const d = new Date(), t = clockParts(d);
   const time = w.includes("clock") ? `<div class="saver-time">${esc(t.hm)}${t.ap ? `<small>${t.ap}</small>` : ""}</div>` : "";
   const date = w.includes("date") ? `<div class="saver-date">${esc(d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" }))}</div>` : "";
-  const cards = w.filter((id) => id !== "clock" && id !== "date" && WIDGETS[id]).map(widgetCard).join("");
-  $("#saverHud").innerHTML = `${time || date ? `<div class="saver-when">${time}${date}</div>` : ""}${cards ? `<div class="saver-cards">${cards}</div>` : ""}`;
+  // The widgets you put on the TV in LocalHub (Home, TV view) that this screen can draw, down the right.
+  const tvWidgets = (SETTINGS?.widgets?.tv || []).map((x) => x?.id || x?.[0]).filter((id) => id && id !== "clock" && id !== "date" && WIDGETS[id]);
+  const cards = [...new Set([...tvWidgets, ...w.filter((id) => id !== "clock" && id !== "date" && WIDGETS[id])])].slice(0, 3).map(widgetCard).join("");
+  $("#saverHud").innerHTML = `${cards ? `<div class="saver-cards">${cards}</div>` : ""}${time || date ? `<div class="saver-when">${time}${date}</div>` : ""}`;
 }
 // A library that couldn't be used says so for a few seconds, then the wallpapers carry on alone.
 function paintSaverNote() {
