@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="./hub.svg">
 <meta name="theme-color" content="#0b0f16">
-<link rel="stylesheet" href="./styles.css?v=28">
+<link rel="stylesheet" href="./styles.css?v=29">
 <link rel="stylesheet" href="./assistant.css?v=3">
 </head>
 <body>
@@ -87,6 +87,6 @@
   /* The hub page defines hubFetch for chat.js (it waits out hub restarts); the TV only needs plain fetch. */
   if (typeof window.hubFetch !== "function") window.hubFetch = function (url, init) { return fetch(url, init); };
 </script>
-<script type="module" src="./app.js?v=32"></script>
+<script type="module" src="./app.js?v=34"></script>
 </body>
 </html>

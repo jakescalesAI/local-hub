@@ -35,6 +35,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 /* ── line icons, SF Symbols style ─────────────────────────────────────────── */
 const sym = (d, w = 2) => `<svg class="sym" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
 const SYM = {
+  plus: sym('<path d="M12 5v14M5 12h14"/>', 2.4),
   gear: sym('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3 1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8 1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>'),
   input: sym('<path d="M4 7h16v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M8 7V4h8v3"/><path d="M12 17v4"/>'),
   power: sym('<path d="M12 3v8"/><path d="M6.4 6.6a8 8 0 1 0 11.2 0"/>'),
@@ -176,7 +177,7 @@ async function syncHub() {
    tv.hidden) and how it scrolls (scroll.tv). */
 function takeSettings(next) {
   const look = (s) => JSON.stringify([s?.style, s?.wallpaper, s?.widgets?.tv]);
-  const grid = (s) => JSON.stringify([s?.tv?.apps, s?.tv?.hidden, s?.scroll?.tv]);
+  const grid = (s) => JSON.stringify([s?.tv?.apps, s?.tv?.hidden, s?.scroll?.tv, s?.sites]);
   const saver = (s) => JSON.stringify(s?.tv?.saver || null);
   const lookChanged = look(next) !== look(SETTINGS);
   const gridChanged = grid(next) !== grid(SETTINGS);
@@ -205,24 +206,55 @@ function paintChip() {
 const nameKey = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
 const wordmarkFor = (name) => WEB_APPS.find((w) => nameKey(w.name) === nameKey(name))?.wordmark || null;
 
+/* Your own websites: the hub's website apps (Home editor, or "Add website" here), opened in the laptop's
+   browser on the TV like the built-in ones. Their icons come from the hub; with none, the first letter shows. */
+function siteApps() {
+  return (Array.isArray(SETTINGS?.sites) ? SETTINGS.sites : []).filter((s) => s && s.url).map((s) => ({
+    // A colour of its own from the name, so a site without an icon still reads as its own tile.
+    id: s.id, name: s.name || s.url, url: s.url, kind: "site", fg: "#ffffff",
+    bg: `linear-gradient(160deg, hsl(${[...String(s.name || s.url)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7)} 55% 42%), hsl(${[...String(s.name || s.url)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7)} 60% 22%))`,
+    letter: String(s.name || "").trim().slice(0, 1).toUpperCase() || "•", siteIcon: `/api/hub/app-icon/${encodeURIComponent(s.id)}`,
+  }));
+}
+async function addSite(text) {
+  let raw = String(text || "").trim();
+  if (!raw) return;
+  if (!/^https?:\/\//i.test(raw)) raw = `https://${raw}`;
+  let u;
+  try { u = new URL(raw); } catch { return toast("That doesn't look like a web address"); }
+  if (!u.hostname.includes(".")) return toast("Type the whole address, like espn.com");
+  const base = u.hostname.replace(/^www\./, "").split(".")[0];
+  const name = base.charAt(0).toUpperCase() + base.slice(1);
+  try {
+    const r = await fetch("/api/hub/settings", { method: "POST", headers: { "content-type": "application/json", "x-hub": "1" }, body: JSON.stringify({ sites: { add: [{ name, url: u.href }] } }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) return toast(j.error || "LocalHub couldn't add it");
+    await syncHub();
+    const at = ITEMS.findIndex((x) => x.kind === "site" && x.url === u.href);
+    if (at >= 0) { S.zone = "grid"; S.i = at; applyFocus(); }
+    toast(`Added ${name}`);
+  } catch { toast("LocalHub didn't answer"); }
+}
+
 function loadItems() {
   if (NATIVE) {
     APPS = safeJson(native("apps") || "[]", []).map((a) => ({
       id: a.id, pkg: a.id, name: a.name, banner: a.banner || null, img: a.icon || null,
       bg: a.color || "#2c2c2e", fg: "#ffffff", recentAt: a.recent || 0, wordmark: wordmarkFor(a.name),
     }));
-    if (IN_HUB) APPS.push(...Stream.STREAM_APPS.map((a) => ({ ...a, note: Stream.noteFor(a) })));
+    if (IN_HUB) APPS.push(...Stream.STREAM_APPS.map((a) => ({ ...a, note: Stream.noteFor(a) })), ...siteApps());
     INPUTS = safeJson(native("inputs") || "[]", []);
   } else {
     const now = Date.now();
     const opened = safeJson((() => { try { return localStorage.getItem("localhub.tv.opened"); } catch { return null; } })(), {}) || {};
-    APPS = [...WEB_APPS, ...(IN_HUB ? Stream.STREAM_APPS : [])].map((a) => ({ ...a, note: Stream.noteFor(a), recentAt: opened[a.id] || (a.recent ? now - a.recent * 3600e3 : 0) }));
+    APPS = [...WEB_APPS, ...(IN_HUB ? [...Stream.STREAM_APPS, ...siteApps()] : [])].map((a) => ({ ...a, note: Stream.noteFor(a), recentAt: opened[a.id] || (a.recent ? now - a.recent * 3600e3 : 0) }));
     INPUTS = DEMO_INPUTS;
   }
   if (!prefs.inputs) INPUTS = [];
   ITEMS = [
     ...tvApps(),
     ...INPUTS.map((i) => ({ ...i, kind: "input" })),
+    ...(IN_HUB && !PREVIEW ? [{ id: "add-site", kind: "addsite", name: "Add website" }] : []),
     { id: "settings", kind: "settings", name: "Settings" },
   ];
   S.i = clamp(S.i, 0, ITEMS.length - 1);
@@ -247,6 +279,8 @@ function tvApps() {
 function iconHTML(it) {
   if (it.kind === "hub") return `<div class="icon hub"><img src="./hub.svg" alt=""></div>`;
   if (it.kind === "settings") return `<div class="icon" style="--a-bg:linear-gradient(160deg,#8e8e93,#3a3a3c);--a-fg:#fff">${SYM.gear}</div>`;
+  if (it.kind === "addsite") return `<div class="icon add" style="--a-bg:#1f2129;--a-fg:#fff"><i class="fill"></i>${SYM.plus}</div>`;
+  if (it.kind === "site") return `<div class="icon" style="--a-bg:${it.bg};--a-fg:${it.fg}"><i class="fill"></i><b class="letter">${esc(it.letter)}</b><img class="square site" src="${esc(it.siteIcon)}" alt="" decoding="async" onerror="this.remove()"></div>`;
   if (it.kind === "input") return `<div class="icon" style="--a-bg:linear-gradient(160deg,#2c2c2e,#0b0b0d);--a-fg:#fff">${SYM.input}<span class="sub">${esc(it.sub || "HDMI")}</span></div>`;
   const colors = `--a-bg:${it.bg};--a-fg:${it.fg}`;
   const fill = '<i class="fill"></i>';
@@ -491,6 +525,8 @@ function activate() {
   if (!it) return;
   if (it.kind === "hub") return openHubApp();
   if (it.kind === "settings") return openSettings();
+  if (it.kind === "addsite") return openModal("Add a website", "Its address, like espn.com or max.com. It opens in the laptop's browser.", "", addSite);
+  if (it.kind === "site") return Stream.engineFor(it) ? openInStream(it) : toast("The browser runs on the laptop: install Chrome or Chromium there");
   if (it.kind === "input") return launch(it, () => (NATIVE ? native("switchInput", it.id) : true), `Switching to ${it.name}`);
   if (it.stream || (!NATIVE && IN_HUB && Stream.engineFor(it))) return openInStream(it);
   return launch(it, () => openApp(it));

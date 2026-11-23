@@ -216,6 +216,9 @@ const SNAP_JS = (x, y, dir) => `((x, y, dir) => {
     if (outer && outer.getBoundingClientRect().width < W * .9) continue
     const r = el.getBoundingClientRect()
     if (r.width < 6 || r.height < 6 || r.bottom <= 0 || r.right <= 0 || r.top >= H || r.left >= W) continue
+    // Mostly on screen, and not a whole-page wrapper or a banner: those aren't what you mean to press.
+    const vis = (Math.min(r.right, W) - Math.max(r.left, 0)) * (Math.min(r.bottom, H) - Math.max(r.top, 0))
+    if (vis < r.width * r.height * .5 || r.width * r.height > W * H * .45) continue
     const cx = Math.min(Math.max(r.left + r.width / 2, 1), W - 1), cy = Math.min(Math.max(r.top + r.height / 2, 1), H - 1)
     const hit = document.elementFromPoint(cx, cy)
     if (!hit || !(hit === el || el.contains(hit) || hit.contains(el))) continue
