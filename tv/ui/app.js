@@ -1048,8 +1048,15 @@ function cycleSleepTimer() {
 }
 
 /* Settings: tvOS — the icon on the left, the list on the right */
+// The TV app's status, asked at most every 15 s: asking took ~9 ms of each Settings opening.
+let NATIVE_STATUS = { at: 0, v: {} };
+function nativeStatus() {
+  if (!NATIVE) return {};
+  if (Date.now() - NATIVE_STATUS.at > 15_000) NATIVE_STATUS = { at: Date.now(), v: safeJson(native("status"), {}) };
+  return NATIVE_STATUS.v;
+}
 function settingsModel() {
-  const st = NATIVE ? safeJson(native("status"), {}) : {};
+  const st = nativeStatus();
   const hubRows = NATIVE
     ? [
       { id: "find", t1: "LocalHub", t2: HUB.url ? HUB.url.replace(/^https?:\/\//, "") : "Look for it on this network", v: HUB.searching ? "Searching…" : HUB.on ? "Connected" : HUB.url ? "Not answering" : "Search" },
@@ -1096,7 +1103,7 @@ function renderSettings() {
     return `<div class="row${it.info ? " info" : ""}" data-i="${i}"><div class="txt"><div class="t1">${esc(it.t1)}</div>${it.t2 ? `<div class="t2">${esc(it.t2)}</div>` : ""}</div><div class="v${it.on || v === "On" ? " on" : ""}">${esc(v)}${SYM.chev}</div></div>`;
   }).join("");
   // Settings is drawn again once the hub's live state arrives: only rebuild the list if something in it changed.
-  if (track._html !== html) { track.innerHTML = html; track._html = html; }
+  if (track._html !== html) { track.innerHTML = html; track._html = html; track._tops = null; }
   if (!selectable(model[S.set])) S.set = model.findIndex(selectable);
   paintSettings();
 }
@@ -1105,8 +1112,13 @@ function paintSettings() {
   const row = $(`#setTrack .row[data-i="${S.set}"]`);
   if (!row) return;
   const track = $("#setTrack");
-  const k = $("#stage").getBoundingClientRect().width / 1920 || 1;
-  const y = (row.getBoundingClientRect().top - track.getBoundingClientRect().top) / k;
+  // Each row's place in the list, measured once per list (measuring on every opening forced a whole layout pass
+  // while Settings faded in).
+  if (!track._tops) {
+    track._tops = {};
+    document.querySelectorAll("#setTrack .row").forEach((n) => { track._tops[n.dataset.i] = n.offsetParent === track ? n.offsetTop : n.offsetTop - track.offsetTop; });
+  }
+  const y = track._tops[S.set] ?? 0;
   track.style.transform = `translateY(${-Math.max(0, y - 380)}px)`;
 }
 function openSettings() {
