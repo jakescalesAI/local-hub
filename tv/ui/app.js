@@ -35,6 +35,9 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 /* ── line icons, SF Symbols style ─────────────────────────────────────────── */
 const sym = (d, w = 2) => `<svg class="sym" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
 const SYM = {
+  widgets: sym('<rect x="3.5" y="3.5" width="7" height="7" rx="2.2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2.2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2.2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2.2"/>', 2),
+  sort: sym('<path d="M4 6h16M7 12h10M10 18h4"/>', 2.2),
+  search: sym('<circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/>', 2.2),
   star: sym('<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>'),
   unstar: sym('<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/><path d="M3 3l18 18"/>'),
   plus: sym('<path d="M12 5v14M5 12h14"/>', 2.4),
@@ -273,20 +276,29 @@ function loadItems() {
     INPUTS = DEMO_INPUTS;
   }
   if (!prefs.inputs) INPUTS = [];
-  ITEMS = [
-    ...tvApps(),
-    ...INPUTS.map((i) => ({ ...i, kind: "input" })),
-    ...(IN_HUB && !PREVIEW ? [{ id: "add-site", kind: "addsite", name: "Add website" }] : []),
-    { id: "settings", kind: "settings", name: "Settings" },
-  ];
+  const q = (S.search || "").toLowerCase();
+  ITEMS = q
+    ? [...tvApps(), ...INPUTS.filter((i) => i.name.toLowerCase().includes(q)).map((i) => ({ ...i, kind: "input" }))] // a search shows only what matches
+    : [
+      ...tvApps(),
+      ...INPUTS.map((i) => ({ ...i, kind: "input" })),
+      ...(IN_HUB && !PREVIEW ? [{ id: "add-site", kind: "addsite", name: "Add website" }] : []),
+      { id: "settings", kind: "settings", name: "Settings" },
+    ];
   S.i = clamp(S.i, 0, ITEMS.length - 1);
   const favIds = Array.isArray(SETTINGS?.tv?.favorites) ? SETTINGS.tv.favorites : [];
-  FAVS = favIds.map((id) => APPS.find((a) => a.id === id)).filter(Boolean);
-  if (!FAVS.length && IN_HUB && !PREVIEW) FAVS = [{ id: "favhint", kind: "favhint", name: "Favorites" }];
+  const picked = favIds.map((id) => APPS.find((a) => a.id === id)).filter(Boolean);
+  // The row: widgets, sort and search first, then your favorites, then the + card (always last).
+  FAVS = IN_HUB && !PREVIEW
+    ? [{ id: "ctl:widgets", kind: "ctl", name: "Widgets" }, { id: "ctl:sort", kind: "ctl", name: "Sort apps" }, { id: "ctl:search", kind: "ctl", name: "Search" }, ...picked, { id: "favadd", kind: "favadd", name: "Add a favorite" }]
+    : picked;
   S.f = clamp(S.f || 0, 0, Math.max(0, FAVS.length - 1));
   if (!FAVS.length && S.zone === "favs") S.zone = "grid";
 }
 const hasFavs = () => FAVS.length > 0;
+const isPicked = (it) => Boolean(it && it.kind !== "ctl" && it.kind !== "favadd");
+// Where Home lands in the row: your first favorite, or the + card when there are none.
+const favStart = () => Math.max(0, FAVS.findIndex((x) => isPicked(x) || x.kind === "favadd"));
 const isFav = (it) => Boolean(it && (SETTINGS?.tv?.favorites || []).includes(it.id));
 // What the remote is on: a Favorites tile or an app tile.
 const focused = () => (S.zone === "favs" ? FAVS[S.f] : ITEMS[S.i]);
@@ -303,13 +315,22 @@ function tvApps() {
   const order = Array.isArray(SETTINGS?.tv?.apps) ? SETTINGS.tv.apps : [];
   const hidden = new Set(Array.isArray(SETTINGS?.tv?.hidden) ? SETTINGS.tv.hidden : []);
   const base = defaultOrder();
-  const listed = order.map((id) => APPS.find((a) => a.id === id)).filter(Boolean);
-  return [...listed, ...base.filter((a) => !listed.includes(a))].filter((a) => !hidden.has(a.id));
+  const listed = sortMode() === "custom" ? order.map((id) => APPS.find((a) => a.id === id)).filter(Boolean) : [];
+  let list = sortMode() === "az" ? [...APPS].sort((a, b) => a.name.localeCompare(b.name)) : [...listed, ...base.filter((a) => !listed.includes(a))];
+  list = list.filter((a) => !hidden.has(a.id));
+  // Search (the row's search button): only the apps whose name has what was typed.
+  const q = (S.search || "").toLowerCase();
+  return q ? list.filter((a) => a.name.toLowerCase().includes(q)) : list;
 }
 
 function iconHTML(it) {
   if (it.kind === "hub") return `<div class="icon hub"><img src="./hub.svg" alt=""></div>`;
-  if (it.kind === "favhint") return `<div class="icon favhint"><i class="fill"></i>${SYM.star}</div>`;
+  if (it.kind === "favadd") return `<div class="icon favadd">${SYM.plus}</div>`;
+  if (it.kind === "ctl") {
+    const k = it.id.slice(4);
+    if (k === "search") return `<div class="icon ctl search${S.search ? " on" : ""}"><i class="fill"></i>${SYM.search}<span class="lbl">${esc(S.search || "Search")}</span></div>`;
+    return `<div class="icon ctl"><i class="fill"></i>${k === "widgets" ? SYM.widgets : SYM.sort}</div>`;
+  }
   if (it.kind === "settings") return `<div class="icon" style="--a-bg:linear-gradient(160deg,#8e8e93,#3a3a3c);--a-fg:#fff">${SYM.gear}</div>`;
   if (it.kind === "addsite") return `<div class="icon add" style="--a-bg:#1f2129;--a-fg:#fff"><i class="fill"></i>${SYM.plus}</div>`;
   if (it.kind === "site") return `<div class="icon" style="--a-bg:${it.bg};--a-fg:${it.fg}"><i class="fill"></i><b class="letter">${esc(it.letter)}</b><img class="square site" src="${esc(it.siteIcon)}" alt="" decoding="async" onerror="this.remove()"></div>`;
@@ -354,22 +375,44 @@ function renderGrid() {
 }
 // While the opening still covers the screen, step the page through every row once, so the TV draws each row's
 // tiles now rather than on the first scroll down (that first pass stalled up to 400 ms on a Fire TV Stick).
-const FAV_COLS = 7, FAVS_H = 214; // favorites in view at once; the section's height (--favs-h)
+const FAVS_H = 176; // the Favorites row's height (--favs-h)
 function renderFavs() {
   const box = $("#favs"), track = $("#favTrack");
   const head = $("#favsHead");
   if (!head.firstElementChild) head.innerHTML = `${SYM.star}<span>Favorites</span>`;
-  const html = FAVS.map((it, f) => `<div class="app fav" data-f="${f}">${iconHTML(it)}<span class="name">${esc(it.name)}</span></div>`).join("");
+  const html = FAVS.map((it, f) => `<div class="app fav${it.kind === "ctl" ? ` ctl ${it.id.slice(4)}` : ""}" data-f="${f}">${iconHTML(it)}<span class="name">${esc(it.name)}</span></div>`).join("");
   if (track._html !== html) { track.innerHTML = html; track._html = html; }
   if (box.hidden === hasFavs()) { box.hidden = !hasFavs(); $("#page").classList.toggle("has-favs", hasFavs()); }
 }
 // The row slides so the focused favorite is always on screen, five at a time like the grid.
+// Where a tile of the row is, in screen pixels (1920 wide): its left edge in the strip and its width.
+function favBox(f) {
+  const n = $(`.fav[data-f="${f}"]`), track = $("#favTrack");
+  if (!n) return null;
+  const k = $("#stage").getBoundingClientRect().width / 1920 || 1;
+  const t = track.getBoundingClientRect(), r = n.getBoundingClientRect();
+  return { l: (r.left - t.left) / k, w: r.width / k };
+}
+const FAV_VIEW = 1920 - 212 - 90; // the strip's visible width
 function slideFavs() {
-  const first = $("#favTrack .fav");
-  if (!first) return;
-  const step = (first.nextElementSibling ? first.nextElementSibling.offsetLeft - first.offsetLeft : 0) || first.offsetWidth;
-  S.favX = clamp(S.favX || 0, Math.max(0, S.f - FAV_COLS + 1), S.f);
-  $("#favTrack").style.transform = S.favX ? `translateX(${-S.favX * step}px)` : "";
+  const b = favBox(S.f);
+  if (!b) return;
+  let x = S.favX || 0;
+  if (b.l - x < 0) x = b.l;
+  else if (b.l + b.w - x > FAV_VIEW) x = b.l + b.w - FAV_VIEW;
+  S.favX = Math.max(0, x);
+  $("#favTrack").style.transform = S.favX ? `translateX(${-S.favX}px)` : "";
+}
+// Down from the row: the app under the tile you're on. Up from the apps: the row's tile over that column.
+function gridColUnderFav(f) {
+  const b = favBox(f);
+  return b ? clamp(Math.floor((b.l + b.w / 2 - (S.favX || 0)) / 320), 0, COLS - 1) : 0;
+}
+function favOverCol(col) {
+  const x = col * 320 + 138 + (S.favX || 0);
+  let best = 0, d = Infinity;
+  FAVS.forEach((_, f) => { const b = favBox(f); if (b && Math.abs(b.l + b.w / 2 - x) < d) { d = Math.abs(b.l + b.w / 2 - x); best = f; } });
+  return best;
 }
 
 async function walkRows() {
@@ -480,7 +523,7 @@ function move(dx, dy) {
       else return tilt(dx * 1.6, 0);
     }
     if (dy < 0) return tilt(0, -1.6);
-    if (dy > 0) { S.zone = "grid"; S.i = Math.min(clamp(Math.floor(((S.f - (S.favX || 0)) * 231 + 100) / 320), 0, COLS - 1), ITEMS.length - 1); }
+    if (dy > 0) { S.zone = "grid"; S.i = Math.min(gridColUnderFav(S.f), ITEMS.length - 1); }
     applyFocus();
     return tilt(dx, dy);
   }
@@ -494,7 +537,7 @@ function move(dx, dy) {
     else return tilt(dx * 1.6, 0); // the edge: lean into it, like tvOS
   }
   if (dy < 0) {
-    if (row === 0 && hasFavs()) { S.zone = "favs"; S.f = clamp((S.favX || 0) + Math.floor(((S.i % COLS) * 320 + 138) / 231), 0, FAVS.length - 1); applyFocus(); return tilt(0, -1); }
+    if (row === 0 && hasFavs()) { S.zone = "favs"; S.f = favOverCol(S.i % COLS); applyFocus(); return tilt(0, -1); }
     if (row === 0) return tilt(0, -1.6);
     S.i -= COLS;
   }
@@ -725,7 +768,12 @@ function activate() {
   if (S.zone === "bar") return HUB.on ? focusBar() : openPairing();
   const it = focused();
   if (!it) return;
-  if (it.kind === "favhint") return toast("Hold OK on any app below to add it to Favorites");
+  if (it.id === "ctl:widgets") return openCC();
+  if (it.id === "ctl:sort") return openSortMenu();
+  if (it.id === "ctl:search") return openSearch();
+  if (it.kind === "favadd") return startFavSelect();
+  // Picking a favorite (the + card): this app joins the row (or stays, if it's there), and apps open as usual again.
+  if (S.favSelect && S.zone === "grid") return pickFavorite(it);
   if (it.kind === "hub") return openHubApp();
   if (it.kind === "settings") return openSettings();
   if (it.kind === "addsite") return openModal("Add a website", "Its address, like espn.com or max.com. It opens in the laptop's browser.", "", addSite);
@@ -1656,9 +1704,11 @@ window.haven = {
     if (S.overlay === "cc") closeCC();
     closeRail();
     if (S.view !== "home") showView("home");
+    if (S.favSelect) stopFavSelect();
     S.zone = hasFavs() ? "favs" : "grid";
     S.i = 0;
-    S.f = 0;
+    S.f = favStart();
+    S.favX = 0;
     applyFocus();
   },
   closeHub: () => closeHub(),
@@ -1944,9 +1994,11 @@ function handleKey(name) {
       return applyFocus();
     }
     case "back":
-      if (S.zone === "favs") { if (S.f > 0) { S.f = 0; return applyFocus(); } return openRail(); }
+      if (S.favSelect) { stopFavSelect(); return toast("Stopped picking a favorite"); }
+      if (S.search && S.zone === "grid") { S.search = ""; loadItems(); S.i = 0; renderGrid(); return toast("Showing every app"); }
+      if (S.zone === "favs") { if (S.f !== favStart()) { S.f = favStart(); return applyFocus(); } return openRail(); }
       if (S.zone !== "grid") { S.zone = "grid"; return applyFocus(); }
-      if (hasFavs() && S.i < COLS) { S.zone = "favs"; S.f = 0; return applyFocus(); }
+      if (hasFavs() && S.i < COLS) { S.zone = "favs"; S.f = favStart(); return applyFocus(); }
       if (S.i === 0) return openRail();
       if (S.i >= COLS) { S.i = S.i % COLS; return applyFocus(); }
       if (S.i !== 0) { S.i = 0; return applyFocus(); }
@@ -2015,6 +2067,61 @@ async function wallKey(name) {
   } catch { toast("LocalHub didn't answer"); }
 }
 
+/* ── the Favorites row's buttons: + (pick a favorite), sort, search ─────── */
+function startFavSelect() {
+  if (!IN_HUB) return toast("Pair this TV with LocalHub to keep favorites");
+  S.favSelect = true;
+  $("#grid").classList.add("picking");
+  S.zone = "grid";
+  S.i = 0;
+  applyFocus();
+  toast("Pick an app for Favorites: OK adds it. Back to stop");
+}
+function stopFavSelect() {
+  S.favSelect = false;
+  $("#grid").classList.remove("picking");
+}
+async function pickFavorite(it) {
+  stopFavSelect();
+  if (!movable(it)) return toast("That one can't be a favorite");
+  const favs = SETTINGS?.tv?.favorites || [];
+  if (favs.includes(it.id)) return toast(`${it.name} is already in Favorites`);
+  await saveTv({ favorites: [...favs, it.id] }, `Added ${it.name} to Favorites`);
+}
+// How the apps are sorted: recent first (tvOS), A to Z, or your own order (Move, on a tile).
+const SORTS = { recent: "Recent first", az: "A to Z", custom: "Your order" };
+const sortMode = () => prefs.sort || (Array.isArray(SETTINGS?.tv?.apps) && SETTINGS.tv.apps.length ? "custom" : "recent");
+function openSortMenu() {
+  S.menu = Object.entries(SORTS).map(([id, label]) => ({ id: `sort:${id}`, label: label + (sortMode() === id ? "  ✓" : ""), ic: SYM.sort }));
+  S.menuAt = Math.max(0, Object.keys(SORTS).indexOf(sortMode()));
+  S.menuFor = null;
+  $("#tileMenuName").textContent = "Sort apps";
+  $("#tileMenuList").innerHTML = S.menu.map((m, i) => `<div class="tilemenu-item" data-m="${i}">${m.ic}<span>${esc(m.label)}</span></div>`).join("");
+  paintTileMenu();
+  $("#tileMenu").classList.add("on");
+  setOverlay("tilemenu");
+}
+function setSort(id) {
+  prefs.sort = id;
+  savePrefs();
+  const keep = ITEMS[S.i]?.id;
+  loadItems();
+  S.i = Math.max(0, ITEMS.findIndex((x) => x.id === keep));
+  renderGrid();
+  toast(`Apps: ${SORTS[id]}`);
+}
+// Search: type part of a name; the apps narrow to the ones that match. Search again with nothing to see them all.
+function openSearch() {
+  openModal("Search apps", "Part of an app's name. Leave it empty to see every app.", S.search || "", (v) => {
+    S.search = String(v || "").trim();
+    loadItems();
+    S.i = 0;
+    renderGrid();
+    const n = ITEMS.filter(movable).length;
+    if (S.search) { S.zone = "grid"; applyFocus(); toast(n ? `${n} app${n === 1 ? "" : "s"} match “${S.search}”` : `Nothing matches “${S.search}”`); }
+  });
+}
+
 /* ── hold OK on a tile: Open, Move, Hide ───────────────────────────────── */
 const movable = (it) => it && APPS.includes(it);
 async function saveTv(patch, done) {
@@ -2032,7 +2139,7 @@ function openTileMenu() {
   S.menu = S.zone === "favs"
     ? [
       { id: "open", label: "Open", ic: SYM.open },
-      ...(FAVS.length > 1 ? [{ id: "move", label: "Move", ic: SYM.move }] : []),
+      ...(FAVS.filter(isPicked).length > 1 ? [{ id: "move", label: "Move", ic: SYM.move }] : []),
       { id: "unfav", label: "Remove from Favorites", ic: SYM.unstar },
     ]
     : [
@@ -2064,6 +2171,7 @@ function tileMenuKey(name) {
   if (name !== "enter") return;
   const it = S.menuFor, act = S.menu[S.menuAt].id;
   closeTileMenu();
+  if (act.startsWith("sort:")) return setSort(act.slice(5));
   if (act === "open") return press(activate);
   const favs = SETTINGS?.tv?.favorites || [];
   if (act === "fav") return saveTv({ favorites: [...favs.filter((x) => x !== it.id), it.id] }, `Added ${it.name} to Favorites`);
@@ -2091,11 +2199,11 @@ function moveKey(name) {
     if (name === "enter" || name === "back" || name === "hold") {
       S.moving = null;
       paintMoving();
-      return saveTv({ favorites: FAVS.map((a) => a.id) }, "Saved your Favorites");
+      return saveTv({ favorites: FAVS.filter(isPicked).map((a) => a.id) }, "Saved your Favorites");
     }
     const d = { left: -1, right: 1 }[name];
     const to = from + (d || 0);
-    if (!d || from < 0 || to < 0 || to >= FAVS.length) return;
+    if (!d || from < 0 || !isPicked(FAVS[to])) return; // only among your favorites, not past the buttons or the +
     const [moved] = FAVS.splice(from, 1);
     FAVS.splice(to, 0, moved);
     S.f = to;
@@ -2274,7 +2382,7 @@ let splashReady = null;
 async function boot() {
   applyLook();
   loadItems();
-  if (hasFavs()) S.zone = "favs"; // like Home: the first thing is your Favorites
+  if (hasFavs()) { S.zone = "favs"; S.f = favStart(); } // like Home: the first thing is your Favorites
   renderGrid();
   renderRail();
   setView("home");

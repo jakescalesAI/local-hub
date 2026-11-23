@@ -145,17 +145,28 @@ body.shelf-hub .shelf-fade { background: linear-gradient(180deg, transparent 60%
 
 /* ── the grid (row 0 is the top row, on the shelf) ─────────────────────────── */
 .grid { position: absolute; left: var(--side); top: var(--row0); display: grid; grid-template-columns: repeat(5, var(--icon-w)); column-gap: var(--gap-x); row-gap: calc(var(--pitch) - var(--icon-h)); }
-/* Favorites: a section of its own at the top, titled, with smaller tiles (about seven across) on a strip that
-   slides sideways. The app grid starts under it (--favs-h). */
-:root { --favs-h: 214px; }
-.favs { position: absolute; left: 0; width: 1920px; top: calc(var(--row0) - 58px); height: 250px; overflow: hidden; }
+/* Favorites: a row of its own at the top: the widget, sort and search buttons, your favorites (smaller tiles, about
+   seven across) and a + card at the end, on a strip that slides sideways. The app grid starts under it (--favs-h). */
+:root { --favs-h: 176px; }
+.favs { position: absolute; left: 0; width: 1920px; top: calc(var(--row0) - 30px); height: 200px; overflow: hidden; }
 .favs[hidden] { display: none; }
-.favs-head { position: absolute; left: var(--side); top: 8px; display: flex; align-items: center; gap: 12px; font: 700 28px/1 var(--display); letter-spacing: .01em; color: #fff; text-shadow: 0 2px 1px rgba(0, 0, 0, .35); }
+.favs-head { display: none; }
+.favs-head-old { position: absolute; left: var(--side); top: 8px; display: flex; align-items: center; gap: 12px; font: 700 28px/1 var(--display); letter-spacing: .01em; color: #fff; text-shadow: 0 2px 1px rgba(0, 0, 0, .35); }
 .favs-head .sym { width: 30px; height: 30px; color: #ffd60a; fill: #ffd60a; }
-.fav-track { position: absolute; left: var(--side); top: 64px; display: flex; gap: 32px; transition: transform .45s var(--ease); will-change: transform; }
+.fav-track { position: absolute; left: var(--side); top: 36px; display: flex; gap: 32px; transition: transform .45s var(--ease); will-change: transform; }
 .fav-track .app { flex: none; zoom: .72; }
 .page.has-favs .grid { top: calc(var(--row0) + var(--favs-h)); }
-.page.has-favs .shelf-body { bottom: 236px; } /* the app's name sits clear of the Favorites heading */
+.page.has-favs .shelf-body { bottom: 196px; } /* the app's name sits clear of the Favorites row */
+/* The row's buttons: widgets, sort, search (a wider pill), and the + card that adds a favorite. */
+.fav-track .app.ctl { width: 172px; }
+.fav-track .app.ctl.search { width: 420px; }
+.app .icon.ctl, .app .icon.favadd { display: flex; align-items: center; justify-content: center; gap: 20px; --a-bg: rgba(255, 255, 255, .14); --a-fg: #fff; color: #fff; }
+.app .icon.ctl .sym, .app .icon.favadd .sym { position: relative; width: 64px; height: 64px; }
+.app .icon.ctl .lbl { position: relative; font: 600 40px/1 var(--display); color: rgba(255, 255, 255, .8); max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app .icon.ctl.on { --a-bg: rgba(10, 132, 255, .55); }
+.app .icon.favadd { --a-bg: rgba(255, 255, 255, .06); box-shadow: inset 0 0 0 3px rgba(255, 255, 255, .28); }
+/* Picking a favorite (the + card): the app you're on wears a + badge. */
+.grid.picking .app.is-focused .icon::before { content: "+"; display: grid !important; place-items: center; position: absolute; right: 12px; top: 12px; z-index: 3; width: 56px; height: 56px; border-radius: 50%; background: #0a84ff; color: #fff; font: 700 44px/1 var(--display); }
 .app .icon.favhint { --a-bg: #1f2129; --a-fg: #fff; display: grid; place-items: center; }
 .app .icon.favhint .sym { position: relative; width: 64px; height: 64px; }
 .app { position: relative; width: var(--icon-w); height: var(--icon-h); perspective: 900px; }
