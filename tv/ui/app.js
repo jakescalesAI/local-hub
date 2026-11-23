@@ -185,7 +185,7 @@ function takeSettings(next) {
   SETTINGS = next;
   if (saverChanged) saverSettingsChanged();
   if (gridChanged) {
-    const keep = ITEMS[S.i]?.id;
+    const keep = S.touched ? ITEMS[S.i]?.id : null;
     loadItems();
     S.i = Math.max(0, ITEMS.findIndex((x) => x.id === keep));
     S.shelfId = null;
@@ -304,6 +304,22 @@ function renderGrid() {
   $("#grid").innerHTML = ITEMS.map((it, i) => `<div class="app" data-i="${i}">${iconHTML(it)}<span class="name">${esc(it.name)}</span></div>`).join("");
   applyFocus(true);
   warmTiles();
+  if (NATIVE && !S.walked && APPS.some((a) => a.pkg) && !document.body.classList.contains("booted")) { S.walked = true; walkRows(); }
+}
+// While the opening still covers the screen, step the page through every row once, so the TV draws each row's
+// tiles now rather than on the first scroll down (that first pass stalled up to 400 ms on a Fire TV Stick).
+async function walkRows() {
+  const page = $("#page");
+  const rows = Math.ceil(ITEMS.length / COLS);
+  const frame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+  page.style.transition = "none";
+  for (let row = 1; row < rows; row++) {
+    if (document.body.classList.contains("booted")) break;
+    page.style.transform = `translateY(${-(648 + row * 236 - 400)}px)`;
+    await frame();
+    await frame();
+  }
+  applyFocus(true);
 }
 // Decode every tile's image once, a moment after the grid is drawn, so the first scroll down doesn't decode
 // them while the rows come into view (~140 ms of decoding on a Fire TV Stick, measured). One at a time, idle.
@@ -1384,7 +1400,9 @@ window.haven = {
   key: (name) => handleKey(name),
   closeHub: () => closeHub(),
   resumed: () => endLaunch(),
-  appsChanged: () => { const keep = ITEMS[S.i]?.id; loadItems(); S.i = Math.max(0, ITEMS.findIndex((x) => x.id === keep)); S.shelfId = null; renderGrid(); },
+  // Until the first key press, the list filling in (the TV's apps arrive a moment after the page) keeps focus on
+  // the first app; after it, focus stays on the app you were on.
+  appsChanged: () => { const keep = S.touched ? ITEMS[S.i]?.id : null; loadItems(); S.i = Math.max(0, ITEMS.findIndex((x) => x.id === keep)); S.shelfId = null; renderGrid(); APPS_READY.resolve?.(); },
   onNative(evt) {
     if (!evt) return;
     if (evt.type === "hubLine") return pending.get(evt.id)?.line(evt.line);
@@ -1563,6 +1581,7 @@ async function bakeGlass() {
 }
 
 function handleKey(name) {
+  S.touched = true;
   armSaver();
   if (S.overlay === "saver") return stopSaver();
   // Opening an app: Back always comes home, even if the app never came up.
@@ -1727,6 +1746,8 @@ function loadScript(src) {
   });
 }
 
+const APPS_READY = {}, HUB_READY = {};
+let splashReady = null;
 async function boot() {
   applyLook();
   loadItems();
@@ -1737,7 +1758,15 @@ async function boot() {
   tick();
   setInterval(tick, 10_000);
   // The opening (splash.js, the same one trylocalhub.com plays) decides when the home screen shows.
-  (PREVIEW ? Promise.resolve() : window.LocalHubSplash?.done || new Promise((r) => setTimeout(r, 2300))).then(() => { document.body.classList.add("booted"); $("#splash").classList.add("is-gone"); });
+  // On a TV the opening also waits (up to 6 s) for the TV's own apps, so the home screen appears whole.
+  const appsReady = NATIVE && !APPS.some((a) => a.pkg) ? Promise.race([new Promise((r) => { APPS_READY.resolve = r; }), wait(6000)]) : null;
+  (PREVIEW ? Promise.resolve() : Promise.all([window.LocalHubSplash?.done || new Promise((r) => setTimeout(r, 2300)), appsReady])).then(() => { document.body.classList.add("booted"); $("#splash").classList.add("is-gone"); });
+  // The opening stays up until the home screen is whole: the settings from the hub and, on a TV, its own apps.
+  splashReady = Promise.all([appsReady, IN_HUB ? new Promise((r) => { HUB_READY.resolve = r; setTimeout(r, 4000); }) : null]);
+  // Boot timings, for the harness (window.__boot): when the apps, the hub and the home screen were ready.
+  window.__boot = { start: Math.round(performance.now()) };
+  appsReady?.then(() => { window.__boot.apps = Math.round(performance.now()); });
+  splashReady.then(() => { window.__boot.home = Math.round(performance.now()); window.LocalHubSplash?.release?.(); });
   if (PREVIEW) { $("#keys").style.transition = "none"; showKeys(false); }
   else if (!NATIVE) { showKeys(prefs.help); if (prefs.help) setTimeout(() => showKeys(false), 12000); }
 
@@ -1747,6 +1776,7 @@ async function boot() {
     HUB.name = window.HUB_CONF?.name || HUB.name;
     HUB.owner = window.HUB_CONF?.owner || "";
     await syncHub();
+    HUB_READY.resolve?.();
     Stream.init({ toast, native, NATIVE, setOverlay, closed: () => { S.zone = "grid"; setOverlay(null); window.focus(); }, changed: () => window.haven.appsChanged() });
     if (!PREVIEW) loadSaverPhotos();
     S.shelfId = null;
