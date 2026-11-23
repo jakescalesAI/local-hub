@@ -1377,6 +1377,15 @@ document.addEventListener("keydown", (e) => {
     }
     return;
   }
+  // The assistant's field has the keyboard: letters, Space and Backspace are typing, but the remote's arrows,
+  // OK, Back and ⏯ still drive the screen (it moves the caret itself), and Left at the field's edge opens the sidebar.
+  if (S.view === "assistant" && e.target?.closest?.("#assistantView") && e.target.tagName === "INPUT") {
+    const as = { ArrowLeft: "left", ArrowRight: "right", ArrowUp: "up", ArrowDown: "down", Enter: "enter", Escape: "back", MediaPlayPause: "ai" }[e.key];
+    if (!as || e.isComposing) return;
+    e.preventDefault();
+    e.stopPropagation();
+    return handleKey(as);
+  }
   if (document.activeElement?.tagName === "INPUT") return;
   const name = KEYMAP[e.key];
   if (!name) return;
@@ -1425,7 +1434,7 @@ function closeRail() {
   S.zone = "grid";
   paintRail();
   if (S.view === "home") applyFocus();
-  else if (S.view === "assistant") Assistant?.show();
+  else if (S.view === "assistant") Assistant?.focus();
 }
 function showView(id) {
   S.view = id;
@@ -1659,7 +1668,7 @@ async function boot() {
     renderGrid();
     if (PREVIEW) { setInterval(syncHub, 30_000); return paintChip(); }
     // The TV is its own light app: the hub's chat.js and browser.js stay on the laptop.
-    Assistant = await import("./assistant.js?v=1").catch((e) => { console.warn("assistant", e); return null; });
+    Assistant = await import("./assistant.js?v=2").catch((e) => { console.warn("assistant", e); return null; });
     Assistant?.init({
       el: $("#assistantView"), toast, native, NATIVE,
       intercept: (t) => Boolean(window.HubChatHooks?.intercept?.(t)),
