@@ -88,12 +88,13 @@ const DEMO_INPUTS = [
 
 /* ── prefs (this screen only; the look and widgets come from the hub) ──── */
 const PREFS_KEY = "localhub.tv";
-const DEFAULTS = { clock: "12-hour", inputs: true, saver: "5 min", speak: "After voice", help: true };
+const DEFAULTS = { clock: "12-hour", homeClock: "Time and date", inputs: true, saver: "5 min", speak: "After voice", help: true };
 const DEVICE = NATIVE ? (safeJson(native("status"), {}) || {}) : {};
 // On a TV the page is laid out at the WebView's small CSS size (960×540 on a 4K Fire TV); the chat bar, which
 // lives outside the 1920×1080 canvas, is scaled the same way as the canvas so it keeps its proportions.
 if (NATIVE) document.documentElement.classList.add("native");
 let prefs = { ...DEFAULTS, ...(safeJson((() => { try { return localStorage.getItem(PREFS_KEY); } catch { return null; } })(), {}) || {}) };
+if (!prefs.voice) prefs.voice = voicePref(); // the Voice row starts from the old read-aloud and voice mode choices
 const savePrefs = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)); } catch { /* storage off */ } };
 
 /* ── state ─────────────────────────────────────────────────────────────── */
@@ -286,6 +287,7 @@ function loadItems() {
     }));
     if (IN_HUB) APPS.push(...Stream.STREAM_APPS.map((a) => ({ ...a, note: Stream.noteFor(a) })), ...siteApps());
     INPUTS = safeJson(native("inputs") || "[]", []);
+    S.inputCount = INPUTS.length;
   } else {
     const now = Date.now();
     const opened = safeJson((() => { try { return localStorage.getItem("localhub.tv.opened"); } catch { return null; } })(), {}) || {};
@@ -1203,15 +1205,18 @@ function nativeStatus() {
   if (Date.now() - NATIVE_STATUS.at > 15_000) NATIVE_STATUS = { at: Date.now(), v: safeJson(native("status"), {}) };
   return NATIVE_STATUS.v;
 }
+// Voice: Off, Read answers, or Conversation (talk back and forth). From the old rows if it was never set.
+function voicePref() {
+  if (["Off", "Read answers", "Conversation"].includes(prefs.voice)) return prefs.voice;
+  return prefs.voicemode === "On" ? "Conversation" : prefs.speak === "Off" ? "Off" : "Read answers";
+}
+const speakMode = () => ({ Off: "Off", "Read answers": "Always", Conversation: "Always" })[voicePref()];
+
 function settingsModel() {
   const st = nativeStatus();
+  // The connection to LocalHub is one row; OK on it offers search again, the address, pairing and forgetting.
   const hubRows = NATIVE
-    ? [
-      { id: "find", t1: "LocalHub", t2: HUB.url ? HUB.url.replace(/^https?:\/\//, "") : "Look for it on this network", v: HUB.searching ? "Searching…" : HUB.on ? "Connected" : HUB.url ? "Not answering" : "Search" },
-      { id: "address", t1: "Address", t2: "If searching can't find it, e.g. 192.168.1.20:3100", v: "" },
-      { id: "pair", t1: "Pair this TV", t2: "On the laptop open localhost:3100/pair/new", v: HUB.paired ? "Paired" : "Not paired", on: HUB.paired },
-      { id: "forget", t1: "Forget LocalHub", t2: "Removes this TV's device key", v: "" },
-    ]
+    ? [{ id: "conn", t1: "LocalHub", t2: HUB.url ? `${HUB.url.replace(/^https?:\/\//, "")}${HUB.paired ? " · paired" : " · not paired"}` : "Look for it on this network", v: HUB.searching ? "Searching…" : HUB.on ? "Connected" : HUB.url ? "Not answering" : "Search", on: HUB.on && HUB.paired }]
     : [{ info: true, t1: "LocalHub", t2: IN_HUB ? "This screen is served by LocalHub" : "Open it from LocalHub at /tv/", v: HUB.on ? "Connected" : "Not connected", on: HUB.on },
        ...(IN_HUB ? [{ id: "tvsetup", t1: "Set up a TV", t2: "Put LocalHub TV on a television and pair it", v: "" }] : [])];
   return [
@@ -1219,24 +1224,20 @@ function settingsModel() {
     { group: "Home Screen" },
     { key: "clock", t1: "Clock", t2: "Top left, and on the screensaver", values: ["12-hour", "24-hour"] },
     { key: "homeClock", t1: "Home clock", t2: "What the top left of the home screen shows", values: ["Time and date", "Time", "Off"] },
-    { key: "inputs", t1: "HDMI inputs", t2: "Shown as icons after the apps", toggle: true },
+    ...(S.inputCount ? [{ key: "inputs", t1: "HDMI inputs", t2: "Shown as icons after the apps", toggle: true }] : []), // only on a TV that has some
     { key: "saver", t1: "Screensaver", t2: "After the remote has been still", values: ["Off", "2 min", "5 min", "10 min", "15 min"] },
     IN_HUB && !PREVIEW
       ? { id: "saverSource", t1: "Screensaver photos", t2: saverSourceNote(), v: saverSourceName() }
       : { info: true, t1: "Screensaver photos", t2: "Chosen in LocalHub", v: "Wallpapers" },
 
     ...((SETTINGS?.tv?.hidden || []).length ? [{ id: "unhide", t1: "Hidden apps", t2: "Hold OK on a tile to hide it. This shows them all again", v: `${SETTINGS.tv.hidden.length} hidden` }] : []),
-    ...(Array.isArray(SETTINGS?.tv?.apps) && SETTINGS.tv.apps.length ? [{ id: "reorder", t1: "App order", t2: "Hold OK on a tile to move it. This goes back to recent first", v: "Your order" }] : []),
     ...(IN_HUB && !PREVIEW ? [{ id: "wall", t1: "Wallpaper", t2: "Pick one here: it changes straight away", v: wallName(SETTINGS?.wallpaper?.current ?? "aurora") }] : []),
-    { id: "look", t1: "Style and widgets", t2: "Opens LocalHub, where you change the TV", v: "" },
+    { id: "look", t1: "Home widgets", t2: "Opens LocalHub, where the TV's widgets are chosen", v: "" },
     { group: "Assistant" },
     ...hubRows,
-    { key: "speak", t1: "Read answers aloud", t2: NATIVE ? "With the TV's voice" : "With this computer's voice", values: ["After voice", "Always", "Off"] },
-    { key: "voicemode", t1: "Voice mode", t2: "Talk with the assistant: it answers aloud, then it's your turn again", values: ["Off", "On"] },
-    { info: true, t1: "Alexa", t2: "“Alexa, ask local hub to open Netflix”", v: "tv/alexa" },
+    { key: "voice", t1: "Voice", t2: { Off: "The assistant only writes", "Read answers": "Answers are read aloud", Conversation: "Talk back and forth: it answers aloud, then it's your turn" }[voicePref()], values: ["Off", "Read answers", "Conversation"] },
     ...(!NATIVE ? [{ key: "help", t1: "Keyboard help", t2: "The remote's keys, along the top", toggle: true }] : []),
     { group: "About" },
-    ...(NATIVE ? [{ info: true, t1: "Home button", t2: "Brings LocalHub back when Home is pressed", v: st.homeService ? "On" : "Off", on: st.homeService }] : []),
     { info: true, t1: "Version", t2: NATIVE ? "LocalHub TV for Fire TV" : "LocalHub TV on this laptop", v: NATIVE ? st.version || "?" : LIVE.status?.version ? `LocalHub ${LIVE.status.version}` : "LocalHub" },
   ];
 }
@@ -1294,6 +1295,7 @@ function settingsActivate() {
   else if (it.id === "pair") return openPairing();
   else if (it.id === "saverSource") return cycleSaverSource();
   else if (it.id === "wall") return openWallPicker();
+  else if (it.id === "conn") return openConnMenu();
 
   else if (it.id === "unhide") return saveTv({ hidden: null }, "Every app is back").then(renderSettings);
   else if (it.id === "reorder") return saveTv({ apps: null }, "Apps are back in recent order").then(renderSettings);
@@ -1604,7 +1606,7 @@ const MIC = { wait: null };
 
 /* "Read answers aloud" (Settings), for tabs/chat.js: "After voice" speaks a reply when the question was
    spoken, "Always" speaks every reply, "Off" never speaks. */
-window.HubSpeech = { mode: () => (prefs.voicemode === "On" ? "Always" : prefs.speak || "After voice") };
+window.HubSpeech = { mode: () => speakMode() };
 
 if (NATIVE) {
   window.HubVoice = {
@@ -1633,7 +1635,7 @@ if (NATIVE) {
     },
     stop() { native("stopListening"); },
     cancel() { native("cancelListening"); MIC.wait?.resolve(""); MIC.wait = null; },
-    speak(text) { if (prefs.speak !== "Off") native("speak", text); },
+    speak(text) { if (speakMode() !== "Off") native("speak", text); },
     hush() { native("stopSpeaking"); },
   };
 }
@@ -1718,7 +1720,7 @@ window.HubChatHooks = {
 
 const plain = (t) => t.replace(/`[^`]*`/g, "").replace(/https?:\/\/\S+/g, "").replace(/[*_#>|]/g, "").replace(/\s+\n/g, "\n");
 function say(text) {
-  if (!text || prefs.speak === "Off") return;
+  if (!text || speakMode() === "Off") return;
   if (window.HubChat?.say) return window.HubChat.say(text);
   if (NATIVE) return native("speak", text);
   if ("speechSynthesis" in window) speechSynthesis.speak(new SpeechSynthesisUtterance(text));
@@ -2119,6 +2121,31 @@ function press(fn) {
   setTimeout(() => { node.classList.remove("pressed"); fn(); }, 80); // OK already waits for the key to come up
 }
 
+/* ── Settings › LocalHub: search again, the address, pairing, forgetting ── */
+function openConnMenu() {
+  S.menu = [
+    { id: "conn:find", label: "Search the network again", ic: SYM.search },
+    { id: "conn:address", label: "Type its address", ic: SYM.input },
+    ...(!HUB.paired ? [{ id: "conn:pair", label: "Pair this TV", ic: SYM.plus }] : []),
+    { id: "conn:forget", label: "Forget LocalHub", ic: SYM.trash },
+  ];
+  S.menuAt = 0;
+  S.menuFor = null;
+  S.menuFrom = S.overlay;
+  $("#tileMenuName").textContent = "LocalHub";
+  $("#tileMenuList").innerHTML = S.menu.map((m, i) => `<div class="tilemenu-item" data-m="${i}">${m.ic}<span>${esc(m.label)}</span></div>`).join("");
+  paintTileMenu();
+  $("#tileMenu").classList.add("on");
+  setOverlay("tilemenu");
+}
+function connAction(id) {
+  if (id === "find") { HUB.searching = true; native("findHub"); toast("Looking for LocalHub…"); }
+  else if (id === "address") return openModal("LocalHub address", "The laptop's address on your network, and the hub's port.", HUB.url.replace(/^https?:\/\//, ""), (v) => { native("setHub", v.trim()); HUB.paired = false; probeNative(); });
+  else if (id === "pair") return openPairing();
+  else if (id === "forget") { native("forgetHub"); HUB.paired = false; toast("This TV forgot LocalHub"); }
+  renderSettings();
+}
+
 /* ── Settings › Wallpaper: pick one on the TV ──────────────────────────── */
 const WALL_NAMES = { aurora: "Aurora", dusk: "Dusk", graphite: "Graphite", ocean: "Ocean", sand: "Sand", "mono-light": "Light", "mono-dark": "Dark", noise: "Grain", none: "None" };
 function wallName(id) {
@@ -2297,7 +2324,8 @@ function paintTileMenu() {
 }
 function closeTileMenu() {
   $("#tileMenu").classList.remove("on");
-  setOverlay(null);
+  setOverlay(S.menuFrom || null); // back to Settings when it was opened from there
+  S.menuFrom = null;
 }
 function tileMenuKey(name) {
   if (name === "up") { S.menuAt = Math.max(0, S.menuAt - 1); return paintTileMenu(); }
@@ -2307,6 +2335,7 @@ function tileMenuKey(name) {
   const it = S.menuFor, act = S.menu[S.menuAt].id;
   closeTileMenu();
   if (act.startsWith("sort:")) return setSort(act.slice(5));
+  if (act.startsWith("conn:")) return connAction(act.slice(5));
   if (act === "open") return press(activate);
   const favs = SETTINGS?.tv?.favorites || [];
   if (act === "fav") return saveTv({ favorites: [...favs.filter((x) => x !== it.id), it.id] }, `Added ${it.name} to Favorites`);
@@ -2565,8 +2594,8 @@ async function boot() {
     Assistant?.init({
       el: $("#assistantView"), toast, native, NATIVE,
       intercept: (t) => Boolean(window.HubChatHooks?.intercept?.(t)),
-      speechMode: () => (prefs.voicemode === "On" ? "Always" : prefs.speak || "After voice"),
-      voiceMode: () => prefs.voicemode === "On",
+      speechMode: () => speakMode(),
+      voiceMode: () => voicePref() === "Conversation",
       onActivity: (on) => $("#rail").classList.toggle("busy", Boolean(on)),
     });
     setInterval(syncHub, 30_000);
