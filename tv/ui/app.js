@@ -78,15 +78,11 @@ const DEMO_INPUTS = [
 
 /* ── prefs (this screen only; the look and widgets come from the hub) ──── */
 const PREFS_KEY = "localhub.tv";
-const DEFAULTS = { clock: "12-hour", inputs: true, saver: "5 min", glass: "Auto", speak: "After voice", help: true };
-/* A weak TV (the Fire TV Stick 4K has 1.5 GB and a PowerVR GPU) can't keep up with live blurs, masks and blend
-   modes: every one is an extra surface for the GPU, which made it stutter and, after a while, crash its driver.
-   "Auto" glass is Light on those and Full on anything stronger; a laptop is always strong enough. */
+const DEFAULTS = { clock: "12-hour", inputs: true, saver: "5 min", speak: "After voice", help: true };
 const DEVICE = NATIVE ? (safeJson(native("status"), {}) || {}) : {};
 // On a TV the page is laid out at the WebView's small CSS size (960×540 on a 4K Fire TV); the chat bar, which
 // lives outside the 1920×1080 canvas, is scaled the same way as the canvas so it keeps its proportions.
 if (NATIVE) document.documentElement.classList.add("native");
-const WEAK_TV = Boolean(NATIVE) && (!DEVICE.ramMB || DEVICE.ramMB < 2600 || DEVICE.lowRam === true || (DEVICE.sdk || 0) < 26);
 let prefs = { ...DEFAULTS, ...(safeJson((() => { try { return localStorage.getItem(PREFS_KEY); } catch { return null; } })(), {}) || {}) };
 const savePrefs = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)); } catch { /* storage off */ } };
 
@@ -148,7 +144,9 @@ function applyLook() {
   r.style.setProperty("--hub-blur", `${st.blur}px`);
   r.style.setProperty("--hub-alpha", `${100 - st.transparency}%`);
   r.style.setProperty("--hub-radius", `${st.radius}px`);
-  r.classList.toggle("lite", prefs.glass === "Light" || (prefs.glass !== "Full" && WEAK_TV));
+  // No live glass anywhere: every blur, mask and blend mode was an extra GPU surface on a Fire TV Stick. The
+  // look is flat tinted surfaces over the frozen wallpaper ("lite" in the CSS), on every screen.
+  r.classList.add("lite");
   const w = wallFor(SETTINGS);
   const wall = $("#hub-wall");
   if (!w) { delete r.dataset.wall; wall.style.backgroundImage = ""; return; }
@@ -291,6 +289,9 @@ function applyFocus(instant) {
     document.body.classList.remove("in-grid");
     const shelf = $(".shelf");
     if (shelf && (shelf.style.opacity === "0") !== grid) shelf.style.opacity = grid ? "0" : "";
+    // The clock rides over the Top Shelf; in the rows it would sit on the top tiles, so it steps aside.
+    const when = $(".when");
+    if (when && (when.style.opacity === "0") !== grid) when.style.opacity = grid ? "0" : "";
   } else document.body.classList.toggle("in-grid", grid);
   // Row 0 sits on the Top Shelf. Further down, in one long scroll (the default, like tvOS) the
   // focused row rides about a third of the way up; in pages the rows move three at a time.
@@ -795,7 +796,6 @@ function settingsModel() {
     IN_HUB && !PREVIEW
       ? { id: "saverSource", t1: "Screensaver photos", t2: saverSourceNote(), v: saverSourceName() }
       : { info: true, t1: "Screensaver photos", t2: "Chosen in LocalHub", v: "Wallpapers" },
-    { key: "glass", t1: "Liquid glass", t2: WEAK_TV ? "Auto is Light on this TV, to keep it smooth" : "Auto is Full here; Light is the smoothest", values: ["Auto", "Full", "Light"] },
     { id: "look", t1: "Wallpaper, style and widgets", t2: "Opens LocalHub, where you change the TV", v: SETTINGS?.wallpaper?.current ? cap(SETTINGS.wallpaper.current) : "Aurora" },
     { group: "Assistant" },
     ...hubRows,

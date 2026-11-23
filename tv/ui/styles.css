@@ -64,7 +64,7 @@ button, input { font: inherit; color: inherit; background: none; border: 0; }
 #hub-wall::after { content: ""; position: absolute; inset: 0; background: var(--bg); opacity: var(--hub-scrim); transition: opacity .3s; }
 html[data-wall] #hub-wall { display: block; }
 html[data-wall], html[data-wall] body { background: var(--bg); }
-body.in-grid #hub-wall { filter: blur(30px) saturate(140%); transform: scale(1.06); }
+body.in-grid #hub-wall { transform: scale(1.06); }
 
 #stage { position: absolute; left: 50%; top: 50%; width: 1920px; height: 1080px; z-index: 1; transform: translate(-50%, -50%) scale(.5); transform-origin: 50% 50%; }
 
@@ -72,7 +72,6 @@ body.in-grid #hub-wall { filter: blur(30px) saturate(140%); transform: scale(1.0
 .card { border-radius: calc(var(--hub-radius) * 1.6); background: var(--surface); color: var(--label); box-shadow: var(--hub-shadow); }
 html[data-look="glass"] .card, .glass {
   background: color-mix(in srgb, var(--surface) var(--hub-alpha), transparent);
-  -webkit-backdrop-filter: saturate(180%) blur(calc(var(--hub-blur) * 2)); backdrop-filter: saturate(180%) blur(calc(var(--hub-blur) * 2));
 }
 html[data-look="outline"] .card { background: color-mix(in srgb, var(--surface) 20%, transparent); box-shadow: inset 0 0 0 3px var(--sep); }
 html.lite .card, html.lite .glass { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; background: color-mix(in srgb, var(--surface) 92%, transparent) !important; }
@@ -81,11 +80,11 @@ html.lite .card, html.lite .glass { -webkit-backdrop-filter: none !important; ba
 
 /* ── status, top right (tvOS puts the time there) ──────────────────────────── */
 .status { position: absolute; right: var(--side); top: 48px; z-index: 6; display: flex; align-items: center; gap: 22px; transition: opacity .4s var(--ease); }
-.hubchip { display: inline-flex; align-items: center; gap: 12px; height: 54px; padding: 0 20px 0 10px; border-radius: 99px; font-size: 24px; font-weight: 600; color: #fff; background: rgba(0, 0, 0, .22); -webkit-backdrop-filter: saturate(180%) blur(30px); backdrop-filter: saturate(180%) blur(30px); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .14); }
+.hubchip { display: inline-flex; align-items: center; gap: 12px; height: 54px; padding: 0 20px 0 10px; border-radius: 99px; font-size: 24px; font-weight: 600; color: #fff; background: rgba(0, 0, 0, .22); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .14); }
 .hubchip img { width: 36px; height: 36px; border-radius: 9px; }
 .hubchip .st { width: 12px; height: 12px; border-radius: 50%; background: var(--gray); }
 .hubchip.on .st { background: var(--green); }
-.status-clock { font: 600 40px/1 var(--display); letter-spacing: -0.01em; font-variant-numeric: tabular-nums; color: #fff; text-shadow: 0 2px 18px rgba(0, 0, 0, .35); }
+.status-clock { font: 600 40px/1 var(--display); letter-spacing: -0.01em; font-variant-numeric: tabular-nums; color: #fff; }
 body.overlay .status { opacity: 0; }
 
 /* ── the page: Top Shelf + grid, scrolled as one ───────────────────────────── */
@@ -94,11 +93,11 @@ body.overlay .page { opacity: 0; transition: opacity .35s var(--ease), transform
 
 /* Top Shelf: full-bleed art for whatever the top row has in focus. */
 .shelf { position: relative; height: 760px; overflow: hidden; transition: opacity .6s var(--ease), filter .6s var(--ease); }
-body.in-grid .shelf { opacity: 0; filter: blur(12px); }
+body.in-grid .shelf { opacity: 0; }
 .shelf-art { position: absolute; inset: 0; opacity: 0; transition: opacity 1s var(--ease); overflow: hidden; }
 .shelf-art.on { opacity: 1; }
 .shelf-art .bg { position: absolute; inset: -40px; background-size: cover; background-position: center; }
-.shelf-art .bg.blur { filter: blur(40px) saturate(150%) brightness(.75); transform: scale(1.1); }
+.shelf-art .bg.blur { transform: scale(1.1); }
 .shelf-art .glyph { position: absolute; right: 90px; top: 40px; width: 760px; height: 560px; opacity: .22; background: currentColor; -webkit-mask: var(--glyph) center/contain no-repeat; mask: var(--glyph) center/contain no-repeat; transform: rotate(-6deg); }
 .shelf-art .glyph.wide { -webkit-mask-size: 130%; mask-size: 130%; }
 .shelf-art.on .glyph { animation: drift 30s ease-in-out both; }
@@ -111,9 +110,9 @@ body.shelf-hub .shelf-fade { background: linear-gradient(180deg, transparent 60%
 .shelf-body.swap { animation: shelfIn .7s var(--ease) both; }
 @keyframes shelfIn { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
 .shelf-title { display: flex; align-items: center; gap: 30px; }
-.shelf-title .mark { width: 116px; height: 116px; flex: none; background: #fff; -webkit-mask: var(--glyph) center/contain no-repeat; mask: var(--glyph) center/contain no-repeat; filter: drop-shadow(0 10px 30px rgba(0, 0, 0, .4)); }
+.shelf-title .mark { width: 116px; height: 116px; flex: none; background: #fff; -webkit-mask: var(--glyph) center/contain no-repeat; mask: var(--glyph) center/contain no-repeat; }
 .shelf-title .mark.wide { width: 360px; height: 120px; -webkit-mask-size: cover; mask-size: cover; }
-.shelf-title h1 { font: 700 96px/1 var(--display); letter-spacing: -0.03em; text-shadow: 0 8px 40px rgba(0, 0, 0, .35); }
+.shelf-title h1 { font: 700 96px/1 var(--display); letter-spacing: -0.03em; }
 .shelf-meta { margin-top: 24px; display: flex; align-items: center; gap: 16px; font-size: 26px; font-weight: 500; color: rgba(255, 255, 255, .75); }
 .shelf-meta .sep { width: 6px; height: 6px; border-radius: 50%; background: rgba(255, 255, 255, .45); }
 .shelf-meta kbd { font: 600 20px/1 var(--font); padding: 6px 10px; border-radius: 8px; background: rgba(255, 255, 255, .16); }
@@ -157,7 +156,7 @@ body.shelf-hub .shelf-fade { background: linear-gradient(180deg, transparent 60%
 }
 .icon::before { content: ""; position: absolute; inset: 0; background: linear-gradient(160deg, rgba(255, 255, 255, .14), transparent 55%); pointer-events: none; }
 /* the light that follows the tilt */
-.icon::after { content: ""; position: absolute; inset: -40%; background: radial-gradient(closest-side, rgba(255, 255, 255, .42), rgba(255, 255, 255, 0) 70%); opacity: 0; transform: translate(var(--gx, 0%), var(--gy, -30%)); transition: opacity .45s var(--ease), transform .3s var(--ease); pointer-events: none; mix-blend-mode: soft-light; }
+.icon::after { content: ""; position: absolute; inset: -40%; background: radial-gradient(closest-side, rgba(255, 255, 255, .42), rgba(255, 255, 255, 0) 70%); opacity: 0; transform: translate(var(--gx, 0%), var(--gy, -30%)); transition: opacity .45s var(--ease), transform .3s var(--ease); pointer-events: none; }
 .icon .glyph { width: 92px; height: 92px; background: currentColor; -webkit-mask: var(--glyph) center/contain no-repeat; mask: var(--glyph) center/contain no-repeat; }
 .icon .glyph.wide { width: 200px; height: 84px; -webkit-mask-size: cover; mask-size: cover; }
 .icon .letter { font: 800 84px/1 var(--display); letter-spacing: -0.04em; }
@@ -169,21 +168,21 @@ body.shelf-hub .shelf-fade { background: linear-gradient(180deg, transparent 60%
 .icon.hub img { position: static; width: 112px; height: 112px; border-radius: 28px; box-shadow: 0 12px 30px rgba(0, 0, 0, .4); }
 .icon.hub .wall { position: absolute; inset: 0; background-size: cover; background-position: center; opacity: .9; }
 
-.app .name { position: absolute; left: -30px; right: -30px; top: calc(100% + 26px); text-align: center; font-size: 25px; font-weight: 600; color: #fff; text-shadow: 0 2px 14px rgba(0, 0, 0, .5); opacity: 0; transform: translateY(-8px); transition: opacity .3s var(--ease), transform .45s var(--ease); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.app .name { position: absolute; left: -30px; right: -30px; top: calc(100% + 26px); text-align: center; font-size: 25px; font-weight: 600; color: #fff; opacity: 0; transform: translateY(-8px); transition: opacity .3s var(--ease), transform .45s var(--ease); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .app.is-focused { z-index: 3; }
 .app.is-focused .icon { --s: 1.12; --ty: -6px; box-shadow: 0 46px 70px -24px rgba(0, 0, 0, .72), 0 0 0 1px rgba(255, 255, 255, .18); }
 .app.is-focused .icon::after { opacity: 1; }
 .app.is-focused .name { opacity: 1; transform: translateY(6px); }
 .app.pressed .icon { --s: 1.02; transition-duration: .14s; }
 /* row 0 sits on the shelf: no labels there except the focused one */
-body.in-grid .app:not(.is-focused) .icon { filter: brightness(.86); }
+body.in-grid .app:not(.is-focused) .icon { }
 
 /* ── Control Center (tvOS: tiles on the right) ─────────────────────────────── */
 
 /* ── Settings (tvOS: the icon on the left, the list on the right) ─────────── */
 .settings { position: absolute; inset: 0; z-index: 15; display: grid; grid-template-columns: 840px 1fr; opacity: 0; visibility: hidden; transition: opacity .35s var(--ease), visibility 0s .35s; }
 .settings.on { opacity: 1; visibility: visible; transition: opacity .35s var(--ease); }
-.settings::before { content: ""; position: absolute; inset: 0; z-index: -1; background: color-mix(in srgb, var(--bg) 62%, transparent); -webkit-backdrop-filter: blur(40px); backdrop-filter: blur(40px); }
+.settings::before { content: ""; position: absolute; inset: 0; z-index: -1; background: color-mix(in srgb, var(--bg) 62%, transparent); }
 html.lite .settings::before { background: var(--bg); -webkit-backdrop-filter: none; backdrop-filter: none; }
 .settings-art { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 40px; }
 .settings-art img { width: 340px; height: 340px; border-radius: 76px; box-shadow: 0 50px 110px rgba(0, 0, 0, .55); }
@@ -205,7 +204,7 @@ html.lite .settings::before { background: var(--bg); -webkit-backdrop-filter: no
 .row.is-sel .v.on { color: #0060df; }
 
 /* ── voice: a status line above the hub's chat bar ─────────────────────────── */
-.listen { position: fixed; left: 50%; z-index: 2147483000; bottom: calc(16px + 54px + 12px); transform: translate(-50%, 8px); display: flex; align-items: center; gap: 12px; height: 40px; padding: 0 18px 0 14px; border-radius: 20px; font-size: 15px; font-weight: 600; letter-spacing: -0.016em; color: var(--label); background: var(--menu-bg); -webkit-backdrop-filter: saturate(180%) blur(24px); backdrop-filter: saturate(180%) blur(24px); box-shadow: 0 0 0 .5px var(--sep), 0 10px 32px rgba(0, 0, 0, .16); opacity: 0; pointer-events: none; transition: opacity .2s, transform .3s var(--ease); }
+.listen { position: fixed; left: 50%; z-index: 2147483000; bottom: calc(16px + 54px + 12px); transform: translate(-50%, 8px); display: flex; align-items: center; gap: 12px; height: 40px; padding: 0 18px 0 14px; border-radius: 20px; font-size: 15px; font-weight: 600; letter-spacing: -0.016em; color: var(--label); background: var(--menu-bg); box-shadow: 0 0 0 .5px var(--sep), 0 10px 32px rgba(0, 0, 0, .16); opacity: 0; pointer-events: none; transition: opacity .2s, transform .3s var(--ease); }
 .listen.on { opacity: 1; transform: translate(-50%, 0); }
 .listen .mic { width: 22px; height: 22px; color: var(--red); }
 .listen .bars { display: inline-flex; gap: 3px; align-items: center; height: 18px; }
@@ -215,12 +214,12 @@ html.lite .settings::before { background: var(--bg); -webkit-backdrop-filter: no
 @keyframes pulse { 50% { height: 16px; } }
 
 /* the keyboard remote, on a laptop */
-.keys { position: fixed; left: 24px; top: 24px; z-index: 2147483100; display: flex; flex-direction: column; gap: 6px; padding: 14px 18px; border-radius: 16px; font-size: 13px; color: var(--label-2); background: var(--menu-bg); -webkit-backdrop-filter: saturate(180%) blur(24px); backdrop-filter: saturate(180%) blur(24px); box-shadow: 0 0 0 .5px var(--sep), 0 10px 30px rgba(0, 0, 0, .2); transition: opacity .4s var(--ease), transform .4s var(--ease); }
+.keys { position: fixed; left: 24px; top: 24px; z-index: 2147483100; display: flex; flex-direction: column; gap: 6px; padding: 14px 18px; border-radius: 16px; font-size: 13px; color: var(--label-2); background: var(--menu-bg); box-shadow: 0 0 0 .5px var(--sep), 0 10px 30px rgba(0, 0, 0, .2); transition: opacity .4s var(--ease), transform .4s var(--ease); }
 .keys b { color: var(--label); font-size: 14px; margin-bottom: 2px; }
 .keys kbd { display: inline-block; min-width: 54px; font: 600 12px/1 var(--font); padding: 4px 6px; margin-right: 8px; border-radius: 6px; background: var(--fill); color: var(--label); text-align: center; }
 .keys.gone { opacity: 0; transform: translateY(-8px); pointer-events: none; }
 
-.pairbar { position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom)); width: min(640px, calc(100vw - 32px)); transform: translateX(-50%); z-index: 50; display: flex; align-items: center; gap: 12px; min-height: 54px; padding: 5px 5px 5px 18px; border-radius: 27px; font-size: 16px; color: var(--label-2); background: color-mix(in srgb, var(--surface) 70%, transparent); -webkit-backdrop-filter: saturate(180%) blur(24px); backdrop-filter: saturate(180%) blur(24px); box-shadow: 0 0 0 .5px var(--sep), 0 10px 32px rgba(0, 0, 0, .16); }
+.pairbar { position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom)); width: min(640px, calc(100vw - 32px)); transform: translateX(-50%); z-index: 50; display: flex; align-items: center; gap: 12px; min-height: 54px; padding: 5px 5px 5px 18px; border-radius: 27px; font-size: 16px; color: var(--label-2); background: color-mix(in srgb, var(--surface) 70%, transparent); box-shadow: 0 0 0 .5px var(--sep), 0 10px 32px rgba(0, 0, 0, .16); }
 .pairbar span { flex: 1; }
 .pairbar button { height: 44px; padding: 0 18px; border-radius: 22px; background: var(--blue); color: #fff; font-size: 15px; font-weight: 600; cursor: pointer; }
 .pairbar.focus { box-shadow: 0 0 0 2px var(--blue), 0 10px 32px rgba(0, 0, 0, .16); }
@@ -228,7 +227,7 @@ html.lite .settings::before { background: var(--bg); -webkit-backdrop-filter: no
 /* ── modal (hub alert) ─────────────────────────────────────────────────────── */
 .modal { position: absolute; inset: 0; z-index: 40; display: grid; place-items: center; background: rgba(0, 0, 0, .35); opacity: 0; pointer-events: none; transition: opacity .2s var(--ease); }
 .modal.on { opacity: 1; pointer-events: auto; }
-.modal-card { width: 760px; border-radius: 40px; overflow: hidden; text-align: center; background: var(--menu-bg); -webkit-backdrop-filter: saturate(180%) blur(60px); backdrop-filter: saturate(180%) blur(60px); box-shadow: 0 0 0 1px var(--sep), 0 40px 100px rgba(0, 0, 0, .35); transform: scale(1.06); transition: transform .3s var(--ease); }
+.modal-card { width: 760px; border-radius: 40px; overflow: hidden; text-align: center; background: var(--menu-bg); box-shadow: 0 0 0 1px var(--sep), 0 40px 100px rgba(0, 0, 0, .35); transform: scale(1.06); transition: transform .3s var(--ease); }
 .modal.on .modal-card { transform: none; }
 .modal-in { padding: 44px 48px 36px; }
 .modal-card h3 { font-size: 34px; font-weight: 600; letter-spacing: -0.02em; }
@@ -259,14 +258,14 @@ html.lite .settings::before { background: var(--bg); -webkit-backdrop-filter: no
 .saver-ph.was { opacity: 1; z-index: 1; transition: none; }
 .saver-ph img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform-origin: 50% 50%; will-change: transform; backface-visibility: hidden; }
 .saver-ph:not(.on):not(.was) img { visibility: hidden; }
-.saver-ph .bd { position: absolute; inset: -6%; background: center/cover no-repeat; filter: blur(48px) brightness(.55) saturate(130%); transform: translateZ(0); }
+.saver-ph .bd { position: absolute; inset: -6%; background: center/cover no-repeat; transform: translateZ(0); }
 .saver-ph.tall img { object-fit: contain; }
 .saver-ph:not(.tall) .bd { display: none; }
 @keyframes saverKB { from { transform: var(--kb-from, none); } to { transform: var(--kb-to, none); } }
 /* What floats on the photos is laid out on the TV's 1920×1080 canvas, pinned to the bottom left. */
 .saver-shade { position: absolute; inset: 0; z-index: 3; pointer-events: none; background: linear-gradient(to top, rgba(0, 0, 0, .5) 0%, rgba(0, 0, 0, .18) 30%, rgba(0, 0, 0, 0) 52%); }
 .saver-hud { position: absolute; left: 0; bottom: 0; z-index: 4; width: 1920px; height: 1080px; transform: scale(var(--k, 1)); transform-origin: 0 100%; display: flex; align-items: flex-end; gap: 44px; padding: 0 var(--side) 92px; pointer-events: none; }
-.saver-when { display: flex; flex-direction: column; gap: 10px; padding-bottom: 6px; color: #fff; text-shadow: 0 2px 30px rgba(0, 0, 0, .35); }
+.saver-when { display: flex; flex-direction: column; gap: 10px; padding-bottom: 6px; color: #fff; }
 .saver-time { display: flex; align-items: baseline; gap: 14px; font: 600 156px/.9 var(--display); letter-spacing: -0.035em; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .saver-time small { font-size: 46px; font-weight: 600; letter-spacing: 0; color: rgba(255, 255, 255, .8); }
 .saver-date { font-size: 38px; font-weight: 600; letter-spacing: -0.01em; color: rgba(255, 255, 255, .85); padding-left: 6px; }
@@ -279,7 +278,7 @@ html.lite .saver .w.card { --lg-tint: rgba(22, 22, 28, .72); }
 .saver-note.on { opacity: 1; }
 
 /* ── toast ─────────────────────────────────────────────────────────────────── */
-.toast { position: fixed; left: 50%; bottom: 96px; z-index: 2147483500; transform: translate(-50%, 10px) scale(.94); padding: 10px 18px; border-radius: 20px; font-size: 15px; font-weight: 600; background: var(--menu-bg); -webkit-backdrop-filter: saturate(180%) blur(24px); backdrop-filter: saturate(180%) blur(24px); box-shadow: 0 0 0 .5px var(--sep), 0 10px 30px rgba(0, 0, 0, .2); opacity: 0; transition: opacity .2s, transform .3s var(--ease); pointer-events: none; }
+.toast { position: fixed; left: 50%; bottom: 96px; z-index: 2147483500; transform: translate(-50%, 10px) scale(.94); padding: 10px 18px; border-radius: 20px; font-size: 15px; font-weight: 600; background: var(--menu-bg); box-shadow: 0 0 0 .5px var(--sep), 0 10px 30px rgba(0, 0, 0, .2); opacity: 0; transition: opacity .2s, transform .3s var(--ease); pointer-events: none; }
 .toast.on { opacity: 1; transform: translate(-50%, 0); }
 
 /* ── splash: the hub's house ───────────────────────────────────────────────── */
@@ -313,16 +312,16 @@ body.booted .shelf-body { animation: riseIn .9s .2s var(--ease) backwards; }
 .hubapp { position: fixed; inset: 0; z-index: 2147483200; background: var(--bg); opacity: 0; visibility: hidden; transform-origin: var(--ox, 50%) var(--oy, 50%); transform: scale(.2); border-radius: 40px; overflow: hidden; transition: transform .55s var(--ease), opacity .3s var(--ease), border-radius .55s var(--ease), visibility 0s .55s; }
 .hubapp.on { opacity: 1; visibility: visible; transform: none; border-radius: 0; transition: transform .55s var(--ease), opacity .25s var(--ease), border-radius .55s var(--ease); }
 .hubapp iframe { width: 100%; height: 100%; border: 0; display: block; background: var(--bg); }
-.hubapp-done { position: absolute; left: 14px; top: 12px; z-index: 2; display: inline-flex; align-items: center; gap: 4px; height: 34px; padding: 0 14px 0 8px; border-radius: 17px; font: 600 14px/1 var(--font); color: var(--label); background: var(--menu-bg); -webkit-backdrop-filter: saturate(180%) blur(24px); backdrop-filter: saturate(180%) blur(24px); box-shadow: 0 0 0 .5px var(--sep), 0 8px 24px rgba(0, 0, 0, .2); cursor: pointer; }
+.hubapp-done { position: absolute; left: 14px; top: 12px; z-index: 2; display: inline-flex; align-items: center; gap: 4px; height: 34px; padding: 0 14px 0 8px; border-radius: 17px; font: 600 14px/1 var(--font); color: var(--label); background: var(--menu-bg); box-shadow: 0 0 0 .5px var(--sep), 0 8px 24px rgba(0, 0, 0, .2); cursor: pointer; }
 body.hub-open #hub-chat { display: none; }
 
 /* ── top left: the time and the date. top right: one small button for Control Center ── */
 .status { display: none; }
-.when { position: absolute; left: var(--side); top: 46px; z-index: 6; display: flex; align-items: baseline; gap: 22px; color: #fff; text-shadow: 0 2px 18px rgba(0, 0, 0, .35); transition: opacity .4s var(--ease); pointer-events: none; }
+.when { position: absolute; left: var(--side); top: 46px; z-index: 6; display: flex; align-items: baseline; gap: 22px; color: #fff; transition: opacity .4s var(--ease); pointer-events: none; }
 .when-time { font: 600 50px/1 var(--display); letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
 .when-date { font-size: 27px; font-weight: 500; color: rgba(255, 255, 255, .78); }
 body.overlay .when, body.hub-open .when { opacity: 0; }
-.gear { position: absolute; right: var(--side); top: 38px; z-index: 6; width: 68px; height: 68px; border-radius: 50%; display: grid; place-items: center; color: #fff; background: rgba(0, 0, 0, .24); -webkit-backdrop-filter: saturate(180%) blur(30px); backdrop-filter: saturate(180%) blur(30px); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .16); cursor: pointer; transition: transform .35s var(--spring), background .25s var(--ease), color .25s var(--ease), box-shadow .25s var(--ease); }
+.gear { position: absolute; right: var(--side); top: 38px; z-index: 6; width: 68px; height: 68px; border-radius: 50%; display: grid; place-items: center; color: #fff; background: rgba(0, 0, 0, .24); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .16); cursor: pointer; transition: transform .35s var(--spring), background .25s var(--ease), color .25s var(--ease), box-shadow .25s var(--ease); }
 .gear .sym { width: 34px; height: 34px; transition: transform .6s var(--ease); }
 .gear .st { position: absolute; right: 4px; top: 4px; width: 14px; height: 14px; border-radius: 50%; background: var(--gray); box-shadow: 0 0 0 3px rgba(0, 0, 0, .4); }
 .gear.on .st { background: var(--green); }
@@ -349,7 +348,6 @@ body.overlay .gear { opacity: 0; pointer-events: none; }
 .lg, .cc, .cc-tile, .w.card, .gear, .keys {
   isolation: isolate; color: #fff;
   background: var(--lg-sheen), var(--lg-tint) !important;
-  -webkit-backdrop-filter: var(--lg-blur) !important; backdrop-filter: var(--lg-blur) !important;
   box-shadow: var(--lg-inner), var(--lg-drop) !important;
 }
 .lg, .cc-tile, .w.card { position: relative; }
@@ -360,7 +358,7 @@ body.overlay .gear { opacity: 0; pointer-events: none; }
   mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
 }
 /* Glass inside glass doesn't blur again: it would only blur the sheet's own blur. */
-.cc-tile { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; --lg-tint: rgba(255, 255, 255, .08); box-shadow: var(--lg-inner) !important; }
+.cc-tile { --lg-tint: rgba(255, 255, 255, .08); box-shadow: var(--lg-inner) !important; }
 html.lite .lg, html.lite .cc, html.lite .w.card, html.lite .gear, html.lite .keys { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; --lg-tint: rgba(28, 28, 34, .9); }
 .w.card { --lg-tint: rgba(255, 255, 255, .06); border-radius: 40px; }
 .w.card .w-label, .w.card .w-row .s, .w.card .w-clock .v small, .w.card .w-date .m { color: rgba(255, 255, 255, .62); }
@@ -431,7 +429,7 @@ html.lite .lg, html.lite .cc, html.lite .w.card, html.lite .gear, html.lite .key
 .cc-tile.status-tile .t1 { font-size: 28px; margin-bottom: 8px; }
 .cc-sect { margin: 8px 0 -2px 14px; font-size: 17px; }
 
-/* ══ The opening: the same as trylocalhub.com's (splash.js + glass.js) ═══════════════════════ */
+/* ══ The opening: the same as trylocalhub.com's (splash.js) ═══════════════════════ */
 .splash { position: fixed; inset: 0; z-index: 2147483647; display: grid; place-items: center; background: #000; animation: none; opacity: 1; transform: none; transition: opacity .7s var(--ease); }
 .splash.leaving { opacity: 0; }
 .splash.is-gone { display: none; }
@@ -442,10 +440,9 @@ html.lite .lg, html.lite .cc, html.lite .w.card, html.lite .gear, html.lite .key
 .splash .word-r { transform: translateX(-.2em); }
 .splash.moving .splash-tile { opacity: 1; }
 .splash.words .word { opacity: 1; transform: none; }
-.splash-reveal { position: absolute; inset: 0; width: 100%; height: 100%; display: block; background: #000; }
 
 /* ══ App tiles: liquid glass over the app's own colour ═══════════════════════════════════════ */
-.icon { background: transparent; -webkit-backdrop-filter: saturate(180%) blur(26px); backdrop-filter: saturate(180%) blur(26px); }
+.icon { background: transparent; }
 .icon > .fill { position: absolute; inset: 0; z-index: 0; background: linear-gradient(160deg, rgba(255, 255, 255, .2), rgba(255, 255, 255, 0) 48%), var(--a-bg, #2c2c2e); opacity: .74; }
 .icon > .glyph, .icon > .letter, .icon > img.square, .icon > .sym, .icon > .sub { position: relative; z-index: 1; }
 .icon::before { z-index: 2; inset: 0; padding: 1.5px; border-radius: inherit; background: var(--lg-rim); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
@@ -464,13 +461,13 @@ html.lite .icon > .fill { opacity: 1; }
 .shelf-art .poster { right: 400px; top: 350px; }
 .shelf-fade { inset: -200px -260px 0; background: linear-gradient(90deg, rgba(0, 0, 0, .42) 0%, transparent 55%); -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 20%, #000 58%, transparent 100%); mask-image: linear-gradient(180deg, transparent 0%, #000 20%, #000 58%, transparent 100%); }
 body.shelf-hub .shelf-fade { background: none; }
-.shelf-title .hero { position: relative; width: var(--icon-w); height: var(--icon-h); transform: scale(1.9); transform-origin: 0 100%; margin-bottom: 8px; filter: drop-shadow(0 30px 60px rgba(0, 0, 0, .45)); }
+.shelf-title .hero { position: relative; width: var(--icon-w); height: var(--icon-h); transform: scale(1.9); transform-origin: 0 100%; margin-bottom: 8px; }
 .shelf-title .hero .icon { --s: 1; --ty: 0px; --rx: 0deg; --ry: 0deg; }
 .shelf-title .hero .icon::after { display: none; }
 
 /* ══ Settings: a liquid-glass sheet with glass rows ═══════════════════════════════════════════ */
 .settings { color: #fff; }
-.settings::before { inset: -200px; background: rgba(8, 8, 14, .36); -webkit-backdrop-filter: saturate(170%) blur(54px); backdrop-filter: saturate(170%) blur(54px); }
+.settings::before { inset: -200px; background: rgba(8, 8, 14, .36); }
 .settings-art img { border-radius: 76px; box-shadow: 0 0 0 1.5px rgba(255, 255, 255, .28), inset 0 1px 1px rgba(255, 255, 255, .4), var(--lg-drop); }
 .settings-art p { color: rgba(255, 255, 255, .62); }
 .set-group { color: rgba(255, 255, 255, .56); }
@@ -491,14 +488,14 @@ body.shelf-hub .shelf-fade { background: none; }
 /* The header banner: white, large, the app's wordmark. Each one keeps its own proportions inside
    the same box, set on its bottom left so every banner sits on the same line. The shadow is on
    the wrapper, since the mask would cut it off. */
-.shelf-title .banner-mark { display: block; filter: drop-shadow(0 10px 40px rgba(0, 0, 0, .45)); }
+.shelf-title .banner-mark { display: block; }
 .shelf-title .banner-mark i { display: block; width: 680px; height: 200px; background: #fff; -webkit-mask: var(--glyph) left bottom/contain no-repeat; mask: var(--glyph) left bottom/contain no-repeat; }
-.shelf-title .banner-text { font: 800 150px/.95 var(--display); letter-spacing: -0.045em; color: #fff; text-shadow: 0 10px 50px rgba(0, 0, 0, .4); white-space: nowrap; }
+.shelf-title .banner-text { font: 800 150px/.95 var(--display); letter-spacing: -0.045em; color: #fff; white-space: nowrap; }
 
 /* LocalHub opened inside the TV: a header row of its own, and the hub below it, so nothing on the
    page can sit under the window's controls. In full screen it leaves room for the browser's strip. */
 .hubapp { display: flex; flex-direction: column; }
-.hubapp-bar { flex: none; display: flex; align-items: center; gap: 14px; height: 56px; padding: 0 16px; background: rgba(11, 15, 22, .82); -webkit-backdrop-filter: saturate(180%) blur(24px); backdrop-filter: saturate(180%) blur(24px); box-shadow: inset 0 -1px 0 rgba(255, 255, 255, .08); color: #fff; }
+.hubapp-bar { flex: none; display: flex; align-items: center; gap: 14px; height: 56px; padding: 0 16px; background: rgba(11, 15, 22, .82); box-shadow: inset 0 -1px 0 rgba(255, 255, 255, .08); color: #fff; }
 @media (display-mode: fullscreen) { .hubapp-bar { height: 88px; padding-top: 32px; } }
 .hubapp-bar .hubapp-done { position: static; color: #fff; background: rgba(255, 255, 255, .1); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .14); }
 .hubapp-title { display: inline-flex; align-items: center; gap: 10px; font: 600 16px/1 var(--font); letter-spacing: -0.01em; }
@@ -515,16 +512,13 @@ body.shelf-hub .shelf-fade { background: none; }
 .cc-tile.status-tile { padding: 14px 22px; }
 .cc-tile.status-tile img { width: 68px; height: 68px; border-radius: 17px; }
 .cc-sect { margin: 6px 0 -2px 14px; }
-.banner-greet { margin-top: 18px; font-size: 32px; font-weight: 600; color: rgba(255, 255, 255, .78); text-shadow: 0 4px 24px rgba(0, 0, 0, .35); }
+.banner-greet { margin-top: 18px; font-size: 32px; font-weight: 600; color: rgba(255, 255, 255, .78); }
 .keys[hidden] { display: none; }
 
 /* ══ Light glass: smooth on weak TVs ══════════════════════════════════════════════════════════
    On a Fire TV Stick's GPU every live blur (backdrop-filter, filter), mask and blend mode is an
    extra off-screen surface, redrawn whenever anything near it moves. Light keeps the same look with
    none of them: solid tinted glass, a crisp 1.5px rim, flat shadows, and 2D-only motion. */
-html.lite *, html.lite *::before, html.lite *::after {
-  -webkit-backdrop-filter: none !important; backdrop-filter: none !important; mix-blend-mode: normal !important;
-}
 html.lite {
   --lg-tint: rgba(28, 30, 38, .9);
   --lg-sheen: linear-gradient(160deg, rgba(255, 255, 255, .1), rgba(255, 255, 255, 0) 55%);
@@ -585,7 +579,6 @@ html.lite #page { will-change: transform; }
    - a blurred text-shadow is re-rastered at 4K whenever its text is drawn: the 150px shelf title alone cost ~700 ms
      on the way back up to the Top Shelf. A tight, unblurred shadow keeps white text readable on photos for almost nothing.
    - an animated scale (or lift) on a tile re-rasters that tile on most frames of the animation; snapping it costs one raster. */
-html.lite *, html.lite *::before, html.lite *::after { text-shadow: none !important; }
 html.lite .shelf-title h1, html.lite .shelf-title .banner-text, html.lite .banner-greet, html.lite .when, html.lite .status-clock { text-shadow: 0 2px 1px rgba(0, 0, 0, .35) !important; }
 html.lite .icon { transition: none; }
 /* Rows slide instead of jumping: a compositor transform on a layer that is already drawn, ~60 fps presented on the stick. */
@@ -631,3 +624,5 @@ body.rail-open .page { opacity: .55; }
 .view { position: absolute; left: var(--rail-w); top: 0; right: 0; bottom: 0; z-index: 20; display: none; background: #0b0d12; }
 body[data-view="assistant"] #assistantView { display: block; }
 body[data-view="assistant"] .page, body[data-view="assistant"] .when { visibility: hidden; }
+/* Settings: the LocalHub icon sits centred in the space between the sidebar and the list (x 140..880). */
+.settings-art { margin: 0 -40px 0 var(--rail-w); }
