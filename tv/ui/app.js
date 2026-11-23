@@ -111,6 +111,10 @@ const HUB = { on: false, name: "LocalHub", owner: "", paired: false, url: "", se
 /* ── the hub's look, applied the way tabs/custom.js applies it ──────────── */
 const STYLE_DEFAULT = { theme: "auto", accent: "system", widgetLook: "glass", blur: 20, transparency: 30, radius: 20, shadow: "soft", tabBar: "glass", effect: "none", font: "system", density: "regular" };
 const BUILTIN_WALLS = { aurora: "dark", dusk: "dark", graphite: "dark", ocean: "dark", sand: "light", "mono-light": "light", "mono-dark": "dark", noise: "light" };
+/* On the TV the hub's gradient wallpapers become photos of the same name: 4K stock photos from Unsplash
+   (credits in photos/NOTICE.txt). The plain ones (mono, noise) stay as they are. */
+const TV_PHOTOS = { aurora: 1, dusk: 1, graphite: 1, ocean: 1, sand: 1 };
+const wallUrl = (id) => (TV_PHOTOS[id] ? `./photos/${id}.jpg` : `./wallpapers/${id}.svg`);
 const hexRgb = (h) => { h = h.replace("#", ""); if (h.length === 3) h = h.replace(/./g, (c) => c + c); return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16) / 255); };
 const lum = (h) => { const [r, g, b] = hexRgb(h).map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4)); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
 const gradCss = (g) => {
@@ -122,12 +126,12 @@ const gradCss = (g) => {
 function wallFor(s) {
   const id = s?.wallpaper?.current ?? "aurora";
   if (!id || id === "none") return null;
-  if (BUILTIN_WALLS[id]) return { image: `url("./wallpapers/${id}.svg")`, tone: BUILTIN_WALLS[id] };
+  if (BUILTIN_WALLS[id]) return { image: `url("${wallUrl(id)}")`, tone: TV_PHOTOS[id] ? "photo" : BUILTIN_WALLS[id] };
   const g = (s.wallpaper.custom || []).find((w) => w.id === id);
   if (g) return { image: gradCss(g), tone: g.colors.reduce((t, c) => t + lum(c), 0) / g.colors.length < 0.4 ? "dark" : "light" };
   const u = (s.wallpaper.uploads || []).find((w) => w.id === id);
   if (u && IN_HUB) return { image: `url("/api/hub/wallpapers/${u.file}")`, tone: "" };
-  return { image: 'url("./wallpapers/aurora.svg")', tone: "dark" };
+  return { image: 'url("./photos/aurora.jpg")', tone: "photo" };
 }
 function applyLook() {
   const st = { ...STYLE_DEFAULT, ...(SETTINGS?.style || {}) };
@@ -151,7 +155,8 @@ function applyLook() {
   r.dataset.wall = "1";
   wall.style.backgroundImage = w.image;
   bakeGlass();
-  r.style.setProperty("--hub-scrim", w.tone ? (w.tone === theme ? ".18" : ".55") : ".4");
+  // A photo gets a middle scrim: enough for white names over a bright sky or sand, not so much it goes grey.
+  r.style.setProperty("--hub-scrim", w.tone === "photo" ? ".3" : w.tone ? (w.tone === theme ? ".18" : ".55") : ".4");
   if (S.shelfId === "hub") paintShelf(true);
 }
 
@@ -914,7 +919,7 @@ function armSaver() {
    picked for it, as glass cards. With no hub, or a library that is empty or fails, the wallpapers show. */
 const SAVER_DEFAULT = { source: "wallpapers", folder: "", interval: 12, shuffle: true, motion: "kenburns", widgets: ["clock", "date"] };
 const SAVER_SOURCES = { wallpapers: "Wallpapers", pictures: "Pictures", icloud: "iCloud Photos", folder: "Folder" };
-const SAVER_WALLS = Object.keys(BUILTIN_WALLS).map((id) => ({ id: `wall-${id}`, url: `./wallpapers/${id}.svg` }));
+const SAVER_WALLS = Object.keys(BUILTIN_WALLS).map((id) => ({ id: `wall-${id}`, url: wallUrl(id) }));
 const SAVER_FADE = 1800;
 const SAVER_STALE = 5 * 60e3;
 // Ken Burns: where a photo starts and ends. Slow, and never far enough to show an edge.

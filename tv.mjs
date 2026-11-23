@@ -31,7 +31,7 @@ import { create as createStream } from './stream.mjs'
 
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
-  '.svg': 'image/svg+xml', '.png': 'image/png', '.json': 'application/json; charset=utf-8',
+  '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.json': 'application/json; charset=utf-8',
 }
 const AUDIO_EXT = { 'audio/wav': '.wav', 'audio/x-wav': '.wav', 'audio/wave': '.wav', 'audio/webm': '.webm', 'audio/ogg': '.ogg', 'audio/mp4': '.m4a', 'audio/mpeg': '.mp3' }
 const MAX_AUDIO = 8 * 2 ** 20
@@ -175,7 +175,9 @@ export function create({ here }) {
     if (!file.startsWith(base + path.sep) || !MIME[path.extname(file)]) return send(res, 404, { error: 'not found' })
     fs.readFile(file, (err, data) => {
       if (err) return send(res, 404, { error: 'not found' })
-      res.writeHead(200, { 'content-type': MIME[path.extname(file)], 'cache-control': 'no-store', 'content-length': data.length })
+      // The 4K background photos never change under the same name, so the TV keeps them; the code stays no-store.
+      const cache = rel.startsWith('photos/') ? 'public, max-age=604800' : 'no-store'
+      res.writeHead(200, { 'content-type': MIME[path.extname(file)], 'cache-control': cache, 'content-length': data.length })
       res.end(data)
     })
   }

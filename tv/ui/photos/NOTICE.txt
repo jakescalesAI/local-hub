@@ -1,0 +1,16 @@
+LocalHub TV backgrounds
+
+These photos are from Unsplash and are used under the Unsplash License
+(https://unsplash.com/license): free to use, no permission needed. They are
+cropped to 3840x2160 and re-encoded; credit is given here with thanks.
+
+aurora.jpg    "Aurora borealis" by FORREST CAVALE
+              https://unsplash.com/photos/jwIk4Z3Msi4
+dusk.jpg      "A view of a lake and mountains at dusk" by Aleksandr Popov
+              https://unsplash.com/photos/tlBWWOxMbGQ
+ocean.jpg     "Aerial view of dark ocean waves with white foam" by Bernd Dittrich
+              https://unsplash.com/photos/qJdzD1V07a8
+sand.jpg      "Sand dunes stretch across a vast desert landscape" by Alexander Psiuk
+              https://unsplash.com/photos/3j9D000gF8k
+graphite.jpg  "The night sky is reflected in the still water of a mountain lake" by Zetong Li
+              https://unsplash.com/photos/85xbiAbVb9k
