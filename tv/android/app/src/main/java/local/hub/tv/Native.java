@@ -132,6 +132,12 @@ final class Native {
         return o.toString();
     }
 
+    /** The page is resting on its home screen: keep a picture of it for Home's cover. */
+    @JavascriptInterface
+    public void snapshotHome() {
+        if (activity.pageTrusted) activity.snapshotHome();
+    }
+
     /** A return to LocalHub, not a fresh start: the page skips its logo and just fades in. */
     @JavascriptInterface
     public boolean quickStart() {

@@ -506,6 +506,19 @@ function applyFocus(instant) {
   page.style.transform = `translateY(${y}px)`;
   if (instant) requestAnimationFrame(() => { page.style.transition = ""; });
   if ((S.zone === "grid" || S.zone === "favs") && row === 0) paintShelf();
+  snapshotSoon();
+}
+// Home's cover is a picture of this home screen (the TV app takes it): resting on the Favorites row for a few seconds,
+// at most every 45 s, it's taken again, so pressing Home shows the home screen at once instead of a wallpaper.
+function snapshotSoon() {
+  if (!NATIVE) return;
+  clearTimeout(snapshotSoon.t);
+  if (S.zone !== "favs" || S.overlay || S.view !== "home" || document.hidden) return;
+  snapshotSoon.t = setTimeout(() => {
+    if (S.zone !== "favs" || S.overlay || S.view !== "home" || document.hidden || Date.now() - (snapshotSoon.at || 0) < 45_000) return;
+    snapshotSoon.at = Date.now();
+    native("snapshotHome");
+  }, 3500);
 }
 const atTop = () => S.zone === "favs" || (!hasFavs() && Math.floor(S.i / COLS) === 0);
 
@@ -911,7 +924,13 @@ function steadyFrames(max) {
     requestAnimationFrame(tick);
   });
 }
-document.addEventListener("visibilitychange", () => { if (!document.hidden) endLaunch(); });
+// Another app in front: the screensaver's timer stops (it used to start the screensaver behind the app, loading
+// photos while you watched, and Home then landed on it). Back in front, it starts counting again.
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) { clearTimeout(saverTimer); if (S.overlay === "saver") stopSaver(); return; }
+  endLaunch();
+  armSaver();
+});
 
 /* ── LocalHub, opened as an app ──────────────────────────────────────────
    The LocalHub tile opens the whole hub, full screen, growing out of its tile like any app. It
@@ -1354,7 +1373,8 @@ function armSaver() {
   if (PREVIEW) return;
   const mins = parseInt(prefs.saver, 10);
   if (!mins || S.overlay === "saver") return;
-  saverTimer = setTimeout(() => { if (!S.overlay && S.zone !== "bar") startSaver(); }, mins * 60000);
+  if (document.hidden) return; // another app is on screen: no screensaver behind it
+  saverTimer = setTimeout(() => { if (!S.overlay && S.zone !== "bar" && !document.hidden) startSaver(); }, mins * 60000);
 }
 
 /* The screensaver: photos from the library chosen in LocalHub (tv.saver: the hub's wallpapers, this

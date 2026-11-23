@@ -51,6 +51,28 @@ public class MainActivity extends Activity {
     volatile byte[] lastAudio;
 
     private WebView web;
+
+    /** A picture of the home screen as it is now (the page asks while it sits idle on Home), for Home's cover: Android
+     *  keeps LocalHub waiting ~5 s after Home, and showing its own home screen meanwhile makes Home look instant. */
+    void snapshotHome() {
+        runOnUiThread(() -> {
+            if (web == null || !resumed || web.getWidth() == 0) return;
+            try {
+                android.graphics.Bitmap b = android.graphics.Bitmap.createBitmap(960, 540, android.graphics.Bitmap.Config.RGB_565);
+                android.graphics.Canvas c = new android.graphics.Canvas(b);
+                c.scale(960f / web.getWidth(), 540f / web.getHeight());
+                web.draw(c);
+                io.execute(() -> {
+                    java.io.File tmp = new java.io.File(getCacheDir(), "home.jpg.tmp");
+                    try (java.io.FileOutputStream out = new java.io.FileOutputStream(tmp)) {
+                        b.compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, out);
+                    } catch (Exception ignored) { }
+                    b.recycle();
+                    tmp.renameTo(HomeWatchService.homeFile(this));
+                });
+            } catch (Exception ignored) { }
+        });
+    }
     private final Handler ui = new Handler(Looper.getMainLooper());
     private volatile long keyLoadAt;
     private boolean resumed;

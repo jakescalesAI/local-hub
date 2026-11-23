@@ -137,8 +137,25 @@ public class HomeWatchService extends Service {
         return new java.io.File(c.getCacheDir(), "cover.jpg");
     }
 
+    static java.io.File homeFile(Context c) {
+        return new java.io.File(c.getCacheDir(), "home.jpg");
+    }
+
     private static android.graphics.Bitmap wall;
     private static long wallAt;
+    private static android.graphics.Bitmap home;
+    private static long homeAt;
+
+    /** The home screen as it last rested (MainActivity.snapshotHome): Home's cover is then the home screen itself. */
+    private android.graphics.Bitmap homePicture() {
+        java.io.File f = homeFile(this);
+        if (!f.isFile() || f.length() == 0 || System.currentTimeMillis() - f.lastModified() > 12 * 3600_000L) return null;
+        if (home == null || homeAt != f.lastModified()) {
+            home = android.graphics.BitmapFactory.decodeFile(f.getPath());
+            homeAt = f.lastModified();
+        }
+        return home;
+    }
 
     /** Your wallpaper, as the home screen has it, decoded once and kept. Null if the page hasn't sent one yet. */
     private android.graphics.Bitmap wallpaper() {
@@ -162,7 +179,14 @@ public class HomeWatchService extends Service {
         // The home screen's own wallpaper and shade, not the logo (that's for a fresh start): LocalHub's tiles then
         // fade in over the same picture.
         box.setBackgroundColor(Color.BLACK);
-        android.graphics.Bitmap w = wallpaper();
+        android.graphics.Bitmap hp = homePicture();
+        android.graphics.Bitmap w = hp == null ? wallpaper() : null;
+        if (hp != null) {
+            ImageView img = new ImageView(this);
+            img.setScaleType(ImageView.ScaleType.FIT_XY);
+            img.setImageBitmap(hp);
+            box.addView(img, new android.widget.FrameLayout.LayoutParams(-1, -1));
+        }
         if (w != null) {
             ImageView img = new ImageView(this);
             img.setScaleType(ImageView.ScaleType.CENTER_CROP);
