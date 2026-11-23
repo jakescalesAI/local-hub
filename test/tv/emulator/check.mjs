@@ -19,7 +19,7 @@ const PROBE = `(() => {
   const $ = (s) => document.querySelector(s);
   const apps = [...document.querySelectorAll("#grid .app")];
   const first = apps[0] ? apps[0].getBoundingClientRect() : null;
-  const bar = $("#pairbar"), fatal = $("#fatal");
+  const fatal = $("#fatal");
   return {
     href: location.href,
     title: document.title,
@@ -32,7 +32,7 @@ const PROBE = `(() => {
     stylesheets: document.styleSheets.length,
     apps: apps.map((a) => a.querySelector(".name") ? a.querySelector(".name").textContent : ""),
     firstApp: first ? { w: Math.round(first.width), h: Math.round(first.height) } : null,
-    pairbar: bar && !bar.hidden ? bar.innerText.trim() : null,
+    rail: [...document.querySelectorAll(".rail-item .lb")].map((n) => n.textContent),
     viewport: [innerWidth, innerHeight],
   };
 })()`;
@@ -50,7 +50,7 @@ function problems(s) {
   if (s.stylesheets < 1) p.push("styles.css isn't loaded");
   if (s.apps.length < 2 || !s.apps.includes("Settings")) p.push(`the app grid has ${s.apps.length} tiles: ${JSON.stringify(s.apps)}`);
   if (!s.firstApp || s.firstApp.w < 50 || s.firstApp.h < 50) p.push(`the first tile is laid out at ${JSON.stringify(s.firstApp)}`);
-  if (!s.pairbar) p.push("the pair bar isn't showing");
+  if (!s.rail.includes("Home") || !s.rail.includes("Settings")) p.push(`the sidebar has ${JSON.stringify(s.rail)}`);
   return p;
 }
 
@@ -94,7 +94,7 @@ async function page(port, seconds) {
   }
   console.log(JSON.stringify(state, null, 2));
   if (last) fail(`the home screen didn't render: ${last}`);
-  console.log(`OK: the home screen rendered (${state.apps.length} tiles; pair bar: "${state.pairbar}")`);
+  console.log(`OK: the home screen rendered (${state.apps.length} tiles; sidebar: ${state.rail.join(", ")})`);
 }
 
 // ── the screenshot ──────────────────────────────────────────────────────────────────────────

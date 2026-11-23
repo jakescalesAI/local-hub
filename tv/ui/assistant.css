@@ -23,7 +23,9 @@
   letter-spacing: -0.016em;
   -webkit-font-smoothing: antialiased;
 }
-.as[hidden], .as [hidden] { display: none !important; }
+.as [hidden] { display: none !important; }
+/* The panel itself stays laid out while hidden (the TV shows it without a 60 ms layout). */
+.as[hidden] { visibility: hidden; }
 :where(.as) button, :where(.as) input { font: inherit; color: inherit; background: none; border: 0; margin: 0; outline: 0; -webkit-tap-highlight-color: transparent; }
 :where(.as) button { cursor: pointer; }
 .as svg { width: 1.2em; height: 1.2em; flex: none; }

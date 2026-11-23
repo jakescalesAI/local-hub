@@ -340,6 +340,19 @@ async function walkRows() {
     await frame();
     await frame();
   }
+  // Settings and the assistant too: their first opening otherwise drew a whole screen at 4K (100-480 ms frames).
+  if (!document.body.classList.contains("booted")) {
+    const set = $("#settings");
+    renderSettings();
+    set.style.transition = "none";
+    set.classList.add("on");
+    await frame();
+    set.classList.remove("on");
+    setView("assistant");
+    await frame();
+    setView(S.view);
+    set.style.transition = "";
+  }
   applyFocus(true);
 }
 // Decode every tile's image once, a moment after the grid is drawn, so the first scroll down doesn't decode
@@ -896,12 +909,15 @@ const selectable = (it) => it && !it.group && !it.info && !it.title;
 const valueOf = (it) => (it.toggle ? (prefs[it.key] ? "On" : "Off") : it.values ? prefs[it.key] : it.v ?? "");
 function renderSettings() {
   const model = (S.setModel = settingsModel());
-  $("#setTrack").innerHTML = model.map((it, i) => {
+  const track = $("#setTrack");
+  const html = model.map((it, i) => {
     if (it.title) return `<h1 class="set-title">${esc(it.title)}</h1>`;
     if (it.group) return `<div class="set-group">${esc(it.group)}</div>`;
     const v = valueOf(it);
     return `<div class="row${it.info ? " info" : ""}" data-i="${i}"><div class="txt"><div class="t1">${esc(it.t1)}</div>${it.t2 ? `<div class="t2">${esc(it.t2)}</div>` : ""}</div><div class="v${it.on || v === "On" ? " on" : ""}">${esc(v)}${SYM.chev}</div></div>`;
   }).join("");
+  // Settings is drawn again once the hub's live state arrives: only rebuild the list if something in it changed.
+  if (track._html !== html) { track.innerHTML = html; track._html = html; }
   if (!selectable(model[S.set])) S.set = model.findIndex(selectable);
   paintSettings();
 }
@@ -1540,9 +1556,15 @@ function closeRail() {
   if (S.view === "home") applyFocus();
   else if (S.view === "assistant") Assistant?.focus();
 }
+function setView(id) {
+  const a = id === "assistant";
+  $("#assistantView").classList.toggle("shown", a);
+  $("#page").classList.toggle("away", a);
+  $(".when").classList.toggle("away", a);
+}
 function showView(id) {
   S.view = id;
-  document.body.dataset.view = id;
+  setView(id);
   if (id === "assistant") { Assistant ? Assistant.show() : toast("The assistant needs LocalHub on the laptop"); }
   else Assistant?.hide();
   if (id === "home") { S.zone = "grid"; applyFocus(); }
@@ -1763,7 +1785,7 @@ async function boot() {
   loadItems();
   renderGrid();
   renderRail();
-  document.body.dataset.view = "home";
+  setView("home");
   bakeGlass();
   tick();
   setInterval(tick, 10_000);

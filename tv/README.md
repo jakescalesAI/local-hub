@@ -213,7 +213,7 @@ dashboard's Home straight on the TV view.
 | Whisper | A Windows-TTS clip: “Open Netflix, please.” in 0.8 s warm (WAV), 1.3 s (webm) |
 | The TV back end and Alexa checks | `node --test test/tv/` (9 tests, offline) |
 | The APK | Compiles (Gradle, JDK 17, SDK 34); classes and UI assets checked inside it |
-| The APK on Android TV | CI's `emulator` job: an Android TV emulator (API 30, 1080p) installs and starts it, the page is read over WebView DevTools (home screen drawn, grid, pair bar), screenshots aren't blank, no crash or ANR |
+| The APK on Android TV | CI's `emulator` job: an Android TV emulator (API 30, 1080p) installs and starts it, the page is read over WebView DevTools (home screen drawn, grid, sidebar), screenshots aren't blank, no crash or ANR |
 | Set up a TV, over a real home network | A scratch hub: passcode, *Turn on* → the TV app's `/pair` probe found it on the LAN address, a code was claimed from the LAN, `/tv/` opened with the TV's key, *Turn off* closed the address |
 | One assistant on the laptop and the TV | A question asked in the hub appeared on `/tv/` and the answer streamed into both; the TV asking for a site opened it in the hub's browser |
 | Browser and Chromium | Opened from their tiles, typed, clicked, back and leave; YouTube played; 1920×1080 frames at about 25–50 fps (`test/tv/stream.test.mjs` drives a real browser on a real computer; CI runners skip it) |
