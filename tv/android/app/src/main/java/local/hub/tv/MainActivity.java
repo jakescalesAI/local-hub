@@ -12,6 +12,9 @@ import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.SystemClock;
 import android.view.KeyEvent;
 import android.view.WindowManager;
 import android.webkit.WebResourceRequest;
@@ -48,6 +51,9 @@ public class MainActivity extends Activity {
     volatile byte[] lastAudio;
 
     private WebView web;
+    private final Handler ui = new Handler(Looper.getMainLooper());
+    private volatile long keyLoadAt;
+    private boolean resumed;
     private BroadcastReceiver packageReceiver;
 
     @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})
@@ -100,14 +106,22 @@ public class MainActivity extends Activity {
             // The hub didn't answer: show the bundled screen, which can pair and launch apps.
             @Override
             public void onReceivedError(WebView view, WebResourceRequest request, android.webkit.WebResourceError error) {
-                if (request.isForMainFrame() && !ORIGIN_HOST.equals(request.getUrl().getHost())) loadLocal();
+                if (request.isForMainFrame() && !ORIGIN_HOST.equals(request.getUrl().getHost())) view.post(MainActivity.this::hubAway);
             }
 
             @Override
             public void onReceivedHttpError(WebView view, WebResourceRequest request, WebResourceResponse response) {
                 if (!request.isForMainFrame() || ORIGIN_HOST.equals(request.getUrl().getHost())) return;
-                if (response.getStatusCode() == 401 || response.getStatusCode() == 403) prefs.forgetPairing();
-                loadLocal();
+                int status = response.getStatusCode();
+                if (status == 401 || status == 403) {
+                    // A reload carries only the hub's cookie, which a restarted or reset hub may not take: ask
+                    // again with this TV's key before deciding the TV isn't paired any more.
+                    if (SystemClock.uptimeMillis() - keyLoadAt > 15000) { view.post(MainActivity.this::loadHub); return; }
+                    prefs.forgetPairing();
+                    view.post(MainActivity.this::loadLocal);
+                    return;
+                }
+                view.post(MainActivity.this::hubAway);
             }
         });
         setContentView(web);
@@ -146,9 +160,35 @@ public class MainActivity extends Activity {
             loadLocal();
             return;
         }
-        Map<String, String> headers = new HashMap<>();
-        headers.put("Authorization", "Bearer " + prefs.hubToken());
-        web.loadUrl(base + "/tv/", headers);
+        // A hub that's switched off, or a laptop that's asleep, can leave the load hanging for minutes on a black
+        // screen (Windows drops the connection rather than refusing it). Ask it first, briefly.
+        io.execute(() -> {
+            boolean up = Hub.looksLikeHub(base, 1500);
+            runOnUiThread(() -> {
+                if (web == null) return;
+                if (!up) { hubAway(); return; }
+                Map<String, String> headers = new HashMap<>();
+                headers.put("Authorization", "Bearer " + prefs.hubToken());
+                keyLoadAt = SystemClock.uptimeMillis();
+                web.loadUrl(base + "/tv/", headers);
+            });
+        });
+    }
+
+    /** The hub didn't answer: the bundled screen (apps still open), and LocalHub's own page again once it's back. */
+    void hubAway() {
+        loadLocal();
+        ui.removeCallbacks(retryHub);
+        if (resumed && hub.paired()) ui.postDelayed(retryHub, 5000);
+    }
+
+    private final Runnable retryHub = () -> {
+        if (resumed && hub.paired() && web != null && !onHubPage()) loadHub();
+    };
+
+    private boolean onHubPage() {
+        String url = web.getUrl();
+        return url != null && !ORIGIN_HOST.equals(Uri.parse(url).getHost());
     }
 
     /** The bundled copy: pairing, and the apps, for when the hub can't be reached. */
@@ -281,8 +321,17 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        resumed = true;
+        if (hub.paired() && web != null && web.getUrl() != null && !onHubPage()) ui.post(retryHub);
         js("window.haven&&haven.resumed()");
         HomeWatchService.localHubShown();
+    }
+
+    @Override
+    protected void onPause() {
+        resumed = false;
+        ui.removeCallbacks(retryHub);
+        super.onPause();
     }
 
     @Override

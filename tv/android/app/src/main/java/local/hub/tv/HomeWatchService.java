@@ -119,19 +119,19 @@ public class HomeWatchService extends Service {
                 return true; // the remote does nothing on Amazon's screen underneath
             }
         };
-        box.setOrientation(LinearLayout.VERTICAL);
+        // The same "Local [house] Hub" as LocalHub's opening screen, so the hand-over doesn't show.
+        box.setOrientation(LinearLayout.HORIZONTAL);
         box.setGravity(Gravity.CENTER);
         box.setBackgroundColor(Color.BLACK);
+        float dp = getResources().getDisplayMetrics().density;
+        int icon = Math.round(84 * dp), gap = Math.round(14 * dp);
+        box.addView(word("Local"));
         ImageView mark = new ImageView(this);
         mark.setImageResource(R.drawable.ic_launcher);
-        int px = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 120, getResources().getDisplayMetrics());
-        box.addView(mark, new LinearLayout.LayoutParams(px, px));
-        TextView name = new TextView(this);
-        name.setText(R.string.app_name);
-        name.setTextColor(Color.WHITE);
-        name.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 34);
-        name.setPadding(0, px / 4, 0, 0);
-        box.addView(name);
+        LinearLayout.LayoutParams mp = new LinearLayout.LayoutParams(icon, icon);
+        mp.setMargins(gap, 0, gap, 0);
+        box.addView(mark, mp);
+        box.addView(word("Hub"));
         @SuppressWarnings("deprecation")
         WindowManager.LayoutParams lp = new WindowManager.LayoutParams(
                 WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT,
@@ -143,6 +143,16 @@ public class HomeWatchService extends Service {
             cover = box;
             main.postDelayed(this::hideCover, 8000);
         } catch (Exception ignored) { }
+    }
+
+    private TextView word(String text) {
+        TextView t = new TextView(this);
+        t.setText(text);
+        t.setTextColor(Color.WHITE);
+        t.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 80);
+        t.setTypeface(android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.BOLD));
+        t.setIncludeFontPadding(false);
+        return t;
     }
 
     private void hideCover() {

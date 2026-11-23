@@ -300,8 +300,29 @@ function iconHTML(it) {
   return `<div class="icon" style="${colors}">${fill}<b class="letter"${it.letter && it.letter.length > 4 ? ' style="font-size:58px"' : ""}>${esc(it.letter || it.name.slice(0, 1))}</b></div>`;
 }
 
+// Tiles are kept and only reordered when the list changes (coming back from an app moves it to the front):
+// rebuilding them all reloaded every picture, and the row popped in tile by tile.
 function renderGrid() {
-  $("#grid").innerHTML = ITEMS.map((it, i) => `<div class="app" data-i="${i}">${iconHTML(it)}<span class="name">${esc(it.name)}</span></div>`).join("");
+  const grid = $("#grid");
+  const old = new Map();
+  grid.querySelectorAll(".app").forEach((n) => old.set(n.dataset.k, n));
+  const nodes = ITEMS.map((it, i) => {
+    const k = `${it.kind || "app"}:${it.id}`;
+    const html = `${iconHTML(it)}<span class="name">${esc(it.name)}</span>`;
+    let n = old.get(k);
+    if (!n || n._html !== html) {
+      n = document.createElement("div");
+      n.className = "app";
+      n.dataset.k = k;
+      n.innerHTML = html;
+      n._html = html;
+    }
+    old.delete(k);
+    n.dataset.i = String(i);
+    return n;
+  });
+  const same = nodes.length === grid.children.length && nodes.every((n, i) => grid.children[i] === n);
+  if (!same) grid.replaceChildren(...nodes);
   applyFocus(true);
   warmTiles();
   if (NATIVE && !S.walked && APPS.some((a) => a.pkg) && !document.body.classList.contains("booted")) { S.walked = true; walkRows(); }
@@ -337,7 +358,6 @@ async function warmTiles() {
 function applyFocus(instant) {
   document.querySelectorAll(".app.is-focused").forEach((n) => n.classList.remove("is-focused"));
   $("#gearBtn").classList.toggle("focus", S.zone === "status" && !S.overlay);
-  $("#pairbar").classList.toggle("focus", S.zone === "bar" && !S.overlay);
   if (S.zone === "grid" && !S.overlay) $(`.app[data-i="${S.i}"]`)?.classList.add("is-focused");
 
   const row = Math.floor(S.i / COLS);
@@ -605,19 +625,21 @@ function launch(it, go, note) {
   const holder = document.createElement("div");
   holder.innerHTML = iconHTML(it);
   const icon = holder.firstElementChild;
-  Object.assign(icon.style, { left: `${(r.left - stage.left) / k}px`, top: `${(r.top - stage.top) / k}px`, width: `${r.width / k}px`, height: `${r.height / k}px`, transition: "none" });
+  const w = r.width / k, h = r.height / k;
+  const s = Math.max(1920 / w, 1080 / h);
+  Object.assign(icon.style, { width: `${w}px`, height: `${h}px`, transform: `translate(${(r.left - stage.left) / k}px, ${(r.top - stage.top) / k}px)`, transition: "none" });
   layer.prepend(icon);
   $("#launchNote").textContent = NATIVE ? "" : note ? `${note} — on a TV this switches the input` : it.url ? (IN_HUB && Stream.engineFor(it) ? `Opening ${it.name}…` : `Opening ${it.name} in a new window…`) : `${it.name} isn't on this laptop`;
   setOverlay("launch");
   layer.classList.add("on");
-  requestAnimationFrame(() => requestAnimationFrame(() => { icon.style.transition = ""; layer.classList.add("full"); }));
+  requestAnimationFrame(() => requestAnimationFrame(() => { icon.style.transition = ""; icon.style.transform = `translate(${(1920 - w * s) / 2}px, ${(1080 - h * s) / 2}px) scale(${s})`; layer.classList.add("full"); }));
   setTimeout(() => {
     const ok = go();
     if (NATIVE && ok !== false) return; // haven.resumed() tidies up when we're back
     if (ok === false && it.url === undefined && it.kind !== "input" && !NATIVE) { setTimeout(endLaunch, 1100); return; }
     if (ok === false) toast(`${it.name} didn't start`);
     setTimeout(endLaunch, ok === "pending" ? 300 : document.hidden ? 0 : 1300);
-  }, 520);
+  }, 380); // the app starts while the tile is still finishing its grow
 }
 function endLaunch() {
   const layer = $("#launch");
@@ -1380,21 +1402,7 @@ async function probeNative() {
   if (!IN_HUB && HUB.paired && HUB.url) native("openHub");
   if (!HUB.url && !HUB.searching) { HUB.searching = true; native("findHub"); }
   paintChip();
-  paintPairbar();
 }
-function paintPairbar() {
-  const bar = $("#pairbar");
-  bar.hidden = IN_HUB;
-  if (IN_HUB) return;
-  $("#pairText").textContent = !NATIVE
-    ? "Open this from LocalHub (localhost:3100/tv/) to ask anything."
-    : HUB.searching ? "Looking for LocalHub on your network…"
-      : !HUB.url ? "LocalHub isn't on this network yet."
-        : HUB.paired ? `Can't reach ${HUB.name} right now.` : `Found ${HUB.name}. Pair this TV to ask anything.`;
-  $("#pairBtn").textContent = HUB.paired ? "Retry" : HUB.url ? "Pair" : "Search";
-}
-$("#pairBtn").addEventListener("click", () => (HUB.paired ? native("openHub") : openPairing()));
-
 /* ── Java → page ───────────────────────────────────────────────────────── */
 window.haven = {
   key: (name) => handleKey(name),
@@ -1417,7 +1425,6 @@ window.haven = {
       HUB.paired = Boolean(evt.paired);
       HUB.name = evt.name || HUB.name;
       if (!HUB.url) toast("LocalHub isn't reachable on this network yet");
-      paintPairbar();
       if (S.overlay === "settings") renderSettings();
       return;
     }
@@ -1512,19 +1519,22 @@ function paintRail() {
     n.classList.toggle("here", n.dataset.id === S.view);
   });
 }
+function railOpen(on) {
+  $("#rail").classList.toggle("open", on);
+}
 function openRail() {
   if (S.overlay && S.overlay !== "settings") return;
   if (S.overlay === "settings") closeSettings();
   S.railFrom = S.zone;
   S.zone = "rail";
   S.rail = Math.max(0, RAIL.findIndex((r) => r.id === S.view));
-  document.body.classList.add("rail-open");
-  document.querySelectorAll(".app.is-focused").forEach((n) => n.classList.remove("is-focused"));
+  railOpen(true);
+  // The tile stays lifted behind the sidebar: dropping it and lifting it again on close cost 50-80 ms frames.
   paintRail();
 }
 function closeRail() {
   if (S.zone !== "rail") return;
-  document.body.classList.remove("rail-open");
+  railOpen(false);
   S.zone = "grid";
   paintRail();
   if (S.view === "home") applyFocus();
@@ -1544,7 +1554,7 @@ function railKey(name) {
   if (name === "right" || name === "back" || name === "menu") return closeRail();
   if (name !== "enter") return;
   const id = RAIL[S.rail].id;
-  document.body.classList.remove("rail-open");
+  railOpen(false);
   S.zone = "grid";
   if (id === "home" || id === "assistant") return showView(id);
   paintRail();
@@ -1797,7 +1807,6 @@ async function boot() {
     probeNative();
   }
   paintChip();
-  paintPairbar();
   armSaver();
 }
 
