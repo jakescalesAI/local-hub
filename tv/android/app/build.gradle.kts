@@ -31,8 +31,8 @@ android {
         applicationId = "local.hub.tv"
         minSdk = 22
         targetSdk = 28 // deliberately 28: keeps the pre-Android-10 background-start rules the Home button needs
-        versionCode = 106
-        versionName = "1.0.6"
+        versionCode = 107
+        versionName = "1.0.7"
     }
 
     sourceSets {
