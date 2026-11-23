@@ -33,12 +33,15 @@
 /* ── header ─────────────────────────────────────────────────────────────── */
 .as-head { position: absolute; left: var(--as-side); right: var(--as-side); top: 52px; height: 60px; z-index: 2; display: flex; align-items: center; gap: 28px; }
 /* where the transcript meets the header: a short solid-to-clear gradient (no mask), the header stays readable */
-.as-head::after { content: ""; position: absolute; left: calc(-1 * var(--as-side)); right: calc(-1 * var(--as-side)); top: 80px; height: 36px; background: linear-gradient(var(--as-bg), rgba(11, 11, 14, 0)); pointer-events: none; }
+.as-head { transition: opacity .2s; }
+/* The transcript runs to the top of the screen and is cut off right at the edge: no fade band, no gap. The header
+   steps aside while the conversation is scrolled under it. */
+.as.scrolled .as-head { opacity: 0; }
 .as-title { flex: 1; min-width: 0; font: 700 44px/1.2 var(--display, inherit); letter-spacing: -0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .as-state { font-size: 28px; font-weight: 600; color: var(--as-text-2); }
 
 /* ── transcript ─────────────────────────────────────────────────────────── */
-.as-log { position: absolute; left: 0; right: 0; top: 132px; bottom: 196px; padding: 20px var(--as-side) 36px; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; outline: 0; }
+.as-log { position: absolute; left: 0; right: 0; top: 0; bottom: 196px; padding: 152px var(--as-side) 36px; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; outline: 0; }
 .as-log::-webkit-scrollbar { display: none; }
 .as-item { margin: 0 0 28px; }
 
@@ -142,3 +145,16 @@
 .as-row.f small { color: rgba(0, 0, 0, .55); }
 .as-live { width: 12px; height: 12px; border-radius: 50%; background: var(--as-green); }
 .as-none { padding: 22px 32px; font-size: 28px; color: var(--as-text-2); }
+/* A message being read aloud (OK on it): a soft pulse on its edge. */
+.as-msg.reading { box-shadow: 0 0 0 4px rgba(100, 210, 255, .75); }
+/* The assistant's browser, live and full screen (agentview.js): the page, a cursor the remote moves, a hint bar. */
+.agv { position: absolute; inset: 0; z-index: 20; background: #000; opacity: 0; transition: opacity .22s; }
+.agv.on { opacity: 1; }
+.agv-frame { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.agv-cursor { position: absolute; left: -14px; top: -14px; width: 28px; height: 28px; border-radius: 50%; background: rgba(255, 255, 255, .92); box-shadow: 0 0 0 3px rgba(10, 132, 255, .9), 0 4px 14px rgba(0, 0, 0, .5); pointer-events: none; transition: transform .08s linear; }
+.agv-cursor.press { animation: agvPress .25s ease; }
+@keyframes agvPress { 50% { scale: .7; } }
+.agv-bar { position: absolute; left: 50%; bottom: 28px; transform: translateX(-50%); display: flex; gap: 18px; align-items: center; padding: 12px 24px; border-radius: 30px; background: rgba(20, 20, 26, .86); font-size: 22px; color: rgba(255, 255, 255, .78); white-space: nowrap; }
+.agv-bar b { color: #fff; }
+.agv-type { position: absolute; left: 50%; top: 40%; width: 900px; height: 84px; transform: translateX(-50%); padding: 0 28px; border: 0; border-radius: 24px; background: #fff; color: #000; font-size: 32px; opacity: 0; pointer-events: none; }
+.agv.typing .agv-type { opacity: 1; pointer-events: auto; }

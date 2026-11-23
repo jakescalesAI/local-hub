@@ -33,6 +33,7 @@
 
 const MAX_ITEMS = 60
 const MAX_ACT_LINES = 4
+import * as AgentView from './agentview.js?v=1'
 const BROWSER = 'mcp__hub-browser__browser_'
 const SUGGEST = ['What’s on my calendar today?', 'Is anything down?', 'What’s the weather?', 'Open YouTube']
 
@@ -74,6 +75,14 @@ const T = { items: [], cur: null, acts: null, bro: null, raf: 0, dirty: false }
 
 const HV = () => (window.HubVoice && typeof window.HubVoice.listen === 'function' ? window.HubVoice : null)
 const mode = () => { try { return String(O.speechMode?.() || 'After voice') } catch { return 'After voice' } }
+const voiceMode = () => { try { return !!O.voiceMode?.() } catch { return false } }
+// Voice mode: once the answer has been read out (about as long as reading it takes), it's your turn to talk.
+function yourTurn() {
+  const last = [...T.items].reverse().find(x => x.classList?.contains('as-bot'))
+  const words = (last?.innerText || '').split(/\s+/).filter(Boolean).length
+  clearTimeout(V.turnT)
+  V.turnT = setTimeout(() => { if (mounted && !S.busy && S.shown !== false) voice() }, 900 + Math.min(words, 400) * 380)
+}
 
 /* ---------- mounting ---------- */
 
@@ -111,6 +120,8 @@ export function init(opts = {}) {
     wave: q('.as-wave'), vword: q('.as-vword'), vclock: q('.as-vclock'), talk: q('.as-talk'), stop: q('.as-stop'),
     panel: q('.as-panel'), rows: q('.as-rows'),
   }
+  // The header steps aside once the conversation is under it (the transcript runs to the top of the screen).
+  R.log.addEventListener('scroll', () => { const on = R.log.scrollTop > 12; if (on !== R.scrolled) { R.scrolled = on; el.classList.toggle('scrolled', on) } }, { passive: true })
   R.chips.innerHTML = SUGGEST.map(s => `<button type="button" class="as-chip">${esc(s)}</button>`).join('')
 
   // Pointer and touch still work (the laptop preview, a phone): a click moves focus there and presses it.
@@ -169,6 +180,7 @@ export function show() {
 
 export function hide() {
   if (!mounted) return
+  AgentView.close()
   S.shown = false
   R.input.blur()
   closeList()
@@ -230,6 +242,8 @@ function keepInView(box, el, pad = 40) {
 // the sidebar, back at the bar goes wherever the shell goes back to.
 export function key(name) {
   if (!mounted || !S.shown) return false
+  // The assistant's browser, open full screen: the remote drives its cursor.
+  if (AgentView.isOpen()) return AgentView.key(name, native)
   if (S.away) { S.away = false; paintFocus() }
   const mine = routeKey(name)
   // Not mine: the shell takes focus (the sidebar), so this screen stops showing any.
@@ -379,8 +393,34 @@ function press() {
   if (F.zone === 'log') {
     const item = T.items[F.i]
     const b = item?.querySelectorAll('.as-confirm-row button')[F.sub]
-    if (b && item.__confirm) answerConfirm(item.__confirm, b.dataset.allow === '1')
+    if (b && item.__confirm) return answerConfirm(item.__confirm, b.dataset.allow === '1')
+    // OK on a message reads it aloud (whatever "Read answers aloud" is set to: you asked); OK again stops it.
+    if (item?.classList.contains('as-msg')) return readAloud(item)
+    // OK on the browser card: the assistant's browser, live, driven with the remote.
+    if (item?.__browser) return AgentView.open({ host: R.el, toast: msg => O.toast?.(msg), onClose: () => paintFocus() })
   }
+}
+
+function readAloud(item) {
+  if (V.reading === item) { hush(); V.reading = null; item.classList.remove('reading'); return }
+  hush()
+  T.items.forEach(x => x.classList?.remove('reading'))
+  const text = (item.innerText || item.textContent || '').trim()
+  if (!text) return
+  V.reading = item
+  item.classList.add('reading')
+  if (window.HubVoice?.speak) window.HubVoice.speak(text)
+  else if (window.speechSynthesis) {
+    const u = new SpeechSynthesisUtterance(text)
+    const v = pickVoice()
+    if (v) u.voice = v
+    u.rate = 1.08
+    u.onend = () => { if (V.reading === item) { V.reading = null; item.classList.remove('reading') } }
+    speechSynthesis.speak(u)
+  }
+  // The TV's voice doesn't say when it's done: the mark goes after about as long as reading it takes.
+  clearTimeout(V.readT)
+  V.readT = setTimeout(() => { if (V.reading === item) { V.reading = null; item.classList.remove('reading') } }, 1500 + text.split(/\s+/).length * 380)
 }
 
 /* ---------- the bar ---------- */
@@ -535,6 +575,7 @@ function addTool(t) {
     return
   }
   if (name === 'mcp__hub__show_site') return // its site card says it
+  return // the agent's steps aren't shown on the TV: the dots say it's working, the answer says what it did
   if (!T.acts) {
     const el = document.createElement('div')
     el.className = 'as-acts'
@@ -597,6 +638,7 @@ function addBrowser(b, live) {
   T.acts = null
   const el = document.createElement('div')
   el.className = 'as-card'
+  el.__browser = true // OK on it opens the browser live, with the remote's cursor (agentview.js)
   el.innerHTML = '<div class="as-shot" hidden></div><span class="as-fav"></span><div class="as-ctx"><b></b><small></small></div>'
   const c = { el, b: {}, icon: null, step: '', live, site: false }
   addItem(el)
@@ -910,6 +952,7 @@ function handle(ev, remote = false) {
     case 'done':
       hidePending(); finishCur(); endBrowser()
       if (V.speak && !remote) { voiceFeed('', true); V.speak = false }
+      if (!remote && voiceMode()) yourTurn()
       return true
   }
   return false
@@ -1137,6 +1180,7 @@ export async function voice() {
   } catch (e) {
     V.state = 'idle'
     syncVoice()
+    if (e?.dictate) return dictate()
     note(e?.message || 'Couldn’t hear that.', 9000)
     return
   }
@@ -1146,6 +1190,14 @@ export async function voice() {
   if (V.cancelled) return
   if (!text) { note('Didn’t catch that. Press ⏯ and talk.'); return }
   submit(text, { voice: true })
+}
+
+// No mic LocalHub can record from (a Fire TV Stick's belongs to Alexa): the remote's own dictation. The box takes the
+// focus; OK opens the TV's keyboard, and holding the remote's mic button there types what's said.
+function dictate() {
+  S.away = false
+  setFocus('bar', 'input')
+  note('Press OK, then hold the remote’s mic button and speak. OK again sends it.', 10000)
 }
 
 function cancelVoice() {

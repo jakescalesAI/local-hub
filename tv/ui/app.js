@@ -1083,6 +1083,7 @@ function settingsModel() {
     { group: "Assistant" },
     ...hubRows,
     { key: "speak", t1: "Read answers aloud", t2: NATIVE ? "With the TV's voice" : "With this computer's voice", values: ["After voice", "Always", "Off"] },
+    { key: "voicemode", t1: "Voice mode", t2: "Talk with the assistant: it answers aloud, then it's your turn again", values: ["Off", "On"] },
     { info: true, t1: "Alexa", t2: "“Alexa, ask local hub to open Netflix”", v: "tv/alexa" },
     ...(!NATIVE ? [{ key: "help", t1: "Keyboard help", t2: "The remote's keys, along the top", toggle: true }] : []),
     { group: "About" },
@@ -1450,7 +1451,7 @@ const MIC = { wait: null };
 
 /* "Read answers aloud" (Settings), for tabs/chat.js: "After voice" speaks a reply when the question was
    spoken, "Always" speaks every reply, "Off" never speaks. */
-window.HubSpeech = { mode: () => prefs.speak || "After voice" };
+window.HubSpeech = { mode: () => (prefs.voicemode === "On" ? "Always" : prefs.speak || "After voice") };
 
 if (NATIVE) {
   window.HubVoice = {
@@ -1459,14 +1460,18 @@ if (NATIVE) {
       // A Fire TV Stick opens a recorder that never delivers a frame (the remote's mic belongs to Alexa), and the
       // read blocks. No level within 2.5 s means no mic: say so once, and don't try again this session.
       const NO_MIC = "This TV has no microphone LocalHub can use. Press OK on the box, then hold the remote's mic button to dictate";
-      if (MIC.none) return Promise.reject(new Error(`${NO_MIC}.`));
+      // Known to have none (this TV said so before): straight to the remote's dictation, no 2.5 s wait.
+      const dictate = (msg) => Object.assign(new Error(msg), { dictate: true });
+      if (MIC.none || prefs.noMic) return Promise.reject(dictate(`${NO_MIC}.`));
       return new Promise((resolve, reject) => {
         const dog = setTimeout(() => {
           if (MIC.wait?.dog !== dog) return;
           MIC.none = true;
+          prefs.noMic = true;
+          savePrefs();
           MIC.wait = null;
           native("cancelListening");
-          reject(new Error(`${NO_MIC}, or say “Alexa, ask local hub …”.`));
+          reject(dictate(`${NO_MIC}, or say “Alexa, ask local hub …”.`));
         }, 2500);
         const heard = (v) => { clearTimeout(dog); onLevel?.(v); };
         MIC.wait = { resolve, reject, onLevel: heard, onWorking, dog };
@@ -2313,11 +2318,12 @@ async function boot() {
     renderGrid();
     if (PREVIEW) { setInterval(syncHub, 30_000); return paintChip(); }
     // The TV is its own light app: the hub's chat.js and browser.js stay on the laptop.
-    Assistant = await import("./assistant.js?v=3").catch((e) => { console.warn("assistant", e); return null; });
+    Assistant = await import("./assistant.js?v=5").catch((e) => { console.warn("assistant", e); return null; });
     Assistant?.init({
       el: $("#assistantView"), toast, native, NATIVE,
       intercept: (t) => Boolean(window.HubChatHooks?.intercept?.(t)),
-      speechMode: () => prefs.speak || "After voice",
+      speechMode: () => (prefs.voicemode === "On" ? "Always" : prefs.speak || "After voice"),
+      voiceMode: () => prefs.voicemode === "On",
       onActivity: (on) => $("#rail").classList.toggle("busy", Boolean(on)),
     });
     setInterval(syncHub, 30_000);
