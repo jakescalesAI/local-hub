@@ -555,7 +555,8 @@ html.lite .app.is-focused .icon { --s: 1.1; --ty: -4px; box-shadow: 0 0 0 4px #f
 
 /* The wallpaper and the header art: no blur, no masks, no drifting. A plain fade stands in for the masks. */
 html.lite #hub-wall, html.lite body.in-grid #hub-wall { filter: none !important; transform: none !important; transition: none; }
-html.lite body.in-grid #hub-wall::after { opacity: calc(var(--hub-scrim) + .2); }
+/* The wallpaper keeps one scrim: changing it on the way into the grid repaints the whole screen at 4K. */
+html.lite body.in-grid #hub-wall::after { opacity: var(--hub-scrim); transition: none; }
 html.lite .shelf-art, html.lite .shelf-fade { -webkit-mask-image: none !important; mask-image: none !important; inset: 0; }
 html.lite .shelf-art .bg.blur { filter: none !important; transform: none; }
 html.lite .shelf-art .glyph { animation: none !important; transform: rotate(-6deg); }
@@ -580,6 +581,13 @@ html.lite .app.is-focused .icon { box-shadow: 0 0 0 4px #fff !important; }
 html.lite #page { transition-duration: .28s !important; }
 /* Layers that stay: creating and dropping a GPU layer for every focus change means re-rasterising it at 4K. */
 html.lite #page { will-change: transform; }
+/* Vertical moves, measured on a Fire TV Stick 4K (59.6 fps, p99 17 ms, down from 53 fps with 300-1000 ms stalls):
+   - a blurred text-shadow is re-rastered at 4K whenever its text is drawn: the 150px shelf title alone cost ~700 ms
+     on the way back up to the Top Shelf. A tight, unblurred shadow keeps white text readable on photos for almost nothing.
+   - an animated scale (or lift) on a tile re-rasters that tile on most frames of the animation; snapping it costs one raster. */
+html.lite *, html.lite *::before, html.lite *::after { text-shadow: none !important; }
+html.lite .shelf-title h1, html.lite .shelf-title .banner-text, html.lite .banner-greet, html.lite .when, html.lite .status-clock { text-shadow: 0 2px 1px rgba(0, 0, 0, .35) !important; }
+html.lite .icon { transition: none; }
 html.native #hub-chat { zoom: calc(var(--k, .5) * 1.25); }
 
 /* ══ The TV version: a Netflix-style sidebar over an Apple TV-style home ═════════════════════════════
