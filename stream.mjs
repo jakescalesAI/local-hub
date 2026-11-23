@@ -206,8 +206,17 @@ const SCROLL_JS = `({ y: Math.round(scrollY), max: Math.max(0, document.document
 
 /* ---------- the module ---------- */
 
-export function create({ here, dataDir = path.join(here, 'data', 'tv-stream'), find = locate } = {}) {
+export function create({ here, dataDir = path.join(here, 'data', 'tv-stream'), find: locateFn = locate } = {}) {
   const engines = new Map() // id -> instance
+  // A browser build Windows refuses to start (Smart App Control blocks unsigned downloads such as Playwright's
+  // Chromium, which then fails with "spawn UNKNOWN") is set aside, and Chromium borrows Chrome's program instead.
+  const blocked = new Set()
+  const find = id => {
+    const f = locateFn(id)
+    if (!f || !blocked.has(f.exe)) return f
+    const chrome = locateFn('chrome')
+    return id === 'chromium' && chrome && !blocked.has(chrome.exe) ? { exe: chrome.exe, name: 'Chromium', real: false, via: 'Google Chrome' } : null
+  }
 
   const zoom = () => Math.min(3, Math.max(1, Number(conf().zoom) || 1.5))
   const homeUrl = () => conf().home || 'https://www.google.com/'
@@ -280,7 +289,15 @@ export function create({ here, dataDir = path.join(here, 'data', 'tv-stream'), f
         ...(headed ? [] : ['--headless=new']),
         'about:blank',
       ]
-      proc = spawn(found.exe, args, { stdio: 'ignore', windowsHide: !headed })
+      try {
+        proc = spawn(found.exe, args, { stdio: 'ignore', windowsHide: !headed })
+      } catch (e) {
+        blocked.add(found.exe)
+        const next = find(id)
+        if (!next || next.exe === found.exe) throw err(500, `${found.name} can't start on this computer (${e.code || e.message})`)
+        console.log(`tv stream: ${found.exe} won't start (${e.code || e.message}); ${id} uses ${next.exe}`)
+        proc = spawn(next.exe, args, { stdio: 'ignore', windowsHide: !headed })
+      }
       proc.on('error', () => {})
       for (let i = 0; i < 80 && !dt; i++) {
         await sleep(150)

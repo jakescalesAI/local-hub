@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="./hub.svg">
 <meta name="theme-color" content="#0b0f16">
-<link rel="stylesheet" href="./styles.css?v=18">
+<link rel="stylesheet" href="./styles.css?v=22">
 </head>
 <body>
 <div id="hub-wall"></div>
@@ -62,7 +62,7 @@
 <div class="saver" id="saver" aria-hidden="true"><div class="saver-ph" id="saverA"><div class="bd"></div><img alt="" decoding="async"></div><div class="saver-ph" id="saverB"><div class="bd"></div><img alt="" decoding="async"></div><div class="saver-shade"></div><div class="saver-hud" id="saverHud"></div><div class="saver-note" id="saverNote"></div></div>
 <div class="splash" id="splash" aria-hidden="true"><h1 class="splash-mark"><span class="word word-l">Local</span><svg class="splash-tile" viewBox="0 0 652 652" width="652" height="652" aria-hidden="true"><path fill="#1c1c1e" d="M651.9 326.0L651.7 428.9L651.1 461.7L650.1 485.5L648.6 504.7L646.7 521.0L644.5 535.2L641.7 547.9L638.6 559.4L635.0 569.7L630.9 579.2L626.4 587.9L621.3 595.8L615.8 603.1L609.7 609.7L603.1 615.8L595.8 621.3L587.9 626.4L579.2 630.9L569.7 635.0L559.4 638.6L547.9 641.7L535.2 644.5L521.0 646.7L504.7 648.6L485.5 650.1L461.7 651.1L428.9 651.7L326.0 651.9L223.1 651.7L190.3 651.1L166.5 650.1L147.3 648.6L131.0 646.7L116.8 644.5L104.1 641.7L92.6 638.6L82.3 635.0L72.8 630.9L64.1 626.4L56.2 621.3L48.9 615.8L42.3 609.7L36.2 603.1L30.7 595.8L25.6 587.9L21.1 579.2L17.0 569.7L13.4 559.4L10.3 547.9L7.5 535.2L5.3 521.0L3.4 504.7L1.9 485.5L0.9 461.7L0.3 428.9L0.1 326.0L0.3 223.1L0.9 190.3L1.9 166.5L3.4 147.3L5.3 131.0L7.5 116.8L10.3 104.1L13.4 92.6L17.0 82.3L21.1 72.8L25.6 64.1L30.7 56.2L36.2 48.9L42.3 42.3L48.9 36.2L56.2 30.7L64.1 25.6L72.8 21.1L82.3 17.0L92.6 13.4L104.1 10.3L116.8 7.5L131.0 5.3L147.3 3.4L166.5 1.9L190.3 0.9L223.1 0.3L326.0 0.1L428.9 0.3L461.7 0.9L485.5 1.9L504.7 3.4L521.0 5.3L535.2 7.5L547.9 10.3L559.4 13.4L569.7 17.0L579.2 21.1L587.9 25.6L595.8 30.7L603.1 36.2L609.7 42.3L615.8 48.9L621.3 56.2L626.4 64.1L630.9 72.8L635.0 82.3L638.6 92.6L641.7 104.1L644.5 116.8L646.7 131.0L648.6 147.3L650.1 166.5L651.1 190.3L651.7 223.1Z"/><g transform="translate(326 326) scale(1.418) translate(-256 -253)"><path d="M256 124 398 244H358V382H154V244H114Z" fill="#fff" stroke="#fff" stroke-width="26" stroke-linejoin="round"/><path d="M220 396V322a36 36 0 0 1 72 0V396Z" fill="#1c1c1e"/></g></svg><span class="word word-r">Hub</span></h1><b id="splashName" hidden>LocalHub</b></div>
 <script src="./glass.js?v=1"></script>
-<script src="./splash.js?v=1"></script>
+<script src="./splash.js?v=2"></script>
 
 <script>
   /* Fit the 1920×1080 canvas before anything paints. */
@@ -83,6 +83,6 @@
   /* The hub page defines hubFetch for chat.js (it waits out hub restarts); the TV only needs plain fetch. */
   if (typeof window.hubFetch !== "function") window.hubFetch = function (url, init) { return fetch(url, init); };
 </script>
-<script type="module" src="./app.js?v=16"></script>
+<script type="module" src="./app.js?v=20"></script>
 </body>
 </html>

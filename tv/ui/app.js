@@ -76,7 +76,15 @@ const DEMO_INPUTS = [
 
 /* ── prefs (this screen only; the look and widgets come from the hub) ──── */
 const PREFS_KEY = "localhub.tv";
-const DEFAULTS = { clock: "12-hour", inputs: true, saver: "5 min", effects: "Full", speak: "After voice", help: true };
+const DEFAULTS = { clock: "12-hour", inputs: true, saver: "5 min", glass: "Auto", speak: "After voice", help: true };
+/* A weak TV (the Fire TV Stick 4K has 1.5 GB and a PowerVR GPU) can't keep up with live blurs, masks and blend
+   modes: every one is an extra surface for the GPU, which made it stutter and, after a while, crash its driver.
+   "Auto" glass is Light on those and Full on anything stronger; a laptop is always strong enough. */
+const DEVICE = NATIVE ? (safeJson(native("status"), {}) || {}) : {};
+// On a TV the page is laid out at the WebView's small CSS size (960×540 on a 4K Fire TV); the chat bar, which
+// lives outside the 1920×1080 canvas, is scaled the same way as the canvas so it keeps its proportions.
+if (NATIVE) document.documentElement.classList.add("native");
+const WEAK_TV = Boolean(NATIVE) && (!DEVICE.ramMB || DEVICE.ramMB < 2600 || DEVICE.lowRam === true || (DEVICE.sdk || 0) < 26);
 let prefs = { ...DEFAULTS, ...(safeJson((() => { try { return localStorage.getItem(PREFS_KEY); } catch { return null; } })(), {}) || {}) };
 const savePrefs = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)); } catch { /* storage off */ } };
 
@@ -134,7 +142,7 @@ function applyLook() {
   r.style.setProperty("--hub-blur", `${st.blur}px`);
   r.style.setProperty("--hub-alpha", `${100 - st.transparency}%`);
   r.style.setProperty("--hub-radius", `${st.radius}px`);
-  r.classList.toggle("lite", prefs.effects === "Light");
+  r.classList.toggle("lite", prefs.glass === "Light" || (prefs.glass !== "Full" && WEAK_TV));
   const w = wallFor(SETTINGS);
   const wall = $("#hub-wall");
   if (!w) { delete r.dataset.wall; wall.style.backgroundImage = ""; return; }
@@ -207,7 +215,6 @@ function loadItems() {
   }
   if (!prefs.inputs) INPUTS = [];
   ITEMS = [
-    { id: "hub", kind: "hub", name: HUB.name },
     ...tvApps(),
     ...INPUTS.map((i) => ({ ...i, kind: "input" })),
     { id: "settings", kind: "settings", name: "Settings" },
@@ -220,7 +227,7 @@ function loadItems() {
    installed, say) follows in the default order. tv.hidden leaves apps out. */
 function defaultOrder() {
   const byRecent = [...APPS].sort((a, b) => (b.recentAt || 0) - (a.recentAt || 0) || a.name.localeCompare(b.name));
-  const top = byRecent.slice(0, COLS - 1);
+  const top = byRecent.slice(0, COLS);
   return [...top, ...APPS.filter((a) => !top.includes(a)).sort((a, b) => a.name.localeCompare(b.name))];
 }
 function tvApps() {
@@ -325,6 +332,12 @@ function move(dx, dy) {
 /* ── the Top Shelf ─────────────────────────────────────────────────────── */
 
 function paintShelf(force) {
+  // In Light glass the header waits until focus rests, so holding an arrow doesn't redraw it for every tile passed.
+  if (!force && document.documentElement.classList.contains("lite")) {
+    clearTimeout(paintShelf.t);
+    paintShelf.t = setTimeout(() => paintShelf(true), 140);
+    return;
+  }
   const it = ITEMS[S.i];
   if (!it || (!force && it.id === S.shelfId)) return;
   S.shelfId = it.id;
@@ -618,14 +631,16 @@ function ccTiles() {
       <span class="k">Voice</span><span class="v"><i style="--c:${voiceTint}"></i>${esc(voice)}</span>
     </div></div>`,
   });
+  // LocalHub isn't an app on the grid any more: it opens from here.
+  tiles.push({ id: "dashboard", cls: "w2", ic: HOUSE_IC, t1: "LocalHub", t2: IN_HUB ? "Open the hub" : "Pair this TV first" });
   tiles.push({ id: "ask", cls: "w2", ic: SYM.mic, t1: "Ask LocalHub", t2: NATIVE ? "⏯ on the remote" : "Space on the keyboard" });
-  tiles.push({ id: "tvlayout", cls: "w2", ic: SYM.sliders, t1: "TV layout", t2: "Pick what shows here" });
   const chats = (LIVE.chats || []).slice(0, 3);
   if (chats.length) {
     tiles.push({ sect: "Recent chats" });
     for (const c of chats) tiles.push({ id: `chat:${c.id}`, cls: "w4 chat", ic: CHAT_IC, t1: c.title || "Chat", t2: c.running ? "Answering now" : ago(c.updated) });
   }
   tiles.push({ sect: NATIVE ? "This TV" : "This screen" });
+  tiles.push({ id: "tvlayout", cls: "w2", ic: SYM.sliders, t1: "TV layout", t2: "Pick what shows here" });
   tiles.push({ id: "saver", cls: "w2", ic: SYM.moon, t1: "Screensaver", t2: "Start now" });
   tiles.push({ id: "settings", cls: "w2", ic: SYM.gear, t1: "Settings", t2: "LocalHub TV" });
   if (NATIVE) {
@@ -637,11 +652,11 @@ function ccTiles() {
     tiles.push({ id: "bt", cls: "w2", ic: SYM.bt, t1: "Bluetooth", t2: "Headphones, remotes" });
     tiles.push({ id: "system", cls: "w2", ic: SYM.sliders, t1: "TV Settings", t2: "Fire TV" });
   } else {
-    tiles.push({ id: "dashboard", cls: "w2", ic: SYM.laptop, t1: "LocalHub", t2: "The full dashboard" });
     tiles.push({ id: "tvsetup", cls: "w2", ic: SYM.input, t1: "Set up a TV", t2: "Install, connect, pair" });
   }
   return tiles;
 }
+const HOUSE_IC = sym('<path d="M3 11 12 3l9 8"/><path d="M5 10v10h5v-6h4v6h5V10"/>');
 const CHAT_IC = sym('<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22z"/>');
 const KEY_IC = sym('<rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/>');
 
@@ -753,7 +768,7 @@ function settingsModel() {
     IN_HUB && !PREVIEW
       ? { id: "saverSource", t1: "Screensaver photos", t2: saverSourceNote(), v: saverSourceName() }
       : { info: true, t1: "Screensaver photos", t2: "Chosen in LocalHub", v: "Wallpapers" },
-    { key: "effects", t1: "Liquid glass", t2: "Light drops the blur, for older Fire TV sticks", values: ["Full", "Light"] },
+    { key: "glass", t1: "Liquid glass", t2: WEAK_TV ? "Auto is Light on this TV, to keep it smooth" : "Auto is Full here; Light is the smoothest", values: ["Auto", "Full", "Light"] },
     { id: "look", t1: "Wallpaper, style and widgets", t2: "Opens LocalHub, where you change the TV", v: SETTINGS?.wallpaper?.current ? cap(SETTINGS.wallpaper.current) : "Aurora" },
     { group: "Assistant" },
     ...hubRows,
@@ -1527,7 +1542,6 @@ async function boot() {
     await syncHub();
     Stream.init({ toast, native, NATIVE, setOverlay, closed: () => { S.zone = "grid"; setOverlay(null); window.focus(); }, changed: () => window.haven.appsChanged() });
     if (!PREVIEW) loadSaverPhotos();
-    ITEMS[0].name = HUB.name;
     S.shelfId = null;
     renderGrid();
     if (PREVIEW) { setInterval(syncHub, 30_000); return paintChip(); }

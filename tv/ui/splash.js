@@ -29,7 +29,14 @@
   var canvas = null, glass = null, raf = 0, pump = 0, ended = false;
 
   function lite() {
-    try { return (JSON.parse(localStorage.getItem("localhub.tv") || "{}").effects || "") === "Light"; } catch (e) { return false; }
+    var glass = "Auto";
+    try { glass = JSON.parse(localStorage.getItem("localhub.tv") || "{}").glass || "Auto"; } catch (e) { /* storage off */ }
+    if (glass === "Light") return true;
+    if (glass === "Full" || !window.LocalHubNative) return false;
+    // Auto on a TV: the same rule as app.js's WEAK_TV. The WebGL reveal is the heaviest thing a weak TV would draw.
+    var d = {};
+    try { d = JSON.parse(window.LocalHubNative.status() || "{}"); } catch (e) { /* not trusted yet */ }
+    return !d.ramMB || d.ramMB < 2600 || d.lowRam === true || (d.sdk || 0) < 26;
   }
   function canPlay() {
     return window.WebGL2RenderingContext && window.GlassReveal && !lite() &&

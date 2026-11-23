@@ -1,5 +1,6 @@
 package local.hub.tv;
 
+import android.app.ActivityManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
@@ -115,6 +116,15 @@ final class Native {
             o.put("hub", activity.prefs.hubUrl());
             o.put("hubName", activity.prefs.hubName());
             o.put("paired", activity.hub.paired());
+            // How strong this TV is, so the page can pick its glass: blurs and masks are what a weak GPU struggles with.
+            ActivityManager am = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+            ActivityManager.MemoryInfo mi = new ActivityManager.MemoryInfo();
+            am.getMemoryInfo(mi);
+            o.put("ramMB", mi.totalMem / (1024 * 1024));
+            o.put("lowRam", am.isLowRamDevice());
+            o.put("cores", Runtime.getRuntime().availableProcessors());
+            o.put("sdk", android.os.Build.VERSION.SDK_INT);
+            o.put("model", android.os.Build.MODEL);
         } catch (Exception ignored) { }
         return o.toString();
     }

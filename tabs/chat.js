@@ -265,6 +265,9 @@ button { border: 0; background: none; padding: 0; cursor: pointer; }
 button:focus-visible, .row:focus-visible { outline: 2px solid var(--blue, #007aff); outline-offset: 2px; }
 textarea, textarea:focus, textarea:focus-visible { outline: none; box-shadow: none; }
 .glass { background: var(--material, rgba(249, 249, 249, .78)); -webkit-backdrop-filter: saturate(180%) blur(24px); backdrop-filter: saturate(180%) blur(24px); }
+/* LocalHub TV's Light glass (html.lite on a weak TV): no live blurs in here either, solid surfaces instead. */
+:host-context(html.lite) *, :host-context(html.lite) *::before, :host-context(html.lite) *::after { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+:host-context(html.lite) .glass, :host-context(html.lite) .card, :host-context(html.lite) .ghead, :host-context(html.lite) .menu { background: var(--surface, #1c1c1e); }
 
 /* ----- the bar ----- */
 .bar { position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom) + var(--kb)); width: min(640px, calc(100vw - 32px)); transform: translateX(-50%); pointer-events: auto; transition: opacity .2s, transform .38s var(--ease, ease); }
