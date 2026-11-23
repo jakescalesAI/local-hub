@@ -112,7 +112,7 @@ final class Native {
         try {
             PackageInfo pi = context.getPackageManager().getPackageInfo(context.getPackageName(), 0);
             o.put("version", pi.versionName);
-            o.put("homeService", HomeRedirectService.isRunning());
+            o.put("homeService", HomeRedirectService.isRunning() || HomeWatchService.isRunning());
             o.put("hub", activity.prefs.hubUrl());
             o.put("hubName", activity.prefs.hubName());
             o.put("paired", activity.hub.paired());

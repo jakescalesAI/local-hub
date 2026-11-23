@@ -134,6 +134,7 @@ public class MainActivity extends Activity {
         f.addAction(Intent.ACTION_PACKAGE_CHANGED);
         f.addDataScheme("package");
         registerReceiver(packageReceiver, f);
+        HomeWatchService.start(this);
     }
 
     // ── which page ────────────────────────────────────────────────────────────────────────────

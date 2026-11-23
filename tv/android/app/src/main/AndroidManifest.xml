@@ -7,6 +7,8 @@
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <!-- Voice: asked for the first time you talk to LocalHub, never used in the background. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- Home on Fire OS: read the system log to see Amazon's home screen start (granted over adb, see HomeWatchService). -->
+    <uses-permission android:name="android.permission.READ_LOGS" />
 
     <uses-feature android:name="android.software.leanback" android:required="false" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
@@ -38,13 +40,18 @@
             </intent-filter>
 
             <!-- Android TV / Google TV can pick LocalHub as the real home screen. Fire OS ignores this;
-                 there the accessibility service does the work. -->
+                 there HomeWatchService does the work. -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.HOME" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
+
+        <!-- Fire OS: Home brings LocalHub back by watching the system log (no accessibility service needed). -->
+        <service
+            android:name=".HomeWatchService"
+            android:exported="false" />
 
         <service
             android:name=".HomeRedirectService"
