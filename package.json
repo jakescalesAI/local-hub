@@ -1,6 +1,6 @@
 {
   "name": "local-hub",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Your own private dashboard and AI assistant, running on your own computer.",
   "license": "MIT",
   "private": true,
