@@ -1,7 +1,7 @@
 {
   "name": "local-hub-desktop",
   "productName": "LocalHub",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "Desktop app for LocalHub: window, tray icon and global hotkey launcher.",
   "license": "MIT",
   "private": true,
