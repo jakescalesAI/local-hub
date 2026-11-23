@@ -246,7 +246,7 @@ final class Apps {
             try { stamp = pm.getPackageInfo(pkg, 0).lastUpdateTime; } catch (Exception ignored) { }
             App old = saved.get(pkg);
             if (old != null && stamp != 0 && old.stamp == stamp && ri.activityInfo.name.equals(old.activityName)
-                    && (!old.hasBanner || artFile(pkg + "/banner").isFile()) && (!old.hasIcon || artFile(pkg + "/icon").isFile())) {
+                    && (!old.hasBanner || artFile(pkg + "/banner").length() > 0) && (!old.hasIcon || artFile(pkg + "/icon").length() > 0)) {
                 out.add(old); // unchanged since it was drawn
                 continue;
             }
@@ -270,9 +270,11 @@ final class Apps {
             } catch (Exception ignored) { }
 
             int color = dominant(banner != null ? banner : icon); // before png(), which recycles the bitmap
-            boolean hasBanner = banner != null, hasIcon = icon != null;
-            if (hasBanner) images.put(pkg + "/banner", png(banner));
-            if (hasIcon) images.put(pkg + "/icon", png(icon));
+            // Some apps hand Android a banner that won't encode (Amazon's hedwig gave 0 bytes): no banner, then.
+            byte[] bannerPng = banner != null ? png(banner) : null, iconPng = icon != null ? png(icon) : null;
+            boolean hasBanner = bannerPng != null && bannerPng.length > 0, hasIcon = iconPng != null && iconPng.length > 0;
+            if (hasBanner) images.put(pkg + "/banner", bannerPng);
+            if (hasIcon) images.put(pkg + "/icon", iconPng);
             App a = new App(label, pkg, ri.activityInfo.name, hasBanner, hasIcon, color);
             a.stamp = stamp;
             out.add(a);

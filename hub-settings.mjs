@@ -208,7 +208,7 @@ const defaults = here => ({
   style: defaultStyle(),
   wallpaper: { current: activeTheme().wallpaper || 'none', custom: [], uploads: [] },
   scroll: { ...SCROLL_DEFAULT },
-  tv: { apps: [], hidden: [], saver: saverDefault() },
+  tv: { apps: [], hidden: [], favorites: [], saver: saverDefault() },
 })
 
 /* ---------- validation ---------- */
@@ -377,7 +377,7 @@ export function applyPatch(cur, body, here) {
   next.sites = next.sites || []
   next.pages = next.pages || []
   next.scroll = { ...SCROLL_DEFAULT, ...(next.scroll || {}) }
-  next.tv = { apps: [], hidden: [], ...(next.tv || {}), saver: { ...saverDefault(), ...(next.tv?.saver || {}) } }
+  next.tv = { apps: [], hidden: [], favorites: [], ...(next.tv || {}), saver: { ...saverDefault(), ...(next.tv?.saver || {}) } }
   if (!c.obj('body', body, ['tabs', 'apps', 'sites', 'groups', 'pages', 'widgets', 'scroll', 'tv', 'style', 'wallpaper', 'reset'])) c.done()
   if (!Object.keys(body).length) c.fail('body', 'is empty: send at least one of tabs, apps, sites, groups, pages, widgets, scroll, tv, style, wallpaper, reset')
 
@@ -602,11 +602,11 @@ export function applyPatch(cur, body, here) {
     for (const [vk, v] of Object.entries(body.scroll)) if (VIEWS.includes(vk) && c.oneOf(`scroll.${vk}`, v, SCROLLS) !== undefined) next.scroll[vk] = v
   }
 
-  // LocalHub TV: { apps?: [ids in order] | null, hidden?: [ids], saver?: {…} }. For apps and hidden, null or []
-  // puts back the default order. saver is the screensaver, a partial patch merged into the current one.
-  if (body.tv !== undefined && c.obj('tv', body.tv, ['apps', 'hidden', 'saver'])) {
+  // LocalHub TV: { apps?: [ids in order] | null, hidden?: [ids], favorites?: [ids in order], saver?: {…} }. For apps,
+  // hidden and favorites, null or [] puts back the default (no favorites). saver is the screensaver, a partial patch merged into the current one.
+  if (body.tv !== undefined && c.obj('tv', body.tv, ['apps', 'hidden', 'favorites', 'saver'])) {
     if (body.tv.saver !== undefined) next.tv.saver = cleanSaver(c, 'tv.saver', body.tv.saver, next.tv.saver)
-    for (const k of ['apps', 'hidden']) {
+    for (const k of ['apps', 'hidden', 'favorites']) {
       const v = body.tv[k]
       if (v === undefined) continue
       if (v === null) { next.tv[k] = []; continue }
@@ -680,7 +680,7 @@ function repair(saved, here) {
     .map(f => ({ id: f.id, name: String(f.name || 'File').slice(0, 40), sizes: cleanSizes(f.sizes), at: Number(f.at) || 0 }))
   for (const vk of VIEWS) tryPart(vk, () => { out.widgets = { ...out.widgets, [vk]: applyPatch(d, { widgets: { [vk]: (saved.widgets[vk] ?? (vk === 'tv' ? seedLayout('tv') : saved.widgets.desktop)).filter(itemIdOk) } }, here).widgets[vk] } })
   tryPart('scroll', () => { out.scroll = applyPatch(d, { scroll: Object.fromEntries(Object.entries(saved.scroll || {}).filter(([vk, v]) => VIEWS.includes(vk) && SCROLLS.includes(v))) }, here).scroll })
-  for (const k of ['apps', 'hidden']) tryPart(`tv.${k}`, () => { out.tv = { ...out.tv, [k]: applyPatch(d, { tv: { [k]: [...new Set((saved.tv?.[k] || []).filter(x => typeof x === 'string' && TV_APP_RE.test(x)))].slice(0, MAX_TV_APPS) } }, here).tv[k] } })
+  for (const k of ['apps', 'hidden', 'favorites']) tryPart(`tv.${k}`, () => { out.tv = { ...out.tv, [k]: applyPatch(d, { tv: { [k]: [...new Set((saved.tv?.[k] || []).filter(x => typeof x === 'string' && TV_APP_RE.test(x)))].slice(0, MAX_TV_APPS) } }, here).tv[k] } })
   for (const k of Object.keys(STYLE)) tryPart(k, () => { out.style = { ...out.style, [k]: applyPatch(d, { style: { [k]: saved.style[k] } }, here).style[k] } })
   tryPart('custom', () => { out.wallpaper = { ...out.wallpaper, custom: applyPatch(d, { wallpaper: { custom: saved.wallpaper.custom } }, here).wallpaper.custom } })
   out.wallpaper.uploads = (saved.wallpaper?.uploads || []).filter(u => u && UPLOAD_ID_RE.test(u.id) && UPLOAD_FILE_RE.test(u.file) && fs.existsSync(path.join(here, 'data', 'wallpapers', u.file))).slice(0, MAX_UPLOADS)
@@ -809,7 +809,7 @@ export function catalog(here) {
     widgets: { ids: WIDGET_IDS, families: WIDGET_FAMILIES.map(f => `${f}.<key>`), sizes: SIZES, options: WIDGET_OPTIONS, maxPerLayout: MAX_ITEMS, stack: { id: 'stack', min: 2, max: MAX_STACK }, app: { id: 'app', note: 'an app place: { id: "app", app: <id on Home> }' } },
     scroll: { views: VIEWS, values: SCROLLS, default: SCROLL_DEFAULT },
     tv: {
-      apps: 'the TV app tiles in order, as the TV’s own app ids', hidden: 'TV app ids left off the TV', max: MAX_TV_APPS, note: 'apps in neither list show after the listed ones; send null or [] for the default order',
+      apps: 'the TV app tiles in order, as the TV’s own app ids', hidden: 'TV app ids left off the TV', favorites: 'TV app ids in the Favorites row at the top, in order', max: MAX_TV_APPS, note: 'apps in neither list show after the listed ones; send null or [] for the default order',
       saver: {
         sources: SAVER_SOURCES, motions: SAVER_MOTIONS, widgets: SAVER_WIDGETS, maxWidgets: SAVER_MAX_WIDGETS, interval: SAVER_INTERVAL, default: saverDefault(),
         folder: 'an absolute folder path on the computer LocalHub runs on, or "" for none; only that computer can change it',
@@ -887,7 +887,7 @@ export function create({ here }) {
           widgets: Object.fromEntries(VIEWS.map(vk => [vk, lay(b.widgets?.[vk] ?? b.widgets?.desktop)])),
           ...(b.scroll ? { scroll: Object.fromEntries(Object.entries(b.scroll).filter(([vk]) => VIEWS.includes(vk))) } : {}),
           // A screensaver folder is a path on the computer it came from: this hub keeps its own.
-          ...(b.tv ? { tv: { apps: Array.isArray(b.tv.apps) ? b.tv.apps : [], hidden: Array.isArray(b.tv.hidden) ? b.tv.hidden : [], ...(b.tv.saver && typeof b.tv.saver === 'object' && !Array.isArray(b.tv.saver) ? { saver: withoutFolder(b.tv.saver) } : {}) } } : {}),
+          ...(b.tv ? { tv: { apps: Array.isArray(b.tv.apps) ? b.tv.apps : [], hidden: Array.isArray(b.tv.hidden) ? b.tv.hidden : [], favorites: Array.isArray(b.tv.favorites) ? b.tv.favorites : [], ...(b.tv.saver && typeof b.tv.saver === 'object' && !Array.isArray(b.tv.saver) ? { saver: withoutFolder(b.tv.saver) } : {}) } } : {}),
           ...(b.style ? { style: b.style } : {}),
           wallpaper: { custom: b.wallpaper?.custom || [], current: known.includes(b.wallpaper?.current) ? b.wallpaper.current : 'none' },
         }

@@ -35,6 +35,8 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 /* ── line icons, SF Symbols style ─────────────────────────────────────────── */
 const sym = (d, w = 2) => `<svg class="sym" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
 const SYM = {
+  star: sym('<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>'),
+  unstar: sym('<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/><path d="M3 3l18 18"/>'),
   plus: sym('<path d="M12 5v14M5 12h14"/>', 2.4),
   gear: sym('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3 1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8 1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>'),
   input: sym('<path d="M4 7h16v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M8 7V4h8v3"/><path d="M12 17v4"/>'),
@@ -104,6 +106,7 @@ const S = {
   launched: null,
 };
 let ITEMS = [];
+let FAVS = []; // the Favorites row: apps you picked (tv.favorites), or one tile saying how
 let APPS = [];
 let INPUTS = [];
 let SETTINGS = null;
@@ -185,7 +188,7 @@ async function syncHub() {
    tv.hidden) and how it scrolls (scroll.tv). */
 function takeSettings(next) {
   const look = (s) => JSON.stringify([s?.style, s?.wallpaper, s?.widgets?.tv]);
-  const grid = (s) => JSON.stringify([s?.tv?.apps, s?.tv?.hidden, s?.scroll?.tv, s?.sites]);
+  const grid = (s) => JSON.stringify([s?.tv?.apps, s?.tv?.hidden, s?.tv?.favorites, s?.scroll?.tv, s?.sites]);
   const saver = (s) => JSON.stringify(s?.tv?.saver || null);
   const lookChanged = look(next) !== look(SETTINGS);
   const gridChanged = grid(next) !== grid(SETTINGS);
@@ -276,7 +279,16 @@ function loadItems() {
     { id: "settings", kind: "settings", name: "Settings" },
   ];
   S.i = clamp(S.i, 0, ITEMS.length - 1);
+  const favIds = Array.isArray(SETTINGS?.tv?.favorites) ? SETTINGS.tv.favorites : [];
+  FAVS = favIds.map((id) => APPS.find((a) => a.id === id)).filter(Boolean);
+  if (!FAVS.length && IN_HUB && !PREVIEW) FAVS = [{ id: "favhint", kind: "favhint", name: "Favorites" }];
+  S.f = clamp(S.f || 0, 0, Math.max(0, FAVS.length - 1));
+  if (!FAVS.length && S.zone === "favs") S.zone = "grid";
 }
+const hasFavs = () => FAVS.length > 0;
+const isFav = (it) => Boolean(it && (SETTINGS?.tv?.favorites || []).includes(it.id));
+// What the remote is on: a Favorites tile or an app tile.
+const focused = () => (S.zone === "favs" ? FAVS[S.f] : ITEMS[S.i]);
 
 /* The app tiles. With no order saved in the hub (tv.apps) it's tvOS's: the four you opened last on
    the top row, then the rest A to Z. A saved order puts those first; an app it doesn't name yet (just
@@ -296,13 +308,16 @@ function tvApps() {
 
 function iconHTML(it) {
   if (it.kind === "hub") return `<div class="icon hub"><img src="./hub.svg" alt=""></div>`;
+  if (it.kind === "favhint") return `<div class="icon favhint"><i class="fill"></i>${SYM.star}</div>`;
   if (it.kind === "settings") return `<div class="icon" style="--a-bg:linear-gradient(160deg,#8e8e93,#3a3a3c);--a-fg:#fff">${SYM.gear}</div>`;
   if (it.kind === "addsite") return `<div class="icon add" style="--a-bg:#1f2129;--a-fg:#fff"><i class="fill"></i>${SYM.plus}</div>`;
   if (it.kind === "site") return `<div class="icon" style="--a-bg:${it.bg};--a-fg:${it.fg}"><i class="fill"></i><b class="letter">${esc(it.letter)}</b><img class="square site" src="${esc(it.siteIcon)}" alt="" decoding="async" onerror="this.remove()"></div>`;
   if (it.kind === "input") return `<div class="icon" style="--a-bg:linear-gradient(160deg,#2c2c2e,#0b0b0d);--a-fg:#fff">${SYM.input}<span class="sub">${esc(it.sub || "HDMI")}</span></div>`;
   const colors = `--a-bg:${it.bg};--a-fg:${it.fg}`;
   const fill = '<i class="fill"></i>';
-  if (it.banner) return `<div class="icon" style="${colors}"><img src="${esc(it.banner)}" alt="" decoding="async"></div>`;
+  // A banner that won't load (an app can hand Android an empty one) falls back to its icon, or its colour.
+  const fallback = it.img ? `this.onerror=null;this.className='square';this.src='${esc(it.img)}'` : "this.remove()";
+  if (it.banner) return `<div class="icon" style="${colors}">${fill}<img src="${esc(it.banner)}" alt="" decoding="async" onerror="${fallback}"></div>`;
   if (it.img) return `<div class="icon" style="${colors}">${fill}<img class="square" src="${esc(it.img)}" alt="" decoding="async"></div>`;
   if (it.icon) return `<div class="icon" style="${colors}">${fill}<i class="glyph${it.wide ? " wide" : ""}" style="--glyph:url('./brands/${it.icon}.svg')"></i>${it.note ? `<span class="sub">${esc(it.note)}</span>` : ""}</div>`;
   return `<div class="icon" style="${colors}">${fill}<b class="letter"${it.letter && it.letter.length > 4 ? ' style="font-size:58px"' : ""}>${esc(it.letter || it.name.slice(0, 1))}</b></div>`;
@@ -331,14 +346,30 @@ function renderGrid() {
   });
   const same = nodes.length === grid.children.length && nodes.every((n, i) => grid.children[i] === n);
   if (!same) grid.replaceChildren(...nodes);
+  renderFavs();
   applyFocus(true);
   warmTiles();
 }
 // While the opening still covers the screen, step the page through every row once, so the TV draws each row's
 // tiles now rather than on the first scroll down (that first pass stalled up to 400 ms on a Fire TV Stick).
+function renderFavs() {
+  const box = $("#favs"), track = $("#favTrack");
+  const html = FAVS.map((it, f) => `<div class="app fav" data-f="${f}">${iconHTML(it)}<span class="name">${esc(it.name)}</span></div>`).join("");
+  if (track._html !== html) { track.innerHTML = html; track._html = html; }
+  if (box.hidden === hasFavs()) { box.hidden = !hasFavs(); $("#page").classList.toggle("has-favs", hasFavs()); }
+}
+// The row slides so the focused favorite is always on screen, five at a time like the grid.
+function slideFavs() {
+  const first = $("#favTrack .fav");
+  if (!first) return;
+  const step = (first.nextElementSibling ? first.nextElementSibling.offsetLeft - first.offsetLeft : 0) || first.offsetWidth;
+  S.favX = clamp(S.favX || 0, Math.max(0, S.f - COLS + 1), S.f);
+  $("#favTrack").style.transform = S.favX ? `translateX(${-S.favX * step}px)` : "";
+}
+
 async function walkRows() {
   const page = $("#page");
-  const rows = Math.ceil(ITEMS.length / COLS);
+  const rows = Math.ceil(ITEMS.length / COLS) + (hasFavs() ? 1 : 0);
   const frame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
   page.style.transition = "none";
   // Two rows a step: the screen shows about two and a half, and the TV also draws a margin around what it shows.
@@ -374,8 +405,11 @@ function applyFocus(instant) {
   document.querySelectorAll(".app.is-focused").forEach((n) => n.classList.remove("is-focused"));
   $("#gearBtn").classList.toggle("focus", S.zone === "status" && !S.overlay);
   if (S.zone === "grid" && !S.overlay) $(`.app[data-i="${S.i}"]`)?.classList.add("is-focused");
+  if (S.zone === "favs" && !S.overlay) { $(`.fav[data-f="${S.f}"]`)?.classList.add("is-focused"); slideFavs(); }
 
-  const row = Math.floor(S.i / COLS);
+  // With Favorites at the top, the grid's rows are one lower on screen.
+  const off = hasFavs() ? 1 : 0;
+  const row = S.zone === "favs" ? 0 : Math.floor(S.i / COLS) + off;
   const inGrid = S.zone === "grid" && row > 0;
   const grid = inGrid || (S.zone === "bar" && !atTop());
   // Light glass: the body class would make a Fire TV Stick recompute style for every tile (30-50 ms, measured),
@@ -395,16 +429,17 @@ function applyFocus(instant) {
   const y = !inGrid ? 0 : paged ? -(648 + first * 236 - 190) : -(648 + row * 236 - 400);
   // A page shows its own rows: the ones before it leave with it instead of hanging under the clock.
   document.querySelectorAll(".app").forEach((n) => {
-    const off = paged && inGrid && Math.floor(Number(n.dataset.i) / COLS) < first;
-    if ((n.style.opacity === "0") !== off) { n.style.transition = "opacity .45s"; n.style.opacity = off ? "0" : ""; }
+    const r = n.dataset.f !== undefined ? 0 : Math.floor(Number(n.dataset.i) / COLS) + off;
+    const gone = paged && inGrid && r < first;
+    if ((n.style.opacity === "0") !== gone) { n.style.transition = "opacity .45s"; n.style.opacity = gone ? "0" : ""; }
   });
   const page = $("#page");
   if (instant) page.style.transition = "none";
   page.style.transform = `translateY(${y}px)`;
   if (instant) requestAnimationFrame(() => { page.style.transition = ""; });
-  if (S.zone === "grid" && row === 0) paintShelf();
+  if ((S.zone === "grid" || S.zone === "favs") && row === 0) paintShelf();
 }
-const atTop = () => Math.floor(S.i / COLS) === 0;
+const atTop = () => S.zone === "favs" || (!hasFavs() && Math.floor(S.i / COLS) === 0);
 
 function tilt(dx, dy) {
   const icon = $(`.app[data-i="${S.i}"] .icon`);
@@ -431,6 +466,18 @@ function move(dx, dy) {
     if (dy < 0) { leaveBar(); S.zone = "grid"; return applyFocus(); }
     return;
   }
+  if (S.zone === "favs") {
+    if (dx) {
+      const next = S.f + dx;
+      if (next >= 0 && next < FAVS.length) S.f = next;
+      else if (dx < 0) return openRail();
+      else return tilt(dx * 1.6, 0);
+    }
+    if (dy < 0) return tilt(0, -1.6);
+    if (dy > 0) { S.zone = "grid"; S.i = Math.min(clamp(S.f - (S.favX || 0), 0, COLS - 1), ITEMS.length - 1); }
+    applyFocus();
+    return tilt(dx, dy);
+  }
   const n = ITEMS.length;
   const row = Math.floor(S.i / COLS);
   const lastRow = Math.floor((n - 1) / COLS);
@@ -441,6 +488,7 @@ function move(dx, dy) {
     else return tilt(dx * 1.6, 0); // the edge: lean into it, like tvOS
   }
   if (dy < 0) {
+    if (row === 0 && hasFavs()) { S.zone = "favs"; S.f = clamp((S.favX || 0) + (S.i % COLS), 0, FAVS.length - 1); applyFocus(); return tilt(0, -1); }
     if (row === 0) return tilt(0, -1.6);
     S.i -= COLS;
   }
@@ -461,7 +509,7 @@ function paintShelf(force) {
     paintShelf.t = setTimeout(() => paintShelf(true), 140);
     return;
   }
-  const it = ITEMS[S.i];
+  const it = S.zone === "favs" ? FAVS[S.f] : ITEMS[S.i];
   if (!it || (!force && it.id === S.shelfId)) return;
   S.shelfId = it.id;
   document.body.classList.toggle("shelf-hub", it.kind === "hub");
@@ -615,8 +663,9 @@ function activate() {
   if (PREVIEW) return;
   if (S.zone === "status") return openCC();
   if (S.zone === "bar") return HUB.on ? focusBar() : openPairing();
-  const it = ITEMS[S.i];
+  const it = focused();
   if (!it) return;
+  if (it.kind === "favhint") return toast("Hold OK on any app below to add it to Favorites");
   if (it.kind === "hub") return openHubApp();
   if (it.kind === "settings") return openSettings();
   if (it.kind === "addsite") return openModal("Add a website", "Its address, like espn.com or max.com. It opens in the laptop's browser.", "", addSite);
@@ -1487,8 +1536,9 @@ window.haven = {
     if (S.overlay === "cc") closeCC();
     closeRail();
     if (S.view !== "home") showView("home");
-    S.zone = "grid";
+    S.zone = hasFavs() ? "favs" : "grid";
     S.i = 0;
+    S.f = 0;
     applyFocus();
   },
   closeHub: () => closeHub(),
@@ -1621,7 +1671,7 @@ function openRail() {
 function closeRail() {
   if (S.zone !== "rail") return;
   railOpen(false);
-  S.zone = "grid";
+  S.zone = S.railFrom === "favs" && hasFavs() && S.view === "home" ? "favs" : "grid";
   paintRail();
   if (S.view === "home") applyFocus();
   else if (S.view === "assistant") Assistant?.focus();
@@ -1765,7 +1815,9 @@ function handleKey(name) {
       return applyFocus();
     }
     case "back":
+      if (S.zone === "favs") { if (S.f > 0) { S.f = 0; return applyFocus(); } return openRail(); }
       if (S.zone !== "grid") { S.zone = "grid"; return applyFocus(); }
+      if (hasFavs() && S.i < COLS) { S.zone = "favs"; S.f = 0; return applyFocus(); }
       if (S.i === 0) return openRail();
       if (S.i >= COLS) { S.i = S.i % COLS; return applyFocus(); }
       if (S.i !== 0) { S.i = 0; return applyFocus(); }
@@ -1791,15 +1843,22 @@ async function saveTv(patch, done) {
   } catch { toast("LocalHub didn't answer"); }
 }
 function openTileMenu() {
-  const it = ITEMS[S.i];
-  if (S.zone !== "grid" || !movable(it)) return activate();
+  const it = focused();
+  if ((S.zone !== "grid" && S.zone !== "favs") || !movable(it)) return activate();
   if (!IN_HUB) return toast("Pair this TV with LocalHub to arrange apps");
-  S.menu = [
-    { id: "open", label: "Open", ic: SYM.open },
-    { id: "move", label: "Move", ic: SYM.move },
-    { id: "hide", label: "Hide", ic: SYM.hide },
-    ...(it.kind === "site" ? [{ id: "remove", label: "Remove website", ic: SYM.trash }] : []),
-  ];
+  S.menu = S.zone === "favs"
+    ? [
+      { id: "open", label: "Open", ic: SYM.open },
+      ...(FAVS.length > 1 ? [{ id: "move", label: "Move", ic: SYM.move }] : []),
+      { id: "unfav", label: "Remove from Favorites", ic: SYM.unstar },
+    ]
+    : [
+      { id: "open", label: "Open", ic: SYM.open },
+      isFav(it) ? { id: "unfav", label: "Remove from Favorites", ic: SYM.unstar } : { id: "fav", label: "Add to Favorites", ic: SYM.star },
+      { id: "move", label: "Move", ic: SYM.move },
+      { id: "hide", label: "Hide", ic: SYM.hide },
+      ...(it.kind === "site" ? [{ id: "remove", label: "Remove website", ic: SYM.trash }] : []),
+    ];
   S.menuAt = 0;
   S.menuFor = it;
   $("#tileMenuName").textContent = it.name;
@@ -1823,6 +1882,12 @@ function tileMenuKey(name) {
   const it = S.menuFor, act = S.menu[S.menuAt].id;
   closeTileMenu();
   if (act === "open") return press(activate);
+  const favs = SETTINGS?.tv?.favorites || [];
+  if (act === "fav") return saveTv({ favorites: [...favs.filter((x) => x !== it.id), it.id] }, `Added ${it.name} to Favorites`);
+  if (act === "unfav") {
+    if (S.zone === "favs" && S.f >= favs.length - 1) S.f = Math.max(0, S.f - 1);
+    return saveTv({ favorites: favs.filter((x) => x !== it.id) }, `Removed ${it.name} from Favorites`);
+  }
   if (act === "move") { S.moving = it.id; paintMoving(); return toast("Move it with the arrows, then press OK"); }
   if (act === "hide") {
     const hidden = [...new Set([...(SETTINGS?.tv?.hidden || []), it.id])];
@@ -1832,10 +1897,28 @@ function tileMenuKey(name) {
 }
 function paintMoving() {
   document.querySelectorAll(".app.moving").forEach((n) => n.classList.remove("moving"));
-  if (S.moving) $(`.app[data-i="${S.i}"]`)?.classList.add("moving");
+  if (S.moving) $(S.zone === "favs" ? `.fav[data-f="${S.f}"]` : `.app[data-i="${S.i}"]`)?.classList.add("moving");
 }
 // Moving: the arrows swap the tile with its neighbour among the apps; OK or Back keeps the new order.
 function moveKey(name) {
+  // Within Favorites: left and right only, saved as tv.favorites.
+  if (S.zone === "favs") {
+    const from = FAVS.findIndex((a) => a.id === S.moving);
+    if (name === "enter" || name === "back" || name === "hold") {
+      S.moving = null;
+      paintMoving();
+      return saveTv({ favorites: FAVS.map((a) => a.id) }, "Saved your Favorites");
+    }
+    const d = { left: -1, right: 1 }[name];
+    const to = from + (d || 0);
+    if (!d || from < 0 || to < 0 || to >= FAVS.length) return;
+    const [moved] = FAVS.splice(from, 1);
+    FAVS.splice(to, 0, moved);
+    S.f = to;
+    renderFavs();
+    applyFocus();
+    return paintMoving();
+  }
   const apps = ITEMS.filter(movable);
   const from = apps.findIndex((a) => a.id === S.moving);
   if (name === "enter" || name === "back" || name === "hold") {
@@ -1868,11 +1951,11 @@ document.addEventListener("mousemove", (e) => {
   if (S.overlay) return;
   const app = e.target.closest?.(".app");
   if (!app) return;
-  const i = Number(app.dataset.i);
-  if (S.zone !== "grid" || S.i !== i) {
+  const fav = app.dataset.f !== undefined, i = Number(fav ? app.dataset.f : app.dataset.i);
+  if (S.zone !== (fav ? "favs" : "grid") || (fav ? S.f : S.i) !== i) {
     if (S.zone === "bar") leaveBar();
-    S.zone = "grid";
-    S.i = i;
+    S.zone = fav ? "favs" : "grid";
+    if (fav) S.f = i; else S.i = i;
     applyFocus();
   }
   const r = app.getBoundingClientRect();
@@ -1895,10 +1978,11 @@ document.addEventListener("wheel", (e) => {
   document.wheelT = setTimeout(() => move(0, Math.sign(e.deltaY)), 30);
 }, { passive: true });
 document.addEventListener("click", (e) => {
-  if (PREVIEW) { const a = e.target.closest(".app"); if (a) { S.zone = "grid"; S.i = Number(a.dataset.i); applyFocus(); } return; }
+  const pick = (a) => { if (a.dataset.f !== undefined) { S.zone = "favs"; S.f = Number(a.dataset.f); } else { S.zone = "grid"; S.i = Number(a.dataset.i); } applyFocus(); };
+  if (PREVIEW) { const a = e.target.closest(".app"); if (a) pick(a); return; }
   if (S.overlay === "saver") return stopSaver();
   const app = e.target.closest(".app");
-  if (app && !S.overlay) { S.zone = "grid"; S.i = Number(app.dataset.i); applyFocus(); return press(activate); }
+  if (app && !S.overlay) { pick(app); return press(activate); }
   const tile = e.target.closest(".cc-tile[data-i]");
   if (tile) { S.cc = Number(tile.dataset.i); paintCC(); return ccActivate(); }
   const row = e.target.closest("#setTrack .row");

@@ -145,6 +145,14 @@ body.shelf-hub .shelf-fade { background: linear-gradient(180deg, transparent 60%
 
 /* ── the grid (row 0 is the top row, on the shelf) ─────────────────────────── */
 .grid { position: absolute; left: var(--side); top: var(--row0); display: grid; grid-template-columns: repeat(5, var(--icon-w)); column-gap: var(--gap-x); row-gap: calc(var(--pitch) - var(--icon-h)); }
+/* Favorites: the row at the top, its own strip that slides sideways; the app grid sits a row lower under it. */
+.favs { position: absolute; left: 0; width: 1920px; top: calc(var(--row0) - 60px); height: calc(var(--icon-h) + 120px); overflow: hidden; }
+.favs[hidden] { display: none; }
+.fav-track { position: absolute; left: var(--side); top: 60px; display: flex; gap: var(--gap-x); transition: transform .45s var(--ease); will-change: transform; }
+.fav-track .app { flex: none; }
+.page.has-favs .grid { top: calc(var(--row0) + var(--pitch)); }
+.app .icon.favhint { --a-bg: #1f2129; --a-fg: #fff; display: grid; place-items: center; }
+.app .icon.favhint .sym { position: relative; width: 64px; height: 64px; }
 .app { position: relative; width: var(--icon-w); height: var(--icon-h); perspective: 900px; }
 .icon {
   position: absolute; inset: 0; border-radius: var(--icon-r); overflow: hidden; display: grid; place-items: center;

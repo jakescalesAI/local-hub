@@ -82,6 +82,17 @@ test('tv.saver sits in the tv block next to the TV app order', () => {
   assert.equal(c.tv.saver.source, 'pictures')
 })
 
+test('tv.favorites keeps the Favorites row in order, beside the app order', () => {
+  const a = applyPatch(blank(), { tv: { apps: ['netflix'], favorites: ['com.netflix.ninja', 'youtube'] } }, REPO)
+  assert.deepEqual(a.tv.favorites, ['com.netflix.ninja', 'youtube'])
+  assert.deepEqual(applyPatch(a, { tv: { hidden: ['tubi'] } }, REPO).tv.favorites, ['com.netflix.ninja', 'youtube'])
+  assert.deepEqual(applyPatch(a, { tv: { favorites: null } }, REPO).tv.favorites, [])
+  assert.deepEqual(applyPatch(a, { tv: { favorites: null } }, REPO).tv.apps, ['netflix'])
+  assert.deepEqual(errorsOf(() => applyPatch(a, { tv: { favorites: ['youtube', 'youtube'] } }, REPO)), ['tv.favorites[1]'])
+  assert.deepEqual(errorsOf(() => applyPatch(a, { tv: { favorites: ['no spaces'] } }, REPO)), ['tv.favorites[0]'])
+  assert.deepEqual(applyPatch(blank(), { tv: { hidden: ['tubi'] } }, REPO).tv.favorites, [])
+})
+
 test('tv.saver refuses what it does not know, and says where', () => {
   const s = blank()
   assert.deepEqual(errorsOf(() => applyPatch(s, { tv: { saver: { source: 'gphotos' } } }, REPO)), ['tv.saver.source'])
