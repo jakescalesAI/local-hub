@@ -1,0 +1,142 @@
+/* LocalHub TV: the Assistant screen (assistant.js). Canvas pixels: the section is 1780×1080, right of the sidebar.
+
+   Cheap at 4K on a weak GPU: solid fills only (no backdrop-filter, filter, masks, blend modes or blurred shadows),
+   no transitions on focus (a transition makes and drops a GPU layer at every key press), and the only animations are
+   the reply's pending dots and the mic's wave, which run only while they show. */
+
+.as {
+  --as-bg: #0b0b0e;
+  --as-surface: #1e1e23;
+  --as-fill: rgba(255, 255, 255, .1);
+  --as-text: #fff;
+  --as-text-2: rgba(235, 235, 245, .62);
+  --as-text-3: rgba(235, 235, 245, .36);
+  --as-blue: var(--blue, #0a84ff);
+  --as-green: var(--green, #30d158);
+  --as-red: var(--red, #ff453a);
+  --as-side: 96px;
+  contain: layout paint;
+  overflow: hidden;
+  background: var(--as-bg);
+  color: var(--as-text);
+  font-family: var(--font, -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, "Segoe UI", system-ui, sans-serif);
+  letter-spacing: -0.016em;
+  -webkit-font-smoothing: antialiased;
+}
+.as[hidden], .as [hidden] { display: none !important; }
+:where(.as) button, :where(.as) input { font: inherit; color: inherit; background: none; border: 0; margin: 0; outline: 0; -webkit-tap-highlight-color: transparent; }
+:where(.as) button { cursor: pointer; }
+.as svg { width: 1.2em; height: 1.2em; flex: none; }
+
+/* ── header ─────────────────────────────────────────────────────────────── */
+.as-head { position: absolute; left: var(--as-side); right: var(--as-side); top: 52px; height: 60px; z-index: 2; display: flex; align-items: center; gap: 28px; }
+/* where the transcript meets the header: a short solid-to-clear gradient (no mask), the header stays readable */
+.as-head::after { content: ""; position: absolute; left: calc(-1 * var(--as-side)); right: calc(-1 * var(--as-side)); top: 80px; height: 36px; background: linear-gradient(var(--as-bg), rgba(11, 11, 14, 0)); pointer-events: none; }
+.as-title { flex: 1; min-width: 0; font: 700 44px/1.2 var(--display, inherit); letter-spacing: -0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.as-state { font-size: 28px; font-weight: 600; color: var(--as-text-2); }
+
+/* ── transcript ─────────────────────────────────────────────────────────── */
+.as-log { position: absolute; left: 0; right: 0; top: 132px; bottom: 196px; padding: 20px var(--as-side) 36px; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; outline: 0; }
+.as-log::-webkit-scrollbar { display: none; }
+.as-item { margin: 0 0 28px; }
+
+.as-empty { margin: 170px auto 0; max-width: 1100px; text-align: center; }
+.as-empty h3 { font: 700 68px/1.1 var(--display, inherit); letter-spacing: -0.025em; }
+.as-empty p { margin-top: 22px; font-size: 32px; line-height: 1.4; color: var(--as-text-2); }
+
+.as-msg { display: flex; flex-direction: column; align-items: flex-start; }
+.as-user { align-items: flex-end; }
+.as-bub { max-width: 1320px; padding: 24px 36px; border-radius: 40px; font-size: 36px; line-height: 1.42; overflow-wrap: anywhere; }
+.as-user .as-bub { max-width: 1120px; background: var(--as-blue); color: #fff; border-bottom-right-radius: 14px; white-space: pre-wrap; }
+.as-bot .as-bub { background: var(--as-surface); border-bottom-left-radius: 14px; }
+.as-files { margin-top: 10px; font-size: 24px; color: var(--as-text-2); }
+
+.as-md p, .as-md ul, .as-md ol, .as-md pre, .as-md h4 { margin: 0 0 .5em; }
+.as-md > :last-child { margin-bottom: 0; }
+.as-md ul, .as-md ol { padding-left: 1.25em; }
+.as-md li { margin: 0 0 .22em; }
+.as-md li::marker { color: var(--as-text-2); }
+.as-md h4 { font-size: 38px; font-weight: 700; letter-spacing: -0.02em; }
+.as-md b { font-weight: 700; }
+.as-md code { font-family: var(--mono, ui-monospace, Menlo, Consolas, monospace); font-size: .84em; padding: .05em .3em; border-radius: 8px; background: rgba(255, 255, 255, .12); }
+.as-md pre { font: 26px/1.45 var(--mono, ui-monospace, Menlo, Consolas, monospace); white-space: pre-wrap; padding: 18px 24px; border-radius: 18px; background: #121215; }
+.as-md .as-row-t { margin-bottom: .2em; }
+.as-tail { white-space: pre-wrap; }
+
+/* the turn's steps: small lines, not cards */
+.as-acts { width: max-content; max-width: calc(100% - 14px); margin-left: 14px; font-size: 28px; line-height: 1.5; color: var(--as-text-2); }
+.as-act { display: flex; align-items: center; gap: 18px; }
+.as-act i { width: 14px; height: 14px; flex: none; border-radius: 50%; background: var(--as-text-3); }
+.as-act.ok i { background: var(--as-green); }
+.as-act.bad i { background: var(--as-red); }
+.as-act span { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.as-more { font-size: 24px; color: var(--as-text-3); }
+
+/* a site or the hub browser, on the laptop */
+.as-card { display: flex; align-items: center; gap: 28px; max-width: 1160px; width: max-content; padding: 20px 32px 20px 20px; border-radius: 32px; background: var(--as-surface); }
+.as-shot img { display: block; width: 320px; height: 200px; object-fit: cover; object-position: top; border-radius: 18px; background: #000; }
+.as-fav { width: 64px; height: 64px; flex: none; display: grid; place-items: center; border-radius: 16px; background: #fff; color: #555; overflow: hidden; }
+.as-fav img { width: 48px; height: 48px; object-fit: contain; }
+.as-fav svg { width: 40px; height: 40px; }
+.as-ctx { min-width: 0; }
+.as-ctx b { display: block; font-size: 32px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 720px; }
+.as-ctx small { display: block; margin-top: 6px; font-size: 26px; color: var(--as-text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 720px; }
+
+.as-err { width: max-content; max-width: calc(100% - 14px); margin-left: 14px; font-size: 30px; line-height: 1.4; color: #ff8a80; }
+
+.as-confirm { max-width: 1200px; padding: 28px 36px; border-radius: 32px; background: #2a2620; }
+.as-confirm b { display: block; font-size: 32px; font-weight: 600; }
+.as-confirm p { margin: 10px 0 22px; font-size: 28px; line-height: 1.4; color: var(--as-text-2); white-space: pre-wrap; }
+.as-confirm-row { display: flex; gap: 20px; }
+.as-confirm-row .as-btn { height: 84px; padding: 0 40px; }
+.as-confirm-on { font-size: 28px; color: var(--as-text-2); }
+
+/* waiting for the first words: the one animation of a reply, opacity only */
+.as-pending { display: flex; gap: 14px; width: max-content; padding: 30px 36px; border-radius: 40px; border-bottom-left-radius: 14px; background: var(--as-surface); margin-bottom: 28px; }
+.as-pending i { width: 16px; height: 16px; border-radius: 50%; background: var(--as-text-2); animation: as-dot 1.2s infinite ease-in-out both; }
+.as-pending i:nth-child(2) { animation-delay: .2s; }
+.as-pending i:nth-child(3) { animation-delay: .4s; }
+@keyframes as-dot { 0%, 80%, 100% { opacity: .25; } 40% { opacity: 1; } }
+
+/* the one ring over a focused message, moved from message to message */
+.as-ring { position: absolute; left: 0; top: 0; border: 5px solid #fff; border-radius: 48px; pointer-events: none; }
+
+/* ── bottom: note, suggestions, the bar ─────────────────────────────────── */
+.as-note { position: absolute; left: var(--as-side); bottom: 196px; max-width: 1400px; padding: 14px 26px; border-radius: 22px; background: #2c2c32; font-size: 28px; line-height: 1.35; color: var(--as-text); }
+.as-chips:not([hidden]) + .as-note { bottom: 292px; }
+.as.noted .as-log { bottom: 300px; }
+.as-chips { position: absolute; left: var(--as-side); right: var(--as-side); bottom: 196px; display: flex; flex-wrap: nowrap; gap: 20px; overflow: hidden; }
+.as-chip { flex: none; height: 72px; padding: 0 32px; border-radius: 36px; background: var(--as-fill); font-size: 28px; font-weight: 600; white-space: nowrap; }
+
+.as-bar { position: absolute; left: var(--as-side); right: var(--as-side); bottom: 64px; height: 104px; display: flex; align-items: center; gap: 20px; }
+.as-field { position: relative; flex: 1; min-width: 0; height: 104px; display: flex; align-items: center; padding: 0 44px; border-radius: 52px; background: var(--as-fill); }
+.as-input { width: 100%; height: 100%; font-size: 36px; color: inherit; caret-color: var(--as-blue); user-select: text; -webkit-user-select: text; }
+.as-input::placeholder { color: var(--as-text-2); opacity: 1; }
+.as-voice { position: absolute; inset: 0 44px; display: flex; align-items: center; gap: 28px; }
+.as-wave { width: 440px; height: 60px; }
+.as .as-field.voicing { background: var(--as-fill); color: #fff; }
+.as-vword { flex: 1; font-size: 32px; font-weight: 600; }
+.as-vclock { font-size: 28px; color: var(--as-text-2); font-variant-numeric: tabular-nums; }
+
+.as-btn { flex: none; height: 104px; display: inline-flex; align-items: center; gap: 14px; padding: 0 38px; border-radius: 52px; background: var(--as-fill); font-size: 30px; font-weight: 600; white-space: nowrap; }
+.as-talk.rec { background: var(--as-red); color: #fff; }
+
+/* focus: tvOS's white lift, as a class on one small element; no transition */
+.as .f { background: #fff; color: #000; transform: scale(1.05); }
+.as .as-field.f .as-input::placeholder { color: rgba(0, 0, 0, .45); }
+.as .as-field.f .as-vclock { color: rgba(0, 0, 0, .55); }
+.as .as-talk.rec.f { background: var(--as-red); color: #fff; box-shadow: inset 0 0 0 5px #fff; }
+.as .as-field.f { transform: none; }
+
+/* ── Recent chats: a solid panel from the right ─────────────────────────── */
+.as-panel { position: absolute; top: 0; right: 0; bottom: 0; width: 820px; z-index: 5; padding: 64px 56px 120px; background: #17171c; box-shadow: -1px 0 0 rgba(255, 255, 255, .08); overflow-y: auto; scrollbar-width: none; }
+.as-panel::-webkit-scrollbar { display: none; }
+.as-panel h3 { margin: 0 0 28px 32px; font: 700 48px/1.15 var(--display, inherit); letter-spacing: -0.02em; }
+.as-row { display: block; width: 100%; text-align: left; padding: 22px 32px; margin-bottom: 10px; border-radius: 28px; }
+.as-row b { display: block; font-size: 32px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.as-row small { display: flex; align-items: center; gap: 10px; margin-top: 6px; font-size: 24px; color: var(--as-text-2); }
+.as-row.cur b::before { content: ""; display: inline-block; width: 14px; height: 14px; margin: 0 14px 4px 0; border-radius: 50%; background: var(--as-blue); vertical-align: middle; }
+.as-row.f { transform: scale(1.02); }
+.as-row.f small { color: rgba(0, 0, 0, .55); }
+.as-live { width: 12px; height: 12px; border-radius: 50%; background: var(--as-green); }
+.as-none { padding: 22px 32px; font-size: 28px; color: var(--as-text-2); }
