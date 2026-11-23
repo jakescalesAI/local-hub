@@ -588,6 +588,8 @@ html.lite #page { will-change: transform; }
 html.lite *, html.lite *::before, html.lite *::after { text-shadow: none !important; }
 html.lite .shelf-title h1, html.lite .shelf-title .banner-text, html.lite .banner-greet, html.lite .when, html.lite .status-clock { text-shadow: 0 2px 1px rgba(0, 0, 0, .35) !important; }
 html.lite .icon { transition: none; }
+/* Rows slide instead of jumping: a compositor transform on a layer that is already drawn, ~60 fps presented on the stick. */
+html.lite #page { transition: transform .26s cubic-bezier(.2, .8, .2, 1), opacity .25s var(--ease) !important; }
 html.native #hub-chat { zoom: calc(var(--k, .5) * 1.25); }
 
 /* ══ The TV version: a Netflix-style sidebar over an Apple TV-style home ═════════════════════════════
