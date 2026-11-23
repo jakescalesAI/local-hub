@@ -166,7 +166,11 @@ function applyLook() {
 async function syncHub() {
   if (!IN_HUB) { applyLook(); return; }
   try {
-    const r = await fetch("/api/hub/settings", { cache: "no-store" });
+    // The first time, the request index.html started while the page loaded.
+    const early = window.__hubSettings;
+    window.__hubSettings = null;
+    let r = early ? await early : null;
+    if (!r?.ok) r = await fetch("/api/hub/settings", { cache: "no-store" });
     if (!r.ok) throw new Error(String(r.status));
     takeSettings(await r.json());
     HUB.on = true;
@@ -345,16 +349,10 @@ async function walkRows() {
   }
   // Settings and the assistant too: their first opening otherwise drew a whole screen at 4K (100-480 ms frames).
   if (!document.body.classList.contains("booted")) {
-    const set = $("#settings");
-    renderSettings();
-    set.style.transition = "none";
-    set.classList.add("on");
-    await frame();
-    set.classList.remove("on");
+    renderSettings(); // Settings stays drawn, a hair above invisible (styles.css), from here on
     setView("assistant");
     await frame();
     setView(S.view);
-    set.style.transition = "";
   }
   applyFocus(true);
 }
@@ -721,7 +719,6 @@ $("#hubFrame").addEventListener("load", () => {
 
 function setOverlay(name) {
   S.overlay = name;
-  document.body.classList.toggle("overlay", name === "settings");
   applyFocus();
 }
 
@@ -939,7 +936,8 @@ function openSettings() {
   renderSettings();
   $("#settings").classList.add("on");
   setOverlay("settings");
-  refreshLive().then(() => { if (S.overlay === "settings") renderSettings(); });
+  // The hub's live state is asked for once Settings has faded in: starting three requests took ~9 ms of the key press.
+  setTimeout(() => refreshLive().then(() => { if (S.overlay === "settings") renderSettings(); }), 400);
 }
 function closeSettings() { $("#settings").classList.remove("on"); setOverlay(null); }
 function settingsMove(d) {
@@ -1628,10 +1626,14 @@ function railKey(name) {
    up to 480×270, then shown behind each glass surface at the stage position it sits over. Nothing
    filters live, so focus moves and panels slide without the GPU redrawing a blur. */
 async function bakeGlass() {
-  const m = /url\(["']?([^"')]+)["']?\)/.exec(getComputedStyle($("#hub-wall")).backgroundImage || "");
+  const m = /url\(["']?([^"')]+)["']?\)/.exec($("#hub-wall").style.backgroundImage || ""); // set by applyLook; the computed style forced a whole-page style pass
   if (m?.[1] === bakeGlass.url) return;
   bakeGlass.url = m?.[1];
   if (!m) return document.documentElement.style.removeProperty("--frozen");
+  // Kept from last time: blurring the 4K photo took the stick ~440 ms of every start.
+  const key = "localhub.tv.frozen:" + m[1];
+  const kept = (() => { try { return localStorage.getItem(key); } catch { return null; } })();
+  if (kept) return document.documentElement.style.setProperty("--frozen", `url(${kept})`);
   try {
     const img = new Image();
     img.decoding = "async";
@@ -1646,7 +1648,12 @@ async function bakeGlass() {
     g.imageSmoothingEnabled = true;
     g.imageSmoothingQuality = "high";
     g.drawImage(tiny, 0, 0, 480, 270);
-    document.documentElement.style.setProperty("--frozen", `url(${big.toDataURL("image/jpeg", 0.85)})`);
+    const url = big.toDataURL("image/jpeg", 0.85);
+    document.documentElement.style.setProperty("--frozen", `url(${url})`);
+    try {
+      Object.keys(localStorage).filter((k) => k.startsWith("localhub.tv.frozen:")).forEach((k) => localStorage.removeItem(k));
+      localStorage.setItem(key, url);
+    } catch { /* storage off: baked again next time */ }
   } catch (e) { console.warn("glass", e); }
 }
 
