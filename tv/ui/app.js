@@ -261,6 +261,17 @@ function iconHTML(it) {
 function renderGrid() {
   $("#grid").innerHTML = ITEMS.map((it, i) => `<div class="app" data-i="${i}">${iconHTML(it)}<span class="name">${esc(it.name)}</span></div>`).join("");
   applyFocus(true);
+  warmTiles();
+}
+// Decode every tile's image once, a moment after the grid is drawn, so the first scroll down doesn't decode
+// them while the rows come into view (~140 ms of decoding on a Fire TV Stick, measured). One at a time, idle.
+async function warmTiles() {
+  const imgs = [...document.querySelectorAll("#grid img")];
+  await wait(1200);
+  for (const img of imgs) {
+    if (!img.isConnected) return;
+    try { await img.decode(); } catch { /* broken image: skipped as before */ }
+  }
 }
 
 /* ── focus: the tvOS lift, tilt and glare ──────────────────────────────── */
@@ -273,7 +284,14 @@ function applyFocus(instant) {
 
   const row = Math.floor(S.i / COLS);
   const inGrid = S.zone === "grid" && row > 0;
-  document.body.classList.toggle("in-grid", inGrid || (S.zone === "bar" && !atTop()));
+  const grid = inGrid || (S.zone === "bar" && !atTop());
+  // Light glass: the body class would make a Fire TV Stick recompute style for every tile (30-50 ms, measured),
+  // so only the shelf fades, set on that one element (~1 ms), and the other tiles aren't dimmed.
+  if (document.documentElement.classList.contains("lite")) {
+    document.body.classList.remove("in-grid");
+    const shelf = $(".shelf");
+    if (shelf && (shelf.style.opacity === "0") !== grid) shelf.style.opacity = grid ? "0" : "";
+  } else document.body.classList.toggle("in-grid", grid);
   // Row 0 sits on the Top Shelf. Further down, in one long scroll (the default, like tvOS) the
   // focused row rides about a third of the way up; in pages the rows move three at a time.
   const paged = SETTINGS?.scroll?.tv === "pages";
@@ -1569,6 +1587,9 @@ function press(fn) {
 /* ── the mouse, on a laptop: hover focuses, click opens, the icon follows ─ */
 let pointerTimer = 0;
 function hidePointer() { document.body.classList.add("pointer-hidden"); }
+// A Fire TV has no pointer: hide it from the start, so the first key press doesn't restyle the whole page
+// (body.pointer-hidden * is a rule on every element: 80 ms on a Fire TV Stick, measured).
+if (NATIVE) hidePointer();
 document.addEventListener("mousemove", (e) => {
   document.body.classList.remove("pointer-hidden");
   clearTimeout(pointerTimer);
