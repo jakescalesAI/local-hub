@@ -314,9 +314,36 @@ html:has(.hw-root) .page { padding-bottom: 0 !important; }
 .hw-month .dn.off { color: var(--label-3); }
 .hw-month .dn i { position: absolute; bottom: 0; width: 5px; height: 5px; border-radius: 50%; background: var(--blue); }
 .hw-bigdate { display: flex; flex-direction: column; gap: 2px; }
-.hw-wx-now { display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px; }
-.hw-wx-now .t { font: 700 48px/1 var(--rounded); letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
-.hw-wx-now .d { font-size: 15px; font-weight: 600; color: var(--label-2, inherit); }
+/* Weather card (one design: LocalHub's Home and the TV). Everything in em: set font-size on .wxw to size it. */
+.wxw { display: flex; flex-direction: column; gap: .9em; color: inherit; line-height: 1.15; min-width: 0; }
+.wxw-i { width: 1em; height: 1em; flex: none; }
+.wxw-head { display: flex; align-items: center; justify-content: space-between; gap: .8em; min-width: 0; }
+.wxw-now { display: flex; align-items: center; gap: .35em; }
+.wxw-now .wxw-i { font-size: 2.4em; }
+.wxw-temp { font-size: 3.4em; font-weight: 700; letter-spacing: -0.045em; line-height: .9; font-variant-numeric: tabular-nums; }
+.wxw-meta { display: flex; flex-direction: column; align-items: flex-end; gap: .3em; text-align: right; min-width: 0; }
+.wxw-cond { font-size: 1.2em; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.wxw-hl { font-size: .95em; font-weight: 600; opacity: .72; white-space: pre; font-variant-numeric: tabular-nums; }
+.wxw-place { font-size: .85em; opacity: .55; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.wxw-s .wxw-head { flex-direction: column; align-items: flex-start; gap: .5em; }
+.wxw-s .wxw-meta { align-items: flex-start; text-align: left; }
+.wxw-hours { display: grid; grid-template-columns: repeat(6, 1fr); gap: .3em; padding: .85em .2em .1em; border-top: 1px solid color-mix(in srgb, currentColor 14%, transparent); }
+.wxw-h { display: flex; flex-direction: column; align-items: center; gap: .45em; }
+.wxw-ht { font-size: .8em; font-weight: 600; opacity: .62; }
+.wxw-h .wxw-i { font-size: 1.45em; }
+.wxw-hv { font-size: 1.05em; font-weight: 650; font-variant-numeric: tabular-nums; }
+.wxw-rain { font-size: .72em; font-weight: 700; color: #64d2ff; font-variant-numeric: tabular-nums; }
+.wxw-days { display: flex; flex-direction: column; gap: .55em; padding-top: .85em; border-top: 1px solid color-mix(in srgb, currentColor 14%, transparent); }
+.wxw-d { display: grid; grid-template-columns: 3.6em 1.4em 2.6em 2.4em 1fr 2.4em; align-items: center; gap: .5em; font-size: .95em; }
+.wxw-d .wxw-i { font-size: 1.35em; }
+.wxw-dn { font-weight: 650; }
+.wxw-dr { text-align: left; }
+.wxw-dl { text-align: right; opacity: .55; font-weight: 600; font-variant-numeric: tabular-nums; }
+.wxw-dh { font-weight: 650; font-variant-numeric: tabular-nums; }
+.wxw-bar { position: relative; height: .32em; border-radius: 1em; background: color-mix(in srgb, currentColor 16%, transparent); }
+.wxw-bar i { position: absolute; top: 0; bottom: 0; border-radius: 1em; background: linear-gradient(90deg, #64d2ff, #ffd60a 60%, #ff9f0a); }
+.hw-wx[data-hw-weather="s"] .wxw { font-size: 12.5px; }
+.hw-wx[data-hw-weather="m"] .wxw, .hw-wx[data-hw-weather="l"] .wxw { font-size: 14px; }
 .hw-bigdate .n { font: 700 56px/1 var(--rounded); letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
 .hw-bigdate .w { font-size: 15px; font-weight: 600; color: var(--red); text-transform: uppercase; letter-spacing: .04em; }
 .hw-bigdate .m { font-size: 15px; color: var(--label-2); letter-spacing: -0.016em; }
@@ -2446,27 +2473,62 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     },
   })
   // Weather where the laptop is (weather.mjs: the place from its IP, the forecast from Open-Meteo), kept 15 minutes.
-  const WX = { body: null, at: 0, busy: false }
+  const WX = { body: null, at: 0, busy: false, err: null }
+  // ── Weather card: one design for LocalHub's Home and the TV (same code in tabs/home.js and tv/ui/app.js). ──
+  // Sizes: s = now; m = now and the hours ahead; l = now, the hours ahead and the coming days. Sized in em, so each
+  // place sets one font-size on .wxw and the whole card scales with it.
+  const WXI = {
+    sun: '<circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/>',
+    moon: '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>',
+    cloud: '<path d="M7 18.5h10a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.2 11.6 3.5 3.5 0 0 0 7 18.5z"/>',
+    part: '<path d="M8.5 3.5v1.2M3.6 8.6h1.2M5 5.1l.9.9M12.2 5.1l-.9.9"/><path d="M5.6 11.2a3.6 3.6 0 0 1 6.5-2.6"/><path d="M9 20h8.5a3.5 3.5 0 0 0 .5-6.96A5 5 0 0 0 8.6 13.9 3 3 0 0 0 9 20z"/>',
+    partNight: '<path d="M11.5 8.2A4 4 0 0 1 6 3.3a4.5 4.5 0 1 0 5.5 4.9z"/><path d="M9 20h8.5a3.5 3.5 0 0 0 .5-6.96A5 5 0 0 0 8.6 13.9 3 3 0 0 0 9 20z"/>',
+    hi: '<path d="M7 14.5h10a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.2 7.6 3.5 3.5 0 0 0 7 14.5z"/>',
+    fog: '<path d="M4 9h16M3 13h18M5 17h14"/>',
+  }
+  function wxSvg(code, day = true) {
+    const c = Number(code)
+    const d = c === 0 || c === 1 ? (day ? WXI.sun : WXI.moon)
+      : c === 2 ? (day ? WXI.part : WXI.partNight)
+        : c === 45 || c === 48 ? WXI.fog
+          : c >= 95 ? WXI.hi + '<path d="M12.5 15.5 10.5 19h3l-2 3"/>'
+            : (c >= 71 && c <= 77) || c === 85 || c === 86 ? WXI.hi + '<path d="M8 18.5h.01M12 20.5h.01M16 18.5h.01"/>'
+              : c >= 51 ? WXI.hi + '<path d="M8.5 17.5 7.5 20M12.5 17.5l-1 2.5M16.5 17.5l-1 2.5"/>'
+                : WXI.cloud
+    return `<svg class="wxw-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`
+  }
+  function wxCard(w, size) {
+    const e = s => String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch])
+    const deg = n => `${e(n)}°`
+    const rain = p => (p >= 20 ? `<span class="wxw-rain">${e(p)}%</span>` : '')
+    const head = `<div class="wxw-head"><div class="wxw-now">${wxSvg(w.now.code, w.now.day)}<span class="wxw-temp">${deg(w.now.temp)}</span></div>`
+      + `<div class="wxw-meta"><span class="wxw-cond">${e(w.now.text)}</span><span class="wxw-hl">H ${deg(w.high)}  L ${deg(w.low)}</span>`
+      + (size === 's' ? '' : `<span class="wxw-place">${e(w.place)}${Number.isFinite(w.now.feels) ? ` · Feels ${deg(w.now.feels)}` : ''}</span>`) + '</div></div>'
+    if (size === 's') return `<div class="wxw wxw-s">${head}</div>`
+    const hourName = (t, k) => (k === 0 ? 'Now' : new Date(t).toLocaleTimeString([], { hour: 'numeric' }).replace(/\s/g, '').toLowerCase())
+    const hours = `<div class="wxw-hours">${(w.hours || []).slice(0, 6).map((h, k) => `<div class="wxw-h"><span class="wxw-ht">${e(hourName(h.time, k))}</span>${wxSvg(h.code, h.day)}<span class="wxw-hv">${deg(h.temp)}</span>${rain(h.rain)}</div>`).join('')}</div>`
+    if (size !== 'l') return `<div class="wxw wxw-m">${head}${hours}</div>`
+    const days = (w.days || []).slice(0, 5)
+    const lo = Math.min(...days.map(d => d.low)), hi = Math.max(...days.map(d => d.high)), span = Math.max(1, hi - lo)
+    const dayName = (d, i) => (i === 0 ? 'Today' : new Date(d.date + 'T12:00').toLocaleDateString([], { weekday: 'short' }))
+    const rows = days.map((d, i) => `<div class="wxw-d"><span class="wxw-dn">${e(dayName(d, i))}</span>${wxSvg(d.code, true)}<span class="wxw-dr">${rain(d.rain)}</span><span class="wxw-dl">${deg(d.low)}</span><span class="wxw-bar"><i style="left:${((d.low - lo) / span) * 100}%;right:${100 - ((d.high - lo) / span) * 100}%"></i></span><span class="wxw-dh">${deg(d.high)}</span></div>`).join('')
+    return `<div class="wxw wxw-l">${head}${hours}<div class="wxw-days">${rows}</div></div>`
+  }
   const wxFill = () => document.querySelectorAll('[data-hw-weather]').forEach(el => { el.innerHTML = wxHTML(el.dataset.hwWeather) })
   function wxHTML(size) {
-    const w = WX.body
-    if (!w) return `<div class="hw-sub" data-fit>${WX.err ? 'Weather isn’t available right now' : 'Finding the weather…'}</div>`
-    const now = `<div class="hw-wx-now" data-fit><span class="t">${esc(String(w.now.temp))}°</span><span class="d">${esc(w.now.text)}</span></div>`
-    const sub = `<div class="hw-sub ell">${esc(w.place)} · H ${esc(String(w.high))}° L ${esc(String(w.low))}°</div>`
-    if (size === 's') return now + sub
-    const days = w.days.slice(1, 4).map(d => row({ t: new Date(d.date + 'T12:00').toLocaleDateString(undefined, { weekday: 'short' }), r: esc(`${d.high}° / ${d.low}° · ${d.text}`) })).join('')
-    return now + sub + list([days])
+    if (!WX.body) return `<div class="hw-sub" data-fit>${WX.err ? 'Weather isn’t available right now' : 'Finding the weather…'}</div>`
+    return wxCard(WX.body, size)
   }
   reg({
     id: 'weather', label: 'Weather', cat: 'Utility', icon: 'cloud', tint: 'var(--blue)', tab: null,
-    sizes: ['s', 'm'], defaultSize: 's', sources: [], blurb: 'Now and the next few days, where the laptop is.',
+    sizes: ['s', 'm', 'l'], defaultSize: 'm', sources: [], blurb: 'Now, the hours ahead and the coming days, where the laptop is.',
     render(d, size) {
       if (!WX.busy && Date.now() - WX.at > 15 * 60_000) {
         WX.busy = true
         fetch('/api/tv/weather', { cache: 'no-store' }).then(r => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
           .then(b => { WX.body = b; WX.err = null }).catch(e => { WX.err = e }).finally(() => { WX.at = Date.now(); WX.busy = false; wxFill() })
       }
-      return `<div data-hw-weather="${esc(size)}">${wxHTML(size)}</div>`
+      return `<div class="hw-wx" data-hw-weather="${esc(size)}">${wxHTML(size)}</div>`
     },
   })
   const LINKS = [['laptop', 'Laptop', 'laptop'], ['server', 'Server', 'server'], ['drives', 'Drives', 'drive'], ['ai', 'AI', 'gauge'], ['cloud', 'Cloud', 'cloud'], ['calendar', 'Calendar', 'calendar'], ['stripe', 'Stripe', 'card']]

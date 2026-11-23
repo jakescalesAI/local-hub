@@ -2,7 +2,8 @@
 //
 // Where: the laptop's approximate place, found once from its public IP (ipapi.co) and kept in data/weather.json,
 // so it isn't asked again. The forecast comes from Open-Meteo (free, no account), kept for 15 minutes.
-//   GET /api/tv/weather -> { place, unit, now: { temp, code, text, day }, high, low, days: [{ date, high, low, code, text }] }
+//   GET /api/tv/weather -> { place, unit, now: { temp, feels, code, text, day }, high, low, rain,
+//                            hours: [{ time, temp, code, rain, day }] (the next 12), days: [{ date, high, low, code, text, rain }] (7) }
 import fs from 'node:fs'
 import path from 'node:path'
 
@@ -42,18 +43,24 @@ export function create({ here, fetchImpl = fetch } = {}) {
     const p = await place()
     const unit = FAHRENHEIT.has(p.country) ? 'fahrenheit' : 'celsius'
     const q = new URLSearchParams({
-      latitude: String(p.lat), longitude: String(p.lon), timezone: 'auto', forecast_days: '5', temperature_unit: unit,
-      current: 'temperature_2m,weather_code,is_day', daily: 'weather_code,temperature_2m_max,temperature_2m_min',
+      latitude: String(p.lat), longitude: String(p.lon), timezone: 'auto', forecast_days: '7', temperature_unit: unit,
+      current: 'temperature_2m,apparent_temperature,weather_code,is_day',
+      hourly: 'temperature_2m,weather_code,precipitation_probability,is_day',
+      daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max',
     })
     const r = await fetchImpl(`https://api.open-meteo.com/v1/forecast?${q}`, { signal: AbortSignal.timeout(8000) })
     if (!r.ok) throw new Error(`forecast answered ${r.status}`)
     const j = await r.json()
     const d = j.daily || {}
-    const days = (d.time || []).map((date, i) => ({ date, high: Math.round(d.temperature_2m_max[i]), low: Math.round(d.temperature_2m_min[i]), code: d.weather_code[i], text: weatherText(d.weather_code[i]) }))
+    const days = (d.time || []).map((date, i) => ({ date, high: Math.round(d.temperature_2m_max[i]), low: Math.round(d.temperature_2m_min[i]), code: d.weather_code[i], text: weatherText(d.weather_code[i]), rain: d.precipitation_probability_max?.[i] ?? null }))
+    // The hours from this one on (Open-Meteo's times are the place's own, like j.current.time).
+    const h = j.hourly || {}, nowHour = String(j.current?.time || '').slice(0, 13)
+    const from = Math.max(0, (h.time || []).findIndex(t => t.slice(0, 13) >= nowHour))
+    const hours = (h.time || []).slice(from, from + 12).map((time, k) => ({ time, temp: Math.round(h.temperature_2m[from + k]), code: h.weather_code[from + k], rain: h.precipitation_probability?.[from + k] ?? null, day: h.is_day?.[from + k] !== 0 }))
     return {
       place: p.name, unit: unit === 'fahrenheit' ? 'F' : 'C',
-      now: { temp: Math.round(j.current?.temperature_2m), code: j.current?.weather_code, text: weatherText(j.current?.weather_code), day: j.current?.is_day !== 0 },
-      high: days[0]?.high, low: days[0]?.low, days, at: Date.now(),
+      now: { temp: Math.round(j.current?.temperature_2m), feels: Math.round(j.current?.apparent_temperature), code: j.current?.weather_code, text: weatherText(j.current?.weather_code), day: j.current?.is_day !== 0 },
+      high: days[0]?.high, low: days[0]?.low, rain: days[0]?.rain ?? null, hours, days, at: Date.now(),
     }
   }
 

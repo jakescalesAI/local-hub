@@ -609,12 +609,9 @@ const WIDGETS = {
   "world-clock": { label: "World clock", tint: "var(--orange)", render() {
     return `<div class="w-list">${ZONES().slice(0, 3).map(([n, tz]) => `<div class="w-row"><span class="t">${esc(n)}</span><span class="v">${esc(zoneTime(tz))}</span></div>`).join("")}</div>`;
   } },
-  weather: { label: "Weather", tint: "var(--blue)", render() {
-    const w = WX.body;
-    if (!w) { loadWeather(); return `<div class="w-empty">${WX.err ? "Weather isn’t available right now" : "Finding the weather…"}</div>`; }
-    const day = (d) => new Date(d.date + "T12:00").toLocaleDateString(undefined, { weekday: "short" });
-    return `<div class="wx-top"><span class="wx-icon">${wxIcon(w.now.code, w.now.day)}</span><div class="wx-now"><span class="wx-temp">${esc(String(w.now.temp))}°</span><span class="wx-cond">${esc(w.now.text)}</span><span class="wx-hilo">H ${esc(String(w.high))}°  L ${esc(String(w.low))}°</span></div></div>`
-      + `<div class="wx-days">${w.days.slice(1, 4).map((d) => `<div class="wx-day"><span class="n">${esc(day(d))}</span>${wxIcon(d.code, true)}<span class="v">${esc(String(d.high))}° <small>${esc(String(d.low))}°</small></span></div>`).join("")}</div>`;
+  weather: { label: "Weather", tint: "var(--blue)", render(size = "m") {
+    if (!WX.body) { loadWeather(); return `<div class="w-empty">${WX.err ? "Weather isn’t available right now" : "Finding the weather…"}</div>`; }
+    return wxCard(WX.body, size);
   } },
   recent: { label: "Recently opened", tint: "var(--green)", wide: true, render() {
     const list = [...APPS].filter((a) => a.recentAt).sort((a, b) => b.recentAt - a.recentAt).slice(0, 3);
@@ -622,22 +619,45 @@ const WIDGETS = {
     return `<div class="w-list">${list.map((a) => `<div class="w-row"><span class="mini" style="--a-bg:${a.bg};--a-fg:${a.fg}">${miniArt(a)}</span><span class="t">${esc(a.name)}</span><span class="s">${esc(ago(a.recentAt))}</span></div>`).join("")}</div>`;
   } },
 };
-// Weather icons, drawn like the rest of the TV's symbols (one stroke), from Open-Meteo's WMO codes.
-const WX_SUN = '<circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/>';
-const WX_MOON = '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>';
-const WX_CLOUD = '<path d="M7 18.5h10a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.2 11.6 3.5 3.5 0 0 0 7 18.5z"/>';
-const WX_PART = '<path d="M8.5 3.5v1.2M3.6 8.6h1.2M5 5.1l.9.9M12.2 5.1l-.9.9"/><path d="M5.6 11.2a3.6 3.6 0 0 1 6.5-2.6"/><path d="M9 20h8.5a3.5 3.5 0 0 0 .5-6.96A5 5 0 0 0 8.6 13.9 3 3 0 0 0 9 20z"/>';
-const WX_HI = '<path d="M7 14.5h10a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.2 7.6 3.5 3.5 0 0 0 7 14.5z"/>';
-function wxIcon(code, day = true) {
-  const c = Number(code);
-  const d = c === 0 || c === 1 ? (day ? WX_SUN : WX_MOON)
-    : c === 2 ? WX_PART
-      : c === 45 || c === 48 ? '<path d="M4 9h16M3 13h18M5 17h14"/>'
-        : c >= 95 ? `${WX_HI}<path d="M12.5 15.5 10.5 19h3l-2 3"/>`
-          : (c >= 71 && c <= 77) || c === 85 || c === 86 ? `${WX_HI}<path d="M8 18.5h.01M12 20.5h.01M16 18.5h.01"/>`
-            : c >= 51 ? `${WX_HI}<path d="M8.5 17.5 7.5 20M12.5 17.5l-1 2.5M16.5 17.5l-1 2.5"/>`
-              : WX_CLOUD;
-  return sym(d, 1.8);
+// ── Weather card: one design for LocalHub's Home and the TV (same code in tabs/home.js and tv/ui/app.js). ──
+// Sizes: s = now; m = now and the hours ahead; l = now, the hours ahead and the coming days. Sized in em, so each
+// place sets one font-size on .wxw and the whole card scales with it.
+const WXI = {
+  sun: '<circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/>',
+  moon: '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>',
+  cloud: '<path d="M7 18.5h10a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.2 11.6 3.5 3.5 0 0 0 7 18.5z"/>',
+  part: '<path d="M8.5 3.5v1.2M3.6 8.6h1.2M5 5.1l.9.9M12.2 5.1l-.9.9"/><path d="M5.6 11.2a3.6 3.6 0 0 1 6.5-2.6"/><path d="M9 20h8.5a3.5 3.5 0 0 0 .5-6.96A5 5 0 0 0 8.6 13.9 3 3 0 0 0 9 20z"/>',
+  partNight: '<path d="M11.5 8.2A4 4 0 0 1 6 3.3a4.5 4.5 0 1 0 5.5 4.9z"/><path d="M9 20h8.5a3.5 3.5 0 0 0 .5-6.96A5 5 0 0 0 8.6 13.9 3 3 0 0 0 9 20z"/>',
+  hi: '<path d="M7 14.5h10a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.2 7.6 3.5 3.5 0 0 0 7 14.5z"/>',
+  fog: '<path d="M4 9h16M3 13h18M5 17h14"/>',
+}
+function wxSvg(code, day = true) {
+  const c = Number(code)
+  const d = c === 0 || c === 1 ? (day ? WXI.sun : WXI.moon)
+    : c === 2 ? (day ? WXI.part : WXI.partNight)
+      : c === 45 || c === 48 ? WXI.fog
+        : c >= 95 ? WXI.hi + '<path d="M12.5 15.5 10.5 19h3l-2 3"/>'
+          : (c >= 71 && c <= 77) || c === 85 || c === 86 ? WXI.hi + '<path d="M8 18.5h.01M12 20.5h.01M16 18.5h.01"/>'
+            : c >= 51 ? WXI.hi + '<path d="M8.5 17.5 7.5 20M12.5 17.5l-1 2.5M16.5 17.5l-1 2.5"/>'
+              : WXI.cloud
+  return `<svg class="wxw-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`
+}
+function wxCard(w, size) {
+  const e = s => String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch])
+  const deg = n => `${e(n)}°`
+  const rain = p => (p >= 20 ? `<span class="wxw-rain">${e(p)}%</span>` : '')
+  const head = `<div class="wxw-head"><div class="wxw-now">${wxSvg(w.now.code, w.now.day)}<span class="wxw-temp">${deg(w.now.temp)}</span></div>`
+    + `<div class="wxw-meta"><span class="wxw-cond">${e(w.now.text)}</span><span class="wxw-hl">H ${deg(w.high)}  L ${deg(w.low)}</span>`
+    + (size === 's' ? '' : `<span class="wxw-place">${e(w.place)}${Number.isFinite(w.now.feels) ? ` · Feels ${deg(w.now.feels)}` : ''}</span>`) + '</div></div>'
+  if (size === 's') return `<div class="wxw wxw-s">${head}</div>`
+  const hourName = (t, k) => (k === 0 ? 'Now' : new Date(t).toLocaleTimeString([], { hour: 'numeric' }).replace(/\s/g, '').toLowerCase())
+  const hours = `<div class="wxw-hours">${(w.hours || []).slice(0, 6).map((h, k) => `<div class="wxw-h"><span class="wxw-ht">${e(hourName(h.time, k))}</span>${wxSvg(h.code, h.day)}<span class="wxw-hv">${deg(h.temp)}</span>${rain(h.rain)}</div>`).join('')}</div>`
+  if (size !== 'l') return `<div class="wxw wxw-m">${head}${hours}</div>`
+  const days = (w.days || []).slice(0, 5)
+  const lo = Math.min(...days.map(d => d.low)), hi = Math.max(...days.map(d => d.high)), span = Math.max(1, hi - lo)
+  const dayName = (d, i) => (i === 0 ? 'Today' : new Date(d.date + 'T12:00').toLocaleDateString([], { weekday: 'short' }))
+  const rows = days.map((d, i) => `<div class="wxw-d"><span class="wxw-dn">${e(dayName(d, i))}</span>${wxSvg(d.code, true)}<span class="wxw-dr">${rain(d.rain)}</span><span class="wxw-dl">${deg(d.low)}</span><span class="wxw-bar"><i style="left:${((d.low - lo) / span) * 100}%;right:${100 - ((d.high - lo) / span) * 100}%"></i></span><span class="wxw-dh">${deg(d.high)}</span></div>`).join('')
+  return `<div class="wxw wxw-l">${head}${hours}<div class="wxw-days">${rows}</div></div>`
 }
 // Weather where the laptop is (the hub's /api/tv/weather), kept 15 minutes.
 const WX = { body: null, at: 0, busy: false, err: null };
@@ -654,11 +674,11 @@ function tvWidgets() {
   const layout = SETTINGS?.widgets?.tv?.length ? SETTINGS.widgets.tv : [{ id: "clock" }, { id: "date" }, { id: "world-clock" }];
   return layout.filter((w) => w.id !== "app").map((w) => w.id);
 }
-function widgetCard(id) {
+function widgetCard(id, size) {
   const def = WIDGETS[id];
   if (!def) return `<div class="w card"><div class="w-label"><i class="dot"></i>${esc(LABELS[id] || id)}</div><div class="w-body"><div class="w-empty">Shown on LocalHub. TV support is coming.</div></div></div>`;
   const mark = id === "weather" ? sym('<path d="M7 18.5h10a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.2 11.6 3.5 3.5 0 0 0 7 18.5z"/>', 2) : id === "recent" ? sym('<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>', 2) : "";
-  return `<div class="w card${def.wide ? " wide" : ""}"><div class="w-label">${mark || `<i class="dot" style="--c:${def.tint}"></i>`}${esc(def.label)}</div><div class="w-body">${def.render()}</div></div>`;
+  return `<div class="w card${def.wide ? " wide" : ""}${size ? ` sz-${size}` : ""}"><div class="w-label">${mark || `<i class="dot" style="--c:${def.tint}"></i>`}${esc(def.label)}</div><div class="w-body">${def.render(size)}</div></div>`;
 }
 function hubShelfHTML() {
   const h = new Date().getHours();
@@ -1319,8 +1339,11 @@ function paintSaverHud() {
   const time = w.includes("clock") ? `<div class="saver-time">${esc(t.hm)}${t.ap ? `<small>${t.ap}</small>` : ""}</div>` : "";
   const date = w.includes("date") ? `<div class="saver-date">${esc(d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" }))}</div>` : "";
   // The widgets you put on the TV in LocalHub (Home, TV view) that this screen can draw, down the right.
-  const tvWidgets = (SETTINGS?.widgets?.tv || []).map((x) => x?.id || x?.[0]).filter((id) => id && id !== "clock" && id !== "date" && WIDGETS[id]);
-  const cards = [...new Set([...tvWidgets, ...w.filter((id) => id !== "clock" && id !== "date" && WIDGETS[id])])].slice(0, 3).map(widgetCard).join("");
+  // Each at the size you gave it in LocalHub (s, m or l): the same card, the same sizes, as on LocalHub's Home.
+  const sizes = {};
+  for (const x of SETTINGS?.widgets?.tv || []) { const id = x?.id || x?.[0]; if (id) sizes[id] = x?.size || x?.[1] || "m"; }
+  const ids = [...new Set([...Object.keys(sizes), ...w])].filter((id) => id !== "clock" && id !== "date" && WIDGETS[id]).slice(0, 3);
+  const cards = ids.map((id) => widgetCard(id, sizes[id] || "m")).join("");
   $("#saverHud").innerHTML = `${cards ? `<div class="saver-cards">${cards}</div>` : ""}${time || date ? `<div class="saver-when">${time}${date}</div>` : ""}`;
 }
 // A library that couldn't be used says so for a few seconds, then the wallpapers carry on alone.

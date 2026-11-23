@@ -324,19 +324,38 @@ html.lite .settings::before { background: var(--bg); -webkit-backdrop-filter: no
 .saver .w.card .w-label { font: 600 24px/1 var(--display); letter-spacing: .005em; color: rgba(255, 255, 255, .62); }
 .saver .w.card .w-label .dot { display: none; }
 .saver .w.card .w-label .sym { width: 26px; height: 26px; color: rgba(255, 255, 255, .62); }
-.wx-top { display: flex; align-items: center; gap: 22px; }
-.wx-icon { width: 96px; height: 96px; flex: none; color: #fff; }
-.wx-icon .sym { width: 100%; height: 100%; }
-.wx-temp { font: 700 96px/.9 var(--display); letter-spacing: -0.04em; font-variant-numeric: tabular-nums; color: #fff; }
-.wx-now { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
-.wx-cond { font: 600 30px/1.1 var(--display); color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.wx-hilo { font-size: 24px; font-weight: 500; color: rgba(255, 255, 255, .66); font-variant-numeric: tabular-nums; }
-.wx-days { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; padding-top: 22px; border-top: 1.5px solid rgba(255, 255, 255, .1); }
-.wx-day { display: flex; flex-direction: column; align-items: center; gap: 10px; }
-.wx-day .n { font: 600 22px/1 var(--display); color: rgba(255, 255, 255, .66); }
-.wx-day .sym { width: 40px; height: 40px; color: #fff; }
-.wx-day .v { font: 600 24px/1 var(--display); color: #fff; font-variant-numeric: tabular-nums; }
-.wx-day .v small { font-size: 22px; font-weight: 500; color: rgba(255, 255, 255, .55); }
+/* Weather card (one design: LocalHub's Home and the TV). Everything in em: set font-size on .wxw to size it. */
+.wxw { display: flex; flex-direction: column; gap: .9em; color: inherit; line-height: 1.15; min-width: 0; }
+.wxw-i { width: 1em; height: 1em; flex: none; }
+.wxw-head { display: flex; align-items: center; justify-content: space-between; gap: .8em; min-width: 0; }
+.wxw-now { display: flex; align-items: center; gap: .35em; }
+.wxw-now .wxw-i { font-size: 2.4em; }
+.wxw-temp { font-size: 3.4em; font-weight: 700; letter-spacing: -0.045em; line-height: .9; font-variant-numeric: tabular-nums; }
+.wxw-meta { display: flex; flex-direction: column; align-items: flex-end; gap: .3em; text-align: right; min-width: 0; }
+.wxw-cond { font-size: 1.2em; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.wxw-hl { font-size: .95em; font-weight: 600; opacity: .72; white-space: pre; font-variant-numeric: tabular-nums; }
+.wxw-place { font-size: .85em; opacity: .55; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.wxw-s .wxw-head { flex-direction: column; align-items: flex-start; gap: .5em; }
+.wxw-s .wxw-meta { align-items: flex-start; text-align: left; }
+.wxw-hours { display: grid; grid-template-columns: repeat(6, 1fr); gap: .3em; padding: .85em .2em .1em; border-top: 1px solid color-mix(in srgb, currentColor 14%, transparent); }
+.wxw-h { display: flex; flex-direction: column; align-items: center; gap: .45em; }
+.wxw-ht { font-size: .8em; font-weight: 600; opacity: .62; }
+.wxw-h .wxw-i { font-size: 1.45em; }
+.wxw-hv { font-size: 1.05em; font-weight: 650; font-variant-numeric: tabular-nums; }
+.wxw-rain { font-size: .72em; font-weight: 700; color: #64d2ff; font-variant-numeric: tabular-nums; }
+.wxw-days { display: flex; flex-direction: column; gap: .55em; padding-top: .85em; border-top: 1px solid color-mix(in srgb, currentColor 14%, transparent); }
+.wxw-d { display: grid; grid-template-columns: 3.6em 1.4em 2.6em 2.4em 1fr 2.4em; align-items: center; gap: .5em; font-size: .95em; }
+.wxw-d .wxw-i { font-size: 1.35em; }
+.wxw-dn { font-weight: 650; }
+.wxw-dr { text-align: left; }
+.wxw-dl { text-align: right; opacity: .55; font-weight: 600; font-variant-numeric: tabular-nums; }
+.wxw-dh { font-weight: 650; font-variant-numeric: tabular-nums; }
+.wxw-bar { position: relative; height: .32em; border-radius: 1em; background: color-mix(in srgb, currentColor 16%, transparent); }
+.wxw-bar i { position: absolute; top: 0; bottom: 0; border-radius: 1em; background: linear-gradient(90deg, #64d2ff, #ffd60a 60%, #ff9f0a); }
+.saver .w.card.sz-s { width: 420px; }
+.saver .w.card.sz-m, .saver .w.card.sz-l { width: 780px; }
+.saver .wxw { font-size: 26px; color: #fff; }
+.saver .w.card.sz-s .wxw { font-size: 24px; }
 html.lite .saver .w.card { --lg-tint: rgba(22, 22, 28, .72); }
 .saver-note { position: absolute; z-index: 5; right: 4vw; top: 5vh; max-width: 36vw; padding: 1.1vh 1.6vh; border-radius: 1.6vh; font-size: 1.9vh; line-height: 1.4; font-weight: 500; color: rgba(255, 255, 255, .86); background: rgba(16, 16, 22, .55); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .14); opacity: 0; transition: opacity .8s ease; }
 .saver-note.on { opacity: 1; }
