@@ -6,9 +6,20 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
+import android.graphics.PixelFormat;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.provider.Settings;
+import android.util.TypedValue;
+import android.view.Gravity;
+import android.view.KeyEvent;
+import android.view.View;
+import android.view.WindowManager;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -25,7 +36,15 @@ import java.io.InputStreamReader;
  *   adb shell pm grant local.hub.tv android.permission.READ_LOGS
  *
  * Without it this does nothing. It runs as a foreground service so the TV doesn't stop it while another app plays.
- * Honest limitation: Amazon's home screen shows for a moment first.
+ *
+ * Android holds an app that reopens itself within 5 s of Home ("app switch" protection; only Amazon-signed apps
+ * skip it). So the moment Home is seen, LocalHub's own opening screen covers Amazon's home, and it goes as soon as
+ * LocalHub is back in front: it feels instant. The cover needs "draw over other apps", granted once over adb:
+ *
+ *   adb shell appops set local.hub.tv SYSTEM_ALERT_WINDOW allow
+ *
+ * Without that, Amazon's home shows for those seconds instead. The cover takes the remote's keys while it's up, so
+ * nothing on Amazon's screen gets opened by accident, and it never stays longer than 8 s.
  */
 public class HomeWatchService extends Service {
 
@@ -33,6 +52,8 @@ public class HomeWatchService extends Service {
     private volatile boolean stopped;
     private Process logcat;
     private final Handler main = new Handler(Looper.getMainLooper());
+    private static volatile HomeWatchService self;
+    private View cover;
 
     /** True while the log is being watched: Home brings LocalHub back. */
     static boolean isRunning() {
@@ -58,6 +79,7 @@ public class HomeWatchService extends Service {
                 .setPriority(Notification.PRIORITY_MIN)
                 .build();
         startForeground(7, n);
+        self = this;
         Thread t = new Thread(this::watch, "home-watch");
         t.setDaemon(true);
         t.start();
@@ -83,7 +105,54 @@ public class HomeWatchService extends Service {
         }
     }
 
+    /** MainActivity is in front again: the cover can go (a beat later, once its first frame is up). */
+    static void localHubShown() {
+        HomeWatchService s = self;
+        if (s != null) s.main.postDelayed(s::hideCover, 250);
+    }
+
+    private void showCover() {
+        if (cover != null || !Settings.canDrawOverlays(this)) return;
+        LinearLayout box = new LinearLayout(this) {
+            @Override
+            public boolean dispatchKeyEvent(KeyEvent event) {
+                return true; // the remote does nothing on Amazon's screen underneath
+            }
+        };
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setGravity(Gravity.CENTER);
+        box.setBackgroundColor(Color.BLACK);
+        ImageView mark = new ImageView(this);
+        mark.setImageResource(R.drawable.ic_launcher);
+        int px = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 120, getResources().getDisplayMetrics());
+        box.addView(mark, new LinearLayout.LayoutParams(px, px));
+        TextView name = new TextView(this);
+        name.setText(R.string.app_name);
+        name.setTextColor(Color.WHITE);
+        name.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 34);
+        name.setPadding(0, px / 4, 0, 0);
+        box.addView(name);
+        @SuppressWarnings("deprecation")
+        WindowManager.LayoutParams lp = new WindowManager.LayoutParams(
+                WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.TYPE_SYSTEM_ALERT,
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN | WindowManager.LayoutParams.FLAG_FULLSCREEN,
+                PixelFormat.OPAQUE);
+        try {
+            ((WindowManager) getSystemService(WINDOW_SERVICE)).addView(box, lp);
+            cover = box;
+            main.postDelayed(this::hideCover, 8000);
+        } catch (Exception ignored) { }
+    }
+
+    private void hideCover() {
+        if (cover == null) return;
+        try { ((WindowManager) getSystemService(WINDOW_SERVICE)).removeView(cover); } catch (Exception ignored) { }
+        cover = null;
+    }
+
     private void bringBack() {
+        showCover();
         Intent home = new Intent(this, MainActivity.class)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
                 .putExtra("fromHomeKey", true);
@@ -97,6 +166,8 @@ public class HomeWatchService extends Service {
 
     @Override
     public void onDestroy() {
+        hideCover();
+        self = null;
         stopped = true;
         watching = false;
         if (logcat != null) logcat.destroy();

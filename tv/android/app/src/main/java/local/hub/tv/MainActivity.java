@@ -282,6 +282,7 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         js("window.haven&&haven.resumed()");
+        HomeWatchService.localHubShown();
     }
 
     @Override
