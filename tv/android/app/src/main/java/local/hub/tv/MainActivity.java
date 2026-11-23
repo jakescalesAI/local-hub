@@ -52,6 +52,17 @@ public class MainActivity extends Activity {
 
     private WebView web;
 
+    /** The TV's keyboard, open on the focused text box at once (focusing it from the page alone needs a second OK). */
+    void showKeyboard(boolean show) {
+        runOnUiThread(() -> {
+            if (web == null) return;
+            android.view.inputmethod.InputMethodManager imm = (android.view.inputmethod.InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+            if (imm == null) return;
+            if (show) imm.showSoftInput(web, android.view.inputmethod.InputMethodManager.SHOW_FORCED); // no requestFocus: it moved focus off the text box
+            else imm.hideSoftInputFromWindow(web.getWindowToken(), 0);
+        });
+    }
+
     /** A picture of the home screen as it is now (the page asks while it sits idle on Home), for Home's cover: Android
      *  keeps LocalHub waiting ~5 s after Home, and showing its own home screen meanwhile makes Home look instant. */
     void snapshotHome() {

@@ -309,7 +309,7 @@ function loadItems() {
   const picked = favIds.map((id) => APPS.find((a) => a.id === id)).filter(Boolean);
   // The row: widgets, sort and search first, then your favorites, then the + card (always last).
   FAVS = IN_HUB && !PREVIEW
-    ? [{ id: "ctl:widgets", kind: "ctl", name: "Widgets" }, { id: "ctl:sort", kind: "ctl", name: "Sort apps" }, { id: "ctl:search", kind: "ctl", name: "Search" }, ...picked, { id: "favadd", kind: "favadd", name: "Add a favorite" }]
+    ? [{ id: "ctl:widgets", kind: "ctl", name: "Layout" }, { id: "ctl:sort", kind: "ctl", name: "Sort apps" }, { id: "ctl:search", kind: "ctl", name: "Search" }, ...picked, { id: "favadd", kind: "favadd", name: "Add a favorite" }]
     : picked;
   S.f = clamp(S.f || 0, 0, Math.max(0, FAVS.length - 1));
   if (!FAVS.length && S.zone === "favs") S.zone = "grid";
@@ -2028,6 +2028,9 @@ async function bakeGlass() {
 
 function handleKey(name) {
   S.touched = true;
+  // Typing in the search bar: Back closes it (keeping what's typed) and stays on it.
+  const sb = document.activeElement?.classList?.contains("sb") ? document.activeElement : null;
+  if (sb && name === "back") return endSearch(sb, true);
   armSaver();
   if (S.overlay === "saver") return stopSaver();
   // Opening an app: Back always comes home, even if the app never came up.
@@ -2250,6 +2253,7 @@ function openSearch() {
   sb.focus();
   try { sb.setSelectionRange(sb.value.length, sb.value.length); } catch { /* fine */ }
   native("setTyping", true);
+  native("keyboard", true); // the TV's keyboard opens with the same OK
 }
 function applySearch(v) {
   const q = String(v || "").trim();
@@ -2265,17 +2269,28 @@ document.addEventListener("input", (e) => {
   applySearch.t = setTimeout(() => applySearch(e.target.value), 220);
 });
 // Done typing (Enter, or the keyboard closed): the search is applied and focus goes to the results.
-function endSearch(sb) {
+function endSearch(sb, stay) {
   if (endSearch.busy) return;
   endSearch.busy = true;
   native("setTyping", false);
+  native("keyboard", false);
   clearTimeout(applySearch.t);
   applySearch(sb.value);
   if (document.activeElement === sb) sb.blur();
   endSearch.busy = false;
+  if (stay) return; // left with the arrows: focus moves on from the search bar like any button
   const n = ITEMS.filter(movable).length;
   if (S.search) { S.zone = "grid"; S.i = 0; applyFocus(); toast(n ? `${n} app${n === 1 ? "" : "s"} match “${S.search}”` : `Nothing matches “${S.search}”`); }
 }
+// The arrows (with the keyboard closed) leave the search bar like any other button in the row.
+const SB_ARROWS = { ArrowLeft: "left", ArrowRight: "right", ArrowUp: "up", ArrowDown: "down" };
+document.addEventListener("keydown", (e) => {
+  if (!e.target.classList?.contains("sb") || !SB_ARROWS[e.key]) return;
+  e.preventDefault();
+  e.stopPropagation();
+  endSearch(e.target, true);
+  handleKey(SB_ARROWS[e.key]);
+}, true);
 document.addEventListener("keydown", (e) => {
   if (!e.target.classList?.contains("sb") || (e.key !== "Enter" && e.key !== "Escape")) return;
   e.preventDefault();

@@ -243,6 +243,12 @@ final class Native {
         activity.typing = typing;
     }
 
+    /** Opens (or closes) the TV's keyboard on the text box the page has just focused. */
+    @JavascriptInterface
+    public void keyboard(boolean show) {
+        if (activity.pageTrusted) activity.showKeyboard(show);
+    }
+
     // ── LocalHub on the laptop ────────────────────────────────────────────────────────────────
 
     @JavascriptInterface
