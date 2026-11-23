@@ -31,6 +31,14 @@ final class Prefs {
 
     void setHub(String url) { sp.edit().putString(HUB_URL, url).apply(); }
 
+    /** When LocalHub was last on screen: coming back soon after (Fire OS often closes it behind a big app) isn't a fresh start. */
+    long lastSeen() { return sp.getLong("lastSeen", 0); }
+    void seen(long now) { sp.edit().putLong("lastSeen", now).apply(); }
+
+    /** The wallpaper the Home cover shows (its path on the hub), saved as cacheDir/cover.jpg. */
+    String coverPath() { return sp.getString("coverPath", ""); }
+    void setCoverPath(String path) { sp.edit().putString("coverPath", path).apply(); }
+
     void setPairing(String token, String name) {
         sp.edit().putString(HUB_TOKEN, token).putString(HUB_NAME, name).apply();
     }

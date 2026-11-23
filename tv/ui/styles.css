@@ -145,12 +145,17 @@ body.shelf-hub .shelf-fade { background: linear-gradient(180deg, transparent 60%
 
 /* ── the grid (row 0 is the top row, on the shelf) ─────────────────────────── */
 .grid { position: absolute; left: var(--side); top: var(--row0); display: grid; grid-template-columns: repeat(5, var(--icon-w)); column-gap: var(--gap-x); row-gap: calc(var(--pitch) - var(--icon-h)); }
-/* Favorites: the row at the top, its own strip that slides sideways; the app grid sits a row lower under it. */
-.favs { position: absolute; left: 0; width: 1920px; top: calc(var(--row0) - 60px); height: calc(var(--icon-h) + 120px); overflow: hidden; }
+/* Favorites: a section of its own at the top, titled, with smaller tiles (about seven across) on a strip that
+   slides sideways. The app grid starts under it (--favs-h). */
+:root { --favs-h: 214px; }
+.favs { position: absolute; left: 0; width: 1920px; top: calc(var(--row0) - 58px); height: 250px; overflow: hidden; }
 .favs[hidden] { display: none; }
-.fav-track { position: absolute; left: var(--side); top: 60px; display: flex; gap: var(--gap-x); transition: transform .45s var(--ease); will-change: transform; }
-.fav-track .app { flex: none; }
-.page.has-favs .grid { top: calc(var(--row0) + var(--pitch)); }
+.favs-head { position: absolute; left: var(--side); top: 8px; display: flex; align-items: center; gap: 12px; font: 700 28px/1 var(--display); letter-spacing: .01em; color: #fff; text-shadow: 0 2px 1px rgba(0, 0, 0, .35); }
+.favs-head .sym { width: 30px; height: 30px; color: #ffd60a; fill: #ffd60a; }
+.fav-track { position: absolute; left: var(--side); top: 64px; display: flex; gap: 32px; transition: transform .45s var(--ease); will-change: transform; }
+.fav-track .app { flex: none; zoom: .72; }
+.page.has-favs .grid { top: calc(var(--row0) + var(--favs-h)); }
+.page.has-favs .shelf-body { bottom: 236px; } /* the app's name sits clear of the Favorites heading */
 .app .icon.favhint { --a-bg: #1f2129; --a-fg: #fff; display: grid; place-items: center; }
 .app .icon.favhint .sym { position: relative; width: 64px; height: 64px; }
 .app { position: relative; width: var(--icon-w); height: var(--icon-h); perspective: 900px; }
@@ -169,6 +174,8 @@ body.shelf-hub .shelf-fade { background: linear-gradient(180deg, transparent 60%
 .icon .glyph.wide { width: 200px; height: 84px; -webkit-mask-size: cover; mask-size: cover; }
 .icon .letter { font: 800 84px/1 var(--display); letter-spacing: -0.04em; }
 .icon img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.icon img.banner { object-fit: contain; }
+.icon > .fill.flat { background: var(--a-bg, #2c2c2e); opacity: 1; }
 .icon img.square { position: static; width: 120px; height: 120px; object-fit: contain; border-radius: 26px; }
 .icon .sym { width: 84px; height: 84px; }
 .icon .sub { position: absolute; left: 22px; bottom: 16px; font-size: 20px; font-weight: 600; color: rgba(255, 255, 255, .72); letter-spacing: .02em; }
@@ -260,9 +267,13 @@ html.lite .settings::before { background: var(--bg); -webkit-backdrop-filter: no
 /* ── launch: tvOS opens an app by growing its icon to the screen ───────────── */
 .launch { position: absolute; inset: 0; z-index: 50; pointer-events: none; visibility: hidden; }
 .launch.on { visibility: visible; }
-/* The tile grows to fill the screen with one scale on the GPU: animating left/top/width/height re-laid out and
-   repainted a 4K layer every frame on a Fire TV Stick. */
-.launch .icon { position: absolute; left: 0; top: 0; transform-origin: 0 0; transition: transform .45s var(--ease) !important; will-change: transform; }
+/* Opening an app: the screen goes to black while the app's tile glides to the middle and grows a little, then the
+   app comes up out of that black. The tile is drawn once at its final size and starts scaled down (no 7x blow-up
+   of a picture to redraw mid-animation); the black is one opacity fade. Coming back, both fade away over home. */
+.launch::before { content: ""; position: absolute; inset: 0; background: #000; opacity: 0; transition: opacity .34s var(--ease); will-change: opacity; }
+.launch.full::before { opacity: .985; } /* not quite 1: fully covered, the TV stops drawing home and must redraw it all as the black fades */
+.launch .icon { position: absolute; left: 0; top: 0; transform-origin: 0 0; transition: transform .38s var(--ease), opacity .3s var(--ease) !important; will-change: transform, opacity; }
+.launch.back .icon { opacity: 0; }
 .launch-note { position: absolute; left: 0; right: 0; bottom: 150px; text-align: center; font-size: 28px; font-weight: 500; color: rgba(255, 255, 255, .85); opacity: 0; transition: opacity .4s var(--ease) .3s; }
 .launch.full .launch-note { opacity: 1; }
 
@@ -448,6 +459,8 @@ html.lite .lg, html.lite .cc, html.lite .w.card, html.lite .gear, html.lite .key
 /* ══ The opening: the same as trylocalhub.com's (splash.js) ═══════════════════════ */
 .splash { position: fixed; inset: 0; z-index: 2147483647; display: grid; place-items: center; background: #000; animation: none; opacity: 1; transform: none; transition: opacity .7s var(--ease); }
 .splash.leaving { opacity: 0; }
+.splash.quick { transition-duration: .3s; }
+.splash.quick .splash-mark { display: none; }
 .splash.is-gone { display: none; }
 .splash-mark { margin: 0; font: 600 min(15.6vw, 24vh)/1.06 var(--display); letter-spacing: -0.05em; white-space: nowrap; color: #fff; }
 .splash-tile { display: inline-block; width: .86em; height: .86em; margin: 0 .045em 0 .1em; vertical-align: -.08em; overflow: visible; opacity: 0; }

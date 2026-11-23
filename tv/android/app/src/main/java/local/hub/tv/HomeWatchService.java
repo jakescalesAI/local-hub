@@ -118,27 +118,45 @@ public class HomeWatchService extends Service {
         if (s != null) s.main.post(s::hideCover);
     }
 
+    static java.io.File coverFile(Context c) {
+        return new java.io.File(c.getCacheDir(), "cover.jpg");
+    }
+
+    private static android.graphics.Bitmap wall;
+    private static long wallAt;
+
+    /** Your wallpaper, as the home screen has it, decoded once and kept. Null if the page hasn't sent one yet. */
+    private android.graphics.Bitmap wallpaper() {
+        java.io.File f = coverFile(this);
+        if (!f.isFile() || f.length() == 0) return null;
+        if (wall == null || wallAt != f.lastModified()) {
+            wall = android.graphics.BitmapFactory.decodeFile(f.getPath());
+            wallAt = f.lastModified();
+        }
+        return wall;
+    }
+
     private void showCover() {
         if (cover != null || !Settings.canDrawOverlays(this)) return;
-        LinearLayout box = new LinearLayout(this) {
+        android.widget.FrameLayout box = new android.widget.FrameLayout(this) {
             @Override
             public boolean dispatchKeyEvent(KeyEvent event) {
                 return true; // the remote does nothing on Amazon's screen underneath
             }
         };
-        // The same "Local [house] Hub" as LocalHub's opening screen, so the hand-over doesn't show.
-        box.setOrientation(LinearLayout.HORIZONTAL);
-        box.setGravity(Gravity.CENTER);
+        // The home screen's own wallpaper and shade, not the logo (that's for a fresh start): LocalHub's tiles then
+        // fade in over the same picture.
         box.setBackgroundColor(Color.BLACK);
-        float dp = getResources().getDisplayMetrics().density;
-        int icon = Math.round(84 * dp), gap = Math.round(14 * dp);
-        box.addView(word("Local"));
-        ImageView mark = new ImageView(this);
-        mark.setImageResource(R.drawable.ic_launcher);
-        LinearLayout.LayoutParams mp = new LinearLayout.LayoutParams(icon, icon);
-        mp.setMargins(gap, 0, gap, 0);
-        box.addView(mark, mp);
-        box.addView(word("Hub"));
+        android.graphics.Bitmap w = wallpaper();
+        if (w != null) {
+            ImageView img = new ImageView(this);
+            img.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            img.setImageBitmap(w);
+            box.addView(img, new android.widget.FrameLayout.LayoutParams(-1, -1));
+            View shade = new View(this);
+            shade.setBackgroundColor(0x4D000000);
+            box.addView(shade, new android.widget.FrameLayout.LayoutParams(-1, -1));
+        }
         @SuppressWarnings("deprecation")
         WindowManager.LayoutParams lp = new WindowManager.LayoutParams(
                 WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT,
@@ -152,20 +170,14 @@ public class HomeWatchService extends Service {
         } catch (Exception ignored) { }
     }
 
-    private TextView word(String text) {
-        TextView t = new TextView(this);
-        t.setText(text);
-        t.setTextColor(Color.WHITE);
-        t.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 80);
-        t.setTypeface(android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.BOLD));
-        t.setIncludeFontPadding(false);
-        return t;
-    }
-
+    /** Fades out (a quarter of a second), so the home screen comes up under it rather than cutting in. */
     private void hideCover() {
         if (cover == null) return;
-        try { ((WindowManager) getSystemService(WINDOW_SERVICE)).removeView(cover); } catch (Exception ignored) { }
+        View v = cover;
         cover = null;
+        v.animate().alpha(0f).setDuration(250).withEndAction(() -> {
+            try { ((WindowManager) getSystemService(WINDOW_SERVICE)).removeView(v); } catch (Exception ignored) { }
+        }).start();
     }
 
     private void bringBack() {

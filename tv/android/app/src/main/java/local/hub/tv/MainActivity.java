@@ -63,6 +63,11 @@ public class MainActivity extends Activity {
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
         prefs = new Prefs(this);
+        // The opening (the LocalHub logo) is a loading screen for a fresh start. Coming back is not one: Android
+        // rebuilding LocalHub after closing it behind another app, Home, or anything within half an hour.
+        quickStart = savedInstanceState != null
+                || (getIntent() != null && getIntent().getBooleanExtra("fromHomeKey", false))
+                || System.currentTimeMillis() - prefs.lastSeen() < 30 * 60 * 1000L;
         apps = new Apps(this);
         hub = new Hub(prefs);
         voice = new Voice(this, new Voice.Listener() {
@@ -279,6 +284,9 @@ public class MainActivity extends Activity {
     }
 
     private boolean okHeld;
+    /** True when this start is a return to LocalHub rather than a fresh one (see onCreate). Also true once LocalHub
+     *  has been left: a page loaded after that (Fire OS dropping the page's renderer behind a big app) is a return. */
+    boolean quickStart;
 
     /** Home, from another app or from LocalHub itself, lands on the home screen: first row, nothing open. */
     @Override
@@ -361,6 +369,8 @@ public class MainActivity extends Activity {
     @Override
     protected void onPause() {
         resumed = false;
+        quickStart = true;
+        prefs.seen(System.currentTimeMillis());
         ui.removeCallbacks(retryHub);
         super.onPause();
     }

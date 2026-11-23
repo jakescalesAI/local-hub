@@ -45,6 +45,7 @@ final class Apps {
         final boolean hasBanner;
         final boolean hasIcon;
         final int color;
+        int edge; // the banner's own edge colour, for the strips above and below it; 0 not worked out yet, 1 none
         long stamp; // the package's lastUpdateTime: unchanged means its saved art is still right
 
         App(String label, String packageName, String activityName, boolean hasBanner, boolean hasIcon, int color) {
@@ -120,6 +121,7 @@ final class Apps {
                 App a = new App(o.getString("label"), o.getString("pkg"), o.getString("activity"),
                         o.optBoolean("banner"), o.optBoolean("icon"), o.optInt("color", 0xFF2C2C2E));
                 a.stamp = o.optLong("stamp");
+                a.edge = o.optInt("edge", 0);
                 out.add(a);
             }
             synchronized (this) { if (apps.isEmpty()) apps = out; }
@@ -132,7 +134,7 @@ final class Apps {
     /** What the page sees of the list: equal means nothing to redraw. */
     synchronized String signature() {
         StringBuilder sb = new StringBuilder();
-        for (App a : apps) sb.append(a.packageName).append('|').append(a.label).append('|').append(a.stamp).append('|').append(a.hasBanner).append(a.hasIcon).append(';');
+        for (App a : apps) sb.append(a.packageName).append('|').append(a.label).append('|').append(a.stamp).append('|').append(a.hasBanner).append(a.hasIcon).append(a.edge).append(';');
         return sb.toString();
     }
 
@@ -142,7 +144,7 @@ final class Apps {
             for (App a : list) {
                 JSONObject o = new JSONObject();
                 o.put("label", a.label).put("pkg", a.packageName).put("activity", a.activityName)
-                        .put("banner", a.hasBanner).put("icon", a.hasIcon).put("color", a.color).put("stamp", a.stamp);
+                        .put("banner", a.hasBanner).put("icon", a.hasIcon).put("color", a.color).put("stamp", a.stamp).put("edge", a.edge);
                 arr.put(o);
             }
             File tmp = new File(context.getCacheDir(), "apps.json.tmp");
@@ -186,6 +188,7 @@ final class Apps {
                 if (a.hasBanner) o.put("banner", "http://localhub.tv/art/" + a.packageName + "/banner.png");
                 if (a.hasIcon) o.put("icon", "http://localhub.tv/art/" + a.packageName + "/icon.png");
                 o.put("color", String.format(Locale.US, "#%06X", a.color & 0xFFFFFF));
+                if (a.hasBanner && (a.edge >>> 24) == 0xFF) o.put("edge", String.format(Locale.US, "#%06X", a.edge & 0xFFFFFF));
                 long at = prefs.openedAt(a.packageName);
                 if (at > 0) o.put("recent", at);
                 arr.put(o);
@@ -246,7 +249,7 @@ final class Apps {
             try { stamp = pm.getPackageInfo(pkg, 0).lastUpdateTime; } catch (Exception ignored) { }
             App old = saved.get(pkg);
             if (old != null && stamp != 0 && old.stamp == stamp && ri.activityInfo.name.equals(old.activityName)
-                    && (!old.hasBanner || artFile(pkg + "/banner").length() > 0) && (!old.hasIcon || artFile(pkg + "/icon").length() > 0)) {
+                    && (!old.hasBanner || (old.edge != 0 && artFile(pkg + "/banner").length() > 0)) && (!old.hasIcon || artFile(pkg + "/icon").length() > 0)) {
                 out.add(old); // unchanged since it was drawn
                 continue;
             }
@@ -270,6 +273,7 @@ final class Apps {
             } catch (Exception ignored) { }
 
             int color = dominant(banner != null ? banner : icon); // before png(), which recycles the bitmap
+            int edge = edge(banner);
             // Some apps hand Android a banner that won't encode (Amazon's hedwig gave 0 bytes): no banner, then.
             byte[] bannerPng = banner != null ? png(banner) : null, iconPng = icon != null ? png(icon) : null;
             boolean hasBanner = bannerPng != null && bannerPng.length > 0, hasIcon = iconPng != null && iconPng.length > 0;
@@ -277,6 +281,7 @@ final class Apps {
             if (hasIcon) images.put(pkg + "/icon", iconPng);
             App a = new App(label, pkg, ri.activityInfo.name, hasBanner, hasIcon, color);
             a.stamp = stamp;
+            a.edge = hasBanner ? edge : 0;
             out.add(a);
         }
     }
@@ -295,6 +300,25 @@ final class Apps {
         b.compress(Bitmap.CompressFormat.PNG, 100, out);
         b.recycle();
         return out.toByteArray();
+    }
+
+    /** The banner's top and bottom rows, averaged: a tile shows the whole banner and fills above and below with it. */
+    private static int edge(Bitmap bitmap) {
+        if (bitmap == null || bitmap.isRecycled()) return 0;
+        long r = 0, g = 0, b = 0, a = 0, n = 0;
+        int w = bitmap.getWidth(), h = bitmap.getHeight();
+        for (int y : new int[]{0, 1, 2, h - 3, h - 2, h - 1}) {
+            for (int x = 0; x < w; x += 4) {
+                int p = bitmap.getPixel(x, y);
+                a += (p >>> 24) & 0xFF;
+                r += (p >> 16) & 0xFF;
+                g += (p >> 8) & 0xFF;
+                b += p & 0xFF;
+                n++;
+            }
+        }
+        if (n == 0 || a / n < 128) return 1; // see-through edges: the tile keeps its colour (1: worked out, none)
+        return 0xFF000000 | ((int) (r / n) << 16) | ((int) (g / n) << 8) | (int) (b / n);
     }
 
     /** A usable backdrop colour: average of the opaque pixels, saturation lifted, brightness tamed. */

@@ -110,6 +110,48 @@ final class Native {
         return o.toString();
     }
 
+    /** A return to LocalHub, not a fresh start: the page skips its logo and just fades in. */
+    @JavascriptInterface
+    public boolean quickStart() {
+        return activity.quickStart;
+    }
+
+    /** The wallpaper, so Home's cover can show it while Android brings LocalHub back. path: e.g. /tv/photos/aurora.jpg */
+    @JavascriptInterface
+    public void setCover(String path) {
+        if (!activity.pageTrusted || path == null || !path.startsWith("/") || path.contains("..") || path.contains("//")) return;
+        if (path.equals(activity.prefs.coverPath()) && HomeWatchService.coverFile(context).length() > 0) return;
+        activity.io.execute(() -> {
+            try {
+                java.net.HttpURLConnection c = (java.net.HttpURLConnection) new java.net.URL(activity.prefs.hubUrl() + path).openConnection();
+                c.setConnectTimeout(4000);
+                c.setReadTimeout(15000);
+                String token = activity.prefs.hubToken();
+                if (!token.isEmpty()) c.setRequestProperty("authorization", "Bearer " + token);
+                byte[] bytes;
+                try (java.io.InputStream in = c.getInputStream()) {
+                    java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+                    byte[] buf = new byte[32768];
+                    for (int n; (n = in.read(buf)) > 0; ) out.write(buf, 0, n);
+                    bytes = out.toByteArray();
+                } finally { c.disconnect(); }
+                android.graphics.BitmapFactory.Options o = new android.graphics.BitmapFactory.Options();
+                o.inJustDecodeBounds = true;
+                android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.length, o);
+                int sample = 1;
+                while (o.outWidth / (sample * 2) >= 1920 && o.outHeight / (sample * 2) >= 1080) sample *= 2;
+                o = new android.graphics.BitmapFactory.Options();
+                o.inSampleSize = sample;
+                android.graphics.Bitmap b = android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.length, o);
+                if (b == null) return;
+                java.io.File tmp = new java.io.File(context.getCacheDir(), "cover.jpg.tmp");
+                try (java.io.FileOutputStream out = new java.io.FileOutputStream(tmp)) { b.compress(android.graphics.Bitmap.CompressFormat.JPEG, 88, out); }
+                b.recycle();
+                if (tmp.renameTo(HomeWatchService.coverFile(context))) activity.prefs.setCoverPath(path);
+            } catch (Exception ignored) { }
+        });
+    }
+
     @JavascriptInterface
     public String status() {
         if (!activity.pageTrusted) return "{}";

@@ -161,6 +161,7 @@ function applyLook() {
   r.dataset.wall = "1";
   wall.style.backgroundImage = w.image;
   bakeGlass();
+  sendCover();
   // A photo gets a middle scrim: enough for white names over a bright sky or sand, not so much it goes grey.
   r.style.setProperty("--hub-scrim", w.tone === "photo" ? ".3" : w.tone ? (w.tone === theme ? ".18" : ".55") : ".4");
   if (S.shelfId === "hub") paintShelf(true);
@@ -260,7 +261,7 @@ async function addSite(text) {
 function loadItems() {
   if (NATIVE) {
     APPS = safeJson(native("apps") || "[]", []).map((a) => ({
-      id: a.id, pkg: a.id, name: a.name, banner: a.banner || null, img: a.icon || null,
+      id: a.id, pkg: a.id, name: a.name, banner: a.banner || null, img: a.icon || null, edge: a.edge || null,
       bg: a.color || "#2c2c2e", fg: "#ffffff", recentAt: a.recent || 0, wordmark: wordmarkFor(a.name),
     }));
     if (IN_HUB) APPS.push(...Stream.STREAM_APPS.map((a) => ({ ...a, note: Stream.noteFor(a) })), ...siteApps());
@@ -317,7 +318,8 @@ function iconHTML(it) {
   const fill = '<i class="fill"></i>';
   // A banner that won't load (an app can hand Android an empty one) falls back to its icon, or its colour.
   const fallback = it.img ? `this.onerror=null;this.className='square';this.src='${esc(it.img)}'` : "this.remove()";
-  if (it.banner) return `<div class="icon" style="${colors}">${fill}<img src="${esc(it.banner)}" alt="" decoding="async" onerror="${fallback}"></div>`;
+  // The whole banner, never cropped: a 16:9 banner on a slightly taller tile, the strips above and below in its own edge colour.
+  if (it.banner) return `<div class="icon" style="--a-bg:${it.edge || it.bg};--a-fg:${it.fg}"><i class="fill flat"></i><img class="banner" src="${esc(it.banner)}" alt="" decoding="async" onerror="${fallback}"></div>`;
   if (it.img) return `<div class="icon" style="${colors}">${fill}<img class="square" src="${esc(it.img)}" alt="" decoding="async"></div>`;
   if (it.icon) return `<div class="icon" style="${colors}">${fill}<i class="glyph${it.wide ? " wide" : ""}" style="--glyph:url('./brands/${it.icon}.svg')"></i>${it.note ? `<span class="sub">${esc(it.note)}</span>` : ""}</div>`;
   return `<div class="icon" style="${colors}">${fill}<b class="letter"${it.letter && it.letter.length > 4 ? ' style="font-size:58px"' : ""}>${esc(it.letter || it.name.slice(0, 1))}</b></div>`;
@@ -352,8 +354,11 @@ function renderGrid() {
 }
 // While the opening still covers the screen, step the page through every row once, so the TV draws each row's
 // tiles now rather than on the first scroll down (that first pass stalled up to 400 ms on a Fire TV Stick).
+const FAV_COLS = 7, FAVS_H = 214; // favorites in view at once; the section's height (--favs-h)
 function renderFavs() {
   const box = $("#favs"), track = $("#favTrack");
+  const head = $("#favsHead");
+  if (!head.firstElementChild) head.innerHTML = `${SYM.star}<span>Favorites</span>`;
   const html = FAVS.map((it, f) => `<div class="app fav" data-f="${f}">${iconHTML(it)}<span class="name">${esc(it.name)}</span></div>`).join("");
   if (track._html !== html) { track.innerHTML = html; track._html = html; }
   if (box.hidden === hasFavs()) { box.hidden = !hasFavs(); $("#page").classList.toggle("has-favs", hasFavs()); }
@@ -363,7 +368,7 @@ function slideFavs() {
   const first = $("#favTrack .fav");
   if (!first) return;
   const step = (first.nextElementSibling ? first.nextElementSibling.offsetLeft - first.offsetLeft : 0) || first.offsetWidth;
-  S.favX = clamp(S.favX || 0, Math.max(0, S.f - COLS + 1), S.f);
+  S.favX = clamp(S.favX || 0, Math.max(0, S.f - FAV_COLS + 1), S.f);
   $("#favTrack").style.transform = S.favX ? `translateX(${-S.favX * step}px)` : "";
 }
 
@@ -407,9 +412,10 @@ function applyFocus(instant) {
   if (S.zone === "grid" && !S.overlay) $(`.app[data-i="${S.i}"]`)?.classList.add("is-focused");
   if (S.zone === "favs" && !S.overlay) { $(`.fav[data-f="${S.f}"]`)?.classList.add("is-focused"); slideFavs(); }
 
-  // With Favorites at the top, the grid's rows are one lower on screen.
-  const off = hasFavs() ? 1 : 0;
-  const row = S.zone === "favs" ? 0 : Math.floor(S.i / COLS) + off;
+  // With Favorites at the top, every app row is in the grid part of the screen, under the Favorites section.
+  const fav = hasFavs();
+  const gRow = Math.floor(S.i / COLS);
+  const row = S.zone === "favs" ? 0 : gRow + (fav ? 1 : 0);
   const inGrid = S.zone === "grid" && row > 0;
   const grid = inGrid || (S.zone === "bar" && !atTop());
   // Light glass: the body class would make a Fire TV Stick recompute style for every tile (30-50 ms, measured),
@@ -425,12 +431,12 @@ function applyFocus(instant) {
   // Row 0 sits on the Top Shelf. Further down, in one long scroll (the default, like tvOS) the
   // focused row rides about a third of the way up; in pages the rows move three at a time.
   const paged = SETTINGS?.scroll?.tv === "pages";
-  const first = 1 + Math.floor((row - 1) / 3) * 3;
-  const y = !inGrid ? 0 : paged ? -(648 + first * 236 - 190) : -(648 + row * 236 - 400);
+  const gridTop = 648 + (fav ? FAVS_H : 0);
+  const first = fav ? Math.floor(gRow / 3) * 3 : 1 + Math.floor((gRow - 1) / 3) * 3;
+  const y = !inGrid ? 0 : paged ? -(gridTop + first * 236 - 190) : -(gridTop + gRow * 236 - 400);
   // A page shows its own rows: the ones before it leave with it instead of hanging under the clock.
   document.querySelectorAll(".app").forEach((n) => {
-    const r = n.dataset.f !== undefined ? 0 : Math.floor(Number(n.dataset.i) / COLS) + off;
-    const gone = paged && inGrid && r < first;
+    const gone = paged && inGrid && (n.dataset.f !== undefined || Math.floor(Number(n.dataset.i) / COLS) < first);
     if ((n.style.opacity === "0") !== gone) { n.style.transition = "opacity .45s"; n.style.opacity = gone ? "0" : ""; }
   });
   const page = $("#page");
@@ -474,7 +480,7 @@ function move(dx, dy) {
       else return tilt(dx * 1.6, 0);
     }
     if (dy < 0) return tilt(0, -1.6);
-    if (dy > 0) { S.zone = "grid"; S.i = Math.min(clamp(S.f - (S.favX || 0), 0, COLS - 1), ITEMS.length - 1); }
+    if (dy > 0) { S.zone = "grid"; S.i = Math.min(clamp(Math.floor(((S.f - (S.favX || 0)) * 231 + 100) / 320), 0, COLS - 1), ITEMS.length - 1); }
     applyFocus();
     return tilt(dx, dy);
   }
@@ -488,7 +494,7 @@ function move(dx, dy) {
     else return tilt(dx * 1.6, 0); // the edge: lean into it, like tvOS
   }
   if (dy < 0) {
-    if (row === 0 && hasFavs()) { S.zone = "favs"; S.f = clamp((S.favX || 0) + (S.i % COLS), 0, FAVS.length - 1); applyFocus(); return tilt(0, -1); }
+    if (row === 0 && hasFavs()) { S.zone = "favs"; S.f = clamp((S.favX || 0) + Math.floor(((S.i % COLS) * 320 + 138) / 231), 0, FAVS.length - 1); applyFocus(); return tilt(0, -1); }
     if (row === 0) return tilt(0, -1.6);
     S.i -= COLS;
   }
@@ -722,14 +728,17 @@ function launch(it, go, note) {
   const holder = document.createElement("div");
   holder.innerHTML = iconHTML(it);
   const icon = holder.firstElementChild;
+  // Drawn once at its final size (1.6x the tile, in the middle), starting scaled down over the tile itself.
   const w = r.width / k, h = r.height / k;
-  const s = Math.max(1920 / w, 1080 / h);
-  Object.assign(icon.style, { width: `${w}px`, height: `${h}px`, transform: `translate(${(r.left - stage.left) / k}px, ${(r.top - stage.top) / k}px)`, transition: "none" });
+  const W = Math.round(w * 1.6), H = Math.round(h * 1.6);
+  Object.assign(icon.style, { width: `${W}px`, height: `${H}px`, transform: `translate(${(r.left - stage.left) / k}px, ${(r.top - stage.top) / k}px) scale(${w / W})`, transition: "none" });
+  layer.classList.remove("back");
+  layer._ending = false;
   layer.prepend(icon);
   $("#launchNote").textContent = NATIVE ? "" : note ? `${note} — on a TV this switches the input` : it.url ? (IN_HUB && Stream.engineFor(it) ? `Opening ${it.name}…` : `Opening ${it.name} in a new window…`) : `${it.name} isn't on this laptop`;
   setOverlay("launch");
   layer.classList.add("on");
-  requestAnimationFrame(() => requestAnimationFrame(() => { icon.style.transition = ""; icon.style.transform = `translate(${(1920 - w * s) / 2}px, ${(1080 - h * s) / 2}px) scale(${s})`; layer.classList.add("full"); }));
+  requestAnimationFrame(() => requestAnimationFrame(() => { icon.style.transition = ""; icon.style.transform = `translate(${(1920 - W) / 2}px, ${(1080 - H) / 2}px)`; layer.classList.add("full"); }));
   setTimeout(() => {
     const ok = go();
     if (NATIVE && ok !== false) return; // haven.resumed() tidies up when we're back
@@ -738,16 +747,45 @@ function launch(it, go, note) {
     setTimeout(endLaunch, ok === "pending" ? 300 : document.hidden ? 0 : 1300);
   }, 380); // the app starts while the tile is still finishing its grow
 }
+// Back from the app: the tiles are put in their new order while the black still covers them, then the black and
+// the app's tile fade away together over the home screen.
 function endLaunch() {
   const layer = $("#launch");
-  if (!layer.classList.contains("on")) return;
-  layer.classList.remove("full", "on");
+  if (!layer.classList.contains("on") || layer._ending) return;
+  layer._ending = true;
   if (S.overlay === "launch") setOverlay(null);
   const keep = ITEMS[S.i]?.id;
   loadItems();
   S.i = Math.max(0, ITEMS.findIndex((x) => x.id === keep));
   S.shelfId = null;
   renderGrid();
+  // The fade waits for the home screen to be drawn again (the TV drops its drawing while an app is up: 700-800 ms
+  // frames on a Fire TV Stick), so it plays at full speed instead of stalling halfway.
+  steadyFrames(1600).then(() => {
+    if (!layer._ending) return;
+    layer.classList.add("back");
+    layer.classList.remove("full");
+    setTimeout(() => {
+      if (!layer._ending) return;
+      layer.classList.remove("on", "back");
+      layer.querySelector(".icon")?.remove();
+      layer._ending = false;
+    }, 380);
+  });
+}
+// Resolves once four frames in a row come quickly (the screen is drawn), or after max ms whatever happens.
+function steadyFrames(max) {
+  return new Promise((done) => {
+    const end = performance.now() + max;
+    let last = 0, good = 0;
+    const tick = (t) => {
+      good = last && t - last < 30 ? good + 1 : 0;
+      last = t;
+      if (good >= 4 || t > end) return done();
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
 }
 document.addEventListener("visibilitychange", () => { if (!document.hidden) endLaunch(); });
 
@@ -1709,6 +1747,14 @@ function railKey(name) {
 /* ── frozen glass (after APL Launcher's): the wallpaper blurred once, by shrinking it to 48×27 and back
    up to 480×270, then shown behind each glass surface at the stage position it sits over. Nothing
    filters live, so focus moves and panels slide without the GPU redrawing a blur. */
+// Home's cover (the TV app's, while Android brings LocalHub back) shows this wallpaper, fetched once by the TV app.
+function sendCover() {
+  if (!NATIVE || !IN_HUB) return;
+  const m = /url\(["']?([^"')]+)["']?\)/.exec($("#hub-wall").style.backgroundImage || "");
+  if (!m || m[1].startsWith("data:")) return;
+  try { const u = new URL(m[1], location.href); if (u.origin === location.origin) setTimeout(() => native("setCover", u.pathname), 4000); } catch { /* not a URL */ }
+}
+
 async function bakeGlass() {
   const m = /url\(["']?([^"')]+)["']?\)/.exec($("#hub-wall").style.backgroundImage || ""); // set by applyLook; the computed style forced a whole-page style pass
   if (m?.[1] === bakeGlass.url) return;
