@@ -342,11 +342,12 @@ function tvApps() {
 
 function iconHTML(it) {
   if (it.kind === "hub") return `<div class="icon hub"><img src="./hub.svg" alt=""></div>`;
-  if (it.kind === "favadd") return `<div class="icon favadd">${SYM.plus}</div>`;
+  if (it.kind === "favadd") return `<div class="icon favadd"><i class="fill"></i>${SYM.plus}</div>`;
   if (it.kind === "ctl") {
     const k = it.id.slice(4);
-    if (k === "search") return `<div class="icon ctl search${S.search ? " on" : ""}"><i class="fill"></i>${SYM.search}<span class="lbl">${esc(S.search || "Search")}</span></div>`;
-    return `<div class="icon ctl"><i class="fill"></i>${k === "widgets" ? SYM.widgets : SYM.sort}</div>`;
+    // A real search box: it holds what you type (its value is set after drawing, so typing never redraws it).
+    if (k === "search") return `<div class="icon ctl search"><i class="fill"></i>${SYM.search}<input class="sb" type="text" placeholder="Search apps" autocomplete="off" spellcheck="false" tabindex="-1" aria-label="Search apps"></div>`;
+    return `<div class="icon ctl"><i class="fill"></i>${k === "widgets" ? SYM.widgets : SYM.sliders}</div>`;
   }
   if (it.kind === "settings") return `<div class="icon" style="--a-bg:linear-gradient(160deg,#8e8e93,#3a3a3c);--a-fg:#fff">${SYM.gear}</div>`;
   if (it.kind === "addsite") return `<div class="icon add" style="--a-bg:#1f2129;--a-fg:#fff"><i class="fill"></i>${SYM.plus}</div>`;
@@ -399,6 +400,8 @@ function renderFavs() {
   if (!head.firstElementChild) head.innerHTML = `${SYM.star}<span>Favorites</span>`;
   const html = FAVS.map((it, f) => `<div class="app fav${it.kind === "ctl" ? ` ctl ${it.id.slice(4)}` : ""}" data-f="${f}">${iconHTML(it)}<span class="name">${esc(it.name)}</span></div>`).join("");
   if (track._html !== html) { track.innerHTML = html; track._html = html; }
+  const sb = track.querySelector(".sb");
+  if (sb && document.activeElement !== sb && sb.value !== (S.search || "")) sb.value = S.search || "";
   if (box.hidden === hasFavs()) { box.hidden = !hasFavs(); $("#page").classList.toggle("has-favs", hasFavs()); }
 }
 // The row slides so the focused favorite is always on screen, five at a time like the grid.
@@ -1799,7 +1802,7 @@ window.haven = {
   home: () => {
     if (S.overlay === "saver") stopSaver();
     if (S.overlay === "launch") endLaunch();
-    if (S.overlay === "stream") Stream.close?.();
+    if (S.overlay === "stream" || Stream.isOpen?.()) Stream.close?.(); // whatever LocalHub thought was on top
     if (S.overlay === "hub") closeHub();
     if (S.overlay === "modal") closeModal(false);
     if (S.overlay === "settings") closeSettings();
@@ -2098,7 +2101,7 @@ function handleKey(name) {
     }
     case "back":
       if (S.favSelect) { stopFavSelect(); return toast("Stopped picking a favorite"); }
-      if (S.search && S.zone === "grid") { S.search = ""; loadItems(); S.i = 0; renderGrid(); return toast("Showing every app"); }
+      if (S.search && S.zone === "grid") { S.search = ""; const sb = $("#favTrack .sb"); if (sb) sb.value = ""; loadItems(); S.i = 0; renderGrid(); return toast("Showing every app"); }
       if (S.zone === "favs") { if (S.f !== favStart()) { S.f = favStart(); return applyFocus(); } return openRail(); }
       if (S.zone !== "grid") { S.zone = "grid"; return applyFocus(); }
       if (hasFavs() && S.i < COLS) { S.zone = "favs"; S.f = favStart(); return applyFocus(); }
@@ -2213,17 +2216,46 @@ function setSort(id) {
   renderGrid();
   toast(`Apps: ${SORTS[id]}`);
 }
-// Search: type part of a name; the apps narrow to the ones that match. Search again with nothing to see them all.
+// Search: OK on the search bar opens the keyboard; the apps narrow as you type; OK (Enter) goes to the results.
 function openSearch() {
-  openModal("Search apps", "Part of an app's name. Leave it empty to see every app.", S.search || "", (v) => {
-    S.search = String(v || "").trim();
-    loadItems();
-    S.i = 0;
-    renderGrid();
-    const n = ITEMS.filter(movable).length;
-    if (S.search) { S.zone = "grid"; applyFocus(); toast(n ? `${n} app${n === 1 ? "" : "s"} match “${S.search}”` : `Nothing matches “${S.search}”`); }
-  });
+  const sb = $("#favTrack .sb");
+  if (!sb) return;
+  sb.focus();
+  try { sb.setSelectionRange(sb.value.length, sb.value.length); } catch { /* fine */ }
+  native("setTyping", true);
 }
+function applySearch(v) {
+  const q = String(v || "").trim();
+  if (q === (S.search || "")) return;
+  S.search = q;
+  loadItems();
+  S.i = 0;
+  renderGrid();
+}
+document.addEventListener("input", (e) => {
+  if (!e.target.classList?.contains("sb")) return;
+  clearTimeout(applySearch.t);
+  applySearch.t = setTimeout(() => applySearch(e.target.value), 220);
+});
+// Done typing (Enter, or the keyboard closed): the search is applied and focus goes to the results.
+function endSearch(sb) {
+  if (endSearch.busy) return;
+  endSearch.busy = true;
+  native("setTyping", false);
+  clearTimeout(applySearch.t);
+  applySearch(sb.value);
+  if (document.activeElement === sb) sb.blur();
+  endSearch.busy = false;
+  const n = ITEMS.filter(movable).length;
+  if (S.search) { S.zone = "grid"; S.i = 0; applyFocus(); toast(n ? `${n} app${n === 1 ? "" : "s"} match “${S.search}”` : `Nothing matches “${S.search}”`); }
+}
+document.addEventListener("keydown", (e) => {
+  if (!e.target.classList?.contains("sb") || (e.key !== "Enter" && e.key !== "Escape")) return;
+  e.preventDefault();
+  if (e.key === "Escape") e.target.value = S.search || "";
+  endSearch(e.target);
+}, true);
+document.addEventListener("focusout", (e) => { if (e.target.classList?.contains("sb")) endSearch(e.target); });
 
 /* ── hold OK on a tile: Open, Move, Hide ───────────────────────────────── */
 const movable = (it) => it && APPS.includes(it);

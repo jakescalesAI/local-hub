@@ -7,7 +7,7 @@
 .as {
   --as-bg: #0b0b0e;
   --as-surface: #1e1e23;
-  --as-fill: rgba(255, 255, 255, .1);
+  --as-fill: var(--ui-fill, #26272d); /* the TV's one button look (styles.css) */
   --as-text: #fff;
   --as-text-2: rgba(235, 235, 245, .62);
   --as-text-3: rgba(235, 235, 245, .36);
@@ -111,10 +111,10 @@
 .as-chips:not([hidden]) + .as-note { bottom: 292px; }
 .as.noted .as-log { bottom: 300px; }
 .as-chips { position: absolute; left: var(--as-side); right: var(--as-side); bottom: 196px; display: flex; flex-wrap: nowrap; gap: 20px; overflow: hidden; }
-.as-chip { flex: none; height: 72px; padding: 0 32px; border-radius: 36px; background: var(--as-fill); font-size: 28px; font-weight: 600; white-space: nowrap; }
+.as-chip { flex: none; height: 72px; padding: 0 32px; border-radius: 36px; background: var(--as-fill); box-shadow: var(--ui-edge, none); font-size: 28px; font-weight: 600; white-space: nowrap; }
 
 .as-bar { position: absolute; left: var(--as-side); right: var(--as-side); bottom: 64px; height: 104px; display: flex; align-items: center; gap: 20px; }
-.as-field { position: relative; flex: 1; min-width: 0; height: 104px; display: flex; align-items: center; padding: 0 44px; border-radius: 52px; background: var(--as-fill); }
+.as-field { position: relative; flex: 1; min-width: 0; height: 104px; display: flex; align-items: center; padding: 0 44px; border-radius: 52px; background: var(--as-fill); box-shadow: var(--ui-edge, none); }
 .as-input { width: 100%; height: 100%; font-size: 36px; color: inherit; caret-color: var(--as-blue); user-select: text; -webkit-user-select: text; }
 .as-input::placeholder { color: var(--as-text-2); opacity: 1; }
 .as-voice { position: absolute; inset: 0 44px; display: flex; align-items: center; gap: 28px; }
@@ -123,7 +123,7 @@
 .as-vword { flex: 1; font-size: 32px; font-weight: 600; }
 .as-vclock { font-size: 28px; color: var(--as-text-2); font-variant-numeric: tabular-nums; }
 
-.as-btn { flex: none; height: 104px; display: inline-flex; align-items: center; gap: 14px; padding: 0 38px; border-radius: 52px; background: var(--as-fill); font-size: 30px; font-weight: 600; white-space: nowrap; }
+.as-btn { flex: none; height: 104px; display: inline-flex; align-items: center; gap: 14px; padding: 0 38px; border-radius: 52px; background: var(--as-fill); box-shadow: var(--ui-edge, none); font-size: 30px; font-weight: 600; white-space: nowrap; }
 .as-talk.rec { background: var(--as-red); color: #fff; }
 
 /* focus: tvOS's white lift, as a class on one small element; no transition */
