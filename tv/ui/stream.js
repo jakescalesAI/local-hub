@@ -36,7 +36,7 @@ const hub = (p, body) => fetch(p, { method: "POST", headers: { "content-type": "
 let H_ = null; // app.js's hooks: { toast, native, setOverlay, closed, NATIVE }
 const ENG = { chromium: null, chrome: null };
 const P = {
-  open: false, engine: "", app: null, mode: "cursor", cx: W / 2, cy: H / 2, speed: 0, lastDir: "", lastAt: 0,
+  open: false, engine: "", app: null, mode: "links", ring: null, cx: W / 2, cy: H / 2, speed: 0, lastDir: "", lastAt: 0,
   bar: 0, barTimer: 0, state: {}, focus: null, typing: null, abort: null, latest: null, decoding: false,
   drawn: 0, fps: 0, size: "", scrollY: 0, live: false, moveTimer: 0, busy: false,
 };
@@ -73,7 +73,7 @@ function build() {
   if (el) return el;
   const css = document.createElement("link");
   css.rel = "stylesheet";
-  css.href = "./stream.css?v=1";
+  css.href = "./stream.css?v=2";
   document.head.append(css);
   el = document.createElement("section");
   el.className = "player";
@@ -83,6 +83,7 @@ function build() {
     <canvas class="player-screen" width="${W}" height="${H}"></canvas>
     <div class="player-wait"><i class="glyph"></i><div class="spin"></div><p></p></div>
     <div class="player-cursor"></div>
+    <div class="player-ring"></div>
     <nav class="player-bar lg">
       <button type="button" data-act="back" aria-label="Back">${IC.back}</button>
       <div class="player-addr" data-act="address" role="button"><span class="ic">${IC.globe}</span><span class="host"></span><span class="title"></span><i class="load"></i></div>
@@ -102,7 +103,7 @@ function build() {
   const canvas = $(".player-screen", el);
   const at = (e) => { const r = canvas.getBoundingClientRect(); return [((e.clientX - r.left) / r.width) * W, ((e.clientY - r.top) / r.height) * H]; };
   canvas.addEventListener("mousemove", (e) => { el.classList.add("mouse"); [P.cx, P.cy] = at(e); showBarIfTop(); hover(); });
-  canvas.addEventListener("click", (e) => { [P.cx, P.cy] = at(e); P.mode = "cursor"; paintBar(); click(); });
+  canvas.addEventListener("click", (e) => { [P.cx, P.cy] = at(e); P.mode = "cursor"; dropRing(); paintBar(); click(); });
   canvas.addEventListener("wheel", (e) => { e.preventDefault(); const [x, y] = at(e); send([{ type: "scroll", x, y, dx: e.deltaX, dy: e.deltaY }]); }, { passive: false });
   $(".player-bar", el).addEventListener("click", (e) => { const b = e.target.closest("[data-act]"); if (b) barAct(b.dataset.act); });
   return el;
@@ -113,8 +114,8 @@ export async function open(app, from) {
   if (!engine) return false;
   if (ENG[engine] && !ENG[engine].available) { H_?.toast(ENG[engine].message || `${app.name} isn't on this computer`); return "missing"; }
   build();
-  P.open = true; P.engine = engine; P.app = app; P.mode = "cursor"; P.cx = W / 2; P.cy = H / 2; P.focus = null; P.state = {}; P.live = false;
-  el.classList.remove("live", "typing", "mode-bar", "mouse", "loading");
+  P.open = true; P.engine = engine; P.app = app; P.mode = "links"; P.ring = null; P.cx = W / 2; P.cy = H / 2; P.focus = null; P.state = {}; P.live = false;
+  el.classList.remove("live", "typing", "mode-bar", "mouse", "loading", "mode-cursor", "ringed");
   el.style.setProperty("--a-bg", app.bg || "#111");
   el.style.setProperty("--a-fg", app.fg || "#fff");
   const k = document.getElementById("stage")?.getBoundingClientRect();
@@ -235,6 +236,7 @@ function onState(s) {
   $(".player-addr .host", el).textContent = host || "Search or type an address";
   $(".player-addr .title", el).textContent = P.state.title && P.state.title !== P.state.url && !P.state.url.includes(P.state.title) ? P.state.title : "";
   $(".player-addr .ic", el).innerHTML = host ? (secure ? IC.lock : IC.globe) : IC.search;
+  if (s.url && s.url !== P.ringUrl) dropRing();
   el.classList.toggle("loading", !!P.state.loading);
   if (P.state.loading) showBar(2500);
 }
@@ -298,6 +300,59 @@ async function moveCursor(dx, dy) {
   hover();
 }
 
+/* ── links: the arrows jump between the things you can press ─────────────
+   Like a TV's own browser: Up/Down/Left/Right go to the nearest link, button or field that way (the hub finds it
+   on the page), OK presses it, and with nothing left that way the page scrolls. Menu swaps to the free cursor. */
+function paintRing() {
+  const r = el && $(".player-ring", el);
+  if (!r) return;
+  const t = P.ring;
+  el.classList.toggle("ringed", !!t && P.mode === "links");
+  if (!t) return;
+  r.style.transform = `translate(${t.x - 6}px, ${t.y - 6}px)`;
+  r.style.width = `${t.w + 12}px`;
+  r.style.height = `${t.h + 12}px`;
+}
+function dropRing() { P.ring = null; P.ringUrl = P.state.url; paintRing(); }
+async function snap(dir, again) {
+  if (P.busy) return;
+  P.busy = true;
+  const r = await send([{ type: "snap", x: P.cx, y: P.cy, dir }]);
+  P.busy = false;
+  if (!P.open || P.mode !== "links") return;
+  if (r.target) {
+    P.ring = r.target;
+    P.ringUrl = P.state.url;
+    P.cx = r.target.cx;
+    P.cy = r.target.cy;
+    paintCursor();
+    paintRing();
+    if (P.cy < 150) showBar(1500);
+    return;
+  }
+  if (again || dir === "left" || dir === "right") return;
+  // Nothing more that way on screen: scroll, then take the first thing that came into view.
+  const dy = dir === "down" ? 1 : -1;
+  P.busy = true;
+  const before = P.scrollY;
+  const s = await send([{ type: "scroll", x: W / 2, y: H / 2, dx: 0, dy: dy * 640 }]);
+  P.busy = false;
+  if (s.scroll) P.scrollY = s.scroll.y;
+  if (dy < 0 && (!s.scroll || (s.scroll.y === 0 && before === 0))) { dropRing(); return focusBar(); }
+  if (s.scroll && s.scroll.y === before) return; // the end of the page
+  // Start from where the last ring is now that the page moved (frame pixels = CSS pixels × the hub's zoom).
+  const moved = s.scroll ? (s.scroll.y - before) * (s.zoom || 1) : 0;
+  P.cy = Math.max(20, Math.min(H - 20, P.cy - moved));
+  dropRing();
+  snap(dir, true);
+}
+function setMode(mode) {
+  P.mode = mode;
+  el.classList.toggle("mode-cursor", mode === "cursor");
+  paintRing();
+  H_?.toast(mode === "cursor" ? "Free cursor: arrows move it · Menu for links" : "Links: arrows jump between links · Menu for the cursor");
+}
+
 /* ── the bar ───────────────────────────────────────────────────────────── */
 const BAR = ["back", "address", "reload", "home"];
 function showBar(ms) {
@@ -307,6 +362,7 @@ function showBar(ms) {
 }
 function showBarIfTop() { if (P.cy < 150) showBar(1500); }
 function focusBar() {
+  if (P.mode !== "bar") P.lastMode = P.mode;
   P.mode = "bar";
   P.bar = 1;
   showBar();
@@ -372,19 +428,20 @@ export function key(name) {
   if (P.mode === "bar") {
     if (name === "left") P.bar = Math.max(0, P.bar - 1);
     else if (name === "right") P.bar = Math.min(BAR.length - 1, P.bar + 1);
-    else if (name === "down" || name === "back") { P.mode = "cursor"; P.cy = Math.max(P.cy, 170); paintCursor(); }
-    else if (name === "enter") { const act = BAR[P.bar]; if (act !== "back") { P.mode = "cursor"; } barAct(act); }
+    else if (name === "down" || name === "back") { P.mode = P.lastMode || "links"; P.cy = Math.max(P.cy, 170); paintCursor(); paintRing(); }
+    else if (name === "enter") { const act = BAR[P.bar]; if (act !== "back") { P.mode = P.lastMode || "links"; } barAct(act); }
     else if (name === "menu") startTyping("address");
     paintBar();
     return true;
   }
+  if (P.mode === "links" && ["left", "right", "up", "down"].includes(name)) { snap(name); return true; }
   if (name === "left") moveCursor(-1, 0);
   else if (name === "right") moveCursor(1, 0);
   else if (name === "up") moveCursor(0, -1);
   else if (name === "down") moveCursor(0, 1);
   else if (name === "enter") click();
   else if (name === "back") goBack();
-  else if (name === "menu") startTyping("address");
+  else if (name === "menu") setMode(P.mode === "links" ? "cursor" : "links");
   else if (name === "ai") send([{ type: "key", key: " " }]);
   return true;
 }

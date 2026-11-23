@@ -14,7 +14,7 @@
 // voice) comes from Java through window.LocalHubNative. On a laptop, apps open their websites.
 // ============================================================================
 
-import * as Stream from "./stream.js";
+import * as Stream from "./stream.js?v=2";
 // The TV's own assistant screen (assistant.js): the hub's agent and conversation, without the hub's chat UI.
 let Assistant = null;
 

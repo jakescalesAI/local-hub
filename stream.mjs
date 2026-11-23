@@ -16,7 +16,7 @@
 //   POST /api/tv/stream/open   { engine, url?, key?, fresh? } -> { ok, engine, tab, state } start it and show that
 //                              app's tab (a tab per app, so it comes back where you left it; fresh starts it over)
 //   GET  /api/tv/stream/frames?engine=             -> application/octet-stream, the packets above, until closed
-//   POST /api/tv/stream/input  { engine, events }  -> { ok, focus? } move, click, scroll, key, text
+//   POST /api/tv/stream/input  { engine, events }  -> { ok, focus?, target? } move, click, scroll, key, text, snap {x,y,dir}
 //   POST /api/tv/stream/nav    { engine, act, url? } -> { ok, left? } back | forward | reload | go | home
 //   POST /api/tv/stream/close  { engine }          -> { ok } the TV left: pause media, stop the frames
 //
@@ -203,6 +203,39 @@ const SELECT_ALL_JS = `(() => { let el = document.activeElement; while (el && el
   if (el && typeof el.select === 'function') el.select(); else document.execCommand('selectAll') })()`
 const PAUSE_JS = `document.querySelectorAll('video,audio').forEach(m => { try { m.pause() } catch {} })`
 const SCROLL_JS = `({ y: Math.round(scrollY), max: Math.max(0, document.documentElement.scrollHeight - innerHeight) })`
+// Link-to-link moves for the remote: the nearest visible thing you can press (link, button, field, tab, menu item)
+// from (x, y) in a direction, as a CSS-pixel rect, or null when there's none on screen that way.
+const SNAP_JS = (x, y, dir) => `((x, y, dir) => {
+  const SEL = 'a[href],button,input:not([type=hidden]),select,textarea,summary,[role=button],[role=link],[role=tab],[role=menuitem],[role=option],[role=checkbox],[role=switch],[onclick],[tabindex]:not([tabindex="-1"]),[contenteditable=""],[contenteditable=true]'
+  const W = innerWidth, H = innerHeight, out = []
+  const seen = new Set()
+  for (const el of document.querySelectorAll(SEL)) {
+    if (el.disabled || el.closest('[aria-hidden=true],[inert]')) continue
+    // An outer link wins over the button or image inside it.
+    const outer = el.parentElement && el.parentElement.closest(SEL)
+    if (outer && outer.getBoundingClientRect().width < W * .9) continue
+    const r = el.getBoundingClientRect()
+    if (r.width < 6 || r.height < 6 || r.bottom <= 0 || r.right <= 0 || r.top >= H || r.left >= W) continue
+    const cx = Math.min(Math.max(r.left + r.width / 2, 1), W - 1), cy = Math.min(Math.max(r.top + r.height / 2, 1), H - 1)
+    const hit = document.elementFromPoint(cx, cy)
+    if (!hit || !(hit === el || el.contains(hit) || hit.contains(el))) continue
+    const key = Math.round(r.left) + ',' + Math.round(r.top)
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push({ x: r.left, y: r.top, w: r.width, h: r.height, cx, cy })
+  }
+  let best = null, score = Infinity
+  for (const c of out) {
+    const dx = c.cx - x, dy = c.cy - y
+    // Ahead in the direction, then near in line with it: the usual TV spatial-navigation weighting.
+    const main = dir === 'right' ? dx : dir === 'left' ? -dx : dir === 'down' ? dy : -dy
+    const side = dir === 'left' || dir === 'right' ? Math.abs(dy) : Math.abs(dx)
+    if (main <= 4) continue
+    const s = main + side * 2.5
+    if (s < score) { score = s; best = c }
+  }
+  return best
+})(${Number(x)}, ${Number(y)}, ${JSON.stringify(String(dir))})`
 
 /* ---------- the module ---------- */
 
@@ -568,7 +601,7 @@ export function create({ here, dataDir = path.join(here, 'data', 'tv-stream'), f
     const out = { ok: true }
     for (const e of events) {
       if (!e || typeof e !== 'object') throw err(400, 'bad event')
-      if (['move', 'click', 'scroll'].includes(e.type) && !(finite(e.x) && finite(e.y))) throw err(400, `${e.type} needs x and y`)
+      if (['move', 'click', 'scroll', 'snap'].includes(e.type) && !(finite(e.x) && finite(e.y))) throw err(400, `${e.type} needs x and y`)
       if (e.type === 'move') {
         await inst.cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: css(e.x), y: css(e.y) }, s)
       } else if (e.type === 'click') {
@@ -582,6 +615,7 @@ export function create({ here, dataDir = path.join(here, 'data', 'tv-stream'), f
         await inst.cdp.send('Input.dispatchMouseEvent', { type: 'mouseWheel', x: css(e.x), y: css(e.y), deltaX: Number(e.dx) || 0, deltaY: Number(e.dy) || 0 }, s)
         await sleep(60)
         out.scroll = await evalPage(inst, SCROLL_JS)
+        out.zoom = zoom()
       } else if (e.type === 'key') {
         await key(inst, String(e.key || ''), Number(e.modifiers) || 0)
       } else if (e.type === 'text') {
@@ -590,6 +624,13 @@ export function create({ here, dataDir = path.join(here, 'data', 'tv-stream'), f
         if (text) await inst.cdp.send('Input.insertText', { text }, s)
         else if (e.replace) await key(inst, 'Delete')
         if (e.submit) await key(inst, 'Enter')
+      } else if (e.type === 'snap') {
+        if (!['up', 'down', 'left', 'right'].includes(e.dir)) throw err(400, 'snap needs dir: up, down, left or right')
+        const z = zoom()
+        const r = await evalPage(inst, SNAP_JS(css(e.x), css(e.y), e.dir))
+        out.target = r ? { x: Math.round(r.x * z), y: Math.round(r.y * z), w: Math.round(r.w * z), h: Math.round(r.h * z), cx: Math.round(r.cx * z), cy: Math.round(r.cy * z) } : null
+        // Hover it too, so menus that open on hover open.
+        if (r) await inst.cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: Math.round(r.cx), y: Math.round(r.cy) }, s)
       } else if (e.type === 'focus') {
         out.focus = await evalPage(inst, FOCUS_JS)
       } else if (e.type === 'where') {

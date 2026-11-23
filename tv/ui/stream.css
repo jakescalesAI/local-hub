@@ -46,6 +46,12 @@ body.stream-open #hub-wall { background: #000 !important; }
   transition: transform .18s var(--spring), opacity .3s var(--ease); will-change: left, top; }
 .player-cursor.press { transform: scale(.72); }
 .player.typing .player-cursor, .player.mode-bar .player-cursor, .player.mouse .player-cursor { opacity: 0; }
+/* links mode: a ring around the link, button or field the arrows landed on; the dot hides while it shows */
+.player-ring { position: absolute; left: 0; top: 0; z-index: 2; width: 0; height: 0; border-radius: 14px; pointer-events: none; opacity: 0;
+  box-shadow: 0 0 0 4px #fff, 0 0 0 7px rgba(0, 0, 0, .45); transition: transform .14s var(--ease), width .14s var(--ease), height .14s var(--ease), opacity .15s; will-change: transform; }
+.player.ringed .player-ring { opacity: 1; }
+.player.ringed .player-cursor { opacity: 0; }
+.player.typing .player-ring, .player.mode-bar .player-ring, .player.mouse .player-ring { opacity: 0; }
 
 /* typing: a glass sheet with a real input, so a Fire TV brings up its own keyboard */
 .player-type { position: absolute; inset: 0; z-index: 4; display: grid; place-items: start center; padding-top: 170px; background: rgba(0, 0, 0, .38); opacity: 0; pointer-events: none; transition: opacity .2s var(--ease); }
