@@ -14,3 +14,33 @@ sand.jpg      "Sand dunes stretch across a vast desert landscape" by Alexander P
               https://unsplash.com/photos/3j9D000gF8k
 graphite.jpg  "The night sky is reflected in the still water of a mountain lake" by Zetong Li
               https://unsplash.com/photos/85xbiAbVb9k
+
+Screensaver photos (saver/, cropped to 1920x1080 for the TV; aurora, dusk, graphite,
+ocean and sand there are smaller copies of the photos above), also under the Unsplash License:
+
+saver/yosemite.jpg      "River in Yosemite Valley at low light" by Bailey Zindel
+                        https://unsplash.com/photos/NRQV-hBF10M
+saver/boats.jpg         "Three brown wooden boats on blue lake water" by Pietro De Grandi
+                        https://unsplash.com/photos/T7K4aEPoGGk
+saver/summit.jpg        "Foggy mountain summit" by v2osk
+                        https://unsplash.com/photos/1Z2niiBPg5A
+saver/forest.jpg        "Aerial shot of forest" by pine watt
+                        https://unsplash.com/photos/2Hzmz15wGik
+saver/ranges.jpg        "Layered blue mountain ranges fade into the sky" by Marek Piwnicki
+                        https://unsplash.com/photos/_OuVFhN5BU
+saver/atitlan.jpg       "Stone path to Lake Atitlan pier" by Mark Harpur
+                        https://unsplash.com/photos/K2s_YE031CA
+saver/snowcaps.jpg      "Snow capped mountains with valley and forest" by Kalen Emsley
+                        https://unsplash.com/photos/Bkci_8qcdvQ
+saver/field.jpg         "Green grass field during sunset" by Robert Lukeman
+                        https://unsplash.com/photos/_RBcxo9AU-U
+saver/sunbeam.jpg       "Forest heat by sunbeam" by Johannes Plenio
+                        https://unsplash.com/photos/RwHv7LgeC7s
+saver/lakeside.jpg      "Landscape photography of lake and mountain" by Tobias Keller
+                        https://unsplash.com/photos/73F4pKoUkM0
+saver/sunrays.jpg       "Landscape photography of mountain hit by sun rays" by Urban Vintage
+                        https://unsplash.com/photos/78A265wPiO4
+saver/lone-tree.jpg     "Tree on body of water near mountains" by Ken Cheung
+                        https://unsplash.com/photos/KonWFWUaAuk
+saver/canyon-stars.jpg  "Canyon beneath the stars" by John Fowler
+                        https://unsplash.com/photos/03Pv2Ikm5Hk
