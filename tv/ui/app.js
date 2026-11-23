@@ -1419,6 +1419,21 @@ async function probeNative() {
   paintChip();
 }
 /* ── Java → page ───────────────────────────────────────────────────────── */
+// Back from an app, the TV redraws the whole home screen (about a second of slow frames on a Fire TV Stick). The
+// Home cover stays up until eight frames in a row come quickly (2.3 s at most), then goes: the screen appears finished.
+function whenDrawn() {
+  if (!NATIVE) return;
+  const t0 = performance.now();
+  let last = t0, quick = 0;
+  const step = (now) => {
+    quick = now - last < 25 ? quick + 1 : 0;
+    last = now;
+    if (quick >= 8 || now - t0 > 2300) return native("drawn");
+    requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
 window.haven = {
   key: (name) => handleKey(name),
   // The remote's Home: back to the first row of the home screen, with nothing open over it.
@@ -1437,7 +1452,7 @@ window.haven = {
     applyFocus();
   },
   closeHub: () => closeHub(),
-  resumed: () => endLaunch(),
+  resumed: () => { endLaunch(); whenDrawn(); },
   // Until the first key press, the list filling in (the TV's apps arrive a moment after the page) keeps focus on
   // the first app; after it, focus stays on the app you were on.
   appsChanged: () => { const keep = S.touched ? ITEMS[S.i]?.id : null; loadItems(); S.i = Math.max(0, ITEMS.findIndex((x) => x.id === keep)); S.shelfId = null; renderGrid(); APPS_READY.resolve?.(); },

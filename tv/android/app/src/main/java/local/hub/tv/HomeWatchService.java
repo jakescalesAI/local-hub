@@ -105,10 +105,17 @@ public class HomeWatchService extends Service {
         }
     }
 
-    /** MainActivity is in front again: the cover can go (a beat later, once its first frame is up). */
+    /** MainActivity is in front again: the cover goes once the page says its home screen is drawn (drawn()),
+     *  or after 2.5 s at most. Redrawing after the background took the stick about a second of 200-400 ms frames. */
     static void localHubShown() {
         HomeWatchService s = self;
-        if (s != null) s.main.postDelayed(s::hideCover, 250);
+        if (s != null) s.main.postDelayed(s::hideCover, 2500);
+    }
+
+    /** The page has drawn its home screen smoothly again: the cover can go now. */
+    static void drawn() {
+        HomeWatchService s = self;
+        if (s != null) s.main.post(s::hideCover);
     }
 
     private void showCover() {

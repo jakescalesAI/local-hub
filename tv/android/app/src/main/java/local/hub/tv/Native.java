@@ -221,6 +221,12 @@ final class Native {
         activity.runOnUiThread(activity::loadHub);
     }
 
+    /** The home screen is drawn again after coming back: the Home cover can go. */
+    @JavascriptInterface
+    public void drawn() {
+        HomeWatchService.drawn();
+    }
+
     @JavascriptInterface
     public void forgetHub() {
         if (!activity.pageTrusted) return;
