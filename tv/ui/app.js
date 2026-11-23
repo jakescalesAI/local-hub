@@ -1519,7 +1519,8 @@ async function bakeGlass() {
 function handleKey(name) {
   armSaver();
   if (S.overlay === "saver") return stopSaver();
-  if (S.overlay === "launch") return;
+  // Opening an app: Back always comes home, even if the app never came up.
+  if (S.overlay === "launch") { if (name === "back") endLaunch(); return; }
   if (S.overlay === "stream") return void Stream.key(name);
   if (S.overlay === "hub") { if (name === "back") closeHub(); return; }
   if (name === "help") { prefs.help = !prefs.help; savePrefs(); return showKeys(prefs.help); }
