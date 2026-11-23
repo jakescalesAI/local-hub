@@ -1051,7 +1051,8 @@ function settingsModel() {
 
     ...((SETTINGS?.tv?.hidden || []).length ? [{ id: "unhide", t1: "Hidden apps", t2: "Hold OK on a tile to hide it. This shows them all again", v: `${SETTINGS.tv.hidden.length} hidden` }] : []),
     ...(Array.isArray(SETTINGS?.tv?.apps) && SETTINGS.tv.apps.length ? [{ id: "reorder", t1: "App order", t2: "Hold OK on a tile to move it. This goes back to recent first", v: "Your order" }] : []),
-    { id: "look", t1: "Wallpaper, style and widgets", t2: "Opens LocalHub, where you change the TV", v: SETTINGS?.wallpaper?.current ? cap(SETTINGS.wallpaper.current) : "Aurora" },
+    ...(IN_HUB && !PREVIEW ? [{ id: "wall", t1: "Wallpaper", t2: "Pick one here: it changes straight away", v: wallName(SETTINGS?.wallpaper?.current ?? "aurora") }] : []),
+    { id: "look", t1: "Style and widgets", t2: "Opens LocalHub, where you change the TV", v: "" },
     { group: "Assistant" },
     ...hubRows,
     { key: "speak", t1: "Read answers aloud", t2: NATIVE ? "With the TV's voice" : "With this computer's voice", values: ["After voice", "Always", "Off"] },
@@ -1110,6 +1111,7 @@ function settingsActivate() {
   else if (it.id === "address") return openModal("LocalHub address", "The laptop's address on your network, and the hub's port.", HUB.url.replace(/^https?:\/\//, ""), (v) => { native("setHub", v.trim()); HUB.paired = false; probeNative(); });
   else if (it.id === "pair") return openPairing();
   else if (it.id === "saverSource") return cycleSaverSource();
+  else if (it.id === "wall") return openWallPicker();
 
   else if (it.id === "unhide") return saveTv({ hidden: null }, "Every app is back").then(renderSettings);
   else if (it.id === "reorder") return saveTv({ apps: null }, "Apps are back in recent order").then(renderSettings);
@@ -1199,7 +1201,8 @@ function armSaver() {
    picked for it, as glass cards. With no hub, or a library that is empty or fails, the wallpapers show. */
 const SAVER_DEFAULT = { source: "wallpapers", folder: "", interval: 12, shuffle: true, motion: "kenburns", widgets: ["clock", "date"] };
 const SAVER_SOURCES = { wallpapers: "Wallpapers", pictures: "Pictures", icloud: "iCloud Photos", folder: "Folder" };
-const SAVER_WALLS = Object.keys(BUILTIN_WALLS).map((id) => ({ id: `wall-${id}`, url: wallUrl(id) }));
+// Without LocalHub: the TV's own photos, at its 1920x1080.
+const SAVER_WALLS = Object.keys(TV_PHOTOS).map((id) => ({ id: `wall-${id}`, url: `./photos/saver/${id}.jpg` }));
 const SAVER_FADE = 1800;
 const SAVER_STALE = 5 * 60e3;
 // Ken Burns: where a photo starts and ends. Slow, and never far enough to show an edge.
@@ -1837,6 +1840,7 @@ function handleKey(name) {
   if (name === "help") { prefs.help = !prefs.help; savePrefs(); return showKeys(prefs.help); }
   if (S.overlay === "modal") { if (name === "back") closeModal(false); return; }
   if (S.overlay === "tilemenu") return tileMenuKey(name);
+  if (S.overlay === "wallpick") return wallKey(name);
   if (S.moving) return moveKey(name);
   if (S.pendingOpen && name === "enter") { const app = S.pendingOpen; S.pendingOpen = null; return launch(app, () => openApp(app)); }
   S.pendingOpen = null;
@@ -1915,6 +1919,60 @@ function press(fn) {
   if (!node) return fn();
   node.classList.add("pressed");
   setTimeout(() => { node.classList.remove("pressed"); fn(); }, 80); // OK already waits for the key to come up
+}
+
+/* ── Settings › Wallpaper: pick one on the TV ──────────────────────────── */
+const WALL_NAMES = { aurora: "Aurora", dusk: "Dusk", graphite: "Graphite", ocean: "Ocean", sand: "Sand", "mono-light": "Light", "mono-dark": "Dark", noise: "Grain", none: "None" };
+function wallName(id) {
+  if (WALL_NAMES[id]) return WALL_NAMES[id];
+  const g = (SETTINGS?.wallpaper?.custom || []).find((w) => w.id === id) || (SETTINGS?.wallpaper?.uploads || []).find((w) => w.id === id);
+  return g?.name || cap(String(id || "").replace(/^custom-/, "")) || "Custom";
+}
+// Every wallpaper: the built-in ones (their small pictures, not the 4K photos), your gradients and your uploads.
+function wallChoices() {
+  const w = SETTINGS?.wallpaper || {};
+  return [
+    ...Object.keys(BUILTIN_WALLS).map((id) => ({ id, name: wallName(id), pic: TV_PHOTOS[id] ? `./photos/thumbs/${id}.jpg` : `./wallpapers/${id}.svg` })),
+    ...(w.custom || []).map((g) => ({ id: g.id, name: wallName(g.id), css: gradCss(g) })),
+    ...(w.uploads || []).map((u) => ({ id: u.id, name: wallName(u.id), pic: `/api/hub/wallpapers/${u.file}` })),
+  ];
+}
+function openWallPicker() {
+  S.walls = wallChoices();
+  const cur = SETTINGS?.wallpaper?.current ?? "aurora";
+  S.wallAt = Math.max(0, S.walls.findIndex((x) => x.id === cur));
+  paintWallGrid();
+  $("#wallPick").classList.add("on");
+  S.wallFrom = S.overlay;
+  S.overlay = "wallpick";
+}
+function paintWallGrid() {
+  const cur = SETTINGS?.wallpaper?.current ?? "aurora";
+  $("#wallGrid").innerHTML = S.walls.map((x, i) => `<div class="wp${i === S.wallAt ? " sel" : ""}" data-w="${i}"><div class="wp-pic"${x.css ? ` style="background:${esc(x.css)}"` : ""}>${x.pic ? `<img src="${esc(x.pic)}" alt="" decoding="async">` : ""}${x.id === cur ? `<span class="wp-check">${sym('<path d="M5 12.5l4.5 4.5L19 7.5"/>', 3)}</span>` : ""}</div><div class="wp-name">${esc(x.name)}</div></div>`).join("");
+  // More than two rows: the grid slides so the chosen row stays in view.
+  const row = Math.floor(S.wallAt / 4);
+  $("#wallGrid").style.transform = row > 1 ? `translateY(${-(row - 1) * 260}px)` : "";
+}
+function closeWallPicker() {
+  $("#wallPick").classList.remove("on");
+  S.overlay = S.wallFrom || null;
+  if (S.overlay === "settings") renderSettings();
+}
+async function wallKey(name) {
+  const n = S.walls.length;
+  const d = { left: -1, right: 1, up: -4, down: 4 }[name];
+  if (d) { const to = S.wallAt + d; if (to >= 0 && to < n) { S.wallAt = to; paintWallGrid(); } return; }
+  if (name === "back" || name === "menu") return closeWallPicker();
+  if (name !== "enter") return;
+  const pick = S.walls[S.wallAt];
+  if (!pick || pick.id === (SETTINGS?.wallpaper?.current ?? "aurora")) return closeWallPicker();
+  try {
+    const r = await fetch("/api/hub/settings", { method: "POST", headers: { "content-type": "application/json", "x-hub": "1" }, body: JSON.stringify({ wallpaper: { current: pick.id } }) });
+    if (!r.ok) return toast("LocalHub couldn't save that");
+    await syncHub();
+    paintWallGrid();
+    toast(`Wallpaper: ${pick.name}`);
+  } catch { toast("LocalHub didn't answer"); }
 }
 
 /* ── hold OK on a tile: Open, Move, Hide ───────────────────────────────── */
@@ -2109,6 +2167,12 @@ document.addEventListener("click", (e) => {
   if (HOLD.fired) { HOLD.fired = false; return; } // the long press already opened the menu
   if (PREVIEW) { const a = e.target.closest(".app"); if (a) pickTile(a); return; }
   if (S.overlay === "saver") return stopSaver();
+  if (S.overlay === "wallpick") {
+    const wp = e.target.closest(".wp");
+    if (wp) { S.wallAt = Number(wp.dataset.w); return wallKey("enter"); }
+    if (!e.target.closest(".wallpick-card")) return closeWallPicker();
+    return;
+  }
   if (S.overlay === "tilemenu") {
     const item = e.target.closest(".tilemenu-item");
     if (item) { S.menuAt = Number(item.dataset.m); paintTileMenu(); return tileMenuKey("enter"); }

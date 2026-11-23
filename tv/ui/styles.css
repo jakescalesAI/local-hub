@@ -241,6 +241,20 @@ html.lite .settings::before { background: var(--bg); -webkit-backdrop-filter: no
 
 
 /* ── modal (hub alert) ─────────────────────────────────────────────────────── */
+/* Settings › Wallpaper: every wallpaper LocalHub has, as small pictures; OK puts it up straight away. */
+.wallpick { position: absolute; inset: 0; z-index: 41; display: grid; place-items: center; background: rgba(0, 0, 0, .6); opacity: 0; pointer-events: none; transition: opacity .2s var(--ease); }
+.wallpick.on { opacity: 1; pointer-events: auto; }
+.wallpick-card { width: 1560px; max-height: 900px; padding: 44px 48px 48px; border-radius: 40px; background: #1c1d22; box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .14); color: #fff; overflow: hidden; }
+.wallpick-title { font: 700 44px/1 var(--display); letter-spacing: -0.02em; margin: 0 0 32px 6px; }
+.wallpick-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 28px 24px; transition: transform .35s var(--ease); }
+.wp { position: relative; display: flex; flex-direction: column; gap: 14px; }
+.wp-pic { position: relative; aspect-ratio: 16 / 9; border-radius: 22px; overflow: hidden; background: #2c2c2e center / cover no-repeat; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .1); transition: transform .25s var(--ease), box-shadow .2s var(--ease); }
+.wp-pic img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.wp-name { font: 600 26px/1 var(--display); color: rgba(255, 255, 255, .7); padding-left: 6px; }
+.wp.sel .wp-pic { transform: scale(1.05); box-shadow: 0 0 0 5px #fff, 0 20px 40px rgba(0, 0, 0, .5); }
+.wp.sel .wp-name { color: #fff; }
+.wp-check { position: absolute; right: 14px; top: 14px; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: #0a84ff; color: #fff; }
+.wp-check .sym { width: 26px; height: 26px; }
 /* Hold OK on a tile: Open, Move, Hide (and Remove, for your websites). */
 .tilemenu { position: absolute; inset: 0; z-index: 40; display: grid; place-items: center; background: rgba(0, 0, 0, .55); opacity: 0; pointer-events: none; transition: opacity .18s var(--ease); }
 .tilemenu.on { opacity: 1; pointer-events: auto; }
@@ -293,10 +307,11 @@ html.lite .settings::before { background: var(--bg); -webkit-backdrop-filter: no
 @keyframes saverKB { from { transform: var(--kb-from, none); } to { transform: var(--kb-to, none); } }
 /* What floats on the photos is laid out on the TV's 1920×1080 canvas, pinned to the bottom left. */
 /* The photo fills the screen; the time and your widgets sit over its right half, on a soft shade from the right. */
-.saver-shade { position: absolute; inset: 0; z-index: 3; pointer-events: none; background: linear-gradient(to left, rgba(0, 0, 0, .55) 0%, rgba(0, 0, 0, .3) 30%, rgba(0, 0, 0, 0) 55%); }
+.saver-shade { position: absolute; inset: 0; z-index: 3; pointer-events: none; background: linear-gradient(to left, rgba(0, 0, 0, .42) 0%, rgba(0, 0, 0, 0) 42%), linear-gradient(to top, rgba(0, 0, 0, .5) 0%, rgba(0, 0, 0, .15) 30%, rgba(0, 0, 0, 0) 50%); }
 .saver-hud { position: absolute; left: 0; bottom: 0; z-index: 4; width: 1920px; height: 1080px; transform: scale(var(--k, 1)); transform-origin: 0 100%; display: flex; flex-direction: column; align-items: flex-end; justify-content: space-between; gap: 36px; padding: 70px 120px 70px 960px; pointer-events: none; }
 .saver-hud > :only-child { margin-top: auto; }
-.saver-when { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; color: #fff; text-align: right; }
+/* The time and date at the bottom left; your widgets down the right. */
+.saver-when { position: absolute; left: 120px; bottom: 92px; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; color: #fff; text-align: left; }
 .saver-time { display: flex; align-items: baseline; gap: 14px; font: 600 156px/.9 var(--display); letter-spacing: -0.035em; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .saver-time small { font-size: 46px; font-weight: 600; letter-spacing: 0; color: rgba(255, 255, 255, .8); }
 .saver-date { font-size: 38px; font-weight: 600; letter-spacing: -0.01em; color: rgba(255, 255, 255, .85); padding-left: 6px; }

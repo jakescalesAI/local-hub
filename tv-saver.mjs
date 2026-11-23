@@ -155,12 +155,15 @@ export function create({ here, home = os.homedir(), platform = process.platform 
     return { wallpapers: true }
   }
 
-  // The hub's uploads (your own photos) first, then the built-in wallpapers.
+  // The hub's uploads (your own photos) first, then the TV's photos (tv/ui/photos/saver, made at the TV's own
+  // 1920x1080: sharp, and light on a Fire TV Stick's memory). The gradient wallpapers only if those are missing.
   function wallpaperEntries() {
     const s = st.get()
-    const upDir = path.join(here, 'data', 'wallpapers'), wallDir = path.join(here, 'wallpapers')
+    const upDir = path.join(here, 'data', 'wallpapers'), wallDir = path.join(here, 'wallpapers'), photoDir = path.join(here, 'tv', 'ui', 'photos', 'saver')
     const ups = (s.wallpaper?.uploads || []).map(u => ({ root: upDir, file: path.join(upDir, u.file), type: IMAGE_TYPES[path.extname(u.file).toLowerCase()] }))
-    const builtin = BUILTIN_WALLPAPERS.map(w => ({ root: wallDir, file: path.join(wallDir, `${w.id}.svg`), type: 'image/svg+xml' }))
+    let photos = []
+    try { photos = fs.readdirSync(photoDir).filter(f => /\.jpe?g$/i.test(f)).sort().map(f => ({ root: photoDir, file: path.join(photoDir, f), type: 'image/jpeg' })) } catch { /* none */ }
+    const builtin = photos.length ? photos : BUILTIN_WALLPAPERS.map(w => ({ root: wallDir, file: path.join(wallDir, `${w.id}.svg`), type: 'image/svg+xml' }))
     return [...ups, ...builtin].filter(e => e.type).map(e => ({ ...e, id: photoId(e.root, e.file) }))
   }
 
