@@ -6,10 +6,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="./hub.svg">
 <meta name="theme-color" content="#0b0f16">
-<link rel="stylesheet" href="./styles.css?v=56">
+<link rel="stylesheet" href="./styles.css?v=57">
 <link rel="stylesheet" href="./assistant.css?v=6">
 <!-- Fetched alongside app.js instead of after it has been parsed: ~0.9 s sooner to a home screen on a Fire TV Stick. -->
-<link rel="modulepreload" href="./app.js?v=78">
+<link rel="modulepreload" href="./app.js?v=79">
 <link rel="modulepreload" href="./stream.js?v=3">
 <!-- Served by the hub: its config and settings are asked for now, while the page's own files load, instead of
      after app.js has run (~0.6 s later on a Fire TV Stick). app.js picks them up. -->
@@ -41,6 +41,8 @@ if (location.pathname.startsWith("/tv")) {
   <section class="view" id="assistantView" aria-label="Assistant"></section>
 
   <header class="when"><span class="when-time" id="clock"></span><span class="when-date" id="today"></span></header>
+  <div class="homew" id="homeW"></div>
+  <aside class="wpanel" id="wpanel"><div class="wpanel-title">Widgets</div><div class="wpanel-list" id="wpList"></div></aside>
   <button type="button" class="gear" id="gearBtn" aria-label="Control Center"><svg class="sym" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3 1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8 1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><i class="st"></i></button>
 
   <div class="scrim" id="scrim"></div>
@@ -100,6 +102,6 @@ if (location.pathname.startsWith("/tv")) {
   /* The hub page defines hubFetch for chat.js (it waits out hub restarts); the TV only needs plain fetch. */
   if (typeof window.hubFetch !== "function") window.hubFetch = function (url, init) { return fetch(url, init); };
 </script>
-<script type="module" src="./app.js?v=78"></script>
+<script type="module" src="./app.js?v=79"></script>
 </body>
 </html>

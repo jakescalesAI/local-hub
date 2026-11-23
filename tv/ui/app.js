@@ -207,6 +207,7 @@ function takeSettings(next) {
     renderGrid();
   }
   if (lookChanged) applyLook(); // repaints the shelf too
+  paintHomeWidgets();
 }
 function paintChip() {
   $("#splashName").textContent = HUB.name;
@@ -470,6 +471,8 @@ function applyFocus(instant) {
     // The clock rides over the Top Shelf; in the rows it would sit on the top tiles, so it steps aside.
     const when = $(".when");
     if (when && (when.style.opacity === "0") !== grid) when.style.opacity = grid ? "0" : "";
+    const hw = $("#homeW");
+    if (hw && (hw.style.opacity === "0") !== grid) hw.style.opacity = grid ? "0" : "";
   } else document.body.classList.toggle("in-grid", grid);
   // Row 0 sits on the Top Shelf. Further down, in one long scroll (the default, like tvOS) the
   // focused row rides about a third of the way up; in pages the rows move three at a time.
@@ -709,7 +712,7 @@ function loadWeather() {
   WX.busy = true;
   fetch("/api/tv/weather", { cache: "no-store" }).then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
     .then((b) => { WX.body = b; WX.err = null; }).catch((e) => { WX.err = e; })
-    .finally(() => { WX.at = Date.now(); WX.busy = false; if (S.overlay === "saver") paintSaverHud(); });
+    .finally(() => { WX.at = Date.now(); WX.busy = false; if (S.overlay === "saver") paintSaverHud(); if (S.overlay === "wpanel") paintWpanel(); paintHomeWidgets(); });
 }
 const LABELS = { "next-event": "Next event", "claude-usage": "Claude usage", tokens: "Tokens", today: "Today", coolify: "Coolify", services: "Services", "server-health": "Server", drives: "Drives", "stripe-balance": "Stripe", icloud: "iCloud" };
 
@@ -768,7 +771,7 @@ function activate() {
   if (S.zone === "bar") return HUB.on ? focusBar() : openPairing();
   const it = focused();
   if (!it) return;
-  if (it.id === "ctl:widgets") return openCC();
+  if (it.id === "ctl:widgets") return openWidgets();
   if (it.id === "ctl:sort") return openSortMenu();
   if (it.id === "ctl:search") return openSearch();
   if (it.kind === "favadd") return startFavSelect();
@@ -1023,6 +1026,62 @@ function paintTiles() {
   S.cc = clamp(S.cc, 0, CC.length - 1);
   paintCC();
 }
+/* ── the home screen's widgets (top right) and the widget panel (the row's widgets button) ── */
+function paintHomeWidgets() {
+  const box = $("#homeW");
+  if (!box) return;
+  const sizes = {};
+  for (const x of SETTINGS?.widgets?.tv || []) { const id = x?.id || x?.[0]; if (id && id !== "clock" && id !== "date" && WIDGETS[id]) sizes[id] = x?.size || x?.[1] || "s"; }
+  const html = Object.keys(sizes).slice(0, 2).map((id) => widgetCard(id, sizes[id])).join("");
+  if (box._html !== html) { box.innerHTML = html; box._html = html; }
+}
+const WP_IC = {
+  vol: sym('<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/>', 2),
+  pic: sym('<rect x="3" y="4.5" width="18" height="12" rx="2"/><path d="M8 20h8M12 16.5V20"/>', 2),
+};
+function volState() { return NATIVE ? safeJson(native("volume", 0), {}) || {} : {}; }
+function wpItems() {
+  const v = volState();
+  const pct = v.max ? Math.round((v.level / v.max) * 100) : 0;
+  return [
+    { id: "weather", html: WX.body ? wxCard(WX.body, "m") : `<div class="t2">${WX.err ? "Weather isn’t available right now" : "Finding the weather…"}</div>`, cls: "wx" },
+    { id: "volume", html: `${WP_IC.vol}<div class="grow"><div class="t1">Volume</div>${NATIVE && !v.fixed ? `<div class="bar"><i style="width:${pct}%"></i></div>` : `<div class="t2">With your TV's remote</div>`}</div><div class="t2">${NATIVE && !v.fixed ? "◀ ▶" : ""}</div>` },
+    { id: "picture", html: `${WP_IC.pic}<div class="grow"><div class="t1">Picture & brightness</div><div class="t2">Your TV's own settings</div></div>` },
+    { id: "timer", html: `${SYM.timer}<div class="grow"><div class="t1">Sleep timer</div><div class="t2">${S.sleepAt ? `At ${clockText(new Date(S.sleepAt))}` : "Off"}</div></div>` },
+    { id: "saver", html: `${SYM.moon}<div class="grow"><div class="t1">Screensaver</div><div class="t2">Start it now</div></div>` },
+    { id: "settings", html: `${SYM.gear}<div class="grow"><div class="t1">Settings</div><div class="t2">LocalHub TV</div></div>` },
+  ];
+}
+function paintWpanel() {
+  S.wp = wpItems();
+  S.wpAt = clamp(S.wpAt ?? 1, 0, S.wp.length - 1);
+  $("#wpList").innerHTML = S.wp.map((x, i) => `<div class="wpi ${x.cls || ""}${i === S.wpAt ? " sel" : ""}" data-w="${i}">${x.html}</div>`).join("");
+}
+function openWidgets() {
+  loadWeather();
+  S.wpAt = 1;
+  paintWpanel();
+  $("#wpanel").classList.add("on");
+  setOverlay("wpanel");
+}
+function closeWidgets() {
+  $("#wpanel").classList.remove("on");
+  setOverlay(null);
+}
+function wpKey(name) {
+  const it = S.wp[S.wpAt];
+  if (name === "up") { S.wpAt = Math.max(0, S.wpAt - 1); return paintWpanel(); }
+  if (name === "down") { S.wpAt = Math.min(S.wp.length - 1, S.wpAt + 1); return paintWpanel(); }
+  if (it?.id === "volume" && (name === "left" || name === "right")) { native("volume", name === "right" ? 1 : -1); return paintWpanel(); }
+  if (name === "back" || name === "menu" || name === "left") return closeWidgets();
+  if (name !== "enter") return;
+  if (it?.id === "picture") { closeWidgets(); return native("openDisplaySettings"); }
+  if (it?.id === "timer") { cycleSleepTimer(); return paintWpanel(); }
+  if (it?.id === "saver") { closeWidgets(); return startSaver(); }
+  if (it?.id === "settings") { closeWidgets(); return openSettings(); }
+  if (it?.id === "volume") { native("volume", 1); return paintWpanel(); }
+}
+
 function openCC() {
   S.cc = 0;
   paintTiles();
@@ -1118,6 +1177,7 @@ function settingsModel() {
     { title: "Settings" },
     { group: "Home Screen" },
     { key: "clock", t1: "Clock", t2: "Top left, and on the screensaver", values: ["12-hour", "24-hour"] },
+    { key: "homeClock", t1: "Home clock", t2: "What the top left of the home screen shows", values: ["Time and date", "Time", "Off"] },
     { key: "inputs", t1: "HDMI inputs", t2: "Shown as icons after the apps", toggle: true },
     { key: "saver", t1: "Screensaver", t2: "After the remote has been still", values: ["Off", "2 min", "5 min", "10 min", "15 min"] },
     IN_HUB && !PREVIEW
@@ -1261,6 +1321,9 @@ function clockParts(d) {
 const clockText = (d) => { const p = clockParts(d); return p.ap ? `${p.hm} ${p.ap}` : p.hm; };
 function tick() {
   const d = new Date();
+  const when = $(".when"), hc = prefs.homeClock || "Time and date";
+  when.classList.toggle("time-only", hc === "Time");
+  when.classList.toggle("off", hc === "Off");
   $("#clock").textContent = clockText(d);
   $("#today").textContent = d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
   if (S.overlay === "saver") paintSaverHud();
@@ -1931,6 +1994,7 @@ function handleKey(name) {
   if (S.overlay === "modal") { if (name === "back") closeModal(false); return; }
   if (S.overlay === "tilemenu") return tileMenuKey(name);
   if (S.overlay === "wallpick") return wallKey(name);
+  if (S.overlay === "wpanel") return wpKey(name);
   if (S.moving) return moveKey(name);
   if (S.pendingOpen && name === "enter") { const app = S.pendingOpen; S.pendingOpen = null; return launch(app, () => openApp(app)); }
   S.pendingOpen = null;

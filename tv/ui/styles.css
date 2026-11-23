@@ -688,7 +688,35 @@ html.native #hub-chat { zoom: calc(var(--k, .5) * 1.25); }
    transform, and the only things that ever move are layers that were drawn once. */
 :root { --rail-w: 140px; --side: 212px; --icon-w: 276px; --icon-h: 172px; --gap-x: 44px; --pitch: 236px; }
 .gear, .cc, .scrim, .hubapp { display: none !important; }
-.when { left: auto; right: 84px; }
+/* The home screen's time and date: top left, in the screensaver's type (Settings > Home clock). */
+.when { left: var(--side); top: 44px; flex-direction: column; align-items: flex-start; gap: 8px; }
+.when .when-time { font: 600 92px/.92 var(--display); letter-spacing: -0.035em; }
+.when .when-date { font-size: 30px; font-weight: 600; color: rgba(255, 255, 255, .85); padding-left: 4px; }
+.when.time-only .when-date, .when.off { display: none; }
+/* Your LocalHub TV widgets (Home, TV view) at the top right of the home screen, like the screensaver's. */
+.homew { position: absolute; right: 84px; top: 44px; z-index: 6; display: flex; flex-direction: column; align-items: flex-end; gap: 18px; pointer-events: none; transition: opacity .4s var(--ease); }
+.homew .w.card { width: 340px; height: auto; padding: 22px 26px 24px; gap: 14px; border-radius: 30px; background: rgba(24, 25, 31, .78) !important; box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .14) !important; }
+.homew .w.card.sz-m, .homew .w.card.sz-l { width: 560px; }
+.homew .w.card .w-label { font: 600 20px/1 var(--display); color: rgba(255, 255, 255, .62); }
+.homew .w.card .w-label .dot { display: none; }
+.homew .w.card .w-label .sym { width: 22px; height: 22px; }
+.homew .wxw { font-size: 17px; color: #fff; }
+/* The widget panel (the row's widgets button): from the right, solid like Settings. */
+.wpanel { position: absolute; top: 0; right: 0; bottom: 0; z-index: 25; width: 760px; padding: 56px 48px; background: #17181d; border-radius: 40px 0 0 40px; box-shadow: inset 1.5px 0 0 rgba(255, 255, 255, .1); color: #fff; transform: translateX(100%); transition: transform .3s var(--ease); will-change: transform; }
+.wpanel.on { transform: none; }
+.wpanel-title { font: 700 48px/1 var(--display); letter-spacing: -0.02em; margin: 0 0 30px 8px; }
+.wpanel-list { display: flex; flex-direction: column; gap: 14px; }
+.wpi { display: flex; align-items: center; gap: 22px; min-height: 96px; padding: 18px 26px; border-radius: 28px; background: rgba(255, 255, 255, .07); box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .06); font-size: 28px; }
+.wpi .sym { width: 36px; height: 36px; flex: none; }
+.wpi .t1 { font-weight: 600; }
+.wpi .t2 { font-size: 22px; color: rgba(255, 255, 255, .6); margin-top: 4px; }
+.wpi .grow { flex: 1; min-width: 0; }
+.wpi.sel { background: #f2f2f5; color: #000; }
+.wpi.sel .t2 { color: rgba(0, 0, 0, .55); }
+.wpi.wx { display: block; padding: 26px 30px; }
+.wpi.wx .wxw { font-size: 21px; color: inherit; }
+.wpi .bar { height: 10px; margin-top: 12px; border-radius: 6px; background: rgba(128, 128, 128, .3); overflow: hidden; }
+.wpi .bar i { display: block; height: 100%; border-radius: 6px; background: #0a84ff; }
 
 .rail { position: absolute; left: 0; top: 0; bottom: 0; width: var(--rail-w); z-index: 30; display: flex; flex-direction: column; align-items: stretch; padding: 56px 0; }
 .rail-panel { position: absolute; left: 0; top: 0; bottom: 0; width: 460px; z-index: -1; border-radius: 0 40px 40px 0; will-change: transform;

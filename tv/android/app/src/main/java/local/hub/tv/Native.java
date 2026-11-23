@@ -68,6 +68,28 @@ final class Native {
         open(Settings.ACTION_SETTINGS);
     }
 
+    /** Fire TV's picture settings: brightness and the rest belong to the TV, not to an app. */
+    @JavascriptInterface
+    public void openDisplaySettings() {
+        if (!activity.pageTrusted) return;
+        open(Settings.ACTION_DISPLAY_SETTINGS);
+    }
+
+    /** The TV's media volume: dir -1 quieter, 1 louder, 0 just tell. -> { level, max, muted, fixed } */
+    @JavascriptInterface
+    public String volume(int dir) {
+        JSONObject o = new JSONObject();
+        try {
+            android.media.AudioManager am = (android.media.AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+            int s = android.media.AudioManager.STREAM_MUSIC;
+            if (dir != 0 && activity.pageTrusted && !am.isVolumeFixed()) {
+                am.adjustStreamVolume(s, dir > 0 ? android.media.AudioManager.ADJUST_RAISE : android.media.AudioManager.ADJUST_LOWER, android.media.AudioManager.FLAG_SHOW_UI);
+            }
+            o.put("level", am.getStreamVolume(s)).put("max", am.getStreamMaxVolume(s)).put("fixed", am.isVolumeFixed());
+        } catch (Exception ignored) { }
+        return o.toString();
+    }
+
     @JavascriptInterface
     public void openBluetoothSettings() {
         if (!activity.pageTrusted) return;
