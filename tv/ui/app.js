@@ -216,6 +216,16 @@ function siteApps() {
     letter: String(s.name || "").trim().slice(0, 1).toUpperCase() || "•", siteIcon: `/api/hub/app-icon/${encodeURIComponent(s.id)}`,
   }));
 }
+function removeSitePress(it) {
+  if (S.removeAsk?.id === it.id && Date.now() - S.removeAsk.at < 4000) {
+    S.removeAsk = null;
+    fetch("/api/hub/settings", { method: "POST", headers: { "content-type": "application/json", "x-hub": "1" }, body: JSON.stringify({ sites: { remove: [it.id] } }) })
+      .then((r) => (r.ok ? syncHub().then(() => toast(`Removed ${it.name}`)) : toast("LocalHub couldn't remove it")), () => toast("LocalHub didn't answer"));
+    return;
+  }
+  S.removeAsk = { id: it.id, at: Date.now() };
+  toast(`Press ☰ again to remove ${it.name}`);
+}
 async function addSite(text) {
   let raw = String(text || "").trim();
   if (!raw) return;
@@ -1603,7 +1613,12 @@ function handleKey(name) {
     case "up": return move(0, -1);
     case "down": return move(0, 1);
     case "enter": return press(activate);
-    case "menu": return openRail();
+    case "menu": {
+      // On one of your websites, ☰ twice removes it (from the hub, so everywhere); anywhere else ☰ opens the sidebar.
+      const it = ITEMS[S.i];
+      if (S.zone === "grid" && it?.kind === "site") return removeSitePress(it);
+      return openRail();
+    }
     case "saver": return startSaver();
     case "back":
       if (S.zone !== "grid") { S.zone = "grid"; return applyFocus(); }
