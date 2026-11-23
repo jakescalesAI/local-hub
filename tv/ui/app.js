@@ -1135,8 +1135,20 @@ if (NATIVE) {
   window.HubVoice = {
     // Resolves with what was said ("" when nothing was), rejects when the TV has no mic it can use.
     listen({ onLevel, onWorking } = {}) {
+      // A Fire TV Stick opens a recorder that never delivers a frame (the remote's mic belongs to Alexa), and the
+      // read blocks. No level within 2.5 s means no mic: say so once, and don't try again this session.
+      const NO_MIC = "This TV has no microphone LocalHub can use. Press OK on the box, then hold the remote's mic button to dictate";
+      if (MIC.none) return Promise.reject(new Error(`${NO_MIC}.`));
       return new Promise((resolve, reject) => {
-        MIC.wait = { resolve, reject, onLevel, onWorking };
+        const dog = setTimeout(() => {
+          if (MIC.wait?.dog !== dog) return;
+          MIC.none = true;
+          MIC.wait = null;
+          native("cancelListening");
+          reject(new Error(`${NO_MIC}, or say “Alexa, ask local hub …”.`));
+        }, 2500);
+        const heard = (v) => { clearTimeout(dog); onLevel?.(v); };
+        MIC.wait = { resolve, reject, onLevel: heard, onWorking, dog };
         native("startListening");
       });
     },
