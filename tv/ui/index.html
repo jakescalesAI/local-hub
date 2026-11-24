@@ -8,12 +8,12 @@
 <meta name="theme-color" content="#0b0f16">
 <link rel="stylesheet" href="./theme.css?v=1">
 <link rel="stylesheet" href="./styles.css?v=65">
-<link rel="stylesheet" href="./panel.css?v=1">
+<link rel="stylesheet" href="./panel.css?v=2">
 <link rel="stylesheet" href="./assistant.css?v=13">
 <!-- Fetched alongside app.js instead of after it has been parsed: ~0.9 s sooner to a home screen on a Fire TV Stick. -->
-<link rel="modulepreload" href="./app.js?v=116">
+<link rel="modulepreload" href="./app.js?v=117">
 <link rel="modulepreload" href="./stream.js?v=4">
-<link rel="modulepreload" href="./panel.js?v=1">
+<link rel="modulepreload" href="./panel.js?v=2">
 <!-- Served by the hub: its config and settings are asked for now, while the page's own files load, instead of
      after app.js has run (~0.6 s later on a Fire TV Stick). app.js picks them up. -->
 <script>
@@ -106,6 +106,6 @@ if (location.pathname.startsWith("/tv")) {
   /* The hub page defines hubFetch for chat.js (it waits out hub restarts); the TV only needs plain fetch. */
   if (typeof window.hubFetch !== "function") window.hubFetch = function (url, init) { return fetch(url, init); };
 </script>
-<script type="module" src="./app.js?v=116"></script>
+<script type="module" src="./app.js?v=117"></script>
 </body>
 </html>

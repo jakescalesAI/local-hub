@@ -7,3 +7,5 @@ const pkg = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../package.json', 
 export const APP_NAME = pkg.productName
 // The packaged package.json loses its build section, so a unit test keeps this equal to build.appId.
 export const APP_ID = 'local-hub.desktop'
+// The windows' own icon: run from source, they'd show Electron's, as the taskbar does for any app without one.
+export const APP_ICON = fileURLToPath(new URL('../assets/icon.png', import.meta.url))

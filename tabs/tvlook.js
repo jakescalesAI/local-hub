@@ -215,7 +215,7 @@ ${R} .tvs-wall.on span { color: #fff; } ${R} .tvs-wall.on span::after { content:
   btn.innerHTML = svg('<rect x="3.5" y="3.5" width="7" height="7" rx="2.2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2.2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2.2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2.2"/>')
   const mk = (id, label, d) => Object.assign(document.createElement('button'), { id, type: 'button', title: label, className: 'tvround', ariaLabel: label, innerHTML: svg(d) })
   const back = mk('tvback', 'Back', '<path d="M15 5l-7 7 7 7"/>')
-  const filter = mk('tvfilter', 'Filter and sort', '<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2.2"/><circle cx="9" cy="17" r="2.2"/>')
+  const filter = mk('tvfilter', 'Filter and sort', '<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>')
   const controls = document.getElementById('controls')
   controls.prepend(back, btn, filter)
   back.addEventListener('click', () => document.querySelector('.hw-root.hw-edit [data-hw-act="edit"]')?.click())
@@ -322,6 +322,7 @@ ${R} .tvs-wall.on span { color: #fff; } ${R} .tvs-wall.on span::after { content:
     const html = P.player(on ? st.media || {} : {})
       + P.slider('brightness', st.brightness ?? 100, P.IC.sun, 'TV brightness', !on) + P.slider('volume', st.volume ?? 0, P.IC.vol, 'TV volume', !on || st.volume == null)
       + P.round('home', P.IC.home, 'TV home') + P.round('saver', P.IC.moon, 'Screensaver') + P.round('sleep', P.IC.power, 'Sleep') + P.round('settings', P.IC.gear, 'Settings')
+      + (st.inputs || []).map(i => P.pill(`input:${i.name}`, P.IC.input, i.name, i.sub || 'Input')).join('')
       + P.pill('homeclock', P.IC.clock, 'Home clock', look.clock, look.clock !== 'Off') + P.pill('homeweather', P.IC.cloud, 'Home weather', look.weather ? 'On' : 'Off', look.weather)
       + `<div class="wpx">${wxBody && window.HubWeatherCard ? window.HubWeatherCard(wxBody, 'm') : '<div class="t2">Finding the weather…</div>'}</div>`
     if (list._html === html) return
@@ -332,7 +333,7 @@ ${R} .tvs-wall.on span { color: #fff; } ${R} .tvs-wall.on span::after { content:
     if (had) list.querySelector(`[data-w="${had}"]`)?.focus()
   }
   async function openPanel() {
-    try { P ??= await import('/tv/panel.js?v=1') } catch { return }
+    try { P ??= await import('/tv/panel.js?v=2') } catch { return }
     paintPanel()
     panel.classList.add('on')
     await readTv()
@@ -351,7 +352,8 @@ ${R} .tvs-wall.on span { color: #fff; } ${R} .tvs-wall.on span::after { content:
     if (id === 'homeweather') { look.weather = !look.weather; return saveLook() }
     if (id === 'settings') { closePanel(); return openSettings() }
     if (!TV?.on) return off()
-    if (id === 'prev' || id === 'next') post({ type: 'media', action: id })
+    if (id.startsWith('input:')) post({ type: 'input', name: id.slice(6) })
+    else if (id === 'prev' || id === 'next') post({ type: 'media', action: id })
     else if (id === 'play') post({ type: 'media', action: 'toggle' })
     else if (['home', 'saver', 'sleep'].includes(id)) post({ type: id })
     soon()

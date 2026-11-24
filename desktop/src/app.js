@@ -2,7 +2,7 @@
 import { BrowserWindow, Menu, Notification, app, clipboard, dialog, ipcMain, nativeTheme, session, shell } from 'electron'
 import path from 'node:path'
 
-import { APP_NAME } from './app-name.js'
+import { APP_ICON, APP_NAME } from './app-name.js'
 import { findNode, isHubFolder, resolveServerEntry, spawnBundledHub, spawnQuitGuard } from './hub-bundle.js'
 import { HubConnection } from './hub-connection.js'
 import { Hotkey } from './hotkey.js'
@@ -90,7 +90,7 @@ function start() {
   let settingsWindow = null
   const openSettings = () => {
     if (settingsWindow && !settingsWindow.isDestroyed()) return settingsWindow.show()
-    settingsWindow = new BrowserWindow({
+    settingsWindow = new BrowserWindow({ icon: APP_ICON,
       width: 440,
       height: 440,
       resizable: false,

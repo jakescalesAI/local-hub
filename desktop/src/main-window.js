@@ -2,7 +2,7 @@
 // doesn't, so a Hub restart never leaves a blank or error screen.
 import { BrowserWindow, screen } from 'electron'
 
-import { APP_NAME } from './app-name.js'
+import { APP_ICON, APP_NAME } from './app-name.js'
 import { pagePath, securePrefs, isHubUrl, isLocalPage } from './security.js'
 import { fitToDisplays, MIN_SIZE } from './window-state.js'
 
@@ -44,7 +44,7 @@ export class MainWindow {
 
   create({ visible }) {
     const fitted = fitToDisplays(this.#settings.values.window, screen.getAllDisplays())
-    const win = new BrowserWindow({
+    const win = new BrowserWindow({ icon: APP_ICON,
       ...fitted,
       minWidth: MIN_SIZE.width,
       minHeight: MIN_SIZE.height,

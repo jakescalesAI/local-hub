@@ -2,7 +2,7 @@
 // built-in page when that route isn't there. It stays loaded while hidden so it opens instantly.
 import { BrowserWindow, screen } from 'electron'
 
-import { APP_NAME } from './app-name.js'
+import { APP_ICON, APP_NAME } from './app-name.js'
 import { pagePath, securePrefs, isHubUrl } from './security.js'
 import { launcherBounds, LAUNCHER_SIZE } from './window-state.js'
 
@@ -38,7 +38,7 @@ export class Launcher {
   get onFallback() { return this.#onFallback }
 
   create() {
-    const win = new BrowserWindow({
+    const win = new BrowserWindow({ icon: APP_ICON,
       ...LAUNCHER_SIZE,
       title: `${APP_NAME} launcher`,
       frame: false,

@@ -15,7 +15,7 @@
 // ============================================================================
 
 import * as Stream from "./stream.js?v=4";
-import * as Panel from "./panel.js?v=1";
+import * as Panel from "./panel.js?v=2";
 // The TV's own assistant screen (assistant.js): the hub's agent and conversation, without the hub's chat UI.
 let Assistant = null;
 
@@ -307,10 +307,9 @@ function loadItems() {
   if (!prefs.inputs) INPUTS = [];
   const q = (S.search || "").toLowerCase();
   ITEMS = q
-    ? [...tvApps(), ...INPUTS.filter((i) => i.name.toLowerCase().includes(q)).map((i) => ({ ...i, kind: "input" }))] // a search shows only what matches
+    ? [...tvApps()] // a search shows only what matches
     : [
       ...tvApps(),
-      ...INPUTS.map((i) => ({ ...i, kind: "input" })),
       ...(IN_HUB && !PREVIEW ? [{ id: "add-site", kind: "addsite", name: "Add website" }] : []),
       { id: "settings", kind: "settings", name: "Settings" },
     ];
@@ -1188,9 +1187,10 @@ function wpHTML() {
   const v = volState(), canVol = NATIVE && !v.fixed && v.max;
   const pct = canVol ? Math.round((v.level / v.max) * 100) : 0;
   const { slider, round, pill } = Panel;
-  const wx = WX.body ? wxCard(WX.body, "m") : `<div class="t2">${WX.err ? "Weather isn’t available right now" : "Finding the weather…"}</div>`;
+  const wx = WX.body ? wxCard(WX.body, INPUTS.length ? "s" : "m") : `<div class="t2">${WX.err ? "Weather isn’t available right now" : "Finding the weather…"}</div>`;
   return `${playerHTML()}${slider("brightness", brightness(), WP_IC.sun, "Brightness")}${slider("volume", pct, WP_IC.vol, "Volume", !canVol)}`
     + round("timer", SYM.timer, S.sleepAt ? clockText(new Date(S.sleepAt)) : "Timer", !!S.sleepAt) + round("saver", SYM.moon, "Screensaver") + round("picture", WP_IC.pic, "Picture") + round("settings", SYM.gear, "Settings")
+    + INPUTS.map((i) => pill(`input:${i.id}`, WP_IC.input, i.name, i.sub || "Input")).join("")
     + pill("homeclock", WP_IC.clock, "Home clock", prefs.homeClock || CLOCKS[0], (prefs.homeClock || CLOCKS[0]) !== "Off")
     + pill("homeweather", WP_IC.cloud, "Home weather", homeWeatherOn() ? "On" : "Off", homeWeatherOn())
     + `<div class="wpx">${wx}</div>`;
@@ -1237,6 +1237,7 @@ function wpMove(dx, dy) {
   }
   if (!best) return false;
   S.wpAt = best.dataset.w;
+  best.scrollIntoView({ block: "nearest" });
   paintWpanel();
   return true;
 }
@@ -1277,6 +1278,7 @@ function wpKey(name) {
     return paintWpanel();
   }
   if (id === "homeweather") return toggleHomeWeather();
+  if (id.startsWith("input:")) { const input = INPUTS.find((i) => `input:${i.id}` === id); closeWidgets(); return input && runIntent({ type: "input", input }); }
   closeWidgets();
   if (id === "picture") return native("openDisplaySettings");
   if (id === "saver") return startSaver();
@@ -1332,7 +1334,7 @@ function ccActivate() {
   if (id === "tvsetup") return openHubApp("/#tv-setup");
   if (id === "ask") return startVoice();
   if (id.startsWith("chat:")) { if (window.HubChat?.openChat) { S.zone = "bar"; return window.HubChat.openChat(id.slice(5)); } return toast("The chat isn't loaded"); }
-  if (id === "inputs") { const i = ITEMS.findIndex((x) => x.kind === "input"); if (i < 0) return toast("This TV reports no HDMI inputs"); S.zone = "grid"; S.i = i; return applyFocus(); }
+  if (id === "inputs") return openWidgets();
   if (id === "saver") return startSaver();
   if (id === "sleep") return sleepNow();
   if (id === "net") return native("openNetworkSettings");
@@ -1382,7 +1384,7 @@ function settingsModel() {
     { group: "Home Screen" },
     { key: "clock", t1: "Clock", t2: "Top left, and on the screensaver", values: ["12-hour", "24-hour"] },
     { key: "homeClock", t1: "Home clock", t2: "What the top left of the home screen shows", values: ["Time and date", "Time", "Off"] },
-    ...(S.inputCount ? [{ key: "inputs", t1: "HDMI inputs", t2: "Shown as icons after the apps", toggle: true }] : []), // only on a TV that has some
+    ...(S.inputCount ? [{ key: "inputs", t1: "HDMI inputs", t2: "Shown in the Layout panel", toggle: true }] : []), // only on a TV that has some
     { key: "saver", t1: "Screensaver", t2: "After the remote has been still", values: ["Off", "2 min", "5 min", "10 min", "15 min"] },
     IN_HUB && !PREVIEW
       ? { id: "saverSource", t1: "Screensaver photos", t2: saverSourceNote(), v: saverSourceName() }
@@ -1926,10 +1928,7 @@ function runIntent(intent) {
   }
   if (intent.type === "input") {
     say(`Switching to ${intent.input.name}.`);
-    S.zone = "grid";
-    S.i = ITEMS.findIndex((x) => x.id === intent.input.id);
-    applyFocus();
-    return launch(ITEMS[S.i] || { ...intent.input, kind: "input" }, () => (NATIVE ? native("switchInput", intent.input.id) : true), `Switching to ${intent.input.name}`);
+    return launch({ ...intent.input, kind: "input" }, () => (NATIVE ? native("switchInput", intent.input.id) : true), `Switching to ${intent.input.name}`);
   }
   if (intent.type === "home") { S.zone = "grid"; S.i = 0; return applyFocus(); }
   if (intent.type === "settings") return openSettings();
@@ -1979,7 +1978,7 @@ function reportState() {
   readMedia();
   const v = volState();
   const { title, artist, app, playing, art } = MEDIA;
-  const state = { brightness: brightness(), volume: v.max && !v.fixed ? Math.round((v.level / v.max) * 100) : null, media: { title, artist, app, playing: !!playing, art } };
+  const state = { inputs: INPUTS.map(({ id, name, sub }) => ({ id, name, sub })), brightness: brightness(), volume: v.max && !v.fixed ? Math.round((v.level / v.max) * 100) : null, media: { title, artist, app, playing: !!playing, art } };
   fetch("/api/tv/state", { method: "POST", headers: { "content-type": "application/json", "x-hub": "1" }, body: JSON.stringify(state) }).catch(() => {});
 }
 let commandLoop = false;

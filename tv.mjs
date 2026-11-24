@@ -296,7 +296,8 @@ export function cleanState(raw) {
   const pct = v => (Number.isFinite(v) ? Math.max(0, Math.min(100, Math.round(v))) : null)
   const m = raw?.media && typeof raw.media === 'object' ? raw.media : {}
   const art = typeof m.art === 'string' && m.art.length < 200_000 && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(m.art) ? m.art : ''
-  return { brightness: pct(raw?.brightness), volume: pct(raw?.volume), media: { title: str(m.title, 200), artist: str(m.artist, 200), app: str(m.app, 80), playing: m.playing === true, art } }
+  const inputs = (Array.isArray(raw?.inputs) ? raw.inputs : []).slice(0, 8).map(i => ({ id: str(i?.id, 120), name: str(i?.name, 60), sub: str(i?.sub, 40) })).filter(i => i.name)
+  return { inputs, brightness: pct(raw?.brightness), volume: pct(raw?.volume), media: { title: str(m.title, 200), artist: str(m.artist, 200), app: str(m.app, 80), playing: m.playing === true, art } }
 }
 
 // Names only, as they go into a menu: printable, short, each once, in order.
