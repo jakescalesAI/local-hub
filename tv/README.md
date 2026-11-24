@@ -180,6 +180,18 @@ LocalHub has to listen there — by default it only answers on the laptop itself
 
 ## Talk to it
 
+**Its voice** is Kokoro, an open voice model (the one Quartzi speaks with), run on the laptop by `tv/tts.py`
+and served to the TV a sentence at a time (`POST /api/tv/speak`; it warms up a few seconds after the TV
+starts). Settings → Assistant voice picks one of seven. Set it up once on the laptop:
+
+```sh
+pip install kokoro-onnx soundfile
+# into data/tts/: kokoro-v1.0.int8.onnx and voices-v1.0.bin from
+# https://github.com/thewh1teagle/kokoro-onnx/releases (model-files-v1.0)
+```
+
+Without them, the TV's own voice reads answers instead.
+
 - **Type:** Down from the apps lands in the hub's "Ask anything" bar; the Fire TV keyboard opens.
   The answer appears in the Hub Assistant card above it, exactly as on the laptop.
 - **Speak: the mic.** With nothing typed, the bar's send button is a mic — in the hub's own chat, so

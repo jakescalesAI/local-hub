@@ -88,7 +88,7 @@ const DEMO_INPUTS = [
 
 /* ── prefs (this screen only; the look and widgets come from the hub) ──── */
 const PREFS_KEY = "localhub.tv";
-const DEFAULTS = { clock: "12-hour", homeClock: "Time and date", inputs: true, saver: "5 min", speak: "After voice", help: true };
+const DEFAULTS = { clock: "12-hour", homeClock: "Time and date", ttsVoice: "Heart", inputs: true, saver: "5 min", speak: "After voice", help: true };
 const DEVICE = NATIVE ? (safeJson(native("status"), {}) || {}) : {};
 // On a TV the page is laid out at the WebView's small CSS size (960×540 on a 4K Fire TV); the chat bar, which
 // lives outside the 1920×1080 canvas, is scaled the same way as the canvas so it keeps its proportions.
@@ -1256,6 +1256,7 @@ function settingsModel() {
     { id: "look", t1: "Home widgets", t2: "Opens LocalHub, where the TV's widgets are chosen", v: "" },
     { group: "Assistant" },
     ...hubRows,
+    { key: "ttsVoice", t1: "Assistant voice", t2: "Kokoro, on the laptop: a natural voice", values: ["Heart", "Bella", "Nicole", "Michael", "Fenrir", "Emma", "George"] },
     { key: "voice", t1: "Voice", t2: { Off: "The assistant only writes", "Read answers": "Answers are read aloud", Conversation: "Talk back and forth: it answers aloud, then it's your turn" }[voicePref()], values: ["Off", "Read answers", "Conversation"] },
     ...(!NATIVE ? [{ key: "help", t1: "Keyboard help", t2: "The remote's keys, along the top", toggle: true }] : []),
     { group: "About" },
@@ -1633,6 +1634,51 @@ let reqSeq = 0;
 const pending = new Map();
 const MIC = { wait: null };
 
+/* The assistant's voice: Kokoro (an open voice model, the one Quartzi speaks with), on the laptop (tv/tts.py via
+   /api/tv/speak). Each sentence is fetched and played in turn while the next is being made, so the first words come
+   fast. If the laptop can't (no model, no hub), the TV's own voice says it instead. */
+const VOICE = {
+  queue: [], playing: false, gen: 0, audio: null, ahead: null,
+  name: () => ({ Heart: "af_heart", Bella: "af_bella", Nicole: "af_nicole", Michael: "am_michael", Fenrir: "am_fenrir", Emma: "bf_emma", George: "bm_george" })[prefs.ttsVoice] || "af_heart",
+  fetch(text) {
+    return fetch("/api/tv/speak", { method: "POST", headers: { "content-type": "application/json", "x-hub": "1" }, body: JSON.stringify({ text, voice: this.name() }) })
+      .then((r) => (r.ok ? r.blob() : Promise.reject(new Error(String(r.status)))));
+  },
+  say(text) {
+    const parts = String(text || "").replace(/\s+/g, " ").match(/[^.!?]+[.!?]+["')\]]*|[^.!?]+$/g) || [];
+    for (const p of parts) if (p.trim()) this.queue.push(p.trim());
+    if (!this.playing) this.next(this.gen);
+  },
+  async next(gen) {
+    if (gen !== this.gen) return;
+    const text = this.queue.shift();
+    if (!text) { this.playing = false; return; }
+    this.playing = true;
+    const blob = this.ahead?.text === text ? this.ahead.p : this.fetch(text);
+    this.ahead = null;
+    // The next sentence is made while this one plays.
+    if (this.queue[0]) this.ahead = { text: this.queue[0], p: this.fetch(this.queue[0]) };
+    let b;
+    try { b = await blob; } catch { if (gen === this.gen) { native("speak", text); this.next(gen); } return; }
+    if (gen !== this.gen) return;
+    const url = URL.createObjectURL(b);
+    const a = (this.audio = new Audio(url));
+    const done = () => { URL.revokeObjectURL(url); if (this.audio === a) this.audio = null; this.next(gen); };
+    a.onended = done;
+    a.onerror = done;
+    a.play().catch(done);
+  },
+  hush() {
+    this.gen++;
+    this.queue = [];
+    this.ahead = null;
+    this.playing = false;
+    try { this.audio?.pause(); } catch { /* fine */ }
+    this.audio = null;
+    native("stopSpeaking");
+  },
+};
+
 /* "Read answers aloud" (Settings), for tabs/chat.js: "After voice" speaks a reply when the question was
    spoken, "Always" speaks every reply, "Off" never speaks. */
 window.HubSpeech = { mode: () => speakMode() };
@@ -1664,9 +1710,12 @@ if (NATIVE) {
     },
     stop() { native("stopListening"); },
     cancel() { native("cancelListening"); MIC.wait?.resolve(""); MIC.wait = null; },
-    speak(text) { if (speakMode() !== "Off") native("speak", text); },
-    hush() { native("stopSpeaking"); },
+    speak(text) { if (speakMode() !== "Off") VOICE.say(text); },
+    hush() { VOICE.hush(); },
   };
+} else if (IN_HUB) {
+  // A laptop or iPad: the same voice (speech only; listening stays the browser's).
+  window.HubVoice = { speak: (text) => VOICE.say(text), hush: () => VOICE.hush() };
 }
 
 // The TV's mic finished a clip: Java holds it and sends it to the hub's Whisper itself.
@@ -2629,6 +2678,8 @@ async function boot() {
     window.LocalHubSplash?.release?.();
     // Home's cover (the TV app's) waits for this on a page that was still loading.
     window.LocalHubSplash?.done?.then(() => native("drawn"));
+    // The voice model wakes up on the laptop a little after start, so the first answer read aloud doesn't wait for it.
+    if (IN_HUB && !PREVIEW) setTimeout(() => fetch("/api/tv/voices", { cache: "no-store" }).catch(() => {}), 8000);
   });
   if (PREVIEW) { $("#keys").style.transition = "none"; showKeys(false); }
   else if (!NATIVE) { showKeys(prefs.help); if (prefs.help) setTimeout(() => showKeys(false), 12000); }

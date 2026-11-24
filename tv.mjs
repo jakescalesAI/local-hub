@@ -56,6 +56,7 @@ export function create({ here }) {
   const whisper = createWhisper(here)
   const stream = createStream({ here }) // /api/tv/stream/*: the TV's browsers (stream.mjs)
   const weather = createWeather({ here }) // /api/tv/weather: the weather widget's (weather.mjs)
+  const tts = createTts(here) // /api/tv/speak: the TV's voice, Kokoro on this computer (tv/tts.py)
   const commands = []
   const waiters = new Set()
   let seq = 0
@@ -151,6 +152,24 @@ export function create({ here }) {
         fs.rm(file, { force: true }, () => {})
       }
     }
+
+    // The TV's voice: a sentence or two at a time, as a WAV, spoken by Kokoro on this computer.
+    if (p === '/api/tv/speak' && req.method === 'POST') {
+      let raw = ''
+      req.setEncoding('utf8')
+      for await (const chunk of req) { raw += chunk; if (raw.length > 16_000) return send(res, 413, { error: 'too long' }), true }
+      let body
+      try { body = JSON.parse(raw || '{}') } catch { return send(res, 400, { error: 'body is not JSON' }), true }
+      const text = String(body.text || '').trim()
+      if (!text) return send(res, 400, { error: 'nothing to say' }), true
+      try {
+        const wav = await tts.say(text, String(body.voice || ''), Number(body.speed) || 1)
+        res.writeHead(200, { 'content-type': 'audio/wav', 'content-length': wav.length, 'cache-control': 'no-store' })
+        res.end(wav)
+      } catch (e) { send(res, 503, { error: e.message, voice: tts.state() }) }
+      return true
+    }
+    if (p === '/api/tv/voices' && req.method === 'GET') { tts.warm(); return send(res, 200, { state: tts.state(), voices: tts.voices() }), true } // asking warms it up
 
     if (p === '/api/tv/weather' && req.method === 'GET') {
       try { return send(res, 200, await weather()), true } catch (e) { return send(res, 502, { error: `Weather isn't available: ${e.message}` }), true }
@@ -248,6 +267,75 @@ export function quickCommand(text) {
 }
 
 // ── Whisper: one warm Python process, started on first use, stopped after 10 idle minutes ──
+
+// Kokoro, kept warm after the first sentence and stopped after 10 minutes of quiet. The last few phrases are kept,
+// so "Sorry, that didn't go through" and the like come back at once.
+function createTts(here) {
+  const script = path.join(here, 'tv', 'tts.py')
+  const model = path.join(here, 'data', 'tts', 'kokoro-v1.0.int8.onnx'), voicesFile = path.join(here, 'data', 'tts', 'voices-v1.0.bin')
+  const dir = path.join(os.tmpdir(), 'localhub-tts')
+  let child = null, state = 'off', fatal = '', buf = '', n = 0, idle = null, voiceList = []
+  const jobs = new Map(), waiting = [], cache = new Map()
+  function start() {
+    if (!fs.existsSync(model) || !fs.existsSync(voicesFile)) { state = 'missing'; fatal = "The voice model isn't in data/tts (see tv/tts.py)"; return }
+    const py = (tvConfig().whisper || {}).python || (process.platform === 'win32' ? 'python' : 'python3')
+    fs.mkdirSync(dir, { recursive: true })
+    state = 'loading'; fatal = ''
+    try { child = spawn(py, [script, model, voicesFile], { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true }) } catch (e) { state = 'missing'; fatal = e.message; return }
+    let stderr = ''
+    child.stderr.setEncoding('utf8')
+    child.stderr.on('data', d => { stderr = (stderr + d).slice(-2000) })
+    child.stdout.setEncoding('utf8')
+    child.stdout.on('data', d => {
+      buf += d
+      let i
+      while ((i = buf.indexOf('\n')) >= 0) {
+        const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1)
+        let msg; try { msg = JSON.parse(line) } catch { continue }
+        if (msg.ready) { state = 'ready'; voiceList = msg.voices || []; waiting.splice(0).forEach(w => w.resolve()) }
+        else if (msg.fatal) { fatal = msg.fatal }
+        else if (msg.id && jobs.has(msg.id)) {
+          const job = jobs.get(msg.id); jobs.delete(msg.id); clearTimeout(job.timer)
+          if (msg.error) job.reject(new Error(`Voice: ${msg.error}`))
+          else fs.readFile(job.path, (e, b) => { fs.rm(job.path, () => {}); e ? job.reject(e) : job.resolve(b) })
+        }
+      }
+    })
+    child.on('error', e => stop(e.code === 'ENOENT' ? "Python isn't installed here" : e.message))
+    child.on('exit', () => stop(fatal || stderr.trim().split('\n').pop() || 'The voice stopped'))
+  }
+  function stop(why) {
+    state = fatal || why ? 'missing' : 'off'; fatal = fatal || why || ''
+    child = null
+    waiting.splice(0).forEach(w => w.reject(new Error(fatal || 'The voice stopped')))
+    for (const job of jobs.values()) { clearTimeout(job.timer); job.reject(new Error(fatal || 'The voice stopped')) }
+    jobs.clear()
+    if (why) setTimeout(() => { if (state === 'missing') state = 'off' }, 60_000) // try again later
+  }
+  const ready = () => state === 'ready' ? Promise.resolve() : new Promise((resolve, reject) => {
+    if (!child && state !== 'loading') start()
+    if (state === 'missing') return reject(new Error(fatal || 'No voice here'))
+    waiting.push({ resolve, reject })
+    setTimeout(() => reject(new Error('The voice is still loading')), 20_000)
+  })
+  async function say(text, voice, speed) {
+    const key = `${voice}|${speed}|${text}`
+    if (cache.has(key)) return cache.get(key)
+    await ready()
+    clearTimeout(idle)
+    idle = setTimeout(() => { try { child?.kill() } catch {} }, 10 * 60_000)
+    const id = `s${++n}`, file = path.join(dir, `${id}.wav`)
+    const wav = await new Promise((resolve, reject) => {
+      const timer = setTimeout(() => { jobs.delete(id); reject(new Error('The voice took too long')) }, 30_000)
+      jobs.set(id, { resolve, reject, timer, path: file })
+      child.stdin.write(JSON.stringify({ id, text, voice, speed, path: file }) + '\n')
+    })
+    cache.set(key, wav)
+    if (cache.size > 24) cache.delete(cache.keys().next().value)
+    return wav
+  }
+  return { say, warm: () => { ready().catch(() => {}) }, state: () => (fatal && state !== 'ready' ? `missing: ${fatal}` : state), voices: () => voiceList }
+}
 
 function createWhisper(here) {
   const script = path.join(here, 'tv', 'whisper.py')
