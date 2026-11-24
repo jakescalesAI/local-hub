@@ -144,6 +144,7 @@ ${R} #tvside::-webkit-scrollbar { display: none; }
 ${R} #tvside .hw-cell { height: 184px; min-width: 0; grid-column: auto !important; grid-row: auto !important; }
 ${R} #tvside .hw-cell:is(.m, .l), ${R} #tvside .tvt-wx { grid-column: 1 / -1 !important; }
 ${R} #tvside .hw-cell.l { height: 380px; }
+${R} #tvside .tvp-card { grid-column: 1 / -1; } ${R} .tvp-card .mp { zoom: .62; } ${R} .tvp-card .mp-b { cursor: pointer; } ${R} .tvp-card .mp-b:hover { background: var(--ui-sel); color: #000; }
 ${R} #tvside .tvt-wx { padding: 18px 22px; border-radius: 26px; background: var(--ui-panel); box-shadow: var(--ui-edge); color: #fff; }
 ${R}[data-tvshow="apps"] #tvside { visibility: hidden; }
 ${R}[data-tvshow="widgets"] .hw-grid > .hw-cell.a { display: none !important; }
@@ -292,7 +293,8 @@ ${R} .tvs-wall.on span { color: #fff; } ${R} .tvs-wall.on span::after { content:
       const id = c.querySelector('[data-hw-widget], [data-hw-wid]')?.dataset.hwWidget || c.dataset.hwKey || ''
       return c.style.display !== 'none' && (editing || !/(^|-)(clock|date|weather)$/.test(id) || /world-clock$/.test(id))
     })
-    const html = wx + cells.map(c => c.outerHTML).join('')
+    const pl = P && TV?.on ? `<div class="tvp-card">${P.player(TV.state?.media || {}, true)}</div>` : ''
+    const html = pl + wx + cells.map(c => c.outerHTML).join('')
     if (side._html === html) return
     const y = side.scrollTop
     side._html = html
@@ -335,6 +337,7 @@ ${R} .tvs-wall.on span { color: #fff; } ${R} .tvs-wall.on span::after { content:
   async function readTv() {
     try { const r = await fetch('/api/tv/status', { cache: 'no-store' }); TV = r.ok ? (await r.json()).tv : null } catch { TV = null }
     if (!dragging) paintPanel()
+    paintSide()
   }
   function paintPanel() {
     if (!P) return
@@ -355,7 +358,7 @@ ${R} .tvs-wall.on span { color: #fff; } ${R} .tvs-wall.on span::after { content:
     if (had) list.querySelector(`[data-w="${had}"]`)?.focus()
   }
   async function openPanel() {
-    try { P ??= await import('/tv/panel.js?v=2') } catch { return }
+    try { P ??= await import('/tv/panel.js?v=3') } catch { return }
     paintPanel()
     panel.classList.add('on')
     await readTv()
@@ -363,6 +366,16 @@ ${R} .tvs-wall.on span { color: #fff; } ${R} .tvs-wall.on span::after { content:
     soon()
     clearInterval(poll)
     poll = setInterval(() => { if (document.hidden) return; if (TV?.on) post({ type: 'state' }); setTimeout(readTv, 800) }, 6000)
+  }
+  // The player at the top right of Home is your TV's.
+  document.addEventListener('click', e => { const b = e.target.closest('#tvside .mp-b'); if (b) { e.stopPropagation(); press(b.dataset.w) } }, true)
+  let sideAt = 0
+  async function keepTv() {
+    if (document.hidden || !document.documentElement.hasAttribute('data-tvlook') || !document.querySelector('.hw-root') || Date.now() - sideAt < 8000) return
+    sideAt = Date.now()
+    try { P ??= await import('/tv/panel.js?v=3') } catch { return }
+    if (TV?.on) post({ type: 'state' })
+    await readTv()
   }
   function closePanel() { clearInterval(poll); panel.classList.remove('on'); if (panel.contains(document.activeElement)) btn.focus() }
   btn.addEventListener('click', e => { e.stopPropagation(); panel.classList.contains('on') ? closePanel() : openPanel() })
@@ -746,5 +759,5 @@ ${R} .tvs-wall.on span { color: #fff; } ${R} .tvs-wall.on span::after { content:
   tick()
   weather()
   window.HUB?.on?.(() => paintSettings())
-  setInterval(() => { tick(); weather(); paintRail(); paintSide(); arrange(); fitRow(); toDesktop(); keepSpots() }, 1000)
+  setInterval(() => { tick(); weather(); paintRail(); paintSide(); arrange(); fitRow(); toDesktop(); keepSpots(); keepTv() }, 1000)
 })()

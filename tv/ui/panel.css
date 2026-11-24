@@ -31,3 +31,15 @@
 .wpp.sel .t2 { color: rgba(0, 0, 0, .55); }
 .wpx { grid-column: 1 / -1; padding: 22px 28px; border-radius: 40px; background: var(--ui-fill); box-shadow: var(--ui-edge); }
 .wpx .wxw { font-size: 19px; color: inherit; }
+/* At the top right of Home: one line, the picture, what's playing, the buttons. */
+.mp.wide { display: grid; grid-template-columns: 92px minmax(0, 1fr) auto; grid-template-rows: auto auto; column-gap: 18px; align-content: center; box-sizing: border-box; height: 132px; padding: 20px 22px; border-radius: 30px; background: var(--ui-panel); color: #fff; }
+.mp.wide .mp-art { grid-row: 1 / 3; width: 92px; height: 92px; margin: 0; }
+.mp.wide .mp-art .sym { width: 44px; height: 44px; }
+.mp.wide .mp-t { align-self: end; margin: 0; }
+.mp.wide .mp-s { grid-column: 2; margin: 2px 0 0; min-height: 26px; }
+.mp.wide .mp-s:empty { min-height: 0; }
+.mp.wide:has(.mp-s:empty) .mp-t { grid-row: 1 / 3; align-self: center; }
+.mp.wide .mp-row { grid-column: 3; grid-row: 1 / 3; align-items: center; margin: 0; }
+.mp.wide .mp-b { width: 68px; height: 68px; }
+.mp.wide .mp-b .sym { width: 42px; height: 42px; }
+.mp-b.sel { background: var(--ui-sel); color: #000; }

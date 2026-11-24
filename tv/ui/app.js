@@ -15,7 +15,7 @@
 // ============================================================================
 
 import * as Stream from "./stream.js?v=4";
-import * as Panel from "./panel.js?v=2";
+import * as Panel from "./panel.js?v=3";
 import * as Files from "./files.js?v=1";
 import * as Mirror from "./mirror.js?v=2";
 // The TV's own assistant screen (assistant.js): the hub's agent and conversation, without the hub's chat UI.
@@ -502,7 +502,7 @@ function applyFocus(instant) {
   // With Favorites at the top, every app row is in the grid part of the screen, under the Favorites section.
   const fav = hasFavs();
   const gRow = Math.floor(S.i / COLS);
-  const row = S.zone === "favs" ? 0 : gRow + (fav ? 1 : 0);
+  const row = S.zone === "favs" || S.zone === "player" ? 0 : gRow + (fav ? 1 : 0);
   const inGrid = S.zone === "grid" && row > 0;
   const grid = inGrid || (S.zone === "bar" && !atTop());
   // Light glass: the body class would make a Fire TV Stick recompute style for every tile (30-50 ms, measured),
@@ -574,6 +574,13 @@ function move(dx, dy) {
     if (dy < 0) { leaveBar(); S.zone = "grid"; return applyFocus(); }
     return;
   }
+  // The player at the top right: Up from the row of buttons, Down back to it.
+  if (S.zone === "player") {
+    const row = ["prev", "play", "next"], at = row.indexOf(S.mp);
+    if ((dx < 0 && at === 0) || dy > 0) { S.zone = "favs"; S.f = clamp(S.lastF ?? favStart(), 0, FAVS.length - 1); paintHomeWidgets(); return applyFocus(); }
+    if (dx) S.mp = row[clamp(at + dx, 0, 2)];
+    return paintHomeWidgets();
+  }
   if (S.zone === "favs") {
     if (dx) {
       const next = S.f + dx;
@@ -581,7 +588,7 @@ function move(dx, dy) {
       else if (dx < 0) return openRail();
       else return tilt(dx * 1.6, 0);
     }
-    if (dy < 0) return tilt(0, -1.6);
+    if (dy < 0) { S.lastF = S.f; S.zone = "player"; S.mp = "play"; applyFocus(); return paintHomeWidgets(); }
     if (dy > 0) { S.zone = "grid"; S.i = clamp(S.lastI ?? gridColUnderFav(S.f), 0, Math.min(COLS, ITEMS.length) - 1); }
     applyFocus();
     return tilt(dx, dy);
@@ -1133,9 +1140,12 @@ function paintHomeWidgets() {
   if (!box) return;
   const sizes = {};
   for (const x of SETTINGS?.widgets?.tv || []) { const id = x?.id || x?.[0]; if (id && id !== "clock" && id !== "date" && WIDGETS[id]) sizes[id] = x?.size || x?.[1] || "s"; }
-  const html = Object.keys(sizes).slice(0, 2).map((id) => widgetCard(id, sizes[id])).join("");
+  const html = Panel.player(MEDIA, true) + Object.keys(sizes).slice(0, 2).map((id) => widgetCard(id, sizes[id])).join("");
   if (box._html !== html) { box.innerHTML = html; box._html = html; }
+  box.querySelectorAll(".mp-b").forEach((n) => n.classList.toggle("sel", S.zone === "player" && !S.overlay && S.view === "home" && n.dataset.w === S.mp));
 }
+// What is playing, kept fresh while Home is what you see.
+setInterval(() => { if (!NATIVE || document.hidden || S.overlay || S.view !== "home") return; const was = JSON.stringify(MEDIA); readMedia(); if (JSON.stringify(MEDIA) !== was) paintHomeWidgets(); }, 5000);
 const WP_IC = Panel.IC;
 // Some TVs take the volume keys themselves and the stick's own level never moves: then there's no slider to offer.
 let volStuck = false;
@@ -1168,7 +1178,7 @@ function readMedia() { MEDIA = NATIVE ? safeJson(native("media", "state"), {}) |
 function mediaDo(act) {
   if (!NATIVE) return toast("The player works on the TV");
   native("media", act);
-  setTimeout(() => { readMedia(); if (S.overlay === "wpanel") paintWpanel(); }, 500);
+  setTimeout(() => { readMedia(); if (S.overlay === "wpanel") paintWpanel(); paintHomeWidgets(); }, 500);
 }
 const playerHTML = () => Panel.player(MEDIA);
 const homeWeatherOn = () => (SETTINGS?.widgets?.tv || []).some((w) => (w?.id || w?.[0]) === "weather");
@@ -2129,6 +2139,7 @@ window.haven = {
     S.favX = 0;
     S.lastF = S.lastI = null;
     applyFocus();
+    paintHomeWidgets();
   },
   closeHub: () => closeHub(),
   resumed: () => { endLaunch(); whenDrawn(); },
@@ -2276,7 +2287,7 @@ function setView(id) {
 }
 function showView(id) {
   // Home is left as it was: the row you were in comes back with it.
-  if (S.view === "home" && id !== "home") S.homeZone = S.zone === "rail" ? S.railFrom : S.zone;
+  if (S.view === "home" && id !== "home") S.homeZone = S.zone === "rail" ? S.railFrom : S.zone === "player" ? "favs" : S.zone;
   S.view = id;
   setView(id);
   if (id === "assistant") { Assistant ? Assistant.show() : toast("The assistant needs LocalHub on the laptop"); }
@@ -2427,8 +2438,8 @@ function handleKey(raw) {
     case "right": return move(1, 0);
     case "up": return move(0, -1);
     case "down": return move(0, 1);
-    case "enter": return press(activate);
-    case "hold": return openTileMenu();
+    case "enter": if (S.zone === "player") return mediaDo(S.mp === "play" ? "toggle" : S.mp); return press(activate);
+    case "hold": return S.zone === "player" ? undefined : openTileMenu();
     case "menu": {
       // On one of your websites, ☰ twice removes it (from the hub, so everywhere); anywhere else ☰ opens the sidebar.
       const it = ITEMS[S.i];
@@ -2446,6 +2457,7 @@ function handleKey(raw) {
       return applyFocus();
     }
     case "back":
+      if (S.zone === "player") return move(0, 1);
       if (S.favSelect) { stopFavSelect(); return toast("Stopped picking a favorite"); }
       if (S.search && S.zone === "grid") { S.search = ""; const sb = $("#favTrack .sb"); if (sb) sb.value = ""; loadItems(); S.i = 0; renderGrid(); return toast("Showing every app"); }
       if (S.zone === "favs") { if (S.f !== favStart()) { S.f = favStart(); return applyFocus(); } return openRail(); }
@@ -2948,6 +2960,8 @@ document.addEventListener("click", (e) => {
   }
   const ri = e.target.closest(".rail-item");
   if (ri && !S.overlay) { if (S.zone !== "rail") S.railFrom = S.zone; S.zone = "rail"; S.rail = Number(ri.dataset.r); return railKey("enter"); }
+  const hp = e.target.closest("#homeW .mp-b");
+  if (hp && !S.overlay) return mediaDo(hp.dataset.w === "play" ? "toggle" : hp.dataset.w);
   const app = e.target.closest(".app");
   if (app && S.moving && !S.overlay) return moveTo(app);
   if (app && !S.overlay) { pickTile(app); return press(activate); }

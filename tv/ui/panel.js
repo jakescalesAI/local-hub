@@ -22,12 +22,12 @@ export const IC = {
   input: sym('<rect x="3" y="5" width="18" height="11" rx="2"/><path d="M8 20h8M12 16v4M10 8.5l3.5 2-3.5 2z"/>', 2),
   home: sym('<path d="M3.5 11 12 4l8.5 7"/><path d="M5.5 9.5V20h4.5v-5.5h4V20h4.5V9.5"/>'),
 };
-export function player(m = {}) {
+export function player(m = {}, wide = false) {
   const t = m.title || (m.playing ? "Playing" : "Not playing");
   const sub = m.title ? m.artist || m.app || "" : "";
   const art = m.art ? `<img src="${esc(m.art)}" alt="">` : IC.note;
   const b = (id, ic, label) => `<button class="mp-b" data-w="${id}" aria-label="${label}" tabindex="-1">${ic}</button>`;
-  return `<div class="mp"><div class="mp-art">${art}</div><div class="mp-t">${esc(t)}</div><div class="mp-s">${esc(sub)}</div><div class="mp-row">${b("prev", IC.prev, "Previous")}${b("play", m.playing ? IC.pause : IC.play, m.playing ? "Pause" : "Play")}${b("next", IC.next, "Next")}</div></div>`;
+  return `<div class="mp${wide ? " wide" : ""}"><div class="mp-art">${art}</div><div class="mp-t">${esc(t)}</div><div class="mp-s">${esc(sub)}</div><div class="mp-row">${b("prev", IC.prev, "Previous")}${b("play", m.playing ? IC.pause : IC.play, m.playing ? "Pause" : "Play")}${b("next", IC.next, "Next")}</div></div>`;
 }
 export const slider = (id, val, ic, label, off) => `<div class="wps${off ? " off" : ""}" data-w="${id}" aria-label="${label}"><i style="height:${off ? 0 : val}%"></i><span>${ic}</span></div>`;
 export const round = (id, ic, label, on) => `<div class="wpr${on ? " on" : ""}" data-w="${id}"><b>${ic}</b><em>${esc(label)}</em></div>`;
