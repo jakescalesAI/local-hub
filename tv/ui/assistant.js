@@ -140,6 +140,12 @@ export function init(opts = {}) {
     const b = e.target.closest('button[data-f]')
     if (b) { setFocus('bar', b.dataset.f); press() }
   })
+  R.log.addEventListener('click', e => {
+    const item = e.target.closest('.as-card, .as-msg')
+    const i = item ? T.items.indexOf(item) : -1
+    if (i < 0 || e.target.closest('button')) return
+    F.zone = 'log'; F.i = i; F.sub = 0; paintFocus(); press()
+  })
   R.chips.addEventListener('click', e => {
     const b = e.target.closest('.as-chip')
     if (b) { setFocus('chips', [...R.chips.children].indexOf(b)); press() }
@@ -396,6 +402,9 @@ function press() {
     if (b && item.__confirm) return answerConfirm(item.__confirm, b.dataset.allow === '1')
     // OK on a message reads it aloud (whatever "Read answers aloud" is set to: you asked); OK again stops it.
     if (item?.classList.contains('as-msg')) return readAloud(item)
+    if (item?.__app) return O.openApp?.(item.__app)
+    // A page the assistant opened for you: in the TV's own browser, to use with the remote.
+    if (item?.__site?.url) return O.openUrl?.(item.__site.url, item.__site.name)
     // OK on the browser card: the assistant's browser, live, driven with the remote.
     if (item?.__browser) return AgentView.open({ host: R.el, toast: msg => O.toast?.(msg), onClose: () => paintFocus() })
   }
@@ -626,10 +635,22 @@ function tvLabel(t) {
 
 // A site the agent opened (show_site) or the hub browser at work: on the laptop, with its icon, title and host, and
 // the last step's screenshot when there is one.
+// An app the TV opened for you ("open Netflix"): its tile, and OK opens it again.
+function addAppCard(app) {
+  T.acts = null
+  const el = document.createElement('div')
+  el.className = 'as-card as-appcard'
+  el.__app = app.id
+  el.innerHTML = `<span class="as-tile"><span class="app">${O.appArt?.(app.id) || ''}</span></span><div class="as-ctx"><b></b><small>Opened on the TV · OK opens it again</small></div>`
+  el.querySelector('b').textContent = app.name
+  return addItem(el)
+}
+
 function addSite(s) {
   T.acts = null
   const c = addBrowser({ url: s.url, title: s.name, icon: s.icon }, false)
   c.site = true
+  c.el.__site = { url: s.url, name: s.name } // OK opens it in the TV's browser
   setBrowser(c, {})
   return c
 }
@@ -651,7 +672,7 @@ function setBrowser(c, b) {
   const d = c.b, el = c.el
   const host = hostOf(d.url)
   el.querySelector('b').textContent = d.title || host || 'The hub browser'
-  const where = c.site ? 'Opened on the laptop' : d.handoff ? `Your turn on the laptop: ${trim(d.handoff, 80)}` : c.step ? `${c.step}, on the laptop` : 'The hub browser, on the laptop'
+  const where = c.site ? 'OK opens it on the TV' : d.handoff ? `Your turn · OK to use it here: ${trim(d.handoff, 70)}` : c.step ? `${c.step} · OK to watch it live` : 'The hub browser · OK to use it here'
   el.querySelector('small').textContent = d.title && host ? `${where} · ${host}` : where
   const icon = typeof d.icon === 'string' && d.icon.startsWith('/api/hub/') ? d.icon : d.url ? `/api/hub/site-icon?url=${encodeURIComponent(d.url)}` : ''
   if (icon !== c.icon) {
@@ -808,7 +829,15 @@ function submit(text, { voice = false } = {}) {
   if (!text) return false
   // TV commands ("open Netflix") happen in the shell, at once, without the agent.
   try {
-    if (O.intercept?.(text)) { R.input.value = ''; V.speak = false; return true }
+    const done = O.intercept?.(text)
+    if (done) {
+      R.input.value = ''; V.speak = false
+      // The request stays in the chat, and an app it opened is a card there.
+      addUser(text)
+      if (done.app) addAppCard(done.app)
+      scrollEnd(true)
+      return true
+    }
   } catch (e) { console.error(e) }
   R.input.value = ''
   if (S.busy) {

@@ -122,7 +122,9 @@ const BUILTIN_WALLS = { aurora: "dark", dusk: "dark", graphite: "dark", ocean: "
 /* On the TV the hub's gradient wallpapers become photos of the same name: 4K stock photos from Unsplash
    (credits in photos/NOTICE.txt). The plain ones (mono, noise) stay as they are. */
 const TV_PHOTOS = { aurora: 1, dusk: 1, graphite: 1, ocean: 1, sand: 1 };
-const wallUrl = (id) => (TV_PHOTOS[id] ? `./photos/${id}.jpg` : `./wallpapers/${id}.svg`);
+// On a TV the photos are the 1920x1080 copies (photos/saver): its screen is 1920x1080, and a 4K photo held ~33 MB of
+// graphics memory on a Fire TV Stick, whose driver crashes when that runs short. A laptop gets the 4K ones.
+const wallUrl = (id) => (TV_PHOTOS[id] ? (NATIVE ? `./photos/saver/${id}.jpg` : `./photos/${id}.jpg`) : `./wallpapers/${id}.svg`);
 const hexRgb = (h) => { h = h.replace("#", ""); if (h.length === 3) h = h.replace(/./g, (c) => c + c); return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16) / 255); };
 const lum = (h) => { const [r, g, b] = hexRgb(h).map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4)); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
 const gradCss = (g) => {
@@ -1797,7 +1799,8 @@ window.HubChatHooks = {
     if (!intent) return false;
     leaveBar();
     runIntent(intent);
-    return true;
+    // An app it opened goes into the chat as a card (OK on it opens it again).
+    return intent.type === "launch" ? { app: { id: intent.app.id, name: intent.app.name } } : true;
   },
 };
 
@@ -1805,6 +1808,7 @@ const plain = (t) => t.replace(/`[^`]*`/g, "").replace(/https?:\/\/\S+/g, "").re
 function say(text) {
   if (!text || speakMode() === "Off") return;
   if (window.HubChat?.say) return window.HubChat.say(text);
+  if (IN_HUB) return VOICE.say(text);
   if (NATIVE) return native("speak", text);
   if ("speechSynthesis" in window) speechSynthesis.speak(new SpeechSynthesisUtterance(text));
 }
@@ -2704,10 +2708,13 @@ async function boot() {
     renderGrid();
     if (PREVIEW) { setInterval(syncHub, 30_000); return paintChip(); }
     // The TV is its own light app: the hub's chat.js and browser.js stay on the laptop.
-    Assistant = await import("./assistant.js?v=5").catch((e) => { console.warn("assistant", e); return null; });
+    Assistant = await import("./assistant.js?v=6").catch((e) => { console.warn("assistant", e); return null; });
     Assistant?.init({
       el: $("#assistantView"), toast, native, NATIVE,
-      intercept: (t) => Boolean(window.HubChatHooks?.intercept?.(t)),
+      intercept: (t) => window.HubChatHooks?.intercept?.(t) || false,
+      openApp: (id) => { const a = APPS.find((x) => x.id === id); if (a) runIntent({ type: "launch", app: a }); else toast("That app isn't on this TV"); },
+      openUrl: (url, name) => { let host = ""; try { host = new URL(url).hostname.replace(/^www\./, ""); } catch { /* not a URL */ } openInStream({ id: `url:${url}`, name: name || host || "Website", url, kind: "site", bg: "#26272d", fg: "#ffffff", letter: (name || host || "W").slice(0, 1).toUpperCase() }); },
+      appArt: (id) => { const a = APPS.find((x) => x.id === id); return a ? iconHTML(a) : ""; },
       speechMode: () => speakMode(),
       voiceMode: () => voicePref() === "Conversation",
       onActivity: (on) => $("#rail").classList.toggle("busy", Boolean(on)),
