@@ -1233,6 +1233,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
     on = !!on
     if (on === S.full) return
     S.full = on
+    document.dispatchEvent(new Event('hub-chat-state'))
     closeMenu()
     if (on) {
       fitViewport()

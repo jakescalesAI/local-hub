@@ -1387,7 +1387,11 @@ function ccActivate() {
 }
 function sleepNow() {
   if (!NATIVE) return toast("A TV would go to sleep now");
-  if (native("sleep") === false) toast("Sleep needs the LocalHub home-button service");
+  if (native("sleep") !== false) return;
+  // Fire OS doesn't let an app here do it; the hub can.
+  if (!IN_HUB) return toast("Use the remote's Power button");
+  fetch("/api/tv/power", { method: "POST", headers: { "content-type": "application/json", "x-hub": "1" }, body: JSON.stringify({ on: false }) })
+    .then((r) => r.json()).then((r) => { if (r.error) toast(r.error); }, () => toast("LocalHub didn't answer"));
 }
 const TIMER_STEPS = [0, 30, 60, 90, 120];
 function cycleSleepTimer() {
@@ -1442,7 +1446,8 @@ function settingsModel() {
     { key: "voice", t1: "Voice", t2: { Off: "The assistant only writes", "Read answers": "Answers are read aloud", Conversation: "Talk back and forth: it answers aloud, then it's your turn" }[voicePref()], values: ["Off", "Read answers", "Conversation"] },
     ...(IN_HUB ? [listenRow(), modelRow()] : []),
     ...(!NATIVE ? [{ key: "help", t1: "Keyboard help", t2: "The remote's keys, along the top", toggle: true }] : []),
-    { group: "Remote" },
+    { group: "Remotes and Devices" },
+    ...(NATIVE && typeof NATIVE.openControllers === "function" ? [{ id: "pairctl", t1: "Connect a remote or controller", t2: "Fire TV's own Bluetooth page", v: "" }] : []),
     { id: "buttons", t1: "Fire TV remote", t2: buttonSummary(), v: "" },
     { group: "About" },
     { id: "setup", t1: "Set up LocalHub", t2: "trylocalhub.com/setup · opens here, in the TV's browser", v: "" },
@@ -1505,6 +1510,7 @@ function settingsActivate() {
   else if (it.id === "wall") return openWallPicker();
   else if (it.id === "conn") return openConnMenu();
   else if (it.id === "listen") return toggleListen();
+  else if (it.id === "pairctl") return native("openControllers");
   else if (it.id === "buttons") return openButtons();
   else if (it.id === "model") { const ms = LIVE.info?.models || []; if (ms.length) { const i = ms.findIndex(([id]) => id === chatModel()); prefs.modelId = ms[(i + 1) % ms.length][0]; } }
   else if (it.id === "setup") { closeSettings(); S.backToSettings = true; return Stream.open({ id: "url:setup", name: "Set up LocalHub", url: SETUP_URL, kind: "site", bg: "#26272d", fg: "#ffffff", letter: "L" }); }

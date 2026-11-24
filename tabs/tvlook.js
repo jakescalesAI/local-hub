@@ -43,6 +43,10 @@ ${R} #tvrail button:focus-visible { outline: 2px solid #fff; outline-offset: 2px
 ${R} #tvrail button.on { color: #fff; }
 ${R} #tvrail button.on::after { content: ""; position: absolute; bottom: 3px; width: 26px; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, .5); }
 ${R} #tvrail button span { display: none; }
+#tvback2 { display: none; } ${R} #tvback2 { display: block; position: fixed; z-index: 11; left: 0; top: 0; bottom: 0; width: calc(var(--tvrail) + 40px); background: var(--chat-bg); opacity: 0; pointer-events: none; } ${R}[data-cover] #tvback2 { opacity: 1; }
+${R}[data-cover]:not(:has(#tvpanel.on)) { overflow: hidden !important; scrollbar-width: none; }
+${R}[data-cover] #tvrail { background: #111216; }
+${R} .bw-scrim { left: var(--tvrail) !important; }
 #tvtip { display: none; } ${R} #tvtip { display: block; position: fixed; z-index: 190; left: calc(var(--tvrail) + 12px); padding: 9px 16px; border-radius: 99px; background: var(--ui-sel); color: #000; font-size: 15px; font-weight: 600; white-space: nowrap; pointer-events: none; opacity: 0; transform: translate(-6px, -50%); transition: opacity .12s, transform .12s; box-shadow: 0 10px 30px rgba(0, 0, 0, .45); } ${R} #tvtip.on { opacity: 1; transform: translate(0, -50%); }
 ${R} #tvrail button b.old { position: absolute; left: 66px; padding: 7px 14px; border-radius: 99px; background: var(--ui-panel); box-shadow: var(--ui-edge); font-size: 14px; font-weight: 600; white-space: nowrap; opacity: 0; pointer-events: none; transform: translateX(-4px); transition: opacity .15s, transform .15s; }
 ${R} #seg-scroll { display: none; }
@@ -101,6 +105,7 @@ ${R} #tvmirror.on { display: flex; flex-direction: column; position: fixed; z-in
 ${R} .tvm-head { display: flex; align-items: center; gap: 16px; font: 700 26px/1.1 var(--display); }
 ${R} .tvm-head span { flex: 1; font: 500 15px var(--font); color: rgba(255, 255, 255, .6); }
 ${R} .tvm-b { display: grid; place-items: center; width: 46px; height: 46px; border-radius: 50%; background: var(--ui-fill); box-shadow: var(--ui-edge); color: #fff; }
+${R} .tvm-b.busy { animation: tvmbusy 1s ease-in-out infinite; } @keyframes tvmbusy { 50% { opacity: .35; } }
 ${R} .tvm-b:hover { background: var(--ui-sel); color: #000; } ${R} .tvm-b svg { width: 22px; height: 22px; }
 ${R} .tvm-fit { flex: 1; min-height: 0; display: grid; place-items: center; }
 ${R} .tvm-screen { position: relative; overflow: hidden; border-radius: 18px; background: #000; box-shadow: 0 0 0 1px rgba(255, 255, 255, .14), 0 30px 80px rgba(0, 0, 0, .5); }
@@ -200,6 +205,11 @@ ${A} .tvs-art .rm { height: min(86vh, 860px); } ${A} .tvs-art .rm.pad { height: 
 ${A} .tvs-seg { display: inline-flex; gap: 4px; margin: 0 0 6px 4px; padding: 4px; border-radius: 99px; background: var(--ui-fill); box-shadow: var(--ui-edge); } ${A} .tvs-seg button { height: 38px; padding: 0 18px; border-radius: 99px; font-size: 14px; font-weight: 600; color: rgba(255, 255, 255, .7); } ${A} .tvs-seg button.on { background: var(--ui-sel); color: #000; }
 ${A} .rmr select { height: 40px; max-width: 260px; padding: 0 14px; border: 0; border-radius: 20px; background: rgba(255, 255, 255, .1); color: #fff; font: 600 14px var(--font); } ${A} .rmr option { background: #1c1d22; }
 ${A} .rmr.rmsel { box-shadow: 0 0 0 2px #fff; }
+${A} .tvs-x { height: 36px; padding: 0 16px; border-radius: 99px; background: rgba(255, 255, 255, .1); color: #fff; font-size: 14px; font-weight: 600; white-space: nowrap; } ${A} .tvs-x:hover { background: #ff453a; }
+${A} .tvs-msg { margin: 0 4px 10px; padding: 12px 18px; border-radius: 16px; background: rgba(10, 132, 255, .2); font-size: 15px; font-weight: 600; }
+${A} .tvs-pair { display: grid; grid-template-columns: 170px 1fr; gap: 24px; align-items: center; margin-bottom: 8px; } ${A} .tvs-pair > div { display: block !important; } ${A} .tvs-pair b { font: 700 34px/1 var(--mono); letter-spacing: .08em; } ${A} .tvs-pair ol { margin: 14px 0 !important; } ${A} .tvs-pair i { color: rgba(255, 255, 255, .5); font-style: normal; }
+${A} .tvs-qr { border-radius: 14px; overflow: hidden; background: #fff; } ${A} .tvs-qr:empty { display: none !important; } ${A} .tvs-qr svg { display: block; width: 100%; height: auto; }
+@media (max-width: 700px) { ${A} .tvs-pair { grid-template-columns: 1fr; } }
 ${A} .tvs-form { padding: 18px 22px; border-radius: 18px; background: var(--ui-fill); box-shadow: var(--ui-edge); font-size: 15px; line-height: 1.6; }
 ${A} .tvs-form ol { margin: 0 0 14px; padding-left: 20px; color: rgba(255, 255, 255, .75); } ${A} .tvs-form code { padding: 2px 8px; border-radius: 8px; background: rgba(255, 255, 255, .1); font-size: 13px; user-select: all; } ${A} .tvs-form a { color: #4aa3ff; }
 ${A} .tvs-form > div { display: flex; gap: 12px; } ${A} .tvs-form input { flex: 1; min-width: 0; height: 44px; padding: 0 18px; border: 0; border-radius: 22px; background: rgba(255, 255, 255, .08); color: #fff; font: 500 15px var(--mono); }
@@ -355,7 +365,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
 
   // The widget column: the weather, then Home's widgets, copied from where home.js draws them so its own clicks, edits
   // and updates work here (the column is inside .hw-root). The clock and date are already at the top left.
-  let MU = null, SYS = null
+  let MU = null, SYS = null, KEYS = { on: false, state: 'off', why: '' }
   const gauge = (label, v, sub = '') => { const p = Math.max(0, Math.min(100, Number(v) || 0)), c = p > 90 ? '#ff453a' : p > 75 ? '#ff9f0a' : '#30d158'; return `<div><svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="26" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="7"/><circle cx="32" cy="32" r="26" fill="none" stroke="${c}" stroke-width="7" stroke-linecap="round" stroke-dasharray="${(p * 1.634).toFixed(1)} 164" transform="rotate(-90 32 32)"/></svg><b>${Math.round(p)}<i>%</i></b><span>${label}</span><em>${sub}</em></div>` }
   async function readPc() {
     try { const [m, y] = await Promise.all([fetch('/api/music', { cache: 'no-store' }), fetch('/api/desk/system', { cache: 'no-store' })]); MU = m.ok ? await m.json() : null; SYS = y.ok ? await y.json() : null } catch { MU = null }
@@ -522,7 +532,8 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     if (id === 'settings') { closePanel(); return openSettings() }
     if (!TV?.on) return off()
     if (id.startsWith('input:')) post({ type: 'input', name: id.slice(6) })
-    else if (['home', 'saver', 'sleep'].includes(id)) post({ type: id })
+    else if (id === 'sleep') void power(false)
+    else if (['home', 'saver'].includes(id)) post({ type: id })
     soon()
   }
   panel.addEventListener('click', e => { const n = e.target.closest('[data-w]'); if (n && !n.classList.contains('wps')) press(n.dataset.w) })
@@ -556,7 +567,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   mirror.tabIndex = -1
   mirror.setAttribute('aria-label', 'Your TV')
   const mb = (k, label, d) => `<button type="button" class="tvm-b" data-key="${k}" title="${label}" aria-label="${label}">${svg(d)}</button>`
-  mirror.innerHTML = `<div class="tvm-head">${mb('leave', 'Back to LocalHub', '<path d="M15 5l-7 7 7 7"/>')}Your TV<span>Arrow keys move · Enter opens · Esc goes back · click anything · type in a text box</span>${mb('back', 'Back on the TV', '<path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/>')}${mb('home', 'TV home', IC.home)}${mb('sleep', 'Put the TV to sleep', '<path d="M12 3v8"/><path d="M6.4 6.6a8 8 0 1 0 11.2 0"/>')}</div><div class="tvm-fit"><div class="tvm-screen"><iframe title="Your TV" sandbox="allow-same-origin" tabindex="-1"></iframe><div class="tvm-cover"></div><div class="tvm-note">Connecting to your TV…</div></div></div>`
+  mirror.innerHTML = `<div class="tvm-head">${mb('leave', 'Back to LocalHub', '<path d="M15 5l-7 7 7 7"/>')}Your TV<span>Arrow keys move · Enter opens · Esc goes back · click anything · type in a text box</span>${mb('back', 'Back on the TV', '<path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/>')}${mb('home', 'TV home', IC.home)}${mb('power', 'Turn the TV on or off', '<path d="M12 3v8"/><path d="M6.4 6.6a8 8 0 1 0 11.2 0"/>')}</div><div class="tvm-fit"><div class="tvm-screen"><iframe title="Your TV" sandbox="allow-same-origin" tabindex="-1"></iframe><div class="tvm-cover"></div><div class="tvm-note">Connecting to your TV…</div></div></div>`
   document.body.append(mirror)
   const mFrame = mirror.querySelector('iframe'), mNote = mirror.querySelector('.tvm-note'), mScreen = mirror.querySelector('.tvm-screen')
   let mBeat = 0, mRun = 0, mSeen = 0, mTimer = 0
@@ -570,7 +581,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   async function frameCss() {
     // The TV page's own stylesheets, from the same list it uses. No scripts run in here (sandbox).
     const page = await (await fetch('/tv/', { cache: 'no-store' })).text()
-    const css = [...page.matchAll(/<link rel="stylesheet" href="\.\/([\w.?=-]+)">/g)].map(m => `<link rel="stylesheet" href="/tv/${m[1]}">`).join('')
+    const css = [...page.matchAll(/<link rel="stylesheet" href="\.\/([\w.?=-]+)">/g)].map(m => m[1]).concat('stream.css?v=2', 'assistant.css').filter((x, i, l) => l.findIndex(y => y.split('?')[0] === x.split('?')[0]) === i).map(x => `<link rel="stylesheet" href="/tv/${x}">`).join('')
     await new Promise(done => { mFrame.onload = done; mFrame.srcdoc = `<!doctype html><html><head><base href="/tv/">${css}<style>html,body{margin:0;width:1920px;height:1080px;overflow:hidden;background:#000}#stage{left:0!important;top:0!important;transform:none!important}*{transition:none!important;animation:none!important;cursor:pointer!important}#hub-wall{display:block!important;position:absolute;inset:0;z-index:0;background:#000 center/cover;--hub-scrim:.22}#hub-wall::after{background:#000!important}</style></head><body></body></html>` })
   }
   async function watch(run) {
@@ -609,13 +620,16 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     mSeen = 0
     await readTv()
     if (run !== mRun) return
-    if (!TV?.on) note('Your TV isn’t connected. Open LocalHub on it, and it shows here.')
+    if (!TV?.on) {
+      note('Your TV isn’t connected. Open LocalHub on it, and it shows here.')
+      fetch('/api/tv/power', { cache: 'no-store' }).then(r => r.json()).then(r => { if (run === mRun && !mSeen && r.known) note(r.on ? 'The TV is on. Press TV home to open LocalHub on it.' : 'The TV is off. Press the power button to turn it on.') }, () => {})
+    }
     try { await frameCss() } catch { return note('The TV’s page didn’t load') }
     if (run !== mRun) return
     const beat = () => post({ type: 'mirror', on: true })
     beat()
     mBeat = setInterval(() => { if (!document.hidden) beat() }, 4000)
-    mTimer = setInterval(() => { if (!mSeen) readTv().then(() => { if (run === mRun && !mSeen) note(TV?.on ? 'Connecting to your TV…' : 'Your TV isn’t connected. Open LocalHub on it, and it shows here.') }) }, 5000)
+    mTimer = setInterval(() => { if (!mSeen) readTv().then(() => { if (run === mRun && !mSeen) TV?.on && note('Connecting to your TV…') }) }, 5000)
     watch(run)
   }
   function closeMirror() {
@@ -627,18 +641,39 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     mirror.classList.remove('on')
     setTimeout(paintRail, 60)
   }
+  // On or off, asked of the TV itself, so it works while it's asleep too.
+  let powering = false
+  async function power(on = 'toggle') {
+    if (powering) return
+    powering = true
+    const b = mirror.querySelector('[data-key="power"]')
+    b?.classList.add('busy')
+    note(on === false ? 'Turning the TV off…' : on ? 'One moment…' : '')
+    try {
+      const r = await (await fetch('/api/tv/power', { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: JSON.stringify({ on }) })).json()
+      if (r.error) { note(r.error); say(r.error) }
+      else if (r.on) { note('The TV is on. Opening LocalHub on it…'); mSeen = 0; setTimeout(() => { if (mirror.classList.contains('on')) post({ type: 'mirror', on: true }) }, 6000) }
+      else note('The TV is off. Press the power button to turn it on.')
+      tvPower = r.error ? null : r.on
+    } catch { note('The hub didn’t answer.') }
+    b?.classList.remove('busy')
+    powering = false
+    soon()
+  }
+  let tvPower = null
   const MKEY = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down', Enter: 'enter', Escape: 'back', BrowserBack: 'back', ContextMenu: 'menu', PageUp: 'rew', PageDown: 'ff', MediaPlayPause: 'ai' }
   mirror.addEventListener('click', e => {
     const k = e.target.closest('[data-key]')?.dataset.key
     if (k === 'leave') return closeMirror()
-    if (k === 'sleep') post({ type: 'sleep' })
+    if (k === 'power') return void power()
+    else if (k === 'home' && !TV?.on) return void power(true)
     else if (k) post({ type: 'key', name: k })
     else if (e.target.closest('.tvm-cover')) { const r = mScreen.getBoundingClientRect(); post({ type: 'tap', x: (e.clientX - r.left) / r.width * 1920, y: (e.clientY - r.top) / r.height * 1080 }) }
     mirror.focus()
   })
   mirror.addEventListener('wheel', e => { e.preventDefault(); const now = Date.now(); if (now - (mirror._w || 0) < 160) return; mirror._w = now; post({ type: 'key', name: e.deltaY > 0 ? 'down' : 'up' }) }, { passive: false })
   document.addEventListener('keydown', e => {
-    if (!mirror.classList.contains('on') || e.ctrlKey || e.metaKey || e.altKey) return
+    if (!mirror.classList.contains('on') || e.ctrlKey || e.metaKey || e.altKey || panel.classList.contains('on') || document.querySelector('#dkadd.on')) return
     if (e.target.closest?.('.tvm-b') && (e.key === 'Enter' || e.key === ' ')) return
     const name = MKEY[e.key]
     if (!name && e.key !== 'Backspace' && e.key.length !== 1) return
@@ -660,10 +695,10 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   // Where you were in each tab comes back with it.
   const spots = {}
   const spotKey = () => [...seg.querySelectorAll('button[data-env]')].find(isOn)?.dataset.env || 'home'
-  let homeY = 0, homePager = null
+  let homeY = 0, homePager = null, hush = 0
   document.addEventListener('scroll', e => {
     if (e.target?.classList?.contains('hw-pager')) { if (homePager === e.target) homeY = e.target.scrollTop }
-    else if (e.target === document) { const k = spotKey(); if (k !== 'home') spots[k] = { y: scrollY, at: document.getElementById('title')?.textContent } }
+    else if (e.target === document) { const k = spotKey(); if (Date.now() > hush) spots[k] = { y: scrollY, at: document.getElementById('title')?.textContent } }
   }, { capture: true, passive: true })
   function keepSpots() {
     const p = document.querySelector('.hw-root .hw-pager')
@@ -673,12 +708,15 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   new MutationObserver(() => {
     const k = spotKey()
     if (k === spotEnv) return
+    const first = !spotEnv
     spotEnv = k
+    if (!first) { closeSettings(); closeMirror(); window.HubBrowser?.close?.() }
     keepSpots()
     const s = spots[k]
-    if (!s || k === 'home') return
+    hush = Date.now() + 700
+    if (!s) return void scrollTo(0, 0)
     let tries = 20
-    const back = () => { if (spotKey() !== k) return; if (document.getElementById('title')?.textContent === s.at && document.documentElement.scrollHeight >= s.y + innerHeight - 4) scrollTo(0, s.y); else if (tries--) setTimeout(back, 100) }
+    const back = () => { if (spotKey() !== k) return; if (document.getElementById('title')?.textContent === s.at && (k !== 'home' || document.querySelector('#dk .dk-t')) && document.documentElement.scrollHeight >= s.y + innerHeight - 4) scrollTo(0, s.y); else if (tries--) setTimeout(back, 100) }
     back()
   }).observe(seg, { subtree: true, attributes: true, attributeFilter: ['aria-pressed'] })
 
@@ -716,20 +754,21 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
       { id: 'weather', t1: 'Home weather', t2: 'At the top right', v: look.weather ? 'On' : 'Off', on: look.weather },
       { id: 'addapps', t1: 'Apps and websites', t2: 'What is on Home', v: '' },
       { id: 'edit', t1: 'Widgets', t2: 'Add and arrange them', v: '' },
-      { id: 'tabs', t1: 'Sidebar', t2: 'Which tabs show, and their order', v: '' },
+      { id: 'tabs', t1: 'Sidebar', t2: 'Extra tabs under Files', v: '' },
+      { group: 'Devices and Connections' },
+      { id: 'devpage', t1: 'Devices and connections', t2: 'Phones, iPads and computers, your home network, Tailscale and the passcode', v: DV.summary },
+      { id: 'remotepage', t1: 'Remotes and controllers', t2: 'What each button does, on the Fire TV remote or a game controller', v: KEYS.on ? 'In every app' : '' },
+      { id: 'panel', t1: 'Your TV', t2: 'Its player, brightness, volume and more', v: TV?.on ? 'Connected' : 'Not connected', on: !!TV?.on },
+      { id: 'tvsetup', t1: 'Set up a TV', t2: 'Put LocalHub TV on a television and pair it', v: '' },
+      { id: 'musicpage', t1: 'Music platforms', t2: 'What the music widget plays and controls', v: MU?.spotify?.connected ? 'Spotify' : MU?.pc ? 'This PC' : '' },
+      ...(window.HUB_CONNECTIONS ? [{ id: 'connections', t1: 'Services', t2: 'Gmail, Notion, GitHub and the rest the assistant can use', v: DV.services }] : []),
+      { group: 'Assistant' },
+      { id: 'claude', t1: 'Claude', t2: 'What the assistant runs on', v: DV.claude },
+      ...(listen ? [{ id: 'listen', t1: 'Hey LocalHub', t2: 'This computer’s microphone listens for it', v: listen.on ? 'On' : 'Off', on: listen.on }] : []),
       { group: 'Background and Screensaver' }, ...dev('desktop'), ...dev('mobile'),
       { group: 'Look' },
       { id: 'theme', t1: 'Theme', t2: 'Light is the hub’s older look', v: THEMES[st.theme] || 'Dark' },
       { id: 'style', t1: 'Accent, font and wallpapers', t2: 'The style editor, and adding your own pictures', v: '' },
-      { group: 'Music' },
-      { id: 'musicpage', t1: 'Music platforms', t2: 'What the music widget plays and controls', v: MU?.spotify?.connected ? 'Spotify' : MU?.pc ? 'This PC' : '' },
-      { group: 'Assistant' },
-      ...(listen ? [{ id: 'listen', t1: 'Hey LocalHub', t2: 'This computer’s microphone listens for it', v: listen.on ? 'On' : 'Off', on: listen.on }] : []),
-      ...(window.HUB_CONNECTIONS ? [{ id: 'connections', t1: 'Connections', t2: 'The services the assistant can use', v: '' }] : []),
-      { group: 'TV' },
-      { id: 'remotepage', t1: 'Remotes and controllers', t2: 'What each button does, on the Fire TV remote or a game controller', v: '' },
-      { id: 'panel', t1: 'Your TV', t2: 'Its player, brightness, volume and more', v: TV?.on ? 'Connected' : 'Not connected', on: !!TV?.on },
-      { id: 'tvsetup', t1: 'Set up a TV', t2: 'Put LocalHub TV on a television and pair it', v: '' },
       { group: 'About' },
       { id: 'setup', t1: 'Set up LocalHub', t2: 'trylocalhub.com/setup', v: '' },
       { info: true, t1: 'Version', t2: 'LocalHub on this computer', v: version || '' },
@@ -738,6 +777,17 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   function paintSettings() {
     if (!set.classList.contains('on')) return
     const backB = `<button type="button" data-set="back" aria-label="Back">${svg('<path d="M15 5l-7 7 7 7"/>')}</button>`
+    if (picking === 'devices') {
+      const a = document.activeElement
+      if (a && set.contains(a) && a.matches('input')) return
+      const html = `<div class="tvs-art"><img src="/icons/hub.svg" alt=""><p>${esc(H()?.name || 'LocalHub')} on this computer</p></div><div class="tvs-list">${devicesHtml(backB)}</div>`
+      if (setHtml === html) return
+      const y3 = set.querySelector('.tvs-list')?.scrollTop || 0
+      setHtml = html
+      set.innerHTML = html
+      set.querySelector('.tvs-list').scrollTop = y3
+      return
+    }
     if (picking === 'music' || picking === 'remote') {
       const html2 = picking === 'music' ? musicHtml(backB) : remoteHtml(backB)
       const html = picking === 'music' ? `<div class="tvs-art"><img src="/icons/hub.svg" alt=""><p>Music, wherever it plays</p></div><div class="tvs-list">${html2}</div>` : `<div class="tvs-art${rmKind === 'pad' ? ' wide' : ''}">${RM ? RM.pictureHTML(rmKind, rmSel, btns()) : ''}</div><div class="tvs-list">${html2}</div>`
@@ -758,6 +808,75 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     set.innerHTML = html
     set.querySelector('.tvs-list').scrollTop = y
     if (f) set.querySelector(`[data-set="${CSS.escape(f)}"]`)?.focus()
+  }
+  // ── Settings › Devices and connections ──
+  const DV = { summary: '', services: '', claude: '', reach: null, lan: null, devices: [], power: null, pair: null, msg: '', ask: '', pass: false, local: ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname) }
+  const get = async u => { try { const r = await fetch(u, { cache: 'no-store' }); return r.ok ? await r.json() : null } catch { return null } }
+  const send = async (u, b) => { try { const r = await fetch(u, { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: JSON.stringify(b || {}) }); const j = await r.json().catch(() => ({})); return { ok: r.ok, ...j } } catch { return { ok: false, error: 'The hub didn’t answer.' } } }
+  async function readDevices(all) {
+    const [d, c, h, k] = await Promise.all([get('/api/pair/devices'), get('/api/connections'), get('/api/hub/setup'), get('/api/tv/keys')])
+    DV.devices = d?.devices || []
+    if (k) KEYS = k
+    const n = (c?.connections || []).filter(x => x.connected).length
+    DV.services = n ? `${n} connected` : 'None yet'
+    DV.claude = !h ? '' : !h.claude?.installed ? 'Not installed' : h.claude.signedIn ? 'Signed in' : 'Not signed in'
+    DV.summary = DV.devices.length ? `${DV.devices.length} paired` : ''
+    if (all && DV.local) { const [r, l, p] = await Promise.all([get('/api/reach'), get('/api/tv/setup'), get('/api/tv/power')]); DV.reach = r; DV.lan = l?.lan || null; DV.power = p }
+    paintSettings()
+  }
+  const ago = t => { const m = Math.round((Date.now() - t) / 60000); return m < 2 ? 'Now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} days ago` }
+  const OS = { ios: 'iPhone or iPad', tv: 'Fire TV', android: 'Android', web: 'Browser', windows: 'Windows', macos: 'Mac', linux: 'Linux' }
+  function devicesHtml(backB) {
+    const row = (t1, t2, v = '', id = '', on = false) => `<${id ? 'button type="button"' : 'div'} class="tvs-row"${id ? ` data-set="${esc(id)}"` : ''}><div class="txt"><div class="t1">${esc(t1)}</div>${t2 ? `<div class="t2">${esc(t2)}</div>` : ''}</div><div class="v${on ? ' on' : ''}">${esc(v)}</div></${id ? 'button' : 'div'}>`
+    const g = t => `<div class="tvs-group">${t}</div>`
+    const R = DV.reach, ts = R?.tailscale, msg = DV.msg ? `<div class="tvs-msg">${esc(DV.msg)}</div>` : ''
+    const pads = [...(navigator.getGamepads?.() || [])].filter(x => x?.connected)
+    const title = `<div class="tvs-title">${backB}Devices and connections</div>${msg}`
+    const devs = DV.devices.length ? DV.devices.map(d => `<div class="tvs-row"><div class="txt"><div class="t1">${esc(d.name)}</div><div class="t2">${esc(OS[d.platform] || 'Device')} · last here ${ago(d.lastSeen)}</div></div><button type="button" class="tvs-x" data-set="unpair:${esc(d.id)}">${DV.ask === d.id ? 'Remove it?' : 'Remove'}</button></div>`).join('') : row('Nothing paired yet', 'A phone or TV you add shows here')
+    if (!DV.local) return title + g('Paired with this hub') + devs + g('More') + row('Do the rest on the hub’s own computer', 'Adding devices, the home network, Tailscale and the passcode are set there')
+    const P = DV.pair
+    const where = [R?.home?.url && ['Home network', R.home.url, R.home.qrSvg], ts?.on && ts.url && ['Tailscale, from anywhere', ts.url, ts.qrSvg]].filter(Boolean)
+    const pairing = P ? `<div class="tvs-form tvs-pair"><div class="tvs-qr">${where[0] ? where[0][2] : ''}</div><div><b>${esc(P.code.replace(/(.{4})(?=.)/g, '$1 '))}</b><ol><li>On the phone, iPad or computer, ${where.length ? 'scan this or open' : 'turn on your home network below, then open'}:${where.map(x => `<br><code>${esc(x[1])}/pair</code> <i>${esc(x[0])}</i>`).join('')}</li><li>Type the code. It works once, for five minutes.</li></ol><button type="button" data-set="pairstop">Done</button></div></div>` : ''
+    return title
+      + g('Phones, iPads and computers') + (P ? pairing : row('Add a device', 'Shows a code to type on it once', '', 'pairstart')) + devs
+      + g('Where LocalHub answers')
+      + row('This computer', `http://localhost:${R?.port || 3100}`, 'Always', '', true)
+      + row('Home network', DV.lan?.on ? DV.lan.url : DV.lan?.found === false ? 'This computer isn’t on one right now' : 'For the TV, and phones on your Wi-Fi', DV.lan ? (DV.lan.on ? 'On' : 'Off') : '…', 'lan', DV.lan?.on)
+      + row('Tailscale', !ts ? 'Checking…' : !ts.installed ? 'Reach LocalHub from anywhere. Install it from tailscale.com, then come back' : !ts.running ? 'Installed. Open Tailscale on this computer and connect' : ts.on ? `${ts.url} · from any of your Tailscale devices` : `Connected as ${ts.name || ts.ip}. Turn on to reach LocalHub from anywhere`, !ts ? '' : !ts.installed ? 'Get it' : ts.on ? 'On' : 'Off', 'tailscale', ts?.on)
+      + (DV.pass ? '<div class="tvs-form"><div><input id="dvpass" type="password" autocomplete="new-password" minlength="8" placeholder="New passcode, 8 or more characters" aria-label="New passcode"><button type="button" data-set="passsave">Save</button></div></div>' : row('Passcode', 'What another device types if it isn’t paired. Needed before the two above', R?.passcode ? (R.passcode.set ? 'Change' : 'Set one') : '', 'pass', !!R?.passcode?.set))
+      + (ts?.running && ts.peers.length ? g('On your Tailscale') + ts.peers.map(x => row(x.name, x.os, x.online ? 'Online' : 'Offline', '', x.online)).join('') : '')
+      + g('TV') + row('TV power', DV.power?.known === false ? DV.power.error : 'Works while it’s asleep too', DV.power?.known ? (DV.power.on ? 'On' : 'Off') : DV.power ? 'Not answering' : '…', DV.power?.known ? 'tvpower' : '', DV.power?.on) + row('Remotes and controllers', 'What each button does', KEYS.on ? 'In every app' : '', 'remotepage') + row('Set up a TV', 'Put LocalHub TV on a television and pair it', '', 'tvsetup')
+      + g('Controllers on this computer') + (pads.length ? pads.map(x => row(x.id.replace(/\s*\(.*$/, ''), 'A opens, B goes back, X Overlay, Y Assistant, Start Settings', 'Connected', '', true)).join('') : row('No controller yet', 'Plug one in, or pair it over Bluetooth, then press any button on it'))
+      + row('Bluetooth', 'Pair a controller, keyboard or headphones with this computer', 'Open', 'os:bluetooth') + row('Wi-Fi and network', 'This computer’s own settings', 'Open', 'os:network') + row('Sound', 'Where this computer plays, and its microphone', 'Open', 'os:sound')
+      + g('Accounts') + row('Claude', 'What the assistant runs on', DV.claude, '', DV.claude === 'Signed in') + row('Services', 'What the assistant can use', DV.services, 'connections') + row('Music platforms', 'What the music widget plays', MU?.spotify?.connected ? 'Spotify' : 'This PC', 'musicpage')
+  }
+  async function onDevice(id) {
+    const [k, v] = [id.split(':')[0], id.slice(id.indexOf(':') + 1)]
+    DV.msg = ''
+    if (k === 'pairstart') { const r = await send('/api/pair/start'); if (r.ok && r.code) { DV.pair = r; const n = DV.devices.length; const wait = async () => { if (!DV.pair || picking !== 'devices') return; if (Date.now() > DV.pair.expires) { DV.pair = null; DV.msg = 'That code ran out. Make another.'; return paintSettings() } await readDevices(); if (DV.devices.length > n) { DV.pair = null; DV.msg = `${DV.devices.at(-1).name} is paired.`; return paintSettings() } setTimeout(wait, 2500) }; setTimeout(wait, 2500) } else DV.msg = r.error || 'That didn’t work.' }
+    else if (k === 'pairstop') DV.pair = null
+    else if (k === 'unpair') {
+      if (DV.ask !== v) { DV.ask = v; setTimeout(() => { if (DV.ask === v) { DV.ask = ''; paintSettings() } }, 4000) }
+      else { DV.ask = ''; const r = await send(`/api/pair/devices/${encodeURIComponent(v)}/remove`); if (!r.ok) DV.msg = r.error || 'That didn’t work.'; return readDevices() }
+    }
+    else if (k === 'lan') { const r = await send('/api/tv/setup/lan', { on: !DV.lan?.on }); if (!r.ok) { DV.msg = r.error || 'That didn’t work.'; if (r.needPasscode) DV.pass = true } return readDevices(true) }
+    else if (k === 'tailscale') {
+      const t = DV.reach?.tailscale
+      if (t && !t.installed) return void window.open('https://tailscale.com/download', '_blank', 'noopener')
+      const r = await send('/api/reach/tailscale', { on: !t?.on })
+      if (!r.ok) { DV.msg = r.error || 'That didn’t work.'; if (r.needPasscode) DV.pass = true }
+      return readDevices(true)
+    }
+    else if (k === 'pass') DV.pass = true
+    else if (k === 'passsave') {
+      const n = set.querySelector('#dvpass'), r = await send('/api/hub/passcode', { passcode: n?.value || '' })
+      n?.blur()
+      if (r.ok) { DV.pass = false; DV.msg = 'Passcode saved.' } else DV.msg = r.error || 'Use 8 or more characters.'
+      return readDevices(true)
+    }
+    else if (k === 'tvpower') { DV.power = { ...DV.power, on: !DV.power?.on }; paintSettings(); DV.power = await send('/api/tv/power', { on: 'toggle' }); soon() }
+    else if (k === 'os') { const r = await send('/api/reach/open', { what: v }); if (!r.ok) DV.msg = r.error || 'That didn’t open.' }
+    paintSettings()
   }
   // ── Settings › Music platforms ──
   const sp = () => MU?.spotify || {}
@@ -789,7 +908,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     } catch { msg('The hub didn’t answer.') }
   }
   // ── Settings › Fire TV remote ──
-  let RM = null, rmSel = 'menu', rmKind = 'remote', KEYS = { on: false, state: 'off', why: '' }
+  let RM = null, rmSel = 'menu', rmKind = 'remote'
   async function keys(body) { try { const r = await fetch('/api/tv/keys', body ? { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: JSON.stringify(body) } : { cache: 'no-store' }); if (r.ok) KEYS = await r.json() } catch {} setHtml = ''; paintSettings(); if (KEYS.state === 'starting' && picking === 'remote') setTimeout(keys, 1500) }
   const btns = () => H()?.settings.tv?.buttons || {}
   function remoteHtml(backB) {
@@ -820,6 +939,8 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     set.classList.add('on')
     paintSettings()
     readAbout()
+    readDevices()
+    readPc()
     setTimeout(paintRail, 60)
   }
   function closeSettings() { set.classList.remove('on'); setTimeout(paintRail, 60) }
@@ -830,6 +951,9 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     if (k === 'wall') { picking = d; set.querySelector('.tvs-list').scrollTop = 0; return paintSettings() }
     if (k === 'saver') return saveDev(d, { saver: MIN[(MIN.indexOf(devLook(d).saver) + 1) % MIN.length] })
     if (k === 'show') return saveDev(d, { show: devLook(d).show === 'photos' ? 'background' : 'photos' })
+    if (id === 'devpage') { picking = 'devices'; setHtml = ''; DV.msg = ''; DV.pair = null; DV.pass = false; set.querySelector('.tvs-list').scrollTop = 0; paintSettings(); return readDevices(true) }
+    if (['pairstart', 'pairstop', 'unpair', 'lan', 'tailscale', 'pass', 'passsave', 'tvpower', 'os'].includes(id.split(':')[0])) return onDevice(id)
+    if (id === 'claude') return void window.HubChat?.open(closeSettings())
     if (id === 'musicpage') { picking = 'music'; setHtml = ''; await readPc(); return paintSettings() }
     if (id === 'remotepage') { picking = 'remote'; setHtml = ''; try { RM ??= await import('/tv/remote.js?v=3') } catch {} return keys() }
     if (k === 'rmkind') { rmKind = d; rmSel = RM.rowIds(btns(), d)[0] || ''; setHtml = ''; set.querySelector('.tvs-list').scrollTop = 0; return paintSettings() }
@@ -910,7 +1034,10 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   window.HubSaver = { start: startSaver, stop: stir }
 
   // The sidebar follows the tab bar, which stays the one list of tabs (it's hidden, its buttons still work).
+  const behind = Object.assign(document.createElement('div'), { id: 'tvback2' })
+  document.body.append(behind)
   function paintRail() {
+    document.documentElement.toggleAttribute('data-cover', set.classList.contains('on') || mirror.classList.contains('on') || !!window.HubChat?.isOpen?.())
     const chat = !!window.HubChat?.isOpen?.()
     const tabs = [...seg.querySelectorAll('button[data-env]')].filter(b => !b.hidden && b.style.display !== 'none')
     const item = (key, ic, label, on) => `<button type="button" data-rail="${esc(key)}" class="${on ? 'on' : ''}" aria-label="${esc(label)}"${on ? ' aria-current="page"' : ''}>${svg(IC[ic])}<span>${esc(label)}</span></button>`
@@ -955,8 +1082,10 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     } else if (key === 'assistant') window.HubChat?.open()
     else if (key === 'tv') openMirror()
     else if (key === 'settings') openSettings()
+    paintRail()
     setTimeout(paintRail, 60)
   })
+  for (const ev of ['hub-browser-state', 'hub-chat-state']) document.addEventListener(ev, () => paintRail())
   new MutationObserver(paintRail).observe(seg, { subtree: true, childList: true, attributes: true, characterData: true })
 
   function tick() {

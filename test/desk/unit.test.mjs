@@ -47,3 +47,12 @@ test('the remote in every app: only known jobs, and a command nothing can be sli
   assert.deepEqual(nativeMap({ 'key:99': 'overlay', homebtn: 'none', power: 'power' }), { MENU: 'mic', HOME: 'none', K99: 'overlay' })
   assert.deepEqual(nativeMap({ menu: 'menu', rew: 'app:Plex', app1: 'home' }, n => (n === 'Plex' ? 'com.plexapp.android' : '')), { MEDIA_REWIND: 'app:Plex|com.plexapp.android', APP_1: 'home' })
 })
+
+test('Tailscale status, cut to what Settings shows', async () => {
+  const { readTailscale, qrFor } = await import('../../reach.mjs')
+  const t = readTailscale({ BackendState: 'Running', Self: { DNSName: 'pc.tail1.ts.net.', TailscaleIPs: ['fd7a::1', '100.1.2.3'] }, Peer: { a: { DNSName: 'phone.tail1.ts.net.', OS: 'iOS', Online: false }, b: { HostName: 'box', OS: 'linux', Online: true }, c: {} } })
+  assert.deepEqual([t.running, t.ip, t.name, t.peers.map(p => p.name)], [true, '100.1.2.3', 'pc', ['box', 'phone']])
+  assert.deepEqual(readTailscale(null).peers, [])
+  assert.equal(readTailscale({ BackendState: 'Stopped' }).running, false)
+  assert.match(qrFor('http://192.168.1.50:3100/pair'), /^<svg/)
+})

@@ -2,6 +2,8 @@
 // was allowed when LocalHub was put on it. Fire OS doesn't let an app on the TV do this for itself. Once started it runs
 // on the TV by itself; after the TV restarts, the hub starts it again when the TV next talks to it.
 //   GET  /api/tv/keys                -> { on, state: off | starting | on | error, why }
+//   GET  /api/tv/power               -> { known, on } is the TV awake (asked of the TV itself)
+//   POST /api/tv/power { on }          wakes it (on LocalHub), or puts it to sleep. on: 'toggle' is the other one
 //   POST /api/tv/keys { on?, map? }     on/off; map is what each button does, by key name (the TV page sends it)
 // adb is config tv.adb, or the adb on this computer's PATH. Nothing is sent to the TV but the one fixed command.
 import { execFile } from 'node:child_process'
@@ -66,6 +68,23 @@ export function create({ here }) {
   async function route(url, req, res, { send, readBody }) {
     // The Fire TV app asking for its next command: that's the TV, and where it is.
     if (url.pathname === '/api/tv/next' && url.searchParams.get('tv') === '1' && !req.headers['x-forwarded-for']) seen(req.socket?.remoteAddress)
+    if (url.pathname === '/api/tv/power') {
+      try {
+        if (!saved.host) throw new Error('The TV hasn’t talked to this hub yet. Open LocalHub on it.')
+        const awake = async () => /mWakefulness=(Awake|Dreaming)/.test(await shell('dumpsys power | grep mWakefulness='))
+        await adb(['connect', `${saved.host}:5555`], 6000)
+        const now = await awake()
+        if (req.method === 'GET') return send(res, 200, { known: true, on: now }), true
+        const b = await readBody(req).catch(() => ({})) || {}
+        const want = b.on === 'toggle' ? !now : b.on
+        if (typeof want !== 'boolean') return send(res, 400, { error: 'on is true, false or "toggle"' }), true
+        await shell(want ? 'input keyevent 224; sleep 1; am start -n local.hub.tv/.MainActivity >/dev/null 2>&1; true' : 'input keyevent 223')
+        for (let i = 0; i < 8 && (await awake()) !== want; i++) await new Promise(r => setTimeout(r, 400))
+        return send(res, 200, { known: true, on: await awake() }), true
+      } catch (e) {
+        return send(res, 200, { known: false, on: null, error: /adb isn/.test(e.message) || /hasn/.test(e.message) ? e.message : 'The TV isn’t answering on the network. It may be unplugged, or its ADB debugging is off.' }), true
+      }
+    }
     if (url.pathname !== '/api/tv/keys') return false
     if (req.method === 'GET') return send(res, 200, { on: saved.on, state, why }), true
     if (req.method !== 'POST') return send(res, 405, { error: 'GET or POST' }), true
