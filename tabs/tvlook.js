@@ -72,19 +72,39 @@ ${R} .hw-app-l { font-weight: 600; text-shadow: 0 1px 4px rgba(0, 0, 0, .7); }
 /* ── Home: the clock, one row of buttons, then your apps; widgets in a column at the top right ── */
 ${R} { --side: 380px; --sidegap: 40px; }
 @media (max-width: 1250px) { ${R} { --side: 300px; --sidegap: 28px; } }
-${R}:has(.hw-root) .page { position: relative; padding-right: calc(48px + var(--side) + var(--sidegap)); }
+${R}:has(.hw-root) .page { position: relative; padding-right: 48px; }
 ${R}:has(.hw-root:is([data-view="tv"], [data-view="ipad"], [data-view="mobile"])) .page, ${R}[data-noside]:has(.hw-root) .page { padding-right: 48px; }
-${R}:has(.hw-root) #tvtop { display: block; padding-top: 30px; margin-bottom: 34px; min-height: 118px; color: #fff; }
+/* The TV's own proportions: the clock at the top, the name of what you're on above the row, the row three fifths down. */
+${R}:has(.hw-root) #tvtop { display: flex; flex-direction: column; box-sizing: border-box; height: max(250px, 59vh); padding: 36px 0 22px; margin: 0; color: #fff; pointer-events: none; }
+${R} .tvt-name { margin-top: auto; max-width: calc(100% - var(--side) - 20px); font: 700 clamp(54px, 7.2vw, 120px)/1.05 var(--display); letter-spacing: -.035em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 2px 14px rgba(0, 0, 0, .35); }
+@media (max-height: 620px) { ${R}:has(.hw-root) #tvtop { height: 150px; } ${R} .tvt-name { display: none; } }
 ${R} .controls { margin-bottom: 26px; top: 12px; }
 ${R}:has(.hw-root) .controls { position: relative; top: 0; z-index: 12; min-height: 56px; padding-right: var(--barw, 0px); gap: 12px; }
 ${R} .search { max-width: 520px; }
 ${R} .page:has(.hw-root) .search { flex: 1 1 120px; min-width: 120px; max-width: none; }
-${R} .hw-root > .hw-bar { position: absolute; z-index: 13; top: var(--bartop, 0px); right: calc(48px + var(--side) + var(--sidegap)); height: 56px; margin: 0; flex-wrap: nowrap; gap: 10px; }
+${R} .hw-root > .hw-bar { position: absolute; z-index: 13; top: var(--bartop, 0px); right: 48px; height: 56px; margin: 0; flex-wrap: nowrap; gap: 10px; }
 ${R} .hw-root:is([data-view="tv"], [data-view="ipad"], [data-view="mobile"]) > .hw-bar, ${R}[data-noside] .hw-root > .hw-bar { right: 48px; }
 ${R} .hw-root.hw-edit > .hw-bar { left: auto; }
 ${R} .hw-bar-r { margin: 0; overflow: visible; }
 ${R} .hw-bar .hw-hint:not(:empty) { position: absolute; top: 100%; right: 0; white-space: nowrap; }
 ${R} .hw-bar .hw-btn { gap: 8px; }
+/* No device views: Home is this one; the TV button goes to your TV. */
+${R} .hw-bar > .hw-seg { display: none !important; }
+${R} .hw-root.hw-edit .hw-tvbtn { display: none; }
+.hw-tvbtn { display: none; } ${R} .hw-tvbtn { display: inline-flex; }
+/* ── Your TV, driven from here ── */
+#tvmirror { display: none; }
+${R} #tvmirror.on { display: flex; flex-direction: column; position: fixed; z-index: 54; left: var(--tvrail); right: 0; top: 0; bottom: 0; background: var(--chat-bg); color: #fff; padding: 26px 40px 22px; gap: 16px; outline: 0; }
+${R} .tvm-head { display: flex; align-items: center; gap: 16px; font: 700 26px/1.1 var(--display); }
+${R} .tvm-head span { flex: 1; font: 500 15px var(--font); color: rgba(255, 255, 255, .6); }
+${R} .tvm-b { display: grid; place-items: center; width: 46px; height: 46px; border-radius: 50%; background: var(--ui-fill); box-shadow: var(--ui-edge); color: #fff; }
+${R} .tvm-b:hover { background: var(--ui-sel); color: #000; } ${R} .tvm-b svg { width: 22px; height: 22px; }
+${R} .tvm-fit { flex: 1; min-height: 0; display: grid; place-items: center; }
+${R} .tvm-screen { position: relative; overflow: hidden; border-radius: 18px; background: #000; box-shadow: 0 0 0 1px rgba(255, 255, 255, .14), 0 30px 80px rgba(0, 0, 0, .5); }
+${R} .tvm-screen iframe { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; border: 0; transform-origin: 0 0; pointer-events: none; }
+${R} .tvm-cover { position: absolute; inset: 0; cursor: pointer; }
+${R} .tvm-note { position: absolute; inset: 0; display: grid; place-items: center; padding: 40px; text-align: center; font-size: 20px; font-weight: 600; background: rgba(0, 0, 0, .72); pointer-events: none; }
+${R} .tvm-note[hidden] { display: none; }
 ${R} .hw-bar .hw-btn .hw-ic { display: block; }
 ${R} .seg.hw-seg button { gap: 7px; }
 /* Too tight for words: the buttons keep their icons. */
@@ -107,7 +127,7 @@ ${R} #tvmenu button { display: flex; justify-content: space-between; gap: 20px; 
 ${R} #tvmenu button:is(:hover, :focus-visible) { background: var(--ui-sel); color: #000; outline: 0; }
 
 /* Apps: the TV's tiles, all one shape, in rows that fit the window. */
-${R} .hw-root[data-view="desktop"] .hw-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)) !important; grid-auto-rows: auto !important; gap: 24px 22px !important; padding: 10px 4px 120px; align-items: start; }
+${R} .hw-root[data-view="desktop"] .hw-grid { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; grid-auto-rows: auto !important; gap: 26px clamp(18px, 2.3vw, 44px) !important; padding: 10px 4px 120px; align-items: start; }
 ${R} .hw-root[data-view="desktop"] .hw-cell.a { display: block; grid-column: auto !important; grid-row: auto !important; }
 ${R} .hw-root[data-view="desktop"] .hw-app-b { padding: 0; gap: 10px; }
 ${R} .hw-root[data-view="desktop"] .hw-app-b > .hc-app { width: 100% !important; height: auto !important; aspect-ratio: 5 / 3; }
@@ -119,7 +139,7 @@ ${R} .hw-root[data-view="desktop"] .hw-grid > .hw-cell:not(.a) { position: absol
 ${R} .hw-root[data-view="desktop"] .hw-grid > .hw-cell.m:not(.a) { width: var(--side); }
 ${R} .hw-root[data-view="desktop"] .hw-grid > .hw-cell.l:not(.a) { width: var(--side); height: 380px; }
 #tvside { display: none; }
-${R} .hw-root[data-view="desktop"] > #tvside { display: grid; position: fixed; z-index: 11; top: 30px; right: max(48px, calc((100vw - 1500px) / 2 + 48px)); width: var(--side); max-height: calc(100vh - 120px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-content: start; padding: 8px; margin: -8px; box-sizing: content-box; }
+${R} .hw-root[data-view="desktop"] > #tvside { display: grid; position: fixed; z-index: 11; top: 30px; right: max(48px, calc((100vw - 1500px) / 2 + 48px)); width: var(--side); max-height: max(190px, calc(59vh - 70px)); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-content: start; padding: 8px; margin: -8px; box-sizing: content-box; }
 ${R} #tvside::-webkit-scrollbar { display: none; }
 ${R} #tvside .hw-cell { height: 184px; min-width: 0; grid-column: auto !important; grid-row: auto !important; }
 ${R} #tvside .hw-cell:is(.m, .l), ${R} #tvside .tvt-wx { grid-column: 1 / -1 !important; }
@@ -188,6 +208,8 @@ ${R} .tvs-wall.on span { color: #fff; } ${R} .tvs-wall.on span::after { content:
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
 
   let wxBody = null
+  const seg = document.getElementById('seg')
+  const isOn = b => b.getAttribute('aria-pressed') === 'true' || b.getAttribute('aria-selected') === 'true' || b.classList.contains('on')
   const PREF = 'localhub.look'
   let look = { clock: 'Time and date', weather: true, show: 'all', sort: 'mine' }
   try { look = { ...look, ...JSON.parse(localStorage.getItem(PREF) || '{}') } } catch {}
@@ -197,7 +219,7 @@ ${R} .tvs-wall.on span { color: #fff; } ${R} .tvs-wall.on span::after { content:
   document.body.append(rail)
   const top = document.createElement('div')
   top.id = 'tvtop'
-  top.innerHTML = '<div class="tvt-clock"></div><div class="tvt-date"></div>'
+  top.innerHTML = '<div class="tvt-clock"></div><div class="tvt-date"></div><div class="tvt-name">LocalHub</div>'
   document.querySelector('.page').prepend(top)
 
   // ── Layout: the TV's panel (its markup and styles, tv/ui/panel.js and panel.css), working the TV from here ──
@@ -382,6 +404,138 @@ ${R} .tvs-wall.on span { color: #fff; } ${R} .tvs-wall.on span::after { content:
   panel.addEventListener('pointerup', e => { if (dragging) { const n = dragging; dragging = null; setSlide(n, at(n, e), true) } })
   panel.addEventListener('pointercancel', () => { dragging = null })
 
+  // ── Your TV, driven from here: its screen as it is (tv/ui/mirror.js sends it) and the remote's keys, sent to it ──
+  const mirror = document.createElement('section')
+  mirror.id = 'tvmirror'
+  mirror.tabIndex = -1
+  mirror.setAttribute('aria-label', 'Your TV')
+  const mb = (k, label, d) => `<button type="button" class="tvm-b" data-key="${k}" title="${label}" aria-label="${label}">${svg(d)}</button>`
+  mirror.innerHTML = `<div class="tvm-head">${mb('leave', 'Back to LocalHub', '<path d="M15 5l-7 7 7 7"/>')}Your TV<span>Arrow keys move · Enter opens · Esc goes back · click anything · type in a text box</span>${mb('back', 'Back on the TV', '<path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/>')}${mb('home', 'TV home', IC.home)}${mb('sleep', 'Put the TV to sleep', '<path d="M12 3v8"/><path d="M6.4 6.6a8 8 0 1 0 11.2 0"/>')}</div><div class="tvm-fit"><div class="tvm-screen"><iframe title="Your TV" sandbox="allow-same-origin" tabindex="-1"></iframe><div class="tvm-cover"></div><div class="tvm-note">Connecting to your TV…</div></div></div>`
+  document.body.append(mirror)
+  const mFrame = mirror.querySelector('iframe'), mNote = mirror.querySelector('.tvm-note'), mScreen = mirror.querySelector('.tvm-screen')
+  let mBeat = 0, mRun = 0, mSeen = 0, mTimer = 0
+  const note = s => { mNote.hidden = !s; mNote.textContent = s }
+  function fitMirror() {
+    const b = mirror.querySelector('.tvm-fit').getBoundingClientRect(), w = Math.min(b.width, b.height * 16 / 9)
+    mScreen.style.width = `${w}px`
+    mScreen.style.height = `${w * 9 / 16}px`
+    mFrame.style.transform = `scale(${w / 1920})`
+  }
+  async function frameCss() {
+    // The TV page's own stylesheets, from the same list it uses. No scripts run in here (sandbox).
+    const page = await (await fetch('/tv/', { cache: 'no-store' })).text()
+    const css = [...page.matchAll(/<link rel="stylesheet" href="\.\/([\w.?=-]+)">/g)].map(m => `<link rel="stylesheet" href="/tv/${m[1]}">`).join('')
+    await new Promise(done => { mFrame.onload = done; mFrame.srcdoc = `<!doctype html><html><head><base href="/tv/">${css}<style>html,body{margin:0;width:1920px;height:1080px;overflow:hidden;background:#000}#stage{left:0!important;top:0!important;transform:none!important}*{transition:none!important;animation:none!important;cursor:pointer!important}#hub-wall{display:block!important;position:absolute;inset:0;z-index:0;background:#000 center/cover;--hub-scrim:.22}#hub-wall::after{background:#000!important}</style></head><body></body></html>` })
+  }
+  async function watch(run) {
+    let n = 0
+    while (run === mRun) {
+      try {
+        const r = await fetch(`/api/tv/mirror?after=${n}`, { cache: 'no-store' })
+        if (run !== mRun) return
+        if (r.status !== 200) { await new Promise(w => setTimeout(w, r.status === 204 ? 50 : 2000)); continue }
+        const m = await r.json()
+        n = m.n
+        if (!m.html || Date.now() - m.at > 15_000) continue // from an earlier time
+        mSeen = Date.now()
+        const d = mFrame.contentDocument
+        const [hc, bc] = m.cls.split('|')
+        d.documentElement.className = hc
+        d.documentElement.style.setProperty('--k', '1')
+        d.body.className = bc || ''
+        d.body.innerHTML = `<div id="hub-wall"></div>${m.html.replace(/ on[a-z]+="[^"]*"/g, '')}`
+        if (m.wall) d.getElementById('hub-wall').style.backgroundImage = `url("${m.wall.replace(/["\\\n]/g, '')}")`
+        note(m.away ? 'Another app is open on the TV. Press TV home to come back to LocalHub.' : m.stream ? 'The TV’s browser is open. The arrow keys still work in it.' : '')
+      } catch { await new Promise(w => setTimeout(w, 1500)) }
+    }
+  }
+  async function openMirror() {
+    if (mirror.classList.contains('on')) return
+    closeSettings()
+    closePanel()
+    window.HubChat?.close()
+    mirror.classList.add('on')
+    mirror.focus()
+    fitMirror()
+    setTimeout(paintRail, 60)
+    note('Connecting to your TV…')
+    const run = ++mRun
+    mSeen = 0
+    await readTv()
+    if (run !== mRun) return
+    if (!TV?.on) note('Your TV isn’t connected. Open LocalHub on it, and it shows here.')
+    try { await frameCss() } catch { return note('The TV’s page didn’t load') }
+    if (run !== mRun) return
+    const beat = () => post({ type: 'mirror', on: true })
+    beat()
+    mBeat = setInterval(() => { if (!document.hidden) beat() }, 4000)
+    mTimer = setInterval(() => { if (!mSeen) readTv().then(() => { if (run === mRun && !mSeen) note(TV?.on ? 'Connecting to your TV…' : 'Your TV isn’t connected. Open LocalHub on it, and it shows here.') }) }, 5000)
+    watch(run)
+  }
+  function closeMirror() {
+    if (!mirror.classList.contains('on')) return
+    mRun++
+    clearInterval(mBeat)
+    clearInterval(mTimer)
+    post({ type: 'mirror', on: false })
+    mirror.classList.remove('on')
+    setTimeout(paintRail, 60)
+  }
+  const MKEY = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down', Enter: 'enter', Escape: 'back', BrowserBack: 'back', ContextMenu: 'menu', PageUp: 'rew', PageDown: 'ff', MediaPlayPause: 'ai' }
+  mirror.addEventListener('click', e => {
+    const k = e.target.closest('[data-key]')?.dataset.key
+    if (k === 'leave') return closeMirror()
+    if (k === 'sleep') post({ type: 'sleep' })
+    else if (k) post({ type: 'key', name: k })
+    else if (e.target.closest('.tvm-cover')) { const r = mScreen.getBoundingClientRect(); post({ type: 'tap', x: (e.clientX - r.left) / r.width * 1920, y: (e.clientY - r.top) / r.height * 1080 }) }
+    mirror.focus()
+  })
+  mirror.addEventListener('wheel', e => { e.preventDefault(); const now = Date.now(); if (now - (mirror._w || 0) < 160) return; mirror._w = now; post({ type: 'key', name: e.deltaY > 0 ? 'down' : 'up' }) }, { passive: false })
+  document.addEventListener('keydown', e => {
+    if (!mirror.classList.contains('on') || e.ctrlKey || e.metaKey || e.altKey) return
+    if (e.target.closest?.('.tvm-b') && (e.key === 'Enter' || e.key === ' ')) return
+    const name = MKEY[e.key]
+    if (!name && e.key !== 'Backspace' && e.key.length !== 1) return
+    e.preventDefault()
+    e.stopPropagation()
+    post(name ? { type: 'key', name } : { type: 'type', text: e.key === 'Backspace' ? '\b' : e.key })
+  }, true)
+  addEventListener('resize', () => { if (mirror.classList.contains('on')) fitMirror() })
+  document.addEventListener('click', e => { if (e.target.closest('[data-hw-takeover]')) { e.stopPropagation(); openMirror() } }, true)
+  // The old TV link (/#tv and the like) and a saved device view come back to Home.
+  const toDesktop = () => { const r = document.querySelector('.hw-root'); if (r && document.documentElement.hasAttribute('data-tvlook') && r.dataset.view !== 'desktop' && r.dataset.phone !== '1') r.querySelector('[data-hw-mode="desktop"]')?.click() }
+
+  // The name of what you're on, large above the row, as on the TV.
+  const nameEl = top.querySelector('.tvt-name')
+  const setName = e => { const c = e.target.closest?.('.hw-grid .hw-cell.a'); nameEl.textContent = c?.querySelector('.hw-app-l')?.textContent || 'LocalHub' }
+  document.addEventListener('pointerover', setName, { passive: true })
+  document.addEventListener('focusin', setName)
+
+  // Where you were in each tab comes back with it.
+  const spots = {}
+  const spotKey = () => [...seg.querySelectorAll('button[data-env]')].find(isOn)?.dataset.env || 'home'
+  let homeY = 0, homePager = null
+  document.addEventListener('scroll', e => {
+    if (e.target?.classList?.contains('hw-pager')) { if (homePager === e.target) homeY = e.target.scrollTop }
+    else if (e.target === document) { const k = spotKey(); if (k !== 'home') spots[k] = { y: scrollY, at: document.getElementById('title')?.textContent } }
+  }, { capture: true, passive: true })
+  function keepSpots() {
+    const p = document.querySelector('.hw-root .hw-pager')
+    if (p !== homePager) { homePager = p; if (p && homeY) requestAnimationFrame(() => { p.scrollTop = homeY }) }
+  }
+  let spotEnv = ''
+  new MutationObserver(() => {
+    const k = spotKey()
+    if (k === spotEnv) return
+    spotEnv = k
+    keepSpots()
+    const s = spots[k]
+    if (!s || k === 'home') return
+    let tries = 20
+    const back = () => { if (spotKey() !== k) return; if (document.getElementById('title')?.textContent === s.at && document.documentElement.scrollHeight >= s.y + innerHeight - 4) scrollTo(0, s.y); else if (tries--) setTimeout(back, 100) }
+    back()
+  }).observe(seg, { subtree: true, attributes: true, attributeFilter: ['aria-pressed'] })
+
   // ── Settings: a page of rows, as on the TV ──
   const set = document.createElement('section')
   set.id = 'tvset'
@@ -537,16 +691,14 @@ ${R} .tvs-wall.on span { color: #fff; } ${R} .tvs-wall.on span::after { content:
   window.HubSaver = { start: startSaver, stop: stir }
 
   // The sidebar follows the tab bar, which stays the one list of tabs (it's hidden, its buttons still work).
-  const seg = document.getElementById('seg')
-  const isOn = b => b.getAttribute('aria-pressed') === 'true' || b.getAttribute('aria-selected') === 'true' || b.classList.contains('on')
   function paintRail() {
     const chat = !!window.HubChat?.isOpen?.()
     const tabs = [...seg.querySelectorAll('button[data-env]')].filter(b => !b.hidden && b.style.display !== 'none')
     const item = (key, ic, label, on) => `<button type="button" data-rail="${esc(key)}" class="${on ? 'on' : ''}" aria-label="${esc(label)}"${on ? ' aria-current="page"' : ''}>${svg(IC[ic])}<span>${esc(label)}</span></button>`
     const name = b => (b.firstChild?.textContent || b.textContent).trim()
     const html = '<img src="/icons/hub.svg" alt=""><div class="mid">'
-      + tabs.map(b => item(`tab:${b.dataset.env}`, TAB_IC[b.dataset.env] || 'tab', name(b), isOn(b) && !chat && !set.classList.contains('on'))).join('')
-      + item('assistant', 'mic', 'Assistant', chat && !set.classList.contains('on')) + item('tv', 'tv', 'TV', false)
+      + tabs.map(b => item(`tab:${b.dataset.env}`, TAB_IC[b.dataset.env] || 'tab', name(b), isOn(b) && !chat && !set.classList.contains('on') && !mirror.classList.contains('on'))).join('')
+      + item('assistant', 'mic', 'Assistant', chat && !set.classList.contains('on')) + item('tv', 'tv', 'TV', mirror.classList.contains('on'))
       + '</div>' + item('settings', 'gear', 'Settings', set.classList.contains('on'))
     if (rail._html === html) return
     rail._html = html
@@ -563,12 +715,13 @@ ${R} .tvs-wall.on span { color: #fff; } ${R} .tvs-wall.on span::after { content:
     if (!key) return
     closePanel()
     if (key !== 'settings') closeSettings()
+    if (key !== 'tv') closeMirror()
     if (key !== 'assistant') window.HubChat?.close()
     if (key.startsWith('tab:')) {
       seg.querySelector(`[data-env="${CSS.escape(key.slice(4))}"]`)?.click()
       if (key === 'tab:home') document.querySelector('[data-hw-mode="desktop"]')?.click()
     } else if (key === 'assistant') window.HubChat?.open()
-    else if (key === 'tv') goHome('[data-hw-mode="tv"]')
+    else if (key === 'tv') openMirror()
     else if (key === 'settings') openSettings()
     setTimeout(paintRail, 60)
   })
@@ -593,5 +746,5 @@ ${R} .tvs-wall.on span { color: #fff; } ${R} .tvs-wall.on span::after { content:
   tick()
   weather()
   window.HUB?.on?.(() => paintSettings())
-  setInterval(() => { tick(); weather(); paintRail(); paintSide(); arrange(); fitRow() }, 1000)
+  setInterval(() => { tick(); weather(); paintRail(); paintSide(); arrange(); fitRow(); toDesktop(); keepSpots() }, 1000)
 })()

@@ -8,6 +8,8 @@
 //   POST /api/voice/transcribe <audio>  the same, for the hub's chat mic (the dashboard and the TV)
 //   POST /api/voice/warm                 -> { whisper } start Whisper now, while someone is still talking
 //   GET  /api/tv/status                 -> { whisper, alexa, tvs, tv: { on, setUp, apps } }
+//   POST /api/tv/mirror { html, … }       the TV's screen, while a computer watches; GET ?after=n waits for the next
+//   POST|GET /api/tv/art/<app>/<banner|icon>.png   its apps' pictures, for the mirror
 //   POST /api/tv/state { brightness, volume, media }  what the TV is doing, for the Layout panel on the computer
 //   POST /api/tv/apps  { apps }          the Fire TV app's app names, for the desktop app's tray menu
 //   GET  /api/tv/listen                 -> { on, state, mic } "Hey LocalHub" from this computer's mic (tv/listen.py)
@@ -15,6 +17,7 @@
 //   POST /api/tv/listen/now             the remote's mic button: listen for a request at once -> { ok }
 //
 // Commands: { type: 'launch', app } · { type: 'input', name } · { type: 'home' } · { type: 'saver' } ·
+// { type: 'mirror', on } · { type: 'key', name } · { type: 'tap', x, y } · { type: 'type', text } (a computer driving the TV) ·
 // { type: 'state' } · { type: 'media', action: 'toggle' | 'next' | 'prev' } · { type: 'brightness' | 'volume', value: 0-100 } ·
 // { type: 'open', url } (a web page, in the TV's browser) · { type: 'sleep' } · { type: 'say', text } · { type: 'answer', text, heard?, from? } ·
 // { type: 'listen', stage: 'wake' | 'again' | 'working' | 'heard' | 'off', text? } ("Hey LocalHub", step by step)
@@ -46,7 +49,13 @@ const MAX_AUDIO = 8 * 2 ** 20
 const COMMAND_TTL = 90e3
 const MAX_WAIT = 30e3
 const TV_SEEN = 60e3
-const TYPES = new Set(['launch', 'input', 'home', 'saver', 'sleep', 'say', 'answer', 'listen', 'open', 'state', 'media', 'brightness', 'volume'])
+const TYPES = new Set(['launch', 'input', 'home', 'saver', 'sleep', 'say', 'answer', 'listen', 'open', 'state', 'media', 'brightness', 'volume', 'mirror', 'key', 'tap', 'type'])
+// The remote from a computer is for now: one that waited (the TV was asleep) is dropped, never played back later.
+const NOW_ONLY = new Set(['key', 'tap', 'type', 'mirror'])
+const NOW_TTL = 4000
+const KEYS = new Set(['left', 'right', 'up', 'down', 'enter', 'back', 'home', 'menu', 'rew', 'ff', 'ai'])
+const MAX_MIRROR = 3 * 2 ** 20
+const MAX_ART = 600 * 1024
 const LISTEN_STAGES = new Set(['wake', 'again', 'working', 'heard', 'off'])
 
 const tvConfig = () => hubConfig().tv || {}
@@ -92,7 +101,12 @@ export function create({ here }) {
     return seq
   }
 
-  const nextAfter = after => commands.find(c => c.seq > after && Date.now() - c.at < COMMAND_TTL)
+  const nextAfter = after => commands.find(c => c.seq > after && Date.now() - c.at < (NOW_ONLY.has(c.command.type) ? NOW_TTL : COMMAND_TTL))
+
+  // What's on the TV's screen, as its page last sent it (only while a computer is watching), and its apps' pictures.
+  let mirror = { n: 0 }
+  const mirrorWaiters = new Set()
+  const art = new Map()
 
   async function route(url, req, res, { send }) {
     const p = url.pathname
@@ -141,6 +155,41 @@ export function create({ here }) {
         waiters.add(w)
       })
       return true
+    }
+
+    if (p === '/api/tv/mirror' && req.method === 'POST') {
+      let b
+      try { b = JSON.parse((await readRaw(req, MAX_MIRROR)).toString('utf8') || '{}') } catch { return send(res, 400, { error: 'body is not valid JSON' }), true }
+      const s = v => (typeof v === 'string' ? v : '')
+      mirror = { n: mirror.n + 1, at: Date.now(), html: s(b.html), cls: s(b.cls).slice(0, 400), style: s(b.style).slice(0, 4000), wall: s(b.wall).slice(0, 600), away: b.away === true, stream: b.stream === true, k: Number(b.k) || 1 }
+      for (const w of [...mirrorWaiters]) w()
+      return send(res, 200, { ok: true, n: mirror.n }), true
+    }
+    if (p === '/api/tv/mirror' && req.method === 'GET') {
+      const after = Number(url.searchParams.get('after')) || 0
+      if (mirror.n <= after) await new Promise(done => {
+        const fin = () => { clearTimeout(t); mirrorWaiters.delete(fin); done() }
+        const t = setTimeout(fin, 10_000)
+        mirrorWaiters.add(fin)
+        req.on('close', fin)
+      })
+      if (mirror.n <= after) return noContent(res), true
+      return send(res, 200, mirror), true
+    }
+    const am = /^\/api\/tv\/art\/([\w.]{1,160})\/(banner|icon)\.png$/.exec(p)
+    if (am && req.method === 'POST') {
+      const png = await readRaw(req, MAX_ART)
+      if (png.length < 8 || png.readUInt32BE(0) !== 0x89504e47) return send(res, 415, { error: 'only PNG pictures' }), true
+      art.delete(p)
+      art.set(p, png)
+      while (art.size > 240) art.delete(art.keys().next().value)
+      return send(res, 200, { ok: true }), true
+    }
+    if (am && req.method === 'GET') {
+      const png = art.get(p)
+      if (!png) return send(res, 404, { error: 'not found' }), true
+      res.writeHead(200, { 'content-type': 'image/png', 'content-length': png.length, 'cache-control': 'private, max-age=600', 'x-content-type-options': 'nosniff' })
+      return res.end(png), true
     }
 
     if (p === '/api/tv/state' && req.method === 'POST') {
@@ -339,6 +388,10 @@ export function cleanCommand(raw) {
   switch (raw.type) {
     case 'launch': { const app = str(raw.app, 80); return app ? { type: 'launch', app } : null }
     case 'input': { const name = str(raw.name || raw.id, 80); return name ? { type: 'input', name } : null }
+    case 'mirror': return { type: 'mirror', on: raw.on === true }
+    case 'key': return KEYS.has(raw.name) ? { type: 'key', name: raw.name } : null
+    case 'tap': return [raw.x, raw.y].every(v => Number.isFinite(v) && v >= 0 && v <= 1920) ? { type: 'tap', x: Math.round(raw.x), y: Math.round(raw.y) } : null
+    case 'type': return typeof raw.text === 'string' && raw.text.length <= 200 && raw.text ? { type: 'type', text: raw.text.replace(/[\u0000-\u0007\u0009-\u001f\u007f]/g, '') } : null
     case 'media': return ['toggle', 'next', 'prev'].includes(raw.action) ? { type: 'media', action: raw.action } : null
     case 'brightness': case 'volume': { const v = raw.value; return Number.isFinite(v) && v >= 0 && v <= 100 ? { type: raw.type, value: Math.round(v) } : null }
     case 'open': { const url = webUrl(raw.url); return url ? { type: 'open', url } : null }

@@ -59,6 +59,12 @@ test('panel controls and the TV state are cleaned', () => {
   assert.deepEqual(s, { inputs: [], brightness: 100, volume: null, media: { title: 'A', artist: '', app: '', playing: false, art: '' } })
 })
 
+test('a computer can only press the remote’s own keys', () => {
+  assert.deepEqual(cleanCommand({ type: 'key', name: 'left' }), { type: 'key', name: 'left' })
+  assert.deepEqual(cleanCommand({ type: 'tap', x: 10.4, y: 20 }), { type: 'tap', x: 10, y: 20 })
+  for (const c of [{ type: 'key', name: 'eval' }, { type: 'tap', x: -1, y: 0 }, { type: 'tap', x: 5 }, { type: 'type', text: '' }]) assert.equal(cleanCommand(c), null)
+})
+
 test('app names are cleaned for a menu', () => {
   assert.deepEqual(cleanApps([' YouTube ', 'Netflix', 'Netflix', '', 7, 'A\u0007B']), ['AB', 'Netflix', 'YouTube'])
   assert.equal(cleanApps(Array.from({ length: 200 }, (_, i) => 'App ' + i)).length, 60)

@@ -90,6 +90,14 @@ final class Native {
         return o.toString();
     }
 
+    /** An app's picture ("<package>/banner" or "/icon"), as base64 PNG, for the mirror on the computer. "" when there's none. */
+    @JavascriptInterface
+    public String artData(String key) {
+        if (!activity.pageTrusted || key == null || !key.matches("[\\w.]{1,160}/(banner|icon)")) return "";
+        byte[] png = activity.apps.art(key);
+        return png == null || png.length > 600 * 1024 ? "" : android.util.Base64.encodeToString(png, android.util.Base64.NO_WRAP);
+    }
+
     /** Brightness as a shade over every app: 0 none, 80 darkest. False when it can't be drawn over other apps. */
     @JavascriptInterface
     public boolean dim(int percent) {

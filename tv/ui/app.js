@@ -16,6 +16,8 @@
 
 import * as Stream from "./stream.js?v=4";
 import * as Panel from "./panel.js?v=2";
+import * as Files from "./files.js?v=1";
+import * as Mirror from "./mirror.js?v=2";
 // The TV's own assistant screen (assistant.js): the hub's agent and conversation, without the hub's chat UI.
 let Assistant = null;
 
@@ -575,12 +577,12 @@ function move(dx, dy) {
   if (S.zone === "favs") {
     if (dx) {
       const next = S.f + dx;
-      if (next >= 0 && next < FAVS.length) S.f = next;
+      if (next >= 0 && next < FAVS.length) { S.f = next; S.lastF = next; }
       else if (dx < 0) return openRail();
       else return tilt(dx * 1.6, 0);
     }
     if (dy < 0) return tilt(0, -1.6);
-    if (dy > 0) { S.zone = "grid"; S.i = Math.min(gridColUnderFav(S.f), ITEMS.length - 1); }
+    if (dy > 0) { S.zone = "grid"; S.i = clamp(S.lastI ?? gridColUnderFav(S.f), 0, Math.min(COLS, ITEMS.length) - 1); }
     applyFocus();
     return tilt(dx, dy);
   }
@@ -589,12 +591,12 @@ function move(dx, dy) {
   const lastRow = Math.floor((n - 1) / COLS);
   if (dx) {
     const next = S.i + dx;
-    if (next >= 0 && next < n && Math.floor(next / COLS) === row) S.i = next;
+    if (next >= 0 && next < n && Math.floor(next / COLS) === row) { S.i = next; if (row === 0) S.lastI = next; }
     else if (dx < 0) return openRail();
     else return tilt(dx * 1.6, 0); // the edge: lean into it, like tvOS
   }
   if (dy < 0) {
-    if (row === 0 && hasFavs()) { S.zone = "favs"; S.f = favOverCol(S.i % COLS); applyFocus(); return tilt(0, -1); }
+    if (row === 0 && hasFavs()) { S.zone = "favs"; S.lastI = S.i; S.f = clamp(S.lastF ?? favOverCol(S.i % COLS), 0, FAVS.length - 1); applyFocus(); return tilt(0, -1); }
     if (row === 0) return tilt(0, -1.6);
     S.i -= COLS;
   }
@@ -2002,6 +2004,10 @@ function runCommand(cmd) {
   if (cmd.type === "listen") return heardMic(cmd);
   // The Layout panel on the computer: what the TV is doing, and the same controls, without leaving what's on screen.
   if (cmd.type === "state") return reportState();
+  if (cmd.type === "mirror") return Mirror.watch(cmd.on);
+  if (cmd.type === "key") { cmd.name === "home" && document.hidden ? (native("toFront"), window.haven.home()) : handleKey(cmd.name); return Mirror.soon(); }
+  if (cmd.type === "tap") { Mirror.tap(cmd.x, cmd.y); return Mirror.soon(); }
+  if (cmd.type === "type") { if (!Mirror.type(cmd.text)) toast("Open a text box first"); return Mirror.soon(); }
   if (cmd.type === "media") { mediaDo(cmd.action); return void setTimeout(reportState, 700); }
   if (cmd.type === "brightness") { setBrightness(cmd.value); if (S.overlay === "wpanel") paintWpanel(); return reportState(); }
   if (cmd.type === "volume") { setVolume(cmd.value); if (S.overlay === "wpanel") paintWpanel(); return reportState(); }
@@ -2121,6 +2127,7 @@ window.haven = {
     S.i = 0;
     S.f = favStart();
     S.favX = 0;
+    S.lastF = S.lastI = null;
     applyFocus();
   },
   closeHub: () => closeHub(),
@@ -2218,6 +2225,7 @@ document.addEventListener("keydown", (e) => {
 const RAIL = [
   { id: "home", label: "Home", ic: sym('<path d="M3 11 12 3l9 8"/><path d="M5 10v10h5v-6h4v6h5V10"/>') },
   { id: "assistant", label: "Assistant", ic: sym('<path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z"/><path d="M19 11a7 7 0 0 1-14 0M12 18v3"/>') },
+  { id: "files", label: "Files", ic: sym('<path d="M4 7a2 2 0 0 1 2-2h4l2 2.5h6a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/>') },
   { id: "browser", label: "Browser", ic: sym('<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>') },
   { id: "saver", label: "Screensaver", ic: sym('<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>') },
   { id: "settings", label: "Settings", ic: SYM.gear, foot: true },
@@ -2257,19 +2265,24 @@ function closeRail() {
   paintRail();
   if (S.view === "home") applyFocus();
   else if (S.view === "assistant") Assistant?.focus();
+  else if (S.view === "files") Files.focus();
 }
 function setView(id) {
-  const a = id === "assistant";
-  $("#assistantView").classList.toggle("shown", a);
+  const a = id !== "home";
+  $("#assistantView").classList.toggle("shown", id === "assistant");
+  $("#filesView").classList.toggle("shown", id === "files");
   $("#page").classList.toggle("away", a);
   $(".when").classList.toggle("away", a);
 }
 function showView(id) {
+  // Home is left as it was: the row you were in comes back with it.
+  if (S.view === "home" && id !== "home") S.homeZone = S.zone === "rail" ? S.railFrom : S.zone;
   S.view = id;
   setView(id);
   if (id === "assistant") { Assistant ? Assistant.show() : toast("The assistant needs LocalHub on the laptop"); }
   else Assistant?.hide();
-  if (id === "home") { S.zone = "grid"; applyFocus(); }
+  if (id === "files") Files.show(); else Files.hide();
+  if (id === "home") { S.zone = S.homeZone === "favs" && hasFavs() ? "favs" : "grid"; applyFocus(); }
   paintRail();
 }
 function railKey(name) {
@@ -2280,14 +2293,16 @@ function railKey(name) {
   const id = RAIL[S.rail].id;
   // Settings and the assistant open first, and the sidebar folds away a moment later under them: doing both in
   // one frame cost a 100+ ms frame on a Fire TV Stick.
-  if (id === "settings" || id === "assistant") {
+  if (id === "settings" || id === "assistant" || id === "files") {
+    if (S.view === "home") S.homeZone = S.railFrom;
     S.zone = S.railFrom === "favs" && id === "settings" ? "favs" : "grid";
     if (id === "settings") openSettings(); else showView(id);
     setTimeout(() => { railOpen(false); paintRail(); }, 320);
     return;
   }
   railOpen(false);
-  S.zone = "grid";
+  if (S.view === "home") S.homeZone = S.railFrom;
+  S.zone = S.railFrom === "favs" && S.view === "home" ? "favs" : "grid";
   if (id === "home") return showView(id);
   paintRail();
   if (S.view === "home") applyFocus();
@@ -2368,6 +2383,12 @@ function handleKey(raw) {
   if (name === "ai") { if (S.overlay === "settings") closeSettings(); closeRail(); showView("assistant"); return Assistant?.voice(); }
   if (name === "settings") { if (S.overlay === "settings") return closeSettings(); closeRail(); if (S.view !== "home") showView("home"); return openSettings(); }
   if (S.zone === "rail") return railKey(name);
+  if (S.view === "files" && !S.overlay && S.zone !== "rail") {
+    if (Files.key(name)) return;
+    if (name === "left" || name === "menu") return openRail();
+    if (name === "back") return showView("home");
+    return;
+  }
   if (S.view === "assistant" && !S.overlay) {
     if (Assistant?.key(name)) return;
     if (name === "left" || name === "menu") return openRail();
@@ -2925,6 +2946,8 @@ document.addEventListener("click", (e) => {
     if (!e.target.closest(".tilemenu-card")) return closeTileMenu();
     return;
   }
+  const ri = e.target.closest(".rail-item");
+  if (ri && !S.overlay) { if (S.zone !== "rail") S.railFrom = S.zone; S.zone = "rail"; S.rail = Number(ri.dataset.r); return railKey("enter"); }
   const app = e.target.closest(".app");
   if (app && S.moving && !S.overlay) return moveTo(app);
   if (app && !S.overlay) { pickTile(app); return press(activate); }
@@ -2983,6 +3006,8 @@ async function boot() {
   if (hasFavs()) { S.zone = "favs"; S.f = favStart(); } // like Home: the first thing is your Favorites
   renderGrid();
   renderRail();
+  Files.init({ el: $("#filesView"), toast, esc, inHub: () => IN_HUB, typing: (on) => native("setTyping", on) });
+  Mirror.init({ native, NATIVE, streamOpen: () => S.overlay === "stream" });
   setView("home");
   bakeGlass();
   tick();
