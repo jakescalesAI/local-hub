@@ -1,5 +1,5 @@
 // Wires the pieces together. Each piece owns its own behaviour; this file only connects them.
-import { BrowserWindow, Menu, Notification, app, clipboard, dialog, ipcMain, session, shell } from 'electron'
+import { BrowserWindow, Menu, Notification, app, clipboard, dialog, ipcMain, nativeTheme, session, shell } from 'electron'
 import path from 'node:path'
 
 import { APP_NAME } from './app-name.js'
@@ -32,6 +32,7 @@ if (!app.requestSingleInstanceLock()) {
 }
 
 function start() {
+  nativeTheme.themeSource = 'dark' // the title bar goes with the Hub's dark look
   const startHidden = process.argv.includes('--hidden')
   const userData = app.getPath('userData')
   const settings = new Settings(path.join(userData, 'settings.json'))

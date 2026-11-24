@@ -310,6 +310,9 @@ html[data-wall] .hw-bar .hw-btn:not(.solid) { background: color-mix(in srgb, var
       ? `radial-gradient(at 14% 18%, ${a} 0, transparent 58%), radial-gradient(at 86% 24%, ${b} 0, transparent 56%), radial-gradient(at 52% 100%, ${c} 0, transparent 62%), linear-gradient(${g.angle}deg, ${a}, ${b})`
       : `linear-gradient(${g.angle}deg, ${g.colors.join(', ')})`
   }
+  // A computer's window, for the TV's look, and the wallpapers the TV has as photos (tv/ui/photos).
+  const WIDE = matchMedia('(min-width: 1000px) and (hover: hover)')
+  const PHOTOS = ['aurora', 'dusk', 'graphite', 'ocean', 'sand']
   // { image, tone } for a wallpaper id, or null for None.
   function wallFor(id, s = S) {
     if (!id || id === 'none') return null
@@ -325,7 +328,10 @@ html[data-wall] .hw-bar .hw-btn:not(.solid) { background: color-mix(in srgb, var
   function apply() {
     const st = { ...STYLE_DEFAULT, ...S.style, ...(preview?.style || {}) }
     const r = document.documentElement
-    if (st.theme === 'auto') { r.removeAttribute('data-theme'); r.style.colorScheme = '' } else { r.setAttribute('data-theme', st.theme); r.style.colorScheme = st.theme }
+    // The TV's look (tabs/tvlook.js): dark, unless Light was chosen.
+    const tv = WIDE.matches && st.theme !== 'light'
+    r.toggleAttribute('data-tvlook', tv)
+    if (tv) { r.setAttribute('data-theme', 'dark'); r.style.colorScheme = 'dark' } else if (st.theme === 'auto') { r.removeAttribute('data-theme'); r.style.colorScheme = '' } else { r.setAttribute('data-theme', st.theme); r.style.colorScheme = st.theme }
     if (st.accent === 'system') r.style.removeProperty('--blue')
     else r.style.setProperty('--blue', st.accent)
     r.dataset.look = st.widgetLook
@@ -340,14 +346,15 @@ html[data-wall] .hw-bar .hw-btn:not(.solid) { background: color-mix(in srgb, var
     const w = preview?.wall !== undefined ? preview.wall : wallFor(S.wallpaper.current)
     if (!w) { delete r.dataset.wall; wall.style.backgroundImage = ''; return }
     r.dataset.wall = '1'
-    wall.style.backgroundImage = w.image
+    wall.style.backgroundImage = tv && WALLS.some(x => x.id === S.wallpaper.current) && preview?.wall === undefined && PHOTOS.includes(S.wallpaper.current) ? `url("/tv/photos/${S.wallpaper.current}.jpg")` : w.image
     // A tint of the page colour over the wallpaper keeps text readable: light over a light
     // wallpaper (or dark over dark) needs little, the opposite needs more.
-    const dark = st.theme === 'dark' || (st.theme === 'auto' && DARK.matches)
+    const dark = tv || st.theme === 'dark' || (st.theme === 'auto' && DARK.matches)
     const match = w.tone === (dark ? 'dark' : 'light')
     r.style.setProperty('--hub-scrim', w.tone ? (match ? '.22' : '.62') : '.45')
   }
   DARK.addEventListener?.('change', apply)
+  WIDE.addEventListener?.('change', apply)
   apply()
 
   /* ---------- loading and saving ---------- */

@@ -2420,6 +2420,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     const rows = days.map((d, i) => `<div class="wxw-d"><span class="wxw-dn">${e(dayName(d, i))}</span>${wxSvg(d.code, true)}<span class="wxw-dr">${rain(d.rain)}</span><span class="wxw-dl">${deg(d.low)}</span><span class="wxw-bar"><i style="left:${((d.low - lo) / span) * 100}%;right:${100 - ((d.high - lo) / span) * 100}%"></i></span><span class="wxw-dh">${deg(d.high)}</span></div>`).join('')
     return `<div class="wxw wxw-l">${head}${hours}<div class="wxw-days">${rows}</div></div>`
   }
+  window.HubWeatherCard = wxCard // the TV look's card (tabs/tvlook.js)
   const wxFill = () => document.querySelectorAll('[data-hw-weather]').forEach(el => { el.innerHTML = wxHTML(el.dataset.hwWeather) })
   function wxHTML(size) {
     if (!WX.body) return `<div class="hw-sub" data-fit>${WX.err ? 'Weather isn’t available right now' : 'Finding the weather…'}</div>`
