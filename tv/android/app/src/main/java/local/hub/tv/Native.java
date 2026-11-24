@@ -138,6 +138,14 @@ final class Native {
         if (activity.pageTrusted) activity.snapshotHome();
     }
 
+    /** "Hey LocalHub" heard while another app is on: LocalHub comes to the front to answer. */
+    @JavascriptInterface
+    public void toFront() {
+        if (activity.resumed) return;
+        Intent i = new Intent(activity, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+        try { activity.startActivity(i); } catch (Exception ignored) { }
+    }
+
     /** A return to LocalHub, not a fresh start: the page skips its logo and just fades in. */
     @JavascriptInterface
     public boolean quickStart() {

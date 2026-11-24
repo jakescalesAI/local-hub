@@ -193,6 +193,24 @@ export function hide() {
   R.el.hidden = true
 }
 
+// "Hey LocalHub", heard by the laptop's mic: the same Listening… look as Talk, driven from the laptop.
+export function hearing(stage) {
+  if (!mounted) return
+  if (stage === 'rec') { hush(); V.cancelled = false; V.remote = true; V.state = 'rec'; V.since = Date.now() }
+  else if (stage === 'wait') { if (!V.remote) return; V.state = 'wait' }
+  else { if (!V.remote) return; V.remote = false; V.state = 'idle' }
+  syncVoice()
+}
+export function heard(text) {
+  if (!mounted) return
+  V.remote = false
+  V.state = 'idle'
+  syncVoice()
+  text = String(text || '').trim()
+  if (!text) return note('Didn’t catch that. Say “Hey LocalHub” and ask again.')
+  submit(text, { voice: true })
+}
+
 export function ask(text, { voice = false } = {}) {
   if (!mounted) return false
   return submit(text, { voice })
@@ -1187,6 +1205,7 @@ function remoteEvent(ev) {
 // elsewhere the browser's mic records WAV for Whisper on the hub (/api/voice/transcribe).
 export async function voice() {
   if (!mounted) return
+  if (V.remote) return // the laptop is listening; it ends when they stop talking
   if (V.state === 'rec') { if (HV()) HV().stop?.(); else V.rec?.stop(); return }
   if (V.state === 'wait') return
   hush()
@@ -1248,7 +1267,7 @@ function syncVoice() {
   R.talk.classList.toggle('rec', V.state === 'rec')
   R.talk.querySelector('span').textContent = V.state === 'rec' ? 'Done' : 'Talk'
   R.vword.textContent = V.state === 'rec' ? 'Listening…' : V.state === 'wait' ? 'Turning it into words…' : ''
-  R.wave.hidden = V.state !== 'rec'
+  R.wave.hidden = V.state !== 'rec' || V.remote // the laptop's mic sends no levels
   R.vclock.hidden = V.state !== 'rec'
   clearInterval(V.clock)
   if (V.state === 'rec') {

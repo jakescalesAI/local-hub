@@ -41,6 +41,8 @@ test('commands are cleaned and limited to known types', () => {
   assert.equal(cleanCommand({ type: 'launch' }), null)
   assert.equal(cleanCommand({ type: 'shell', cmd: 'rm -rf /' }), null)
   assert.deepEqual(cleanCommand({ type: 'home', extra: 1 }), { type: 'home' })
+  assert.deepEqual(cleanCommand({ type: 'listen', stage: 'heard', text: ' open netflix ' }), { type: 'listen', stage: 'heard', text: 'open netflix' })
+  assert.equal(cleanCommand({ type: 'listen', stage: 'record everything' }), null)
   assert.equal(cleanCommand({ type: 'say', text: 'x'.repeat(5000) }).text.length, 2000)
 })
 

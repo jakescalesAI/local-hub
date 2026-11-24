@@ -8,9 +8,12 @@
 //   POST /api/voice/transcribe <audio>  the same, for the hub's chat mic (the dashboard and the TV)
 //   POST /api/voice/warm                 -> { whisper } start Whisper now, while someone is still talking
 //   GET  /api/tv/status                 -> { whisper, alexa, tvs }
+//   GET  /api/tv/listen                 -> { on, state, mic } "Hey LocalHub" from this computer's mic (tv/listen.py)
+//   POST /api/tv/listen  { on }         turns it on or off (kept in data/tv-listen.json)
 //
 // Commands: { type: 'launch', app } · { type: 'input', name } · { type: 'home' } · { type: 'saver' } ·
-// { type: 'sleep' } · { type: 'say', text } · { type: 'answer', text, heard?, from? }
+// { type: 'sleep' } · { type: 'say', text } · { type: 'answer', text, heard?, from? } ·
+// { type: 'listen', stage: 'wake' | 'again' | 'working' | 'heard' | 'off', text? } ("Hey LocalHub", step by step)
 //
 // Alexa ("Alexa, ask local hub to open Netflix") reaches a second listener, 127.0.0.1:<tv.alexa.port>,
 // that answers POST /alexa and nothing else, and only after Amazon's request signature checks out.
@@ -39,7 +42,8 @@ const MAX_AUDIO = 8 * 2 ** 20
 const COMMAND_TTL = 90e3
 const MAX_WAIT = 30e3
 const TV_SEEN = 60e3
-const TYPES = new Set(['launch', 'input', 'home', 'saver', 'sleep', 'say', 'answer'])
+const TYPES = new Set(['launch', 'input', 'home', 'saver', 'sleep', 'say', 'answer', 'listen'])
+const LISTEN_STAGES = new Set(['wake', 'again', 'working', 'heard', 'off'])
 
 const tvConfig = () => hubConfig().tv || {}
 
@@ -175,12 +179,23 @@ export function create({ here }) {
       try { return send(res, 200, await weather()), true } catch (e) { return send(res, 502, { error: `Weather isn't available: ${e.message}` }), true }
     }
 
+    // "Hey LocalHub": this computer's microphone, listening for the TV.
+    if (p === '/api/tv/listen' && req.method === 'GET') return send(res, 200, listener.status()), true
+    if (p === '/api/tv/listen' && req.method === 'POST') {
+      let body
+      try { body = JSON.parse((await readRaw(req, 4096)).toString('utf8') || '{}') } catch { return send(res, 400, { error: 'body is not valid JSON' }), true }
+      if (typeof body.on !== 'boolean') return send(res, 400, { error: 'on must be true or false' }), true
+      listener.set(body.on)
+      return send(res, 200, listener.status()), true
+    }
+
     if (p === '/api/tv/status' && req.method === 'GET') {
       const a = tvConfig().alexa || {}
       return send(res, 200, {
         whisper: whisper.state(),
         alexa: { on: !!alexa.listening(), port: a.port || 3109, configured: !!a.skillId },
         tvs: tvsOnline(),
+        listen: listener.status(),
         version: hubVersion(here),
       }), true
     }
@@ -211,10 +226,15 @@ export function create({ here }) {
   const alexa = createAlexa({ queue, tvsOnline })
   alexa.start()
 
+  // ── "Hey LocalHub" ────────────────────────────────────────────────────────────────────────
+  const listener = createListener(here, queue)
+  listener.start()
+
   route.queue = queue
   route.alexa = alexa
   route.whisper = whisper
-  route.close = () => { alexa.stop(); whisper.stop(); stream.close(); for (const w of waiters) w.deliver({ seq, command: null }) }
+  route.listener = listener
+  route.close = () => { alexa.stop(); listener.stop(); whisper.stop(); stream.close(); for (const w of waiters) w.deliver({ seq, command: null }) }
   return route
 }
 
@@ -246,6 +266,7 @@ export function cleanCommand(raw) {
     case 'launch': { const app = str(raw.app, 80); return app ? { type: 'launch', app } : null }
     case 'input': { const name = str(raw.name || raw.id, 80); return name ? { type: 'input', name } : null }
     case 'say': { const text = str(raw.text, 2000); return text ? { type: 'say', text } : null }
+    case 'listen': return LISTEN_STAGES.has(raw.stage) ? { type: 'listen', stage: raw.stage, text: str(raw.text, 1000) } : null
     case 'answer': {
       const text = str(raw.text, 8000)
       return text ? { type: 'answer', text, heard: str(raw.heard, 500), from: str(raw.from, 20) || 'hub', speak: raw.speak !== false } : null
@@ -335,6 +356,72 @@ function createTts(here) {
     return wav
   }
   return { say, warm: () => { ready().catch(() => {}) }, state: () => (fatal && state !== 'ready' ? `missing: ${fatal}` : state), voices: () => voiceList }
+}
+
+// "Hey LocalHub": tv/listen.py hears the phrase on this computer's mic, then the request, and each step goes to the
+// TV as a 'listen' command. Off until it's turned on (the TV's Settings); a crash is retried after a while.
+function createListener(here, queue) {
+  const script = path.join(here, 'tv', 'listen.py')
+  const model = path.join(here, 'data', 'listen', 'vosk-model-small-en-us-0.15')
+  const file = path.join(here, 'data', 'tv-listen.json')
+  let child = null, state = 'off', fatal = '', mic = '', buf = '', retry = null, tries = 0
+  let saved = {}
+  try { saved = JSON.parse(fs.readFileSync(file, 'utf8')) } catch { /* never turned on */ }
+  const on = () => saved.on === true
+  function start() {
+    if (!on() || child) return
+    if (!fs.existsSync(model)) { state = 'missing'; fatal = "The phrase model isn't in data/listen (see tv/listen.py)"; return }
+    const cfg = tvConfig().whisper || {}
+    const py = cfg.python || (process.platform === 'win32' ? 'python' : 'python3')
+    state = 'loading'; fatal = ''
+    try {
+      child = spawn(py, [script, model, cfg.model || 'base.en', String(saved.mic || '')], { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true })
+    } catch (e) { state = 'missing'; fatal = e.message; return }
+    const me = child
+    let stderr = ''
+    child.stderr.setEncoding('utf8')
+    child.stderr.on('data', d => { stderr = (stderr + d).slice(-2000) })
+    child.stdout.setEncoding('utf8')
+    child.stdout.on('data', d => {
+      buf += d
+      let i
+      while ((i = buf.indexOf('\n')) >= 0) {
+        const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1)
+        let m; try { m = JSON.parse(line) } catch { continue }
+        if (m.ready) { state = 'listening'; mic = m.mic || ''; tries = 0 }
+        else if (m.fatal) fatal = m.fatal
+        else if (m.wake) queue({ type: 'listen', stage: m.again ? 'again' : 'wake' })
+        else if (m.working) queue({ type: 'listen', stage: 'working' })
+        else if ('heard' in m) queue({ type: 'listen', stage: m.false ? 'off' : 'heard', text: m.false ? '' : m.heard })
+      }
+    })
+    child.on('error', e => { fatal = e.code === 'ENOENT' ? "Python isn't installed here" : e.message })
+    child.on('exit', () => {
+      if (child !== me) return
+      child = null; buf = ''
+      if (!on()) { state = 'off'; return }
+      fatal = fatal || stderr.trim().split('\n').pop() || 'Listening stopped'
+      state = 'missing'
+      console.error('listen:', fatal)
+      // Try again: soon after a hiccup, then less often (the mic unplugged, a sleep).
+      tries += 1
+      clearTimeout(retry)
+      retry = setTimeout(() => { fatal = ''; start() }, Math.min(10 * 60_000, 15_000 * tries))
+    })
+  }
+  function stop() {
+    clearTimeout(retry)
+    const c = child; child = null; buf = ''
+    if (c) try { c.kill() } catch { /* gone */ }
+    state = 'off'; fatal = ''
+  }
+  function set(value) {
+    saved = { ...saved, on: value }
+    try { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, JSON.stringify(saved, null, 2)) } catch (e) { console.error('listen:', e.message) }
+    if (value) { tries = 0; start() } else stop()
+  }
+  const status = () => ({ on: on(), state, mic, ...(fatal ? { error: fatal } : {}) })
+  return { start, stop, set, status }
 }
 
 function createWhisper(here) {

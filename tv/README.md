@@ -211,7 +211,27 @@ Without them, the TV's own voice reads answers instead.
 - **Alexa**: “Alexa, ask local hub to open Netflix.” See [alexa/README.md](alexa/README.md).
 
 Fire TV keeps the remote's own mic button for Alexa, and Fire TV Sticks have no other microphone, so on
-a Stick ⏯ will say there's no mic: use Alexa, or type in the bar.
+a Stick ⏯ will say there's no mic: say "Hey LocalHub" to the laptop (below), use Alexa, or type in the bar.
+
+**"Hey LocalHub"**: the laptop's microphone listens for the phrase, so you can talk to the TV with your
+hands free: "Hey LocalHub, open Netflix", or "Hey LocalHub", a chime, then the request. Turn it on in the
+TV's Settings → Assistant → *Hey LocalHub*. LocalHub comes to the front if another app is on, and the
+Assistant shows *Listening…* until you stop talking.
+
+- `tv/listen.py` runs on the laptop while it's on. A small model (Vosk) listens only for the phrase; it's
+  cheap enough to run all the time, and nothing is recorded or sent anywhere until it hears it. Then
+  Whisper (`base.en`) writes down the request, checks the phrase was really said, and it goes to the TV.
+- The laptop has to be in the room, within a few metres. Across a living room or over a loud TV, a USB
+  speakerphone plugged into the **laptop** hears far better. To pick a mic other than Windows' default,
+  set `"mic"` (its name or number) in `data/tv-listen.json`.
+- Set it up once on the laptop:
+
+```sh
+pip install sounddevice vosk faster-whisper
+# into data/listen/: vosk-model-small-en-us-0.15 (unzipped) from https://alphacephei.com/vosk/models
+```
+
+`GET /api/tv/listen` says whether it's on and which mic it's using; `POST /api/tv/listen {"on": true}` turns it on.
 Fire TV Omni and Cube have far-field mics, which may work — that's untested.
 
 Whisper setup, once, on the laptop: `pip install faster-whisper`. The models download on first use

@@ -86,7 +86,7 @@ public class MainActivity extends Activity {
     }
     private final Handler ui = new Handler(Looper.getMainLooper());
     private volatile long keyLoadAt;
-    private boolean resumed;
+    boolean resumed; // in front (Native.toFront reads it)
     private BroadcastReceiver packageReceiver;
 
     @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})

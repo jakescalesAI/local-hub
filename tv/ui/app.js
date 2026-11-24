@@ -1024,6 +1024,28 @@ async function refreshLive() {
   LIVE.chats = chats?.sessions || [];
 }
 
+// "Hey LocalHub": the laptop's microphone listens for it (tv/listen.py). Off until it's turned on here.
+function listenRow() {
+  const l = LIVE.status?.listen || {};
+  const t2 = !l.on ? "Say it near the laptop: its microphone listens, nothing leaves it"
+    : l.state === "listening" ? `Listening on the laptop${l.mic ? ` · ${l.mic.replace(/\s*\(.*$/, "")}` : ""}`
+    : l.state === "loading" ? "Starting on the laptop…"
+    : l.error || "The laptop's microphone isn't answering";
+  return { id: "listen", t1: "Hey LocalHub", t2, v: l.on ? "On" : "Off", on: !!l.on && l.state === "listening" };
+}
+async function toggleListen() {
+  const on = !LIVE.status?.listen?.on;
+  try {
+    const r = await fetch("/api/tv/listen", { method: "POST", headers: { "content-type": "application/json", "x-hub": "1" }, body: JSON.stringify({ on }) });
+    if (!r.ok) throw new Error(String(r.status));
+    LIVE.status = { ...(LIVE.status || {}), listen: await r.json() };
+    toast(on ? "Say “Hey LocalHub” near the laptop" : "The laptop stopped listening");
+  } catch { toast("LocalHub on the laptop didn't answer"); }
+  if (S.overlay === "settings") renderSettings();
+  // It takes a few seconds to start: show how it went.
+  if (on) setTimeout(() => refreshLive().then(() => { if (S.overlay === "settings") renderSettings(); }), 6000);
+}
+
 function voiceState() {
   const w = String(LIVE.status?.whisper || "");
   if (NATIVE) return w === "ready" ? ["TV mic → Whisper", "var(--green)"] : w.startsWith("missing") ? ["Needs Whisper on the laptop", "var(--orange)"] : ["TV mic → Whisper", "var(--green)"];
@@ -1260,6 +1282,7 @@ function settingsModel() {
     ...hubRows,
     { key: "ttsVoice", t1: "Assistant voice", t2: "Kokoro, on the laptop: a natural voice", values: ["Heart", "Bella", "Nicole", "Michael", "Fenrir", "Emma", "George"] },
     { key: "voice", t1: "Voice", t2: { Off: "The assistant only writes", "Read answers": "Answers are read aloud", Conversation: "Talk back and forth: it answers aloud, then it's your turn" }[voicePref()], values: ["Off", "Read answers", "Conversation"] },
+    ...(IN_HUB ? [listenRow()] : []),
     ...(!NATIVE ? [{ key: "help", t1: "Keyboard help", t2: "The remote's keys, along the top", toggle: true }] : []),
     { group: "About" },
     { info: true, t1: "Version", t2: NATIVE ? "LocalHub TV for Fire TV" : "LocalHub TV on this laptop", v: NATIVE ? st.version || "?" : LIVE.status?.version ? `LocalHub ${LIVE.status.version}` : "LocalHub" },
@@ -1320,6 +1343,7 @@ function settingsActivate() {
   else if (it.id === "saverSource") return cycleSaverSource();
   else if (it.id === "wall") return openWallPicker();
   else if (it.id === "conn") return openConnMenu();
+  else if (it.id === "listen") return toggleListen();
 
   else if (it.id === "unhide") return saveTv({ hidden: null }, "Every app is back").then(renderSettings);
   else if (it.id === "reorder") return saveTv({ apps: null }, "Apps are back in recent order").then(renderSettings);
@@ -1833,6 +1857,7 @@ async function startCommandLoop() {
 }
 function runCommand(cmd) {
   if (!cmd || typeof cmd !== "object") return;
+  if (cmd.type === "listen") return heardMic(cmd);
   if (S.overlay === "saver") stopSaver();
   if (S.overlay === "cc") closeCC();
   if (S.overlay === "settings") closeSettings();
@@ -1851,6 +1876,44 @@ function runCommand(cmd) {
     toast(cmd.heard ? `“${cmd.heard}”` : "From LocalHub");
     if (cmd.speak !== false) say(plain(String(cmd.text || "")));
   }
+}
+
+/* ── "Hey LocalHub": the laptop's mic heard it (tv/listen.py) ──────────── */
+// wake: the Assistant comes up listening (over anything, LocalHub to the front), with a soft chime. working: the
+// request ended and is being turned into words. heard: it's asked. off: it wasn't the phrase after all.
+function heardMic(cmd) {
+  if (!Assistant) return;
+  if (cmd.stage === "wake" || cmd.stage === "again") {
+    if (S.overlay === "saver") stopSaver();
+    if (S.overlay === "cc") closeCC();
+    if (S.overlay === "settings") closeSettings();
+    if (S.overlay === "stream") Stream.close();
+    if (NATIVE && document.hidden) native("toFront");
+    VOICE.hush();
+    if (S.zone === "rail") closeRail();
+    if (S.view !== "assistant") showView("assistant");
+    chime();
+    return Assistant.hearing("rec");
+  }
+  if (cmd.stage === "working") return Assistant.hearing("wait");
+  if (cmd.stage === "off") return Assistant.hearing("idle");
+  if (cmd.stage === "heard") return Assistant.heard(String(cmd.text || ""));
+}
+let chimeCtx = null;
+function chime() {
+  try {
+    chimeCtx = chimeCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const t = chimeCtx.currentTime;
+    [[660, 0], [990, 0.09]].forEach(([f, at]) => {
+      const o = chimeCtx.createOscillator(), g = chimeCtx.createGain();
+      o.type = "sine"; o.frequency.value = f;
+      g.gain.setValueAtTime(0, t + at);
+      g.gain.linearRampToValueAtTime(0.12, t + at + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + at + 0.28);
+      o.connect(g).connect(chimeCtx.destination);
+      o.start(t + at); o.stop(t + at + 0.3);
+    });
+  } catch { /* no sound here */ }
 }
 
 /* ── pairing (the TV app, before it can reach the hub) ─────────────────── */
@@ -2708,7 +2771,7 @@ async function boot() {
     renderGrid();
     if (PREVIEW) { setInterval(syncHub, 30_000); return paintChip(); }
     // The TV is its own light app: the hub's chat.js and browser.js stay on the laptop.
-    Assistant = await import("./assistant.js?v=6").catch((e) => { console.warn("assistant", e); return null; });
+    Assistant = await import("./assistant.js?v=7").catch((e) => { console.warn("assistant", e); return null; });
     Assistant?.init({
       el: $("#assistantView"), toast, native, NATIVE,
       intercept: (t) => window.HubChatHooks?.intercept?.(t) || false,
