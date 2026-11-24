@@ -2523,6 +2523,12 @@ document.addEventListener("click", (e) => {
   if (HOLD.fired) { HOLD.fired = false; return; } // the long press already opened the menu
   if (PREVIEW) { const a = e.target.closest(".app"); if (a) pickTile(a); return; }
   if (S.overlay === "saver") return stopSaver();
+  if (S.overlay === "wpanel") {
+    const row = e.target.closest(".wpi");
+    if (row) { S.wpAt = Number(row.dataset.w); paintWpanel(); return wpKey("enter"); }
+    if (!e.target.closest(".wpanel")) return closeWidgets();
+    return;
+  }
   if (S.overlay === "wallpick") {
     const wp = e.target.closest(".wp");
     if (wp) { S.wallAt = Number(wp.dataset.w); return wallKey("enter"); }
