@@ -75,3 +75,16 @@
 .gz-g > div { position: relative; } .gz-g svg { display: block; width: 84px; height: 84px; margin: 0 auto; }
 .gz-g b { position: absolute; left: 0; right: 0; top: 31px; font: 700 23px/1 var(--display); letter-spacing: -.02em; } .gz-g b i { font: 600 16px/1 var(--display); font-style: normal; color: rgba(255, 255, 255, .6); }
 .gz-g span { display: block; margin-top: 5px; font-size: 19px; font-weight: 600; } .gz-g em { display: block; min-height: 20px; font: 500 15px/20px var(--font); color: rgba(255, 255, 255, .5); }
+/* The entry code (lock.js). */
+.lk { position: absolute; inset: 0; z-index: 85; display: grid; place-items: center; background: #0b0b0e; color: #fff; opacity: 0; pointer-events: none; transition: opacity .25s; }
+.lk.on { opacity: 1; pointer-events: auto; }
+.lk-card { display: flex; flex-direction: column; align-items: center; text-align: center; }
+.lk-ic svg { width: 76px; height: 76px; color: rgba(255, 255, 255, .85); }
+.lk h2 { margin: 22px 0 10px; font: 700 54px/1.1 var(--display); letter-spacing: -.02em; }
+.lk p { margin: 0; min-height: 36px; font-size: 27px; color: rgba(255, 255, 255, .6); } .lk p.err { color: #ff8a80; }
+.lk-dots { display: flex; gap: 26px; margin: 34px 0 40px; } .lk-dots i { width: 24px; height: 24px; border-radius: 50%; box-shadow: inset 0 0 0 3px rgba(255, 255, 255, .55); } .lk-dots i.on { background: #fff; }
+.lk-pad { display: grid; grid-template-columns: repeat(3, 118px); gap: 20px 30px; } .lk-pad.off { opacity: .35; }
+.lk-pad button { width: 118px; height: 118px; padding: 0; border: 0; border-radius: 50%; outline: 0; background: var(--ui-fill); box-shadow: var(--ui-edge); color: #fff; font: 600 44px/1 var(--display); display: grid; place-items: center; cursor: pointer; }
+.lk-pad button.fn { background: none; box-shadow: none; font-size: 25px; } .lk-pad button.fn svg { width: 46px; height: 46px; }
+.lk-pad button:hover, .lk-pad button.sel { background: var(--ui-sel); color: #000; } .lk-pad button:active { transform: scale(.95); }
+.lk-card.shake .lk-dots { animation: lkshake .4s; } @keyframes lkshake { 20%, 60% { transform: translateX(-14px); } 40%, 80% { transform: translateX(14px); } }

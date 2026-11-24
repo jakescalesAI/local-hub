@@ -10,14 +10,15 @@
 <link rel="preload" href="./intro.mp4" as="fetch" crossorigin>
 <link rel="stylesheet" href="./styles.css?v=69">
 <link rel="stylesheet" href="./splash.css?v=2">
-<link rel="stylesheet" href="./panel.css?v=8">
+<link rel="stylesheet" href="./panel.css?v=9">
 <link rel="stylesheet" href="./assistant.css?v=13">
 <link rel="stylesheet" href="./files.css?v=1">
 <!-- Fetched alongside app.js instead of after it has been parsed: ~0.9 s sooner to a home screen on a Fire TV Stick. -->
-<link rel="modulepreload" href="./app.js?v=129">
+<link rel="modulepreload" href="./app.js?v=130">
 <link rel="modulepreload" href="./stream.js?v=4">
 <link rel="modulepreload" href="./panel.js?v=6">
 <link rel="modulepreload" href="./remote.js?v=3">
+<link rel="modulepreload" href="./lock.js?v=1">
 <link rel="modulepreload" href="./files.js?v=1">
 <link rel="modulepreload" href="./mirror.js?v=2">
 <!-- Served by the hub: its config and settings are asked for now, while the page's own files load, instead of
@@ -114,6 +115,6 @@ if (location.pathname.startsWith("/tv")) {
   /* The hub page defines hubFetch for chat.js (it waits out hub restarts); the TV only needs plain fetch. */
   if (typeof window.hubFetch !== "function") window.hubFetch = function (url, init) { return fetch(url, init); };
 </script>
-<script type="module" src="./app.js?v=129"></script>
+<script type="module" src="./app.js?v=130"></script>
 </body>
 </html>

@@ -78,6 +78,10 @@ These stay off until you set them up, and a tab that's off fetches nothing:
 has the music player, this PC's volume and brightness, the TV's when it's on, and what shows on Home. The music widget
 plays whatever is open on the PC; *Settings → Music platforms* adds your own Spotify.
 
+**The entry code** (*Settings → Entry code*) is 4 or 6 digits to get into LocalHub on the TV, on computers and phones, or into
+places and TV apps you choose. It keeps people out of those screens. It isn't encryption, and an app opened from Amazon's
+own screens doesn't ask. Forgotten: delete `data/lock.json`.
+
 ## LocalHub TV
 
 This hub's Home on a Fire TV or Android TV: your wallpaper and style, your widgets, your TV's apps as

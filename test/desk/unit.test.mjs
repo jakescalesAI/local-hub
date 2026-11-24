@@ -56,3 +56,34 @@ test('Tailscale status, cut to what Settings shows', async () => {
   assert.equal(readTailscale({ BackendState: 'Stopped' }).running, false)
   assert.match(qrFor('http://192.168.1.50:3100/pair'), /^<svg/)
 })
+
+test('the entry code: digits only, waits that grow, and the same offline sum on both sides', async () => {
+  const L = await import('../../lock.mjs'), U = await import('../../tv/ui/lock.js')
+  for (const p of ['1234', '123456']) assert.equal(L.validPin(p), true)
+  for (const p of ['123', '12345', '12a4', '', 1234, '1234567']) assert.equal(L.validPin(p), false)
+  assert.deepEqual([0, 4, 5, 6, 20].map(L.waitFor), [0, 0, 30_000, 60_000, 3600_000])
+  for (const [pin, salt] of [['1234', 'ab'], ['908172', 'f00d']]) assert.equal(U.offlineHash(pin, salt, 50), L.offlineHash(pin, salt, 50))
+  assert.deepEqual(L.cleanPlaces(['tv', 'nope', 'desk']), ['tv', 'desk'])
+})
+test('the entry code over its routes: set, wrong, right, locked out, changed only with the code', async () => {
+  const { create } = await import('../../lock.mjs')
+  const fs = await import('node:fs'), os = await import('node:os'), path = await import('node:path')
+  const here = fs.mkdtempSync(path.join(os.tmpdir(), 'lock-'))
+  const route = create({ here })
+  const call = async (method, p, body, local = true) => { let out; await route(new URL('http://localhost' + p), { method, headers: { host: local ? 'localhost' : '192.168.1.50' }, socket: { remoteAddress: local ? '127.0.0.1' : '192.168.1.9' } }, {}, { send: (r, c, b) => { out = { c, b } }, readBody: async () => body }); return out }
+  assert.equal((await call('GET', '/api/lock')).b.on, false)
+  assert.equal((await call('POST', '/api/lock', { next: '2580' }, false)).c, 403)
+  assert.equal((await call('POST', '/api/lock', { next: '25' })).c, 400)
+  assert.equal((await call('POST', '/api/lock', { next: '2580', places: ['tv', 'desk'], after: 15 })).b.on, true)
+  assert.ok(!fs.readFileSync(path.join(here, 'data', 'lock.json'), 'utf8').includes('2580'))
+  assert.equal((await call('POST', '/api/lock', { pin: '0000', next: '' })).c, 403)
+  const ok = (await call('POST', '/api/lock/check', { pin: '2580' }, false)).b
+  assert.ok(ok.ok && ok.offline.hash)
+  for (let i = 0; i < 5; i++) await call('POST', '/api/lock/check', { pin: '1111' }, false)
+  const shut = (await call('POST', '/api/lock/check', { pin: '2580' })).b
+  assert.ok(!shut.ok && shut.wait > 0)
+  // Restarting the hub doesn't give more tries.
+  const again = create({ here })
+  let w; await again(new URL('http://localhost/api/lock'), { method: 'GET', headers: {} }, {}, { send: (r, c, b) => { w = b.wait } })
+  assert.ok(w > 0)
+})

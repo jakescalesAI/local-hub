@@ -17,6 +17,7 @@
 import * as Stream from "./stream.js?v=4";
 import * as Panel from "./panel.js?v=6";
 import * as Files from "./files.js?v=1";
+import { createLock } from "./lock.js?v=1";
 import * as Remote from "./remote.js?v=3";
 import * as Mirror from "./mirror.js?v=2";
 // The TV's own assistant screen (assistant.js): the hub's agent and conversation, without the hub's chat UI.
@@ -869,7 +870,9 @@ function openInStream(it) {
 
 /* On a TV, Java starts the app. On a laptop, the website opens inside LocalHub in one of its browsers,
    or, with none on this laptop, in a new window; coming back to this one settles the icon into the grid. */
-function openApp(app, windowOnly) {
+function openApp(app, windowOnly, sure) {
+  if (!sure && LOCK.lockedApp(app.name) && Date.now() - (OPENED[`app:${app.name}`] || 0) >= lockSpan()) { setTimeout(() => { endLaunch(); unlocked(`app:${app.name}`, app.name, () => (NATIVE && app.pkg ? launch(app, () => openApp(app, windowOnly, true)) : openApp(app, windowOnly, true))); }, 50); return "pending"; }
+  if (!sure && (app.id === "browser" || app.id === "chromium") && LOCK.locked("browser") && Date.now() - (OPENED.browser || 0) >= lockSpan()) { setTimeout(() => { endLaunch(); unlocked("browser", "Browser", () => openApp(app, windowOnly, true)); }, 50); return "pending"; }
   // The Browser, Chromium and saved websites run on the laptop and show here, on a TV too: not Android apps.
   if (!windowOnly && IN_HUB && (app.stream || app.kind === "site") && Stream.engineFor(app)) { openInStream(app); return true; }
   if (NATIVE) return app.pkg ? native("launch", app.pkg) !== false : false;
@@ -1486,6 +1489,7 @@ function paintSettings() {
   track.style.transform = `translateY(${-Math.max(0, y - 380)}px)`;
 }
 function openSettings() {
+  if (LOCK.locked("settings") && Date.now() - (OPENED.settings || 0) >= lockSpan()) return unlocked("settings", "Settings", () => openSettings());
   renderSettings();
   $("#settings").classList.add("on");
   setOverlay("settings");
@@ -2183,6 +2187,7 @@ window.haven = {
   // A remote button pressed while another app was open (or one Fire TV would have taken): what it does is already chosen.
   button: (action) => {
     S.touched = true;
+    if (LOCK.isOpen()) return;
     endLaunch();
     setTimeout(() => { if (S.overlay !== "remote" && !runButton(String(action)) && action === "menu") openRail(); }, S.overlay === "launch" ? 600 : 200);
   },
@@ -2330,6 +2335,7 @@ function setView(id) {
   $(".when").classList.toggle("away", a);
 }
 function showView(id) {
+  if ((id === "files" || id === "assistant") && LOCK.locked(id) && Date.now() - (OPENED[id] || 0) >= lockSpan()) return unlocked(id, id === "files" ? "Files" : "Assistant", () => showView(id));
   // Home is left as it was: the row you were in comes back with it.
   if (S.view === "home" && id !== "home") S.homeZone = S.zone === "rail" ? S.railFrom : S.zone === "player" ? "favs" : S.zone;
   S.view = id;
@@ -2409,6 +2415,29 @@ async function bakeGlass() {
   } catch (e) { console.warn("glass", e); }
 }
 
+/* ── the entry code (lock.js, kept by the hub): to get in here, or into a place or an app ─────────────── */
+const LOCK = createLock({
+  host: $("#stage"),
+  store: NATIVE && typeof NATIVE.lockData === "function" ? { read: () => native("lockData", null), write: (t) => native("lockData", t) } : { read: () => localStorage.getItem("localhub.lock"), write: (t) => localStorage.setItem("localhub.lock", t) },
+  changed: () => { sendKeys(); lockTv(); },
+});
+const OPENED = {}; // place -> when it was last unlocked or used
+let tvOk = false, awayAt = 0, lastKeyAt = Date.now();
+const lockSpan = () => Math.max(LOCK.conf().after * 60_000, 4000);
+function lockTv() {
+  if (PREVIEW || tvOk || !LOCK.locked("tv") || LOCK.isOpen()) return;
+  LOCK.ask({ title: HUB.name || "LocalHub", cancel: false, remote: true }).then((ok) => { if (ok) { tvOk = true; lastKeyAt = Date.now(); } else lockTv(); });
+}
+function lockAgain(gone) { if (LOCK.locked("tv") && gone >= LOCK.conf().after * 60_000) { tvOk = false; for (const k in OPENED) delete OPENED[k]; lockTv(); } }
+document.addEventListener("visibilitychange", () => { if (document.hidden) awayAt = Date.now(); else if (awayAt) lockAgain(Date.now() - awayAt); });
+// fn runs once the place is open. Asked again after the time you chose.
+function unlocked(place, label, fn) {
+  const need = place.startsWith("app:") ? LOCK.lockedApp(place.slice(4)) : LOCK.locked(place);
+  if (PREVIEW || !need || Date.now() - (OPENED[place] || 0) < lockSpan()) { if (need) OPENED[place] = Date.now(); return fn(); }
+  LOCK.ask({ title: label, remote: true }).then((ok) => { if (ok) { OPENED[place] = Date.now(); fn(); } });
+}
+if (!PREVIEW) { lockTv(); if (IN_HUB) { LOCK.load().then(lockTv); setInterval(() => LOCK.load(), 30_000); } }
+
 function runButton(name) {
   if (name === "mic") { micNow(); return true; }
   if (name === "home") { window.haven.home(); return true; }
@@ -2426,6 +2455,9 @@ function runButton(name) {
 }
 function handleKey(raw) {
   S.touched = true;
+  if (LOCK.isOpen()) { if (S.overlay === "saver") stopSaver(); lastKeyAt = Date.now(); return LOCK.key(raw); }
+  if (LOCK.conf().after && Date.now() - lastKeyAt > LOCK.conf().after * 60_000) { const gone = Date.now() - lastKeyAt; lastKeyAt = Date.now(); if (LOCK.locked("tv")) { if (S.overlay === "saver") stopSaver(); return lockAgain(gone); } }
+  lastKeyAt = Date.now();
   if (S.overlay === "remote") return remoteKey(raw);
   const name = buttonAction(raw);
   if (name === "none") return;
@@ -2564,7 +2596,7 @@ async function keysPost(body) {
 }
 function sendKeys() {
   if (!NATIVE || !IN_HUB) return;
-  const map = Remote.nativeMap(buttonsNow(), (n) => (APPS.find((a) => a.pkg && a.name === n) || {}).pkg || "");
+  const map = Remote.nativeMap(buttonsNow(), (n) => (LOCK.lockedApp(n) ? "" : (APPS.find((a) => a.pkg && a.name === n) || {}).pkg || ""));
   const json = JSON.stringify(map);
   if (json !== keysSent) { keysSent = json; keysPost({ map }); }
 }

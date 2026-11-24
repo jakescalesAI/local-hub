@@ -25,6 +25,9 @@ final class Prefs {
         sp = context.getSharedPreferences("localhub", Context.MODE_PRIVATE);
     }
 
+    String lockData() { return sp.getString("lockData", ""); }
+    void setLockData(String json) { sp.edit().putString("lockData", json).apply(); }
+
     String hubUrl() { return sp.getString(HUB_URL, ""); }
     String hubToken() { return sp.getString(HUB_TOKEN, ""); }
     String hubName() { return sp.getString(HUB_NAME, ""); }

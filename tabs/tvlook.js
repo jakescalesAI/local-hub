@@ -205,6 +205,8 @@ ${A} .tvs-art .rm { height: min(86vh, 860px); } ${A} .tvs-art .rm.pad { height: 
 ${A} .tvs-seg { display: inline-flex; gap: 4px; margin: 0 0 6px 4px; padding: 4px; border-radius: 99px; background: var(--ui-fill); box-shadow: var(--ui-edge); } ${A} .tvs-seg button { height: 38px; padding: 0 18px; border-radius: 99px; font-size: 14px; font-weight: 600; color: rgba(255, 255, 255, .7); } ${A} .tvs-seg button.on { background: var(--ui-sel); color: #000; }
 ${A} .rmr select { height: 40px; max-width: 260px; padding: 0 14px; border: 0; border-radius: 20px; background: rgba(255, 255, 255, .1); color: #fff; font: 600 14px var(--font); } ${A} .rmr option { background: #1c1d22; }
 ${A} .rmr.rmsel { box-shadow: 0 0 0 2px #fff; }
+body > .lk { position: fixed; z-index: 2147483000; zoom: .62; } html:not([data-tvlook]):not([data-tvtouch]) > body > .lk { --ui-fill: #26272d; --ui-sel: #f2f2f5; --ui-edge: none; }
+${T} body > .lk { zoom: .58; }
 ${A} .tvs-x { height: 36px; padding: 0 16px; border-radius: 99px; background: rgba(255, 255, 255, .1); color: #fff; font-size: 14px; font-weight: 600; white-space: nowrap; } ${A} .tvs-x:hover { background: #ff453a; }
 ${A} .tvs-msg { margin: 0 4px 10px; padding: 12px 18px; border-radius: 16px; background: rgba(10, 132, 255, .2); font-size: 15px; font-weight: 600; }
 ${A} .tvs-pair { display: grid; grid-template-columns: 170px 1fr; gap: 24px; align-items: center; margin-bottom: 8px; } ${A} .tvs-pair > div { display: block !important; } ${A} .tvs-pair b { font: 700 34px/1 var(--mono); letter-spacing: .08em; } ${A} .tvs-pair ol { margin: 14px 0 !important; } ${A} .tvs-pair i { color: rgba(255, 255, 255, .5); font-style: normal; }
@@ -762,6 +764,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
       { id: 'tvsetup', t1: 'Set up a TV', t2: 'Put LocalHub TV on a television and pair it', v: '' },
       { id: 'musicpage', t1: 'Music platforms', t2: 'What the music widget plays and controls', v: MU?.spotify?.connected ? 'Spotify' : MU?.pc ? 'This PC' : '' },
       ...(window.HUB_CONNECTIONS ? [{ id: 'connections', t1: 'Services', t2: 'Gmail, Notion, GitHub and the rest the assistant can use', v: DV.services }] : []),
+      { id: 'lockpage', t1: 'Entry code', t2: 'A 4- or 6-digit code to get into the TV, this computer, or places you choose', v: LK?.conf().on ? `On, ${LK.conf().digits} digits` : 'Off', on: !!LK?.conf().on },
       { group: 'Assistant' },
       { id: 'claude', t1: 'Claude', t2: 'What the assistant runs on', v: DV.claude },
       ...(listen ? [{ id: 'listen', t1: 'Hey LocalHub', t2: 'This computer’s microphone listens for it', v: listen.on ? 'On' : 'Off', on: listen.on }] : []),
@@ -777,6 +780,15 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   function paintSettings() {
     if (!set.classList.contains('on')) return
     const backB = `<button type="button" data-set="back" aria-label="Back">${svg('<path d="M15 5l-7 7 7 7"/>')}</button>`
+    if (picking === 'lock') {
+      const html = `<div class="tvs-art"><img src="/icons/hub.svg" alt=""><p>Keeps people out of the screens you choose</p></div><div class="tvs-list">${lockHtml(backB)}</div>`
+      if (setHtml === html) return
+      const y4 = set.querySelector('.tvs-list')?.scrollTop || 0
+      setHtml = html
+      set.innerHTML = html
+      set.querySelector('.tvs-list').scrollTop = y4
+      return
+    }
     if (picking === 'devices') {
       const a = document.activeElement
       if (a && set.contains(a) && a.matches('input')) return
@@ -808,6 +820,62 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     set.innerHTML = html
     set.querySelector('.tvs-list').scrollTop = y
     if (f) set.querySelector(`[data-set="${CSS.escape(f)}"]`)?.focus()
+  }
+  // ── Settings › Entry code ──
+  let lkPin = '', lkMsg = ''
+  const PLACE = { tv: ['LocalHub on the TV', 'Asked when it opens, and after it has been away'], desk: ['LocalHub on computers and phones', 'Asked when the page opens'], control: ['Controlling the TV from here', 'The TV page in the sidebar'], files: ['Files', 'On the TV and here'], assistant: ['Assistant', 'On the TV and here'], browser: ['Browser', 'On the TV and here'], settings: ['Settings', 'On the TV and here'] }
+  const AFT = { 0: 'Every time', 1: 'After 1 minute', 5: 'After 5 minutes', 15: 'After 15 minutes', 60: 'After an hour' }
+  function lockHtml(backB) {
+    const c = LK?.conf() || { on: false, places: [], apps: [], after: 5, digits: 4 }
+    const row = (t1, t2, v, id, on) => `<button type="button" class="tvs-row" data-set="${esc(id)}"><div class="txt"><div class="t1">${esc(t1)}</div>${t2 ? `<div class="t2">${esc(t2)}</div>` : ''}</div><div class="v${on ? ' on' : ''}">${esc(v)}</div></button>`
+    const g = t => `<div class="tvs-group">${t}</div>`, msg = lkMsg ? `<div class="tvs-msg">${esc(lkMsg)}</div>` : ''
+    const title = `<div class="tvs-title">${backB}Entry code</div>${msg}`
+    if (!DV.local) return title + g('The code') + `<div class="tvs-row"><div class="txt"><div class="t1">${c.on ? 'On' : 'Off'}</div><div class="t2">Set it on the computer running LocalHub</div></div></div>`
+    if (!c.on) return title + g('Choose a code') + row('Use a 4-digit code', 'Quick with a remote', '', 'lknew:4') + row('Use a 6-digit code', 'Harder to guess', '', 'lknew:6') + g('Forgot it later? Delete data/lock.json in the LocalHub folder on this computer')
+    return title + g('The code') + row('Change the code', `${c.digits} digits now`, '', 'lkchange') + row('Turn it off', 'Nothing asks any more', '', 'lkoff')
+      + g('Ask for it at') + Object.entries(PLACE).map(([k, [a, b]]) => row(a, b, c.places.includes(k) ? 'On' : 'Off', `lkplace:${k}`, c.places.includes(k))).join('')
+      + g('Ask again') + row('Once it’s unlocked', 'How long before it asks again', AFT[c.after], 'lkafter', true)
+      + g('Apps on the TV') + ((TV?.apps || []).length ? TV.apps.map(n => row(n, '', c.apps.includes(n) ? 'Locked' : 'Open', `lkapp:${n}`, c.apps.includes(n))).join('') : row('No apps yet', 'They show once the TV has connected', '', 'lknone'))
+      + g('An app opened from Amazon’s own screens doesn’t ask. Forgot the code? Delete data/lock.json in the LocalHub folder on this computer')
+  }
+  async function setLock(body) {
+    const r = await send('/api/lock', { pin: lkPin, ...body })
+    if (!r.ok) { lkMsg = r.error || 'That didn’t save.'; lkPin = '' }
+    else lkMsg = ''
+    await LK.load()
+    setHtml = ''
+    paintSettings()
+    return r.ok
+  }
+  // The code as it is now, asked once while you're on the page.
+  async function lkNow() {
+    if (!LK.conf().on || lkPin) return true
+    const p = await LK.ask({ title: 'Enter the code', check: async pin => { const r = await send('/api/lock/check', { pin }); return r.ok === true && r.offline ? true : r.wait ? `Too many tries. Wait ${r.wait} s` : 'Wrong code' } })
+    if (!p) return false
+    lkPin = p
+    return true
+  }
+  async function lkChoose(n) {
+    let first = ''
+    const a = await LK.ask({ title: `New ${n}-digit code`, sub: 'Choose it', digits: n, check: async p => { if (/^(\d)\1+$/.test(p) || '0123456789 9876543210'.includes(p)) return 'Too easy to guess. Try another'; return true } })
+    if (!a) return
+    first = a
+    const b = await LK.ask({ title: 'Once more', sub: 'The same code again', digits: n, check: async p => (p === first ? true : 'Not the same. Try again') })
+    if (!b) return
+    const wasOn = LK.conf().on
+    if (await setLock({ next: b })) { lkPin = b; deskOk = true; lkMsg = wasOn ? 'Code changed.' : 'The code is on.'; setHtml = ''; paintSettings() }
+  }
+  async function onLock(id) {
+    const i = id.indexOf(':'), k = i < 0 ? id : id.slice(0, i), v = i < 0 ? '' : id.slice(i + 1), c = LK.conf()
+    lkMsg = ''
+    if (k === 'lknone') return
+    if (k === 'lknew') return lkChoose(Number(v))
+    if (!(await lkNow())) return
+    if (k === 'lkchange') return lkChoose(c.digits)
+    if (k === 'lkoff') { if (await setLock({ next: '' })) { lkPin = ''; lkMsg = 'The code is off.'; setHtml = ''; paintSettings() } return }
+    if (k === 'lkplace') return setLock({ places: c.places.includes(v) ? c.places.filter(x => x !== v) : [...c.places, v] })
+    if (k === 'lkapp') return setLock({ apps: c.apps.includes(v) ? c.apps.filter(x => x !== v) : [...c.apps, v] })
+    if (k === 'lkafter') { const l = Object.keys(AFT).map(Number); return setLock({ after: l[(l.indexOf(c.after) + 1) % l.length] }) }
   }
   // ── Settings › Devices and connections ──
   const DV = { summary: '', services: '', claude: '', reach: null, lan: null, devices: [], power: null, pair: null, msg: '', ask: '', pass: false, local: ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname) }
@@ -946,11 +1014,13 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   function closeSettings() { set.classList.remove('on'); setTimeout(paintRail, 60) }
   const saveDev = async (d, patch) => { try { await H().patch({ look: { [d]: patch } }) } catch (e) { alert(e.message) } paintSettings() }
   async function onSet(id) {
-    if (id === 'back') { if (picking) { picking = null; return paintSettings() } return closeSettings() }
+    if (id === 'back') { lkPin = ''; if (picking) { picking = null; return paintSettings() } return closeSettings() }
     const [k, d] = id.split(':')
     if (k === 'wall') { picking = d; set.querySelector('.tvs-list').scrollTop = 0; return paintSettings() }
     if (k === 'saver') return saveDev(d, { saver: MIN[(MIN.indexOf(devLook(d).saver) + 1) % MIN.length] })
     if (k === 'show') return saveDev(d, { show: devLook(d).show === 'photos' ? 'background' : 'photos' })
+    if (id === 'lockpage') { picking = 'lock'; setHtml = ''; lkPin = ''; lkMsg = ''; set.querySelector('.tvs-list').scrollTop = 0; readTv(); return paintSettings() }
+    if (/^lk[a-z]+(:|$)/.test(id)) return onLock(id)
     if (id === 'devpage') { picking = 'devices'; setHtml = ''; DV.msg = ''; DV.pair = null; DV.pass = false; set.querySelector('.tvs-list').scrollTop = 0; paintSettings(); return readDevices(true) }
     if (['pairstart', 'pairstop', 'unpair', 'lan', 'tailscale', 'pass', 'passsave', 'tvpower', 'os'].includes(id.split(':')[0])) return onDevice(id)
     if (id === 'claude') return void window.HubChat?.open(closeSettings())
@@ -1033,6 +1103,51 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   }, 5000)
   window.HubSaver = { start: startSaver, stop: stir }
 
+  // ── The entry code: to get into this page, or a place in it (lock.mjs keeps it; the pad is the TV's, tv/ui/lock.js) ──
+  let LK = null, deskOk = false, lkUsed = {}, lkBusy = false, lkAt = Date.now()
+  const lkSpan = () => Math.max((LK?.conf().after || 0) * 60_000, 1500)
+  const placeNow = () => (mirror.classList.contains('on') ? ['control', 'Your TV'] : set.classList.contains('on') ? ['settings', 'Settings'] : window.HubChat?.isOpen?.() ? ['assistant', 'Assistant'] : window.HubBrowser?.isOpen?.() ? ['browser', 'Browser'] : spotKey() === 'drives' ? ['files', 'Files'] : ['home', 'Home'])
+  async function guard() {
+    if (!LK || lkBusy || LK.isOpen()) return
+    if (!LK.locked('desk')) deskOk = true
+    if (!deskOk) {
+      lkBusy = true
+      const ok = await LK.ask({ title: H()?.name || 'LocalHub', cancel: false })
+      lkBusy = false
+      if (ok) { deskOk = true; lkAt = Date.now(); try { sessionStorage.setItem('lock', String(Date.now())) } catch {} }
+      document.documentElement.toggleAttribute('data-lockwait', !deskOk)
+      return
+    }
+    document.documentElement.removeAttribute('data-lockwait')
+    const [p, label] = placeNow()
+    for (const k in lkUsed) if (k !== p && Date.now() - lkUsed[k] > lkSpan()) delete lkUsed[k]
+    if (!LK.locked(p)) return
+    if (lkUsed[p] && (Date.now() - lkAt < Math.max(lkSpan(), 60_000))) { lkUsed[p] = Date.now(); return }
+    lkBusy = true
+    const ok = await LK.ask({ title: label })
+    lkBusy = false
+    if (ok) { lkUsed[p] = Date.now(); lkAt = Date.now() }
+    else document.querySelector('[data-rail="tab:home"]')?.click()
+  }
+  const lkTouch = () => {
+    const after = LK?.conf().after || 0
+    if (after && deskOk && Date.now() - lkAt > after * 60_000) { deskOk = !LK.locked('desk'); lkUsed = {}; document.documentElement.toggleAttribute('data-lockwait', !deskOk); guard() }
+    lkAt = Date.now()
+    if (deskOk) try { sessionStorage.setItem('lock', String(lkAt)) } catch {}
+  }
+  for (const ev of ['pointerdown', 'keydown']) addEventListener(ev, lkTouch, true)
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) lkTouch() })
+  import('/tv/lock.js?v=1').then(async m => {
+    LK = m.createLock({ host: document.body, store: { read: () => localStorage.getItem('localhub.lock'), write: t => localStorage.setItem('localhub.lock', t) }, changed: () => { guard(); paintSettings() } })
+    // A reload just now, in this window, isn't a new visit.
+    try { const t = Number(sessionStorage.getItem('lock')); if (t && Date.now() - t < Math.max(lkSpan(), 30_000)) deskOk = true } catch {}
+    if (LK.conf().on) guard()
+    await LK.load()
+    guard()
+    setInterval(() => LK.load(), 30_000)
+  }, () => {})
+  setInterval(guard, 400)
+
   // The sidebar follows the tab bar, which stays the one list of tabs (it's hidden, its buttons still work).
   const behind = Object.assign(document.createElement('div'), { id: 'tvback2' })
   document.body.append(behind)
@@ -1083,6 +1198,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     else if (key === 'tv') openMirror()
     else if (key === 'settings') openSettings()
     paintRail()
+    guard()
     setTimeout(paintRail, 60)
   })
   for (const ev of ['hub-browser-state', 'hub-chat-state']) document.addEventListener(ev, () => paintRail())

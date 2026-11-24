@@ -75,6 +75,14 @@ final class Native {
         open(Settings.ACTION_DISPLAY_SETTINGS);
     }
 
+    /** What the entry code needs while the hub is off (lock.js). A hash, kept in this app's own storage. */
+    @JavascriptInterface
+    public String lockData(String json) {
+        if (!activity.pageTrusted) return "";
+        if (json != null && json.length() < 8000) activity.prefs.setLockData(json);
+        return activity.prefs.lockData();
+    }
+
     /** Fire TV's own page for pairing a remote or controller. */
     @JavascriptInterface
     public void openControllers() {
