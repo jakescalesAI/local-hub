@@ -17,7 +17,7 @@ import { hubConfig, enabledTabs, addonOn, activeTheme, baseTheme } from './confi
 import { isLocal } from './access.mjs'
 
 export const BUILTIN_TABS = ['home', 'laptop', 'server', 'drives', 'ai', 'cloud', 'calendar', 'stripe']
-const NOT_TABS = new Set(['home', 'chat', 'custom', 'setup', 'launcher', 'browser', 'tvlook', 'tvsetup', 'desk']) // files in tabs/ that are not plug-in tabs
+const NOT_TABS = new Set(['home', 'chat', 'custom', 'setup', 'launcher', 'browser', 'tvlook', 'tvsetup', 'desk', 'pad']) // files in tabs/ that are not plug-in tabs
 const QUIET_TABS = ['connections'] // reached from Settings; stays out of the header until someone adds it
 export const SIZES = ['s', 'm', 'l']
 const MAX_ITEMS = 60
@@ -182,8 +182,8 @@ export const SCROLL_DEFAULT = { desktop: 'pages', ipad: 'pages', mobile: 'pages'
 // in neither list (new, or from another TV) shows after the listed ones; both empty is the default order.
 const TV_APP_RE = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/
 const MAX_TV_APPS = 200
-const TV_BUTTON_RE = /^(menu|rew|ff|ai|settings|guide|app[1-4]|key:\d{1,4})$/
-const TV_ACTION_RE = /^(mic|assistant|overlay|home|menu|files|ai|rew|ff|saver|sleep|settings|none|app:[^\u0000-\u001f]{1,60})$/
+const TV_BUTTON_RE = /^(menu|rew|ff|ai|settings|guide|app[1-4]|alexa|homebtn|power|mute|volup|voldown|key:\d{1,4})$/
+const TV_ACTION_RE = /^(mic|assistant|overlay|home|menu|files|browser|ai|rew|ff|saver|sleep|settings|volup|voldown|mute|back|none|app:[^\u0000-\u001f]{1,60})$/
 
 const WIDGET_DEFAULTS = {
   desktop: [['claude-usage', 'm'], ['clock', 's'], ['next-event', 's'], ['tokens', 'm'], ['coolify', 's'], ['services', 's'], ['today', 'm'], ['stripe-balance', 's'], ['openrouter', 's'], ['server-health', 'm'], ['deepseek', 's'], ['icloud', 's'], ['drives', 'm'], ['backup-drive', 's'], ['laptop-health', 's'], ['servers', 'l'], ['revenue', 'm'], ['clients', 'm']],
@@ -619,7 +619,7 @@ export function applyPatch(cur, body, here) {
     if (body.tv.buttons === null) next.tv.buttons = {}
     else if (body.tv.buttons !== undefined && c.obj('tv.buttons', body.tv.buttons, Object.keys(body.tv.buttons || {}))) {
       const set = {}
-      for (const [k, v] of Object.entries(body.tv.buttons).slice(0, 40)) {
+      for (const [k, v] of Object.entries(body.tv.buttons).slice(0, 60)) {
         if (!TV_BUTTON_RE.test(k)) c.fail(`tv.buttons.${k}`, 'is not a remote button')
         else if (typeof v !== 'string' || !TV_ACTION_RE.test(v)) c.fail(`tv.buttons.${k}`, 'is not something a button can do')
         else set[k] = v

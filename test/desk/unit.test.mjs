@@ -30,8 +30,10 @@ test('the remote: arrows, OK and Back never change; a button can open an app', (
   assert.equal(actionOf('rew', { rew: 'app:Netflix' }), 'app:Netflix')
   assert.equal(actionName('app:Netflix'), 'Open Netflix')
   assert.equal(actionOf('key:99', {}), 'none')
-  assert.ok(rowIds({ 'key:99': 'home' }).includes('key:99'))
+  assert.ok(rowIds({ 'key:99': 'home' }, 'pad').includes('key:99'))
   for (const b of BUTTONS) assert.ok(remoteHTML('menu', {}).includes(`data-rm="${b.id}"`))
+  assert.ok(rowIds({}, 'pad').includes('key:99') && !rowIds({}, 'pad').includes('pad-a'))
+  assert.deepEqual(rowIds({ 'key:183': 'home' }, 'other'), ['key:183', 'reset'])
 })
 
 test('the remote in every app: only known jobs, and a command nothing can be slipped into', async () => {
@@ -42,5 +44,6 @@ test('the remote in every app: only known jobs, and a command nothing can be sli
   assert.ok(isPrivate('192.168.1.50') && !isPrivate('8.8.8.8') && !isPrivate('127.0.0.1') && !isPrivate('192.168.1.1; x'))
   // A button doing its standard job is left to the TV; the Fire TV ones only once given a job.
   assert.deepEqual(nativeMap({}), { MENU: 'mic' })
+  assert.deepEqual(nativeMap({ 'key:99': 'overlay', homebtn: 'none', power: 'power' }), { MENU: 'mic', HOME: 'none', K99: 'overlay' })
   assert.deepEqual(nativeMap({ menu: 'menu', rew: 'app:Plex', app1: 'home' }, n => (n === 'Plex' ? 'com.plexapp.android' : '')), { MEDIA_REWIND: 'app:Plex|com.plexapp.android', APP_1: 'home' })
 })

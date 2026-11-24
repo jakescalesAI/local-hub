@@ -3,7 +3,7 @@
 //   POST /api/desk { apps?, favorites? }   saves them, whole (data/desk.json)
 //   GET  /api/desk/pc                   -> { apps: [{ id, name }] } what's installed on this PC
 //   GET  /api/desk/icon?id=pc:…            its icon
-//   POST /api/desk/open { id }             starts one of them, on this PC (from this PC only)
+//   POST /api/desk/open { id }             opens one on this PC (from this PC only): its installed program, or a website in a window of its own
 //   GET  /api/desk/system               -> { cpu, mem, disk, diskFree } of this PC, in percent and bytes
 // Only a program Windows lists in its own Start menu can be started, and only from this computer.
 import fs from 'node:fs'
@@ -46,7 +46,7 @@ export function cleanDesk(raw) {
   return { apps, favorites: [...new Set((Array.isArray(raw?.favorites) ? raw.favorites : []).filter(x => seen.has(x)))].slice(0, 24) }
 }
 // Not programs: web links, uninstallers, manuals.
-export const realApp = a => a && typeof a.id === 'string' && PC_RE.test(`pc:${a.id}`) && !/^https?:|^microsoft-edge:/i.test(a.id) && !/\.(url|chm|html?|txt|pdf|rtf)$/i.test(a.id) && !/uninstall|readme|release notes|user guide|manual|documentation|help file/i.test(a.name || '')
+export const realApp = a => a && typeof a.id === 'string' && PC_RE.test(`pc:${a.id}`) && !/^https?:|^microsoft-edge:/i.test(a.id) && !/\.(url|chm|html?|txt|pdf|rtf)$/i.test(a.id) && !/uninstall|readme|release notes|user guide|manual|documentation|help file|administrative|odbc|iscsi|msys2|command prompt|powershell ise|wow\)|application verifier|windows software development|energy star|performance monitor|event viewer|registry editor|component services|computer management|resource monitor|task scheduler|steps recorder|memory diagnostic|recovery drive|disk cleanup|defragment|print management|xps viewer|promotion|troubleshooter|cross tools|native tools|debuggable|module docs|narrator|magnifier|on-screen keyboard|voice access|live captions|character map|with advanced security/i.test(a.name || '')
 
 export function create({ here }) {
   const FILE = path.join(here, 'data', 'desk.json')
@@ -66,13 +66,22 @@ export function create({ here }) {
     pc = { at: Date.now(), list }
     return list
   }
+  // A website that's also installed here opens as the program; the rest as a window of their own (Chrome's or Edge's app window).
+  const squash = t => String(t).toLowerCase().replace(/[^a-z0-9+]/g, '')
+  const ALSO = { outlook: ['outlook', 'outlooknew'], applemusic: ['applemusic'], slack: ['slack'], whatsapp: ['whatsapp'], x: [], gdrive: ['googledrive'] }
+  const programFor = a => { if (!a.url) return null; const want = ALSO[a.id] || [squash(a.name)]; return pc.list.find(p => want.includes(squash(p.name))) || null }
+  const BROWSERS = () => [[process.env.ProgramFiles, 'Google/Chrome/Application/chrome.exe'], [process.env['ProgramFiles(x86)'], 'Google/Chrome/Application/chrome.exe'], [process.env.LOCALAPPDATA, 'Google/Chrome/Application/chrome.exe'], [process.env['ProgramFiles(x86)'], 'Microsoft/Edge/Application/msedge.exe'], [process.env.ProgramFiles, 'Microsoft/Edge/Application/msedge.exe']].filter(x => x[0]).map(x => path.join(...x)).find(x => fs.existsSync(x))
+  const start = (file, args) => spawn(file, args, { detached: true, stdio: 'ignore' }).on('error', () => {}).unref()
   const icons = new Map()
   const cpuTimes = () => os.cpus().reduce((a, c) => ({ idle: a.idle + c.times.idle, total: a.total + Object.values(c.times).reduce((x, y) => x + y, 0) }), { idle: 0, total: 0 })
   let last = cpuTimes(), load = 0
   return async function route(url, req, res, { send, readBody }) {
     const p = url.pathname
     if (p !== '/api/desk' && !p.startsWith('/api/desk/')) return false
-    if (p === '/api/desk' && req.method === 'GET') return send(res, 200, { ...get(), more: MORE.concat(START) }), true
+    if (p === '/api/desk' && req.method === 'GET') {
+      if (IS_WIN && Date.now() - pc.at > 600_000) pcApps().catch(() => {})
+      return send(res, 200, { ...get(), apps: get().apps.map(a => (programFor(a) ? { ...a, pc: programFor(a).id } : a)), more: MORE.concat(START) }), true
+    }
     if (p === '/api/desk' && req.method === 'POST') {
       const b = await readBody(req).catch(() => null)
       if (!b || (!Array.isArray(b.apps) && !Array.isArray(b.favorites))) return send(res, 400, { error: 'send apps or favorites' }), true
@@ -100,9 +109,18 @@ export function create({ here }) {
     if (p === '/api/desk/open' && req.method === 'POST') {
       if (!isLocal(req)) return send(res, 403, { error: 'Programs open on the computer the hub runs on.' }), true
       const b = await readBody(req).catch(() => ({}))
-      const app = (await pcApps().catch(() => [])).find(a => a.id === b?.id)
+      const list = await pcApps().catch(() => [])
+      const web = [...get().apps, ...MORE, ...START].find(a => a.url && a.id === b?.id)
+      if (web) {
+        const prog = b.web === true ? null : programFor(web), exe = BROWSERS()
+        if (prog) start('explorer.exe', [`shell:AppsFolder\\${prog.id.slice(3)}`])
+        else if (b.web !== true && exe) start(exe, [`--app=${web.url}`])
+        else return send(res, 200, { ok: true, url: web.url }), true
+        return send(res, 200, { ok: true, as: prog ? 'program' : 'window' }), true
+      }
+      const app = list.find(a => a.id === b?.id)
       if (!app) return send(res, 404, { error: 'That isn’t installed on this PC any more.' }), true
-      spawn('explorer.exe', [`shell:AppsFolder\\${app.id.slice(3)}`], { detached: true, stdio: 'ignore' }).on('error', () => {}).unref()
+      start('explorer.exe', [`shell:AppsFolder\\${app.id.slice(3)}`])
       return send(res, 200, { ok: true }), true
     }
     if (p === '/api/desk/system' && req.method === 'GET') {

@@ -42,8 +42,9 @@ ${R} #tvrail button:hover { background: var(--ui-fill); color: #fff; }
 ${R} #tvrail button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 ${R} #tvrail button.on { color: #fff; }
 ${R} #tvrail button.on::after { content: ""; position: absolute; bottom: 3px; width: 26px; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, .5); }
-${R} #tvrail button span { position: absolute; left: 66px; padding: 7px 14px; border-radius: 99px; background: var(--ui-panel); box-shadow: var(--ui-edge); font-size: 14px; font-weight: 600; white-space: nowrap; opacity: 0; pointer-events: none; transform: translateX(-4px); transition: opacity .15s, transform .15s; }
-${R} #tvrail button:hover span, ${R} #tvrail button:focus-visible span { opacity: 1; transform: none; }
+${R} #tvrail button span { display: none; }
+#tvtip { display: none; } ${R} #tvtip { display: block; position: fixed; z-index: 190; left: calc(var(--tvrail) + 12px); padding: 9px 16px; border-radius: 99px; background: var(--ui-sel); color: #000; font-size: 15px; font-weight: 600; white-space: nowrap; pointer-events: none; opacity: 0; transform: translate(-6px, -50%); transition: opacity .12s, transform .12s; box-shadow: 0 10px 30px rgba(0, 0, 0, .45); } ${R} #tvtip.on { opacity: 1; transform: translate(0, -50%); }
+${R} #tvrail button b.old { position: absolute; left: 66px; padding: 7px 14px; border-radius: 99px; background: var(--ui-panel); box-shadow: var(--ui-edge); font-size: 14px; font-weight: 600; white-space: nowrap; opacity: 0; pointer-events: none; transform: translateX(-4px); transition: opacity .15s, transform .15s; }
 ${R} #seg-scroll { display: none; }
 ${A} .large-title { font-size: 52px; font-weight: 700; letter-spacing: -.03em; line-height: 1.1; }
 ${R}:has(.hw-root) .head, ${R}:has(.hw-root) .nav { display: none; }
@@ -121,6 +122,7 @@ ${A}:has(.hw-root) .tvround { display: grid; }
 ${A} .tvround:hover, ${A} .tvround.on { background: var(--ui-sel); color: #000; }
 ${A} .tvround svg { width: 26px; height: 26px; }
 ${A}:not(:has(.hw-edit)) #tvback.tvround { display: none; }
+${R} #tvlayout.tvround { display: none !important; }
 ${A}:has(.hw-edit) :is(#tvlayout, #tvfilter, #tvgear).tvround { display: none; }
 #tvmenu { display: none; }
 ${R}:not(:has(#tvset.on)) #tvmenu.on { display: block; position: fixed; z-index: 70; min-width: 220px; padding: 8px; border-radius: 24px; background: var(--ui-panel); box-shadow: var(--ui-edge), 0 24px 60px rgba(0, 0, 0, .5); color: #fff; }
@@ -194,7 +196,8 @@ ${A} .tvs-row .t2 { margin-top: 2px; font-size: 13px; color: rgba(255, 255, 255,
 ${A} .tvs-row .v { font-size: 15px; color: rgba(255, 255, 255, .6); white-space: nowrap; }
 ${A} .tvs-row .v.on { color: #0a84ff; }
 ${R} button.tvs-row:is(:hover, :focus-visible) :is(.t2, .v) { color: rgba(0, 0, 0, .55); }
-${A} .tvs-art .rm { height: min(78vh, 720px); }
+${A} .tvs-art .rm { height: min(86vh, 860px); } ${A} .tvs-art .rm.pad { height: auto; width: min(100%, 460px); }
+${A} .tvs-seg { display: inline-flex; gap: 4px; margin: 0 0 6px 4px; padding: 4px; border-radius: 99px; background: var(--ui-fill); box-shadow: var(--ui-edge); } ${A} .tvs-seg button { height: 38px; padding: 0 18px; border-radius: 99px; font-size: 14px; font-weight: 600; color: rgba(255, 255, 255, .7); } ${A} .tvs-seg button.on { background: var(--ui-sel); color: #000; }
 ${A} .rmr select { height: 40px; max-width: 260px; padding: 0 14px; border: 0; border-radius: 20px; background: rgba(255, 255, 255, .1); color: #fff; font: 600 14px var(--font); } ${A} .rmr option { background: #1c1d22; }
 ${A} .rmr.rmsel { box-shadow: 0 0 0 2px #fff; }
 ${A} .tvs-form { padding: 18px 22px; border-radius: 18px; background: var(--ui-fill); box-shadow: var(--ui-edge); font-size: 15px; line-height: 1.6; }
@@ -269,6 +272,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   const IC = {
     home: '<path d="M3.5 11 12 4l8.5 7"/><path d="M5.5 9.5V20h4.5v-5.5h4V20h4.5V9.5"/>',
     files: '<path d="M4 7a2 2 0 0 1 2-2h4l2 2.5h6a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/>',
+    globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
     overlay: '<rect x="3.5" y="3.5" width="7" height="7" rx="2.2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2.2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2.2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2.2"/>',
     tab: '<rect x="4" y="4" width="16" height="16" rx="4"/>',
     laptop: '<rect x="4" y="5" width="16" height="11" rx="1.6"/><path d="M2 19h20"/>',
@@ -723,7 +727,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
       ...(listen ? [{ id: 'listen', t1: 'Hey LocalHub', t2: 'This computer’s microphone listens for it', v: listen.on ? 'On' : 'Off', on: listen.on }] : []),
       ...(window.HUB_CONNECTIONS ? [{ id: 'connections', t1: 'Connections', t2: 'The services the assistant can use', v: '' }] : []),
       { group: 'TV' },
-      { id: 'remotepage', t1: 'Fire TV remote', t2: 'What each of its buttons does', v: '' },
+      { id: 'remotepage', t1: 'Remotes and controllers', t2: 'What each button does, on the Fire TV remote or a game controller', v: '' },
       { id: 'panel', t1: 'Your TV', t2: 'Its player, brightness, volume and more', v: TV?.on ? 'Connected' : 'Not connected', on: !!TV?.on },
       { id: 'tvsetup', t1: 'Set up a TV', t2: 'Put LocalHub TV on a television and pair it', v: '' },
       { group: 'About' },
@@ -736,7 +740,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     const backB = `<button type="button" data-set="back" aria-label="Back">${svg('<path d="M15 5l-7 7 7 7"/>')}</button>`
     if (picking === 'music' || picking === 'remote') {
       const html2 = picking === 'music' ? musicHtml(backB) : remoteHtml(backB)
-      const html = picking === 'music' ? `<div class="tvs-art"><img src="/icons/hub.svg" alt=""><p>Music, wherever it plays</p></div><div class="tvs-list">${html2}</div>` : `<div class="tvs-art">${RM ? RM.remoteHTML(rmSel, btns()) : ''}</div><div class="tvs-list">${html2}</div>`
+      const html = picking === 'music' ? `<div class="tvs-art"><img src="/icons/hub.svg" alt=""><p>Music, wherever it plays</p></div><div class="tvs-list">${html2}</div>` : `<div class="tvs-art${rmKind === 'pad' ? ' wide' : ''}">${RM ? RM.pictureHTML(rmKind, rmSel, btns()) : ''}</div><div class="tvs-list">${html2}</div>`
       if (setHtml === html || set.contains(document.activeElement) && document.activeElement.matches('input, select')) return
       const y2 = set.querySelector('.tvs-list')?.scrollTop || 0
       setHtml = html
@@ -785,7 +789,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     } catch { msg('The hub didn’t answer.') }
   }
   // ── Settings › Fire TV remote ──
-  let RM = null, rmSel = 'menu', KEYS = { on: false, state: 'off', why: '' }
+  let RM = null, rmSel = 'menu', rmKind = 'remote', KEYS = { on: false, state: 'off', why: '' }
   async function keys(body) { try { const r = await fetch('/api/tv/keys', body ? { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: JSON.stringify(body) } : { cache: 'no-store' }); if (r.ok) KEYS = await r.json() } catch {} setHtml = ''; paintSettings(); if (KEYS.state === 'starting' && picking === 'remote') setTimeout(keys, 1500) }
   const btns = () => H()?.settings.tv?.buttons || {}
   function remoteHtml(backB) {
@@ -794,13 +798,13 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     const apps = (TV?.apps || [])
     const opt = (v, t) => `<option value="${esc(v)}"${v === now ? ' selected' : ''}>${esc(t)}</option>`
     const pick = id => { const sys = RM.BUTTONS.find(x => x.id === id)?.sys && !btns()[id], a = sys ? id : RM.actionOf(id, btns()); const oo = (v, t) => `<option value="${esc(v)}"${v === a ? ' selected' : ''}>${esc(t)}</option>`
-      return `<div class="tvs-row rmr${rmSel === id ? ' rmsel' : ''}" data-rmrow="${esc(id)}"><div class="txt"><div class="t1">${esc(RM.labelOf(id))}</div></div><select data-rmset="${esc(id)}" aria-label="${esc(RM.labelOf(id))}">${(RM.ACTIONS.some(([v]) => v === id) ? '' : oo(id, 'Standard')) + RM.ACTIONS.map(([v, t]) => oo(v, v === id ? `${t} (standard)` : t)).join('')}${apps.length ? `<optgroup label="Open an app">${apps.map(n => oo('app:' + n, n)).join('')}${a.startsWith('app:') && !apps.includes(a.slice(4)) ? oo(a, a.slice(4)) : ''}</optgroup>` : ''}</select></div>` }
-    return `<div class="tvs-title">${backB}Fire TV remote</div><div class="tvs-group">Press a button on the picture, or choose here</div>`
+      return `<div class="tvs-row rmr${rmSel === id ? ' rmsel' : ''}" data-rmrow="${esc(id)}"><div class="txt"><div class="t1">${esc(RM.labelOf(id))}</div>${RM.noteOf(id) ? `<div class="t2">${esc(RM.noteOf(id))}</div>` : ''}</div><select data-rmset="${esc(id)}" aria-label="${esc(RM.labelOf(id))}">${(RM.ACTIONS.some(([v]) => v === id) ? '' : oo(id, 'Standard')) + RM.ACTIONS.map(([v, t]) => oo(v, v === id ? `${t} (standard)` : t)).join('')}${apps.length ? `<optgroup label="Open an app">${apps.map(n => oo('app:' + n, n)).join('')}${a.startsWith('app:') && !apps.includes(a.slice(4)) ? oo(a, a.slice(4)) : ''}</optgroup>` : ''}</select></div>` }
+    return `<div class="tvs-title">${backB}Remotes and controllers</div><div class="tvs-seg">${RM.KINDS.map(([k, t]) => `<button type="button" data-set="rmkind:${k}" class="${k === rmKind ? 'on' : ''}">${t}</button>`).join('')}</div><div class="tvs-group">${rmKind === 'other' ? 'Buttons you have pressed on the TV’s remote page appear here' : 'Press a button on the picture, or choose here'}</div>`
       + `<button type="button" class="tvs-row" data-set="rmeverywhere"><div class="txt"><div class="t1">In every app</div><div class="t2">${esc(KEYS.state === 'error' ? KEYS.why : 'Your buttons work while Netflix or any app is open. This computer starts it on the TV after each restart')}</div></div><div class="v${KEYS.on ? ' on' : ''}">${{ off: 'Off', starting: 'Starting…', on: 'On', error: 'Couldn’t start' }[KEYS.state] || 'Off'}</div></button>`
-      + RM.rowIds(btns()).filter(x => x !== 'reset').map(pick).join('')
+      + RM.rowIds(btns(), rmKind).filter(x => x !== 'reset').map(pick).join('')
       + (b && !b.map ? `<div class="tvs-row"><div class="txt"><div class="t1">${esc(b.label)}</div><div class="t2">${esc(b.why)}</div></div></div>` : '')
       + '<button type="button" class="tvs-row" data-set="rmreset"><div class="txt"><div class="t1">Back to standard</div><div class="t2">Menu is the microphone, the rest do what they say</div></div></button>'
-      + '<div class="tvs-group">To use these while another app is open, and for Guide and the app buttons, turn on In every app above. Saved to your TV within half a minute. A button that isn’t here, such as a game controller’s, can be added from the TV: Settings, Fire TV remote, then press it</div>'
+      + '<div class="tvs-group">To use these while another app is open, and for Guide and the app buttons, turn on In every app above. Saved to your TV within half a minute. Connect a controller in the TV’s own Bluetooth settings; a button that isn’t here can be added by pressing it on the TV’s remote page</div>'
   }
   async function saveButtons(map) { try { await H().patch({ tv: { buttons: map } }) } catch (e) { alert(e.message) } setHtml = ''; paintSettings() }
   set.addEventListener('change', e => { const id = e.target.dataset?.rmset; if (!id) return; const v = e.target.value; e.target.blur(); const m = { ...btns() }; if (v === id || RM.DEFAULTS[id] === v) delete m[id]; else m[id] = v; if (v === id && RM.DEFAULTS[id]) m[id] = v; rmSel = id; saveButtons(m) })
@@ -827,7 +831,8 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     if (k === 'saver') return saveDev(d, { saver: MIN[(MIN.indexOf(devLook(d).saver) + 1) % MIN.length] })
     if (k === 'show') return saveDev(d, { show: devLook(d).show === 'photos' ? 'background' : 'photos' })
     if (id === 'musicpage') { picking = 'music'; setHtml = ''; await readPc(); return paintSettings() }
-    if (id === 'remotepage') { picking = 'remote'; setHtml = ''; try { RM ??= await import('/tv/remote.js?v=2') } catch {} return keys() }
+    if (id === 'remotepage') { picking = 'remote'; setHtml = ''; try { RM ??= await import('/tv/remote.js?v=3') } catch {} return keys() }
+    if (k === 'rmkind') { rmKind = d; rmSel = RM.rowIds(btns(), d)[0] || ''; setHtml = ''; set.querySelector('.tvs-list').scrollTop = 0; return paintSettings() }
     if (id === 'rmeverywhere') return keys({ on: !KEYS.on })
     if (id === 'musicsrc') { press('music'); return void setTimeout(() => { setHtml = ''; paintSettings() }, 500) }
     if (id === 'spon') return spotifyOn()
@@ -910,9 +915,12 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     const tabs = [...seg.querySelectorAll('button[data-env]')].filter(b => !b.hidden && b.style.display !== 'none')
     const item = (key, ic, label, on) => `<button type="button" data-rail="${esc(key)}" class="${on ? 'on' : ''}" aria-label="${esc(label)}"${on ? ' aria-current="page"' : ''}>${svg(IC[ic])}<span>${esc(label)}</span></button>`
     const name = b => (b.firstChild?.textContent || b.textContent).trim()
+    const tabItem = b => item(`tab:${b.dataset.env}`, TAB_IC[b.dataset.env] || 'tab', name(b), isOn(b) && !chat && !set.classList.contains('on') && !mirror.classList.contains('on') && !window.HubBrowser?.isOpen?.())
+    const at = k => tabs.find(b => b.dataset.env === k), rest = tabs.filter(b => !['home', 'drives'].includes(b.dataset.env))
     const html = '<img src="/icons/hub.svg" alt=""><div class="mid">'
-      + tabs.map(b => item(`tab:${b.dataset.env}`, TAB_IC[b.dataset.env] || 'tab', name(b), isOn(b) && !chat && !set.classList.contains('on') && !mirror.classList.contains('on'))).join('')
-      + item('assistant', 'mic', 'Assistant', chat && !set.classList.contains('on')) + item('tv', 'tv', 'TV', mirror.classList.contains('on'))
+      + (at('home') ? tabItem(at('home')) : '') + item('assistant', 'mic', 'Assistant', chat && !set.classList.contains('on'))
+      + (window.HubBrowser ? item('browser', 'globe', 'Browser', !!window.HubBrowser.isOpen?.()) : '') + item('tv', 'tv', 'TV', mirror.classList.contains('on'))
+      + (at('drives') ? tabItem(at('drives')) : '') + rest.map(tabItem).join('')
       + '</div>' + item('overlay', 'overlay', 'Overlay', panel.classList.contains('on')) + item('settings', 'gear', 'Settings', set.classList.contains('on'))
     if (rail._html === html) return
     rail._html = html
@@ -924,6 +932,13 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     const wait = () => { const el = document.querySelector(then); if (el) el.click(); else if (tries--) setTimeout(wait, 50) }
     wait()
   }
+  const tip = Object.assign(document.createElement('div'), { id: 'tvtip' })
+  document.body.append(tip)
+  const showTip = e => { const b = e.target.closest?.('#tvrail button'); tip.classList.toggle('on', !!b); if (!b) return; const r = b.getBoundingClientRect(); tip.textContent = b.getAttribute('aria-label'); tip.style.top = `${r.top + r.height / 2}px` }
+  rail.addEventListener('pointerover', showTip)
+  rail.addEventListener('pointerleave', () => tip.classList.remove('on'))
+  rail.addEventListener('focusin', e => { if (e.target.matches(':focus-visible')) showTip(e) })
+  rail.addEventListener('focusout', () => tip.classList.remove('on'))
   rail.addEventListener('click', e => {
     const key = e.target.closest('[data-rail]')?.dataset.rail
     if (!key) return
@@ -932,7 +947,9 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     if (key !== 'settings') closeSettings()
     if (key !== 'tv') closeMirror()
     if (key !== 'assistant') window.HubChat?.close()
-    if (key.startsWith('tab:')) {
+    if (key !== 'browser') window.HubBrowser?.close?.()
+    if (key === 'browser') { if (!window.HubBrowser?.isOpen?.()) window.HubBrowser?.open() }
+    else if (key.startsWith('tab:')) {
       seg.querySelector(`[data-env="${CSS.escape(key.slice(4))}"]`)?.click()
       if (key === 'tab:home') document.querySelector('[data-hw-mode="desktop"]')?.click()
     } else if (key === 'assistant') window.HubChat?.open()

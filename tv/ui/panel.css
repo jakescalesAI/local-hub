@@ -45,7 +45,16 @@
 .mp-b.sel { background: var(--ui-sel); color: #000; }
 /* Settings › Fire TV remote (remote.js), on the TV and the hub page. Sizes are the TV's. */
 .rm-card { display: grid; grid-template-columns: 430px 760px; gap: 110px; align-items: center; color: #fff; }
-.rm { height: 940px; display: block; margin: 0 auto; filter: drop-shadow(0 40px 60px rgba(0, 0, 0, .6)); overflow: visible; }
+.rm { height: 980px; display: block; margin: 0 auto; filter: drop-shadow(0 40px 60px rgba(0, 0, 0, .6)); overflow: visible; }
+.rm.pad { height: auto; width: 100%; }
+.rm-h { fill: transparent; stroke: transparent; stroke-width: 7; }
+.rm-b.map { cursor: pointer; } .rm-b.map:hover .rm-h { stroke: rgba(255, 255, 255, .5); }
+.rm-b.set .rm-h { stroke: #0a84ff; } .rm-b.sel .rm-h { stroke: #fff; fill: rgba(255, 255, 255, .18); }
+.rm-t { fill: #fff; font: 600 13px var(--font); text-anchor: middle; dominant-baseline: central; }
+.rm-b.sel .rm-t { fill: #000; } .rm-b.sel .rm-h { fill: rgba(255, 255, 255, .18); } .rm.pad .rm-b.sel .rm-h { fill: transparent; }
+.rm-kinds { display: inline-flex; gap: 6px; margin-bottom: 22px; padding: 8px; border-radius: 50px; background: var(--ui-fill); box-shadow: var(--ui-edge); }
+.rm-kinds span { padding: 16px 30px; border-radius: 40px; font: 600 26px/1 var(--display); color: rgba(255, 255, 255, .7); } .rm-kinds span.on { background: var(--ui-sel); color: #000; }
+.rm-row small { margin-left: 14px; font: 500 20px/1 var(--display); color: rgba(255, 255, 255, .45); } .rm-row.sel small { color: rgba(0, 0, 0, .45); }
 .rm-s { fill: #2e3036; stroke: rgba(255, 255, 255, .1); stroke-width: 1; }
 .rm-g { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .rm-b { color: rgba(255, 255, 255, .38); outline: 0; }

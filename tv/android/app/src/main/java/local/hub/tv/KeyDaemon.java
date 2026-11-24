@@ -39,7 +39,10 @@ import java.util.Set;
  * the TV as it was pressed. While LocalHub is in front its own page handles the ordinary buttons, and only the ones
  * Fire TV would take (Guide, the app buttons) are handled here. When it ends, Android has the remote back at once.
  *
- * One argument: base64 of { "MENU": "mic", "APP_1": "app:Plex|com.plexapp.android", … }, by key name.
+ * Other remotes, game controllers and keyboards work too. They are only listened to, never held (a stick's movement or a
+ * keyboard's shift can't be passed on faithfully), so a button with a job does it and the app hears the press as well.
+ *
+ * One argument: base64 of { "MENU": "mic", "APP_1": "app:Plex|com.plexapp.android", … }, by key name, or "K99" for key code 99.
  */
 public final class KeyDaemon {
     private static final int EVIOCGRAB = 0x40044590;
@@ -49,7 +52,9 @@ public final class KeyDaemon {
     private static final Map<Integer, String> jobs = new HashMap<>();
     private static Object inputManager, activityManager, powerManager;
     private static Method inject, tasks, interactive;
-    private static volatile Reader reader;
+    private static final Map<String, Reader> readers = new HashMap<>();
+    private static String listed = "";
+    private static int settle;
 
     private KeyDaemon() { }
 
@@ -58,7 +63,7 @@ public final class KeyDaemon {
             JSONObject o = new JSONObject(new String(Base64.decode(args[0], Base64.DEFAULT), "UTF-8"));
             for (Iterator<String> it = o.keys(); it.hasNext(); ) {
                 String k = it.next();
-                int code = KeyEvent.keyCodeFromString("KEYCODE_" + k);
+                int code = k.matches("K\\d{1,4}") ? Integer.parseInt(k.substring(1)) : KeyEvent.keyCodeFromString("KEYCODE_" + k);
                 if (code > 0 && !locked(code)) jobs.put(code, o.getString(k));
             }
             if (jobs.isEmpty()) { say("nothing to do"); System.exit(0); }
@@ -76,12 +81,8 @@ public final class KeyDaemon {
             // Asleep, the remote is the TV's own: any button wakes it as always.
             while (true) {
                 boolean awake = (Boolean) interactive.invoke(powerManager);
-                Reader r = reader;
-                if (awake && r == null) {
-                    try { r = Reader.open(); } catch (Exception e) { say("err " + e); r = null; }
-                    if (r != null) { reader = r; r.start(); }
-                } else if (!awake && r != null) r.close();
-                Thread.sleep(awake && reader == null ? 3000 : 700);
+                try { if (awake) look(); else letAll(); } catch (Exception e) { say("err " + e); }
+                Thread.sleep(700);
             }
         } catch (Throwable e) {
             say("err " + e);
@@ -89,10 +90,39 @@ public final class KeyDaemon {
         System.exit(1); // closing the device gives the remote back
     }
 
+    /** What's connected now. A remote that sleeps goes away and comes back as a new device. */
+    private static void look() throws Exception {
+        synchronized (readers) {
+            for (Iterator<Reader> it = readers.values().iterator(); it.hasNext(); ) if (it.next().closed) { it.remove(); listed = ""; }
+        }
+        String[] names = new File("/dev/input").list();
+        String now = names == null ? "" : java.util.Arrays.toString(names);
+        // Something that has just connected may not be readable yet: a few more looks.
+        if (!now.equals(listed)) settle = 6;
+        listed = now;
+        if (settle-- <= 0) { settle = 0; return; }
+        for (Device d : Device.all()) {
+            synchronized (readers) { if (readers.containsKey(d.path)) continue; }
+            Reader r;
+            try { r = Reader.open(d); } catch (Exception e) { if (settle == 0) say("err " + d.name + ": " + e); continue; }
+            if (r == null) continue;
+            synchronized (readers) { readers.put(d.path, r); }
+            r.start();
+            say((r.held ? "holding " : "listening to ") + d.name);
+        }
+    }
+
+    private static void letAll() {
+        synchronized (readers) {
+            for (Reader r : readers.values()) r.closing = true;
+            readers.clear();
+        }
+        listed = "";
+    }
+
     /** Never the ones that could lock you out. */
     private static boolean locked(int code) {
-        return code == KeyEvent.KEYCODE_HOME || code == KeyEvent.KEYCODE_BACK || code == KeyEvent.KEYCODE_POWER
-                || code == KeyEvent.KEYCODE_ENTER || (code >= KeyEvent.KEYCODE_DPAD_UP && code <= KeyEvent.KEYCODE_DPAD_CENTER);
+        return code == KeyEvent.KEYCODE_BACK || code == KeyEvent.KEYCODE_ENTER || code == KeyEvent.KEYCODE_NUMPAD_ENTER || (code >= KeyEvent.KEYCODE_DPAD_UP && code <= KeyEvent.KEYCODE_DPAD_CENTER);
     }
 
     private static void say(String s) {
@@ -114,7 +144,8 @@ public final class KeyDaemon {
 
     private static boolean system(int code) {
         String n = KeyEvent.keyCodeToString(code);
-        return n.startsWith("KEYCODE_APP_") || n.equals("KEYCODE_LIVE_TV") || n.equals("KEYCODE_TV");
+        return n.startsWith("KEYCODE_APP_") || n.startsWith("KEYCODE_VOLUME_") || n.equals("KEYCODE_LIVE_TV") || n.equals("KEYCODE_TV")
+                || code == KeyEvent.KEYCODE_SEARCH || code == KeyEvent.KEYCODE_ASSIST || code == KeyEvent.KEYCODE_HOME || code == KeyEvent.KEYCODE_POWER;
     }
 
     private static void press(int code) throws Exception {
@@ -133,6 +164,10 @@ public final class KeyDaemon {
                 case "rew": press(KeyEvent.KEYCODE_MEDIA_REWIND); return;
                 case "ff": press(KeyEvent.KEYCODE_MEDIA_FAST_FORWARD); return;
                 case "sleep": press(KeyEvent.KEYCODE_SLEEP); return;
+                case "volup": press(KeyEvent.KEYCODE_VOLUME_UP); return;
+                case "voldown": press(KeyEvent.KEYCODE_VOLUME_DOWN); return;
+                case "mute": press(KeyEvent.KEYCODE_VOLUME_MUTE); return;
+                case "back": press(KeyEvent.KEYCODE_BACK); return;
                 default:
             }
             int bar = what.indexOf('|');
@@ -169,33 +204,77 @@ public final class KeyDaemon {
         inject.invoke(inputManager, e, 0);
     }
 
-    /** The remote itself: held, read, and passed on. */
+    /** Something with buttons, from what getevent lists (asked again each time: Android's own list goes stale here). */
+    private static final class Device {
+        String path = "", name = "";
+        int vendor, product;
+        boolean axes;
+
+        static List<Device> all() throws IOException {
+            List<Device> l = new java.util.ArrayList<>();
+            Process p = new ProcessBuilder("getevent", "-il").redirectErrorStream(true).start();
+            try (BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
+                String line;
+                Device d = null;
+                while ((line = r.readLine()) != null) {
+                    String t = line.trim();
+                    int at = line.indexOf("/dev/input/event");
+                    if (line.startsWith("add device") && at > 0) { d = new Device(); d.path = line.substring(at).trim(); l.add(d); }
+                    else if (d == null) continue;
+                    else if (t.startsWith("vendor")) d.vendor = Integer.parseInt(t.substring(6).trim(), 16);
+                    else if (t.startsWith("product")) d.product = Integer.parseInt(t.substring(7).trim(), 16);
+                    else if (t.startsWith("name:")) d.name = t.substring(5).trim().replace("\"", "");
+                    else if (t.startsWith("ABS (")) d.axes = true;
+                }
+            }
+            for (Iterator<Device> it = l.iterator(); it.hasNext(); ) if (it.next().vendor <= 2) it.remove(); // the TV's own
+            return l;
+        }
+
+        /** Android's number for it, which Alexa and games look at. */
+        int id() {
+            try {
+                Process p = new ProcessBuilder("dumpsys", "input").redirectErrorStream(true).start();
+                try (BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
+                    String line;
+                    while ((line = r.readLine()) != null) {
+                        String t = line.trim();
+                        int c = t.indexOf(": ");
+                        if (c > 0 && t.substring(c + 2).equals(name) && t.substring(0, c).matches("\\d+")) return Integer.parseInt(t.substring(0, c));
+                    }
+                }
+            } catch (Exception ignored) { }
+            return -1;
+        }
+    }
+
+    /** One remote or controller. A remote is held, read, and passed on; anything else is only heard. */
     private static final class Reader extends Thread {
         private final FileInputStream in;
         private final Map<Integer, Integer> codes;
         private final int device;
+        private final boolean held;
         private final Map<Integer, Long> down = new HashMap<>();
         private volatile boolean closing, closed;
 
-        private Reader(FileInputStream in, Map<Integer, Integer> codes, int device) {
-            super("remote");
+        private Reader(FileInputStream in, Map<Integer, Integer> codes, int device, boolean held) {
+            super("buttons");
             this.in = in;
             this.codes = codes;
             this.device = device;
+            this.held = held;
         }
 
-        static Reader open() throws Exception {
-            for (int id : InputDevice.getDeviceIds()) {
-                InputDevice d = InputDevice.getDevice(id);
-                if (d == null || d.getName() == null || !d.getName().contains("Remote") || d.getVendorId() == 0) continue;
-                Map<Integer, Integer> codes = layout(d.getVendorId(), d.getProductId());
-                String path = codes.isEmpty() ? null : pathOf(d.getName());
-                if (path == null) continue;
-                FileInputStream in = new FileInputStream(path);
-                grab(in.getFD());
-                return new Reader(in, codes, id);
-            }
-            return null;
+        static Reader open(Device d) throws Exception {
+            File own = new File(String.format("/system/usr/keylayout/Vendor_%04x_Product_%04x.kl", d.vendor, d.product));
+            Map<Integer, Integer> codes = layout(own.isFile() ? own : new File("/system/usr/keylayout/Generic.kl"));
+            boolean any = false;
+            for (int c : codes.values()) any |= jobs.containsKey(c);
+            if (!any) return null;
+            boolean held = !d.axes && own.isFile() && codes.containsValue(KeyEvent.KEYCODE_DPAD_CENTER) && d.name.contains("Remote");
+            FileInputStream in = new FileInputStream(d.path);
+            if (held) grab(in.getFD());
+            return new Reader(in, codes, held ? d.id() : -1, held);
         }
 
         private static void grab(FileDescriptor fd) throws Exception {
@@ -203,23 +282,8 @@ public final class KeyDaemon {
             Os.class.getMethod("ioctlInt", FileDescriptor.class, int.class, mi).invoke(null, fd, EVIOCGRAB, mi.getConstructor(int.class).newInstance(1));
         }
 
-        /** Its /dev/input file, from what getevent lists. */
-        private static String pathOf(String name) throws IOException {
-            Process p = new ProcessBuilder("getevent", "-pl").redirectErrorStream(true).start();
-            String line, path = null, found = null;
-            try (BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
-                while ((line = r.readLine()) != null) {
-                    int at = line.indexOf("/dev/input/event");
-                    if (line.startsWith("add device") && at > 0) path = line.substring(at).trim();
-                    else if (line.trim().startsWith("name:") && line.contains("\"" + name + "\"")) found = path;
-                }
-            }
-            return found;
-        }
-
-        private static Map<Integer, Integer> layout(int vendor, int product) throws IOException {
+        private static Map<Integer, Integer> layout(File f) throws IOException {
             Map<Integer, Integer> m = new HashMap<>();
-            File f = new File(String.format("/system/usr/keylayout/Vendor_%04x_Product_%04x.kl", vendor, product));
             if (!f.isFile()) return m;
             try (BufferedReader r = new BufferedReader(new FileReader(f))) {
                 String line;
@@ -232,15 +296,9 @@ public final class KeyDaemon {
             return m;
         }
 
-        void close() {
-            closing = true;
-            end();
-        }
-
         private void end() {
             closed = true;
             try { in.close(); } catch (IOException ignored) { }
-            synchronized (KeyDaemon.class) { if (reader == this) reader = null; }
         }
 
         @Override
@@ -250,9 +308,15 @@ public final class KeyDaemon {
             ByteBuffer b = ByteBuffer.wrap(raw).order(ByteOrder.nativeOrder());
             Set<Integer> taken = new HashSet<>();
             long backAt = 0;
+            android.system.StructPollfd fd = new android.system.StructPollfd();
             try {
+                fd.fd = in.getFD();
+                fd.events = (short) android.system.OsConstants.POLLIN;
                 int n;
-                while (!closed && (n = in.read(raw)) > 0) {
+                while (!closing) {
+                    // Asked to stop, it does within half a second, so it never keeps the remote.
+                    if (Os.poll(new android.system.StructPollfd[]{fd}, 500) <= 0) continue;
+                    if ((n = in.read(raw)) <= 0) break;
                     for (int at = 0; at + size <= n; at += size) {
                         int type = b.getShort(at + size - 8) & 0xffff, scan = b.getShort(at + size - 6) & 0xffff, value = b.getInt(at + size - 4);
                         if (type != EV_KEY) continue;
@@ -265,6 +329,10 @@ public final class KeyDaemon {
                             else if (value == 0) { if (backAt > 0 && now - backAt > LET_GO_MS) letGo(scan); backAt = 0; }
                         }
                         if (value == 2) continue; // Android makes its own repeats
+                        if (!held) {
+                            if (value == 1 && jobs.containsKey(code) && (system(code) || !inLocalHub())) act(code);
+                            continue;
+                        }
                         if (value == 1) {
                             if (jobs.containsKey(code) && (system(code) || !inLocalHub())) { taken.add(scan); act(code); continue; }
                             down.put(scan, now);
@@ -277,7 +345,7 @@ public final class KeyDaemon {
                     }
                 }
             } catch (Exception e) {
-                if (!closing) say("err " + e);
+                say("gone " + e.getMessage());
             }
             // Nothing is left pressed on the TV's side.
             for (Map.Entry<Integer, Long> d : down.entrySet()) {

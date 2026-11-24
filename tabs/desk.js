@@ -34,7 +34,7 @@ ${D} .hw-root:not(.hw-edit) .hw-frame { height: 0 !important; } ${D} .hw-root:no
 ${D}:has(.hw-root:not(.hw-edit)) { overflow-y: auto !important; overflow-x: clip; scrollbar-width: none; }
 ${D} #tvside { transition: opacity .3s; } ${D}[data-down] #tvside { opacity: 0; pointer-events: none; }
 ${A}:has(.hw-root:not(.hw-edit)) #dkfav { display: flex; gap: 14px; min-width: 0; }
-${D}:has(.hw-root) #dkfav { flex: 1; overflow: hidden; padding: 8px; margin: -8px 0 -8px -2px; }
+${D}:has(.hw-root) #dkfav { flex: 1; overflow: clip; overflow-clip-margin: 40px; }
 ${T}:has(.hw-root) #dkfav { flex: 1 0 100%; overflow-x: auto; scrollbar-width: none; padding: 6px 2px; }
 .dk-t { position: relative; min-width: 0; padding: 0; text-align: center; border-radius: 18px; outline: 0; }
 .dk-a { position: relative; display: grid; place-items: center; aspect-ratio: 5 / 3; border-radius: 18px; overflow: hidden; background: var(--dk-bg, #22232a); color: var(--dk-fg, #fff); box-shadow: 0 8px 22px -10px rgba(0, 0, 0, .7); transition: transform .25s var(--ease), box-shadow .25s var(--ease); }
@@ -50,6 +50,7 @@ ${T}:has(.hw-root) #dkfav { flex: 1 0 100%; overflow-x: auto; scrollbar-width: n
 .dk-t.add .dk-a { --dk-bg: var(--ui-fill); color: rgba(255, 255, 255, .75); }
 .dk-t.add .dk-a > svg { width: 34px; height: 34px; }
 .dk-t.over .dk-a { box-shadow: -4px 0 0 #0a84ff; } .dk-t.drag { opacity: .35; }
+#dkfav .dk-a { box-shadow: none; } #dkfav .dk-t:is(:hover, :focus-visible) .dk-a { box-shadow: 0 0 0 3px rgba(255, 255, 255, .9); }
 #dkfav .dk-t { flex: none; width: 96px; } #dkfav .dk-a { height: 58px; aspect-ratio: auto; border-radius: 16px; } #dkfav .dk-n { display: none; }
 #dkfav .dk-a b { font-size: 20px; } #dkfav .add .dk-a > svg { width: 24px; height: 24px; }
 @media (max-width: 1250px) { ${D} .hw-root:not(.hw-edit) > #dk { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
@@ -64,6 +65,7 @@ ${A} #dkadd.on { display: grid; position: fixed; z-index: 72; inset: 0; place-it
 .dk-sheet header input { flex: 1; height: 46px; padding: 0 20px; border: 0; outline: 0; border-radius: 23px; background: var(--ui-fill); box-shadow: var(--ui-edge); color: #fff; font: 600 16px var(--font); }
 .dk-sheet header input:focus { box-shadow: 0 0 0 2px #fff; }
 .dk-sheet header button { height: 46px; padding: 0 20px; border-radius: 23px; background: var(--ui-sel); color: #000; font-size: 15px; font-weight: 600; }
+.dk-seg { display: flex; gap: 4px; margin: 0 26px 6px; padding: 4px; border-radius: 99px; background: var(--ui-fill); box-shadow: var(--ui-edge); } .dk-seg[hidden] { display: none; } .dk-seg button { flex: 1; height: 40px; border-radius: 99px; font-size: 15px; font-weight: 600; color: rgba(255, 255, 255, .7); } .dk-seg button.on { background: var(--ui-sel); color: #000; }
 .dk-list { overflow-y: auto; scrollbar-width: none; padding: 4px 26px 28px; }
 .dk-list h4 { margin: 18px 4px 12px; font-size: 13px; font-weight: 600; color: rgba(255, 255, 255, .56); }
 .dk-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 18px 14px; padding: 6px 4px; }
@@ -113,8 +115,8 @@ ${A} #dkadd.on { display: grid; position: fixed; z-index: 72; inset: 0; place-it
     const b = BRAND[a.id]
     if (b?.d) return `<span class="dk-a" style="--dk-bg:${b.bg};--dk-fg:${b.fg}">${svg(b.d, 1.7)}</span>`
     if (b) return `<span class="dk-a" style="--dk-bg:${b.bg};--dk-fg:${b.fg}"><i class="${b.wide ? 'wide' : ''}" style="--g:url('/tv/brands/${b.icon}.svg')"></i></span>`
-    const src = isPc(a) ? `/api/desk/icon?id=${encodeURIComponent(a.id)}` : `/api/hub/site-icon?url=${encodeURIComponent(a.url)}`
-    return `<span class="dk-a"${tints[a.id] ? ` style="--dk-bg:${esc(tints[a.id])}"` : ''}><img class="${isPc(a) ? 'pc' : ''}" data-dkicon="${esc(a.id)}" src="${esc(src)}" alt="${esc(a.name)}" loading="lazy" draggable="false"></span>`
+    const src = isPc(a) || (a.pc && LOCAL) ? `/api/desk/icon?id=${encodeURIComponent(a.pc || a.id)}` : `/api/hub/site-icon?url=${encodeURIComponent(a.url)}`
+    return `<span class="dk-a"${tints[a.id] ? ` style="--dk-bg:${esc(tints[a.id])}"` : ''}><img class="${isPc(a) || a.pc ? 'pc' : ''}" data-dkicon="${esc(a.id)}" src="${esc(src)}" alt="${esc(a.name)}" loading="lazy" draggable="false"></span>`
   }
   const tile = (a, cls = '', label = a.name) => `<button type="button" class="dk-t ${cls}" data-dk="${esc(a.id)}" draggable="true" title="${esc(a.name)}" aria-label="${esc(a.name)}">${art(a)}<span class="dk-n">${esc(label)}</span></button>`
   const plus = label => `<button type="button" class="dk-t add" data-dk="add" title="${label}" aria-label="${label}"><span class="dk-a">${PLUS}</span><span class="dk-n">${label}</span></button>`
@@ -138,14 +140,17 @@ ${A} #dkadd.on { display: grid; position: fixed; z-index: 72; inset: 0; place-it
     set(fav, S.favorites.map(find).filter(a => a && (LOCAL || !isPc(a))).map(a => tile(a, 'fav')).join('') + `<button type="button" class="dk-t add" data-dk="addfav" title="Add a favorite" aria-label="Add a favorite"><span class="dk-a">${PLUS}</span></button>`)
   }
 
-  async function open(id) {
+  async function open(id, web) {
     const a = find(id)
     if (!a) return
-    if (isPc(a)) {
-      try { const r = await post('/api/desk/open', { id }); if (!r.ok) window.hud?.((await r.json()).error || 'That didn’t open.') } catch { window.hud?.('The hub didn’t answer.') }
-      return
-    }
-    window.open(a.url, '_blank', 'noopener,noreferrer')
+    const page = () => window.open(a.url, '_blank', 'noopener,noreferrer')
+    if (!LOCAL) return isPc(a) ? window.hud?.('Programs open on the computer the hub runs on.') : page()
+    // On the hub's own computer it's the program if it's installed, else the website in a window of its own.
+    try {
+      const r = await post('/api/desk/open', { id, ...(web ? { web: true } : {}) }), j = await r.json()
+      if (!r.ok) return a.url ? page() : window.hud?.(j.error || 'That didn’t open.')
+      if (j.url) page()
+    } catch { a.url ? page() : window.hud?.('The hub didn’t answer.') }
   }
   const isFav = id => S.favorites.includes(id)
   const toggleFav = id => { S.favorites = isFav(id) ? S.favorites.filter(x => x !== id) : [...S.favorites, id]; return save() }
@@ -158,7 +163,7 @@ ${A} #dkadd.on { display: grid; position: fixed; z-index: 72; inset: 0; place-it
   const closeMenu = () => menu.classList.remove('on')
   function openMenu(id, x, y) {
     menuId = id
-    menu.innerHTML = `<button data-m="open">Open</button><button data-m="fav">${isFav(id) ? 'Remove from favorites' : 'Add to favorites'}</button><button data-m="first">Move to the front</button><button class="red" data-m="remove">Remove</button>`
+    menu.innerHTML = `<button data-m="open">Open</button>${LOCAL && find(id)?.url ? '<button data-m="web">Open in the browser</button>' : ''}<button data-m="fav">${isFav(id) ? 'Remove from favorites' : 'Add to favorites'}</button><button data-m="first">Move to the front</button><button class="red" data-m="remove">Remove</button>`
     menu.classList.add('on')
     const r = menu.getBoundingClientRect()
     menu.style.left = `${Math.min(x, innerWidth - r.width - 12)}px`
@@ -169,6 +174,7 @@ ${A} #dkadd.on { display: grid; position: fixed; z-index: 72; inset: 0; place-it
     const m = e.target.closest('[data-m]')?.dataset.m, id = menuId
     closeMenu()
     if (m === 'open') open(id)
+    else if (m === 'web') open(id, true)
     else if (m === 'fav') toggleFav(id)
     else if (m === 'first') { const a = S.apps.find(x => x.id === id); S.apps = [a, ...S.apps.filter(x => x !== a)]; if (isFav(id)) S.favorites = [id, ...S.favorites.filter(x => x !== id)]; save() }
     else if (m === 'remove') { S.apps = S.apps.filter(x => x.id !== id); S.favorites = S.favorites.filter(x => x !== id); save() }
@@ -177,19 +183,22 @@ ${A} #dkadd.on { display: grid; position: fixed; z-index: 72; inset: 0; place-it
 
   // ── add: websites, this PC's programs, or any address ──
   const sheet = Object.assign(document.createElement('div'), { id: 'dkadd' })
-  sheet.innerHTML = '<div class="dk-sheet" role="dialog" aria-modal="true" aria-label="Add an app or website"><header><span class="ttl"></span><input type="text" placeholder="Search, or type a web address" aria-label="Search, or type a web address"><button type="button" data-dkclose>Done</button></header><div class="dk-list"></div></div>'
+  sheet.innerHTML = '<div class="dk-sheet" role="dialog" aria-modal="true" aria-label="Add an app or website"><header><span class="ttl"></span><input type="text" placeholder="Search, or type a web address" aria-label="Search, or type a web address"><button type="button" data-dkclose>Done</button></header><div class="dk-seg"><button type="button" data-kind="apps">Apps on this PC</button><button type="button" data-kind="web">Websites</button></div><div class="dk-list"></div></div>'
   document.body.append(sheet)
   const sq = sheet.querySelector('input'), sl = sheet.querySelector('.dk-list')
-  let forFav = false
+  let forFav = false, kind = LOCAL ? 'apps' : 'web'
   function paintAdd() {
     const t = sq.value.trim().toLowerCase(), hit = a => !t || a.name.toLowerCase().includes(t)
     const have = a => (forFav ? isFav(a.id) : S.apps.some(x => x.id === a.id))
     const sec = (title, list) => (list.length ? `<h4>${title}</h4><div class="dk-grid">${list.map(a => tile(a, have(a) ? 'have' : '')).join('')}</div>` : '')
     const addr = /^(https?:\/\/)?[a-z0-9-]+(\.[a-z0-9-]+)+([/?#]\S*)?$/i.test(t) ? t : ''
     const mine = S.apps.filter(hit), more = S.more.filter(a => hit(a) && !S.apps.some(x => x.id === a.id)), progs = LOCAL ? (pc || []).filter(a => hit(a) && !S.apps.some(x => x.id === a.id)) : []
+    sheet.querySelector('.dk-seg').hidden = !LOCAL
+    sheet.querySelectorAll('[data-kind]').forEach(n => n.classList.toggle('on', n.dataset.kind === kind))
+    const webOn = kind === 'web' || !LOCAL || t, appOn = LOCAL && (kind === 'apps' || t)
     set(sl, (addr ? `<h4>Website</h4><div class="dk-grid"><button type="button" class="dk-t" data-addr="${esc(sq.value.trim())}"><span class="dk-a">${PLUS}</span><span class="dk-n">${esc(addr)}</span></button></div>` : '')
-      + sec('On Home', forFav || t ? mine : []) + sec('Websites', more) + sec('On this PC', progs)
-      + (LOCAL && !pc ? '<div class="dk-none">Looking at this PC’s programs…</div>' : '') || '<div class="dk-none">Nothing by that name. Type its web address to add it.</div>')
+      + sec('On Home', forFav || t ? mine : []) + (appOn && kind === 'apps' ? sec('On this PC', progs) : '') + (webOn ? (kind === 'web' && !t ? sec('Add any website', [{ id: 'new-site', name: 'Type its address above', url: 'about:blank' }]).replace(/<img[^>]*>/, PLUS) : '') + sec('Websites', more) : '') + (appOn && kind !== 'apps' ? sec('On this PC', progs) : '')
+      + (appOn && !pc ? '<div class="dk-none">Looking at this PC’s programs…</div>' : '') || '<div class="dk-none">Nothing by that name. Type its web address to add it.</div>')
   }
   async function openAdd(asFav) {
     forFav = !!asFav
@@ -205,6 +214,9 @@ ${A} #dkadd.on { display: grid; position: fixed; z-index: 72; inset: 0; place-it
   sq.addEventListener('keydown', e => { if (e.key === 'Enter') sl.querySelector('.dk-t')?.click() })
   sheet.addEventListener('click', e => {
     if (e.target === sheet || e.target.closest('[data-dkclose]')) return closeAdd()
+    const k = e.target.closest('[data-kind]')?.dataset.kind
+    if (k) { kind = k; sl.scrollTop = 0; return paintAdd() }
+    if (e.target.closest('[data-dk="new-site"]')) { sq.placeholder = 'example.com'; return sq.focus() }
     const ad = e.target.closest('[data-addr]')?.dataset.addr
     let a = null
     if (ad) {

@@ -75,6 +75,32 @@ final class Native {
         open(Settings.ACTION_DISPLAY_SETTINGS);
     }
 
+    /** Fire TV's own page for pairing a remote or controller. */
+    @JavascriptInterface
+    public void openControllers() {
+        if (!activity.pageTrusted) return;
+        for (String a : new String[]{"com.amazon.device.settings.action.CONTROLLERS", Settings.ACTION_BLUETOOTH_SETTINGS}) {
+            if (new Intent(a).resolveActivity(context.getPackageManager()) == null) continue;
+            open(a);
+            return;
+        }
+        open(Settings.ACTION_SETTINGS);
+    }
+
+    /** The remotes and controllers connected now: [{ name, pad, remote }]. */
+    @JavascriptInterface
+    public String controllers() {
+        org.json.JSONArray l = new org.json.JSONArray();
+        if (!activity.pageTrusted) return "[]";
+        for (int id : android.view.InputDevice.getDeviceIds()) {
+            android.view.InputDevice d = android.view.InputDevice.getDevice(id);
+            if (d == null || d.isVirtual() || d.getVendorId() <= 2) continue;
+            boolean pad = (d.getSources() & android.view.InputDevice.SOURCE_GAMEPAD) == android.view.InputDevice.SOURCE_GAMEPAD;
+            try { l.put(new JSONObject().put("name", d.getName()).put("pad", pad).put("remote", !pad && d.getName().contains("Remote"))); } catch (Exception ignored) { }
+        }
+        return l.toString();
+    }
+
     /** The TV's media volume: dir -1 quieter, 1 louder, 0 just tell. -> { level, max, muted, fixed } */
     @JavascriptInterface
     public String volume(int dir) {

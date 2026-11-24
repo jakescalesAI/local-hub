@@ -12,10 +12,10 @@ import { hubConfig } from './config.mjs'
 // A home network's own address, and not this computer.
 export const isPrivate = h => /^(10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3})$/.test(String(h || ''))
 const KEY_RE = /^[A-Z][A-Z0-9_]{1,30}$/
-const JOB_RE = /^(mic|assistant|overlay|home|menu|files|ai|rew|ff|saver|sleep|settings|none|app:[^\u0000-\u001f|]{1,60}(\|[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z0-9_]+)+)?)$/
+const JOB_RE = /^(mic|assistant|overlay|home|menu|files|browser|ai|rew|ff|saver|sleep|settings|volup|voldown|mute|back|none|app:[^\u0000-\u001f|]{1,60}(\|[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z0-9_]+)+)?)$/
 export function cleanMap(raw) {
   const out = {}
-  for (const [k, v] of Object.entries(raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}).slice(0, 24)) if (KEY_RE.test(k) && typeof v === 'string' && JOB_RE.test(v)) out[k] = v
+  for (const [k, v] of Object.entries(raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}).slice(0, 60)) if (KEY_RE.test(k) && typeof v === 'string' && JOB_RE.test(v)) out[k] = v
   return out
 }
 const STOP = '{ for p in /proc/[0-9]*; do if [ "$(tr \'\\0\' \' \' < $p/cmdline 2>/dev/null | cut -d\' \' -f1)" = localhub.keys ]; then kill ${p#/proc/}; fi; done; } 2>/dev/null; true'

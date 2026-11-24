@@ -17,7 +17,7 @@
 import * as Stream from "./stream.js?v=4";
 import * as Panel from "./panel.js?v=6";
 import * as Files from "./files.js?v=1";
-import * as Remote from "./remote.js?v=2";
+import * as Remote from "./remote.js?v=3";
 import * as Mirror from "./mirror.js?v=2";
 // The TV's own assistant screen (assistant.js): the hub's agent and conversation, without the hub's chat UI.
 let Assistant = null;
@@ -322,7 +322,7 @@ function loadItems() {
   const picked = favIds.map((id) => APPS.find((a) => a.id === id)).filter(Boolean);
   // The row: widgets, sort and search first, then your favorites, then the + card (always last).
   FAVS = IN_HUB && !PREVIEW
-    ? [{ id: "ctl:widgets", kind: "ctl", name: "Overlay" }, { id: "ctl:sort", kind: "ctl", name: "Sort apps" }, { id: "ctl:search", kind: "ctl", name: "Search" }, ...picked, { id: "favadd", kind: "favadd", name: "Add a favorite" }]
+    ? [{ id: "ctl:sort", kind: "ctl", name: "Sort apps" }, { id: "ctl:search", kind: "ctl", name: "Search" }, ...picked, { id: "favadd", kind: "favadd", name: "Add a favorite" }]
     : picked;
   S.f = clamp(S.f || 0, 0, Math.max(0, FAVS.length - 1));
   if (!FAVS.length && S.zone === "favs") S.zone = "grid";
@@ -2273,9 +2273,10 @@ document.addEventListener("keydown", (e) => {
 const RAIL = [
   { id: "home", label: "Home", ic: sym('<path d="M3 11 12 3l9 8"/><path d="M5 10v10h5v-6h4v6h5V10"/>') },
   { id: "assistant", label: "Assistant", ic: sym('<path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z"/><path d="M19 11a7 7 0 0 1-14 0M12 18v3"/>') },
-  { id: "files", label: "Files", ic: sym('<path d="M4 7a2 2 0 0 1 2-2h4l2 2.5h6a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/>') },
   { id: "browser", label: "Browser", ic: sym('<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>') },
+  { id: "files", label: "Files", ic: sym('<path d="M4 7a2 2 0 0 1 2-2h4l2 2.5h6a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/>') },
   { id: "saver", label: "Screensaver", ic: sym('<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>') },
+  { id: "overlay", label: "Overlay", ic: Panel.IC.widgets, foot: true },
   { id: "settings", label: "Settings", ic: SYM.gear, foot: true },
 ];
 S.view = "home";
@@ -2355,7 +2356,7 @@ function railKey(name) {
   paintRail();
   if (S.view === "home") applyFocus();
   if (id === "browser") { const app = APPS.find((a) => a.id === "browser") || Stream.STREAM_APPS.find((a) => a.id === "browser"); return app ? openApp(app) : toast("The browser runs on the laptop: open LocalHub TV from the hub"); }
-  if (id === "saver") return startSaver();
+  if (id === "saver") return startSaver(); if (id === "overlay") return openWidgets();
   if (id === "settings") return openSettings();
 }
 
@@ -2410,6 +2411,9 @@ function runButton(name) {
   if (name === "overlay") { if (S.overlay === "saver") stopSaver(); if (S.overlay === "settings") closeSettings(); if (S.overlay === "wpanel") { closeWidgets(); return true; } if (S.overlay) return true; closeRail(); if (S.view !== "home") showView("home"); openWidgets(); return true; }
   if (name === "files") { if (S.overlay === "saver") stopSaver(); if (S.overlay === "settings") closeSettings(); closeRail(); showView("files"); return true; }
   if (name === "sleep") { sleepNow(); return true; }
+  if (name === "volup" || name === "voldown") { volStep(name === "volup" ? 1 : -1); if (S.overlay === "wpanel") paintWpanel(); return true; }
+  if (name === "mute") { native("volume", 0); toast("Mute works from the remote itself"); return true; }
+  if (name === "browser") { if (S.overlay === "saver") stopSaver(); if (S.overlay === "settings") closeSettings(); closeRail(); const app = APPS.find((a) => a.id === "browser") || Stream.STREAM_APPS.find((a) => a.id === "browser"); app ? openApp(app) : toast("The browser runs on the laptop: open LocalHub there"); return true; }
   if (name === "settings" && S.overlay !== "settings") { if (S.overlay) return false; closeRail(); openSettings(); return true; }
   if (name === "saver" && !S.overlay) { startSaver(); return true; }
   return false;
@@ -2594,20 +2598,27 @@ function openButtons() {
 function paintRemote() {
   const box = $("#remote .rm-card");
   if (!box) return;
-  const b = buttonsNow();
-  const html = `<div class="rm-left">${Remote.remoteHTML(S.rmAt, b)}</div><div class="rm-right"><h2>Fire TV remote</h2><p>Press a button on your remote, or choose one here. OK changes what it does.</p><div class="rm-rows"><button type="button" class="rm-row${S.rmAt === "everywhere" ? " sel" : ""}" data-rm="everywhere" tabindex="-1"><span>In every app</span><em>${KEYS_SAY[KEYS.state] || "Off"}</em></button>${Remote.rowsHTML(S.rmAt, b)}</div><p class="rm-why">Arrows, OK, Back, Home, Power, Alexa and volume stay as they are. ${esc(KEYS.state === "error" && KEYS.why ? KEYS.why : "Guide and the app buttons need “In every app”. Hold Back for ten seconds to let go of the remote.")}</p></div>`;
+  const b = buttonsNow(), kind = S.rmKind || "remote";
+  const cons = NATIVE && typeof NATIVE.controllers === "function" ? safeJson(native("controllers"), []) || [] : [];
+  const html = `<div class="rm-left">${Remote.pictureHTML(kind, S.rmAt, b)}</div><div class="rm-right"><div class="rm-kinds">${Remote.KINDS.map(([k, t]) => `<span class="${k === kind ? "on" : ""}">${t}</span>`).join("")}</div><p>${kind === "other" ? "Press any button on it and it appears here." : "Press a button, or choose one here. OK changes what it does. Left and right change controller."}${cons.length ? ` Connected: ${esc(cons.map((c) => c.name).join(", "))}.` : ""}</p><div class="rm-rows"><button type="button" class="rm-row${S.rmAt === "everywhere" ? " sel" : ""}" data-rm="everywhere" tabindex="-1"><span>In every app</span><em>${KEYS_SAY[KEYS.state] || "Off"}</em></button><button type="button" class="rm-row${S.rmAt === "pair" ? " sel" : ""}" data-rm="pair" tabindex="-1"><span>Connect a remote or controller</span><em>Fire TV settings</em></button>${Remote.rowsHTML(S.rmAt, b, kind)}</div><p class="rm-why">${esc(KEYS.state === "error" && KEYS.why ? KEYS.why : "Buttons marked Fire TV need “In every app”. Arrows, OK and Back never change. Hold Back ten seconds to let go of the remote.")}</p></div>`;
   if (box._html !== html) { box.innerHTML = html; box._html = html; }
   box.querySelector(".rm-row.sel")?.scrollIntoView({ block: "nearest" });
 }
 function remoteKey(raw) {
-  const ids = ["everywhere", ...Remote.rowIds(buttonsNow())], at = ids.indexOf(S.rmAt);
+  const ids = ["everywhere", "pair", ...Remote.rowIds(buttonsNow(), S.rmKind || "remote")], at = ids.indexOf(S.rmAt);
   if (raw === "back") { $("#remote").classList.remove("on"); setOverlay(S.rmFrom === "settings" ? "settings" : null); if (S.overlay === "settings") renderSettings(); return; }
   if (raw === "up" || raw === "down") { S.rmAt = ids[clamp(at + (raw === "down" ? 1 : -1), 0, ids.length - 1)]; return paintRemote(); }
   if (raw === "enter" || raw === "hold") {
     if (S.rmAt === "reset") return saveButtons({}, "Every button is back to standard: Menu is the microphone");
-    return S.rmAt === "everywhere" ? toggleKeys() : openButtonMenu(S.rmAt);
+    return S.rmAt === "everywhere" ? toggleKeys() : S.rmAt === "pair" ? (NATIVE && typeof NATIVE.openControllers === "function" ? native("openControllers") : toast("Connect it in the TV's own settings")) : openButtonMenu(S.rmAt);
   }
-  if (raw === "left" || raw === "right" || raw === "help") return;
+  if (raw === "help") return;
+  if (raw === "left" || raw === "right") {
+    const ks = Remote.KINDS.map(([k]) => k), i = clamp(ks.indexOf(S.rmKind || "remote") + (raw === "right" ? 1 : -1), 0, ks.length - 1);
+    if (ks[i] !== (S.rmKind || "remote")) { S.rmKind = ks[i]; S.rmAt = Remote.rowIds(buttonsNow(), S.rmKind)[0]; paintRemote(); }
+    return;
+  }
+  S.rmKind = Remote.kindOf(raw);
   S.rmAt = raw;
   paintRemote();
 }
