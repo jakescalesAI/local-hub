@@ -332,7 +332,10 @@ html[data-wall] .hw-bar .hw-btn:not(.solid) { background: color-mix(in srgb, var
     // The TV's look (tabs/tvlook.js): dark, unless Light was chosen.
     const tv = WIDE.matches && st.theme !== 'light'
     r.toggleAttribute('data-tvlook', tv)
-    if (tv) { r.setAttribute('data-theme', 'dark'); r.style.colorScheme = 'dark' } else if (st.theme === 'auto') { r.removeAttribute('data-theme'); r.style.colorScheme = '' } else { r.setAttribute('data-theme', st.theme); r.style.colorScheme = st.theme }
+    // The same look on a phone or an iPad, laid out for touch.
+    const touch = !WIDE.matches && st.theme !== 'light'
+    r.toggleAttribute('data-tvtouch', touch)
+    if (tv || touch) { r.setAttribute('data-theme', 'dark'); r.style.colorScheme = 'dark' } else if (st.theme === 'auto') { r.removeAttribute('data-theme'); r.style.colorScheme = '' } else { r.setAttribute('data-theme', st.theme); r.style.colorScheme = st.theme }
     if (st.accent === 'system') r.style.removeProperty('--blue')
     else r.style.setProperty('--blue', st.accent)
     r.dataset.look = st.widgetLook

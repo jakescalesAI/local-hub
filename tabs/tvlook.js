@@ -1,36 +1,38 @@
 // The TV's look on a computer: the photo wallpaper, the sidebar, the big clock, the weather, round buttons and solid
 // dark cards (tv/ui/styles.css is where they come from). custom.js puts data-tvlook on <html> when the window is wide,
-// has a mouse and Edit Style isn't set to Light; everything here hangs off that, so a phone, an iPad or Light is as before.
+// has a mouse and Edit Style isn't set to Light, and data-tvtouch on a phone or an iPad; Light is as before.
 ;(() => {
   const R = 'html[data-tvlook]'
+  const T = 'html[data-tvtouch]'
+  const A = ':is(html[data-tvlook], html[data-tvtouch])' // both
   const css = document.createElement('style')
   css.textContent = `
 #tvrail, #tvtop { display: none; }
 /* The colours are theme.css's; here they're given to the hub's own names, so every tab, menu and sheet follows. */
-:root[data-tvlook][data-theme] { --ui-u: .5px; --ui-edge: inset 0 0 0 1px rgba(255, 255, 255, .1); --tvrail: 92px; scrollbar-gutter: auto;
+:root:is([data-tvlook], [data-tvtouch])[data-theme] { --ui-u: .5px; --ui-edge: inset 0 0 0 1px rgba(255, 255, 255, .1); --tvrail: 92px; scrollbar-gutter: auto;
   --bg: var(--chat-bg); --surface: var(--ui-panel); --surface-2: var(--ui-fill); --press: #34353c; --fill: rgba(255, 255, 255, .08); --fill-2: rgba(255, 255, 255, .14);
   --sep: rgba(255, 255, 255, .1); --menu-bg: var(--ui-panel); --material: rgba(17, 18, 22, .94); --thumb: var(--ui-sel); --sheen: rgba(255, 255, 255, .06); }
 ${R} .nav.scrolled::after { display: none; }
-${R} :is(.hc-panel, .menu) { background: var(--ui-panel) !important; box-shadow: var(--ui-edge), 0 24px 60px rgba(0, 0, 0, .5) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+${A} :is(.hc-panel, .menu) { background: var(--ui-panel) !important; box-shadow: var(--ui-edge), 0 24px 60px rgba(0, 0, 0, .5) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
 
-${R} #tvpanel { position: fixed; z-index: 60; top: 0; right: 0; bottom: 0; width: 418px; overflow-y: auto; scrollbar-width: none; background: var(--ui-panel); border-radius: 26px 0 0 26px; box-shadow: inset 1px 0 0 rgba(255, 255, 255, .1), -30px 0 80px rgba(0, 0, 0, .45); color: #fff; transform: translateX(105%); visibility: hidden; transition: transform .28s var(--ease), visibility 0s .28s; }
-${R} #tvpanel.on { transform: none; visibility: visible; transition: transform .28s var(--ease); }
-${R} #tvpanel > div { zoom: .55; padding: 56px 48px; }
-${R} #tvpanel [data-w] { cursor: pointer; touch-action: none; }
-${R} #tvpanel .tvp-sub { margin: -16px 0 30px 8px; font-size: 26px; color: rgba(255, 255, 255, .6); }
-${R} #tvpanel :is(.mp-b, .wpp):hover, ${R} #tvpanel .wpr:hover b { background: var(--ui-sel); color: #000; }
-${R} #tvpanel .wpp:hover .t2 { color: rgba(0, 0, 0, .55); }
-${R} #tvpanel .wps:hover { box-shadow: 0 0 0 5px rgba(255, 255, 255, .35); }
-${R} #tvpanel :focus-visible { outline: 5px solid #0a84ff; outline-offset: 4px; }
+${A} #tvpanel { position: fixed; z-index: 60; top: 0; right: 0; bottom: 0; width: 418px; overflow-y: auto; scrollbar-width: none; background: var(--ui-panel); border-radius: 26px 0 0 26px; box-shadow: inset 1px 0 0 rgba(255, 255, 255, .1), -30px 0 80px rgba(0, 0, 0, .45); color: #fff; transform: translateX(105%); visibility: hidden; transition: transform .28s var(--ease), visibility 0s .28s; }
+${A} #tvpanel.on { transform: none; visibility: visible; transition: transform .28s var(--ease); }
+${A} #tvpanel > div { zoom: .55; padding: 56px 48px; }
+${A} #tvpanel [data-w] { cursor: pointer; touch-action: none; }
+${A} #tvpanel .tvp-sub { margin: -16px 0 30px 8px; font-size: 26px; color: rgba(255, 255, 255, .6); }
+${A} #tvpanel :is(.mp-b, .wpp):hover, ${A} #tvpanel .wpr:hover b { background: var(--ui-sel); color: #000; }
+${A} #tvpanel .wpp:hover .t2 { color: rgba(0, 0, 0, .55); }
+${A} #tvpanel .wps:hover { box-shadow: 0 0 0 5px rgba(255, 255, 255, .35); }
+${A} #tvpanel :focus-visible { outline: 5px solid #0a84ff; outline-offset: 4px; }
 #tvpanel { display: none; } .tvround { display: none; }
-${R} #tvpanel { display: block; }
-${R} #hub-wall::after { background: linear-gradient(90deg, rgba(0, 0, 0, .35), rgba(0, 0, 0, .08) 60%), rgba(0, 0, 0, .18); opacity: 1; }
-${R}:not([data-wall]) body { background: #0b0b0e; }
+${A} #tvpanel { display: block; }
+${A} #hub-wall::after { background: linear-gradient(90deg, rgba(0, 0, 0, .35), rgba(0, 0, 0, .08) 60%), rgba(0, 0, 0, .18); opacity: 1; }
+${A}:not([data-wall]) body { background: #0b0b0e; }
 ${R} .page { max-width: 1500px; padding-left: calc(var(--tvrail) + 48px); padding-right: 48px; }
 ${R} .nav { pointer-events: none; }
 ${R} .nav-in { max-width: 1500px; padding-left: calc(var(--tvrail) + 48px); padding-right: 48px; }
 ${R} .nav-in button { pointer-events: auto; }
-${R} .bar-btn { color: #fff; }
+${A} .bar-btn { color: #fff; }
 ${R} #tvrail { position: fixed; z-index: 12; left: 0; top: 0; bottom: 0; width: var(--tvrail); display: flex; flex-direction: column; align-items: center; padding: 26px 0; background: rgba(17, 18, 22, .86); border-radius: 0 26px 26px 0; box-shadow: inset -1px 0 0 rgba(255, 255, 255, .1); color: #fff; }
 ${R} #tvrail img { width: 44px; height: 44px; border-radius: 12px; }
 ${R} #tvrail .mid { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 10px; }
@@ -43,25 +45,25 @@ ${R} #tvrail button.on::after { content: ""; position: absolute; bottom: 3px; wi
 ${R} #tvrail button span { position: absolute; left: 66px; padding: 7px 14px; border-radius: 99px; background: var(--ui-panel); box-shadow: var(--ui-edge); font-size: 14px; font-weight: 600; white-space: nowrap; opacity: 0; pointer-events: none; transform: translateX(-4px); transition: opacity .15s, transform .15s; }
 ${R} #tvrail button:hover span, ${R} #tvrail button:focus-visible span { opacity: 1; transform: none; }
 ${R} #seg-scroll { display: none; }
-${R} .large-title { font-size: 52px; font-weight: 700; letter-spacing: -.03em; line-height: 1.1; }
+${A} .large-title { font-size: 52px; font-weight: 700; letter-spacing: -.03em; line-height: 1.1; }
 ${R}:has(.hw-root) .head, ${R}:has(.hw-root) .nav { display: none; }
-${R} .tvt-clock { font: 700 76px/1 var(--display); letter-spacing: -.035em; font-variant-numeric: tabular-nums; white-space: nowrap; }
-${R} .tvt-date { margin-top: 10px; font: 600 24px/1.2 var(--display); color: rgba(255, 255, 255, .9); }
-${R} .tvt-wx .wxw { font-size: 13px; }
-${R} .search input { height: 56px; padding: 0 44px 0 26px; border-radius: 28px; background: var(--ui-fill) !important; box-shadow: var(--ui-edge); font-size: 18px; font-weight: 600; -webkit-backdrop-filter: none; backdrop-filter: none; }
-${R} .search input:focus { box-shadow: 0 0 0 3px #fff; }
-${R} .search .clear { right: 18px; }
-${R} .seg, ${R} .seg.hw-seg { background: var(--ui-fill) !important; box-shadow: var(--ui-edge); border-radius: 99px; padding: 4px; -webkit-backdrop-filter: none; backdrop-filter: none; }
-${R} .seg-thumb { top: 4px; bottom: 4px; left: 4px; width: calc((100% - 8px) / var(--n, 3)); border-radius: 99px; background: var(--ui-sel); }
-${R} .seg button { height: 34px; border-radius: 99px; font-size: 14px; font-weight: 600; }
-${R} .seg button:is([aria-pressed="true"], [aria-selected="true"], [aria-checked="true"], [aria-current], .on) { color: #000; }
-${R} .hw-bar .hw-btn:not(.solid), ${R} .hw-btn, ${R} .hw-pill { height: 42px; padding: 0 20px; border-radius: 99px; background: var(--ui-fill); box-shadow: var(--ui-edge); color: #fff; -webkit-backdrop-filter: none; backdrop-filter: none; }
-${R} .hw-bar .hw-btn:not(.solid):hover, ${R} .hw-pill:hover { background: var(--ui-sel); color: #000; }
-${R} .hw-btn.solid { background: var(--ui-sel); color: #000; }
-${R} .hw-btn.red { color: var(--red) !important; }
-${R} :is(.hw-card, .widget, .list, .hw-page) { background: var(--ui-panel) !important; box-shadow: var(--ui-edge) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
-${R} :is(.hw-card, .widget) { border-radius: 26px; }
-${R} .list { border-radius: 22px; }
+${A} .tvt-clock { font: 700 76px/1 var(--display); letter-spacing: -.035em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+${A} .tvt-date { margin-top: 10px; font: 600 24px/1.2 var(--display); color: rgba(255, 255, 255, .9); }
+${A} .tvt-wx .wxw { font-size: 13px; }
+${A} .search input { height: 56px; padding: 0 44px 0 26px; border-radius: 28px; background: var(--ui-fill) !important; box-shadow: var(--ui-edge); font-size: 18px; font-weight: 600; -webkit-backdrop-filter: none; backdrop-filter: none; }
+${A} .search input:focus { box-shadow: 0 0 0 3px #fff; }
+${A} .search .clear { right: 18px; }
+${A} .seg, ${A} .seg.hw-seg { background: var(--ui-fill) !important; box-shadow: var(--ui-edge); border-radius: 99px; padding: 4px; -webkit-backdrop-filter: none; backdrop-filter: none; }
+${A} .seg-thumb { top: 4px; bottom: 4px; left: 4px; width: calc((100% - 8px) / var(--n, 3)); border-radius: 99px; background: var(--ui-sel); }
+${A} .seg button { height: 34px; border-radius: 99px; font-size: 14px; font-weight: 600; }
+${A} .seg button:is([aria-pressed="true"], [aria-selected="true"], [aria-checked="true"], [aria-current], .on) { color: #000; }
+${A} .hw-bar .hw-btn:not(.solid), ${A} .hw-btn, ${A} .hw-pill { height: 42px; padding: 0 20px; border-radius: 99px; background: var(--ui-fill); box-shadow: var(--ui-edge); color: #fff; -webkit-backdrop-filter: none; backdrop-filter: none; }
+${A} .hw-bar .hw-btn:not(.solid):hover, ${A} .hw-pill:hover { background: var(--ui-sel); color: #000; }
+${A} .hw-btn.solid { background: var(--ui-sel); color: #000; }
+${A} .hw-btn.red { color: var(--red) !important; }
+${A} :is(.hw-card, .widget, .list, .hw-page) { background: var(--ui-panel) !important; box-shadow: var(--ui-edge) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+${A} :is(.hw-card, .widget) { border-radius: 26px; }
+${A} .list { border-radius: 22px; }
 ${R} .hw-page[aria-selected="true"] { background: var(--ui-sel) !important; color: #000; }
 ${R} .hw-card.live:hover { transform: scale(1.03); }
 ${R} .hw-app-b { transition: transform .2s var(--ease); }
@@ -87,7 +89,7 @@ ${R} .hw-root:is([data-view="tv"], [data-view="ipad"], [data-view="mobile"]) > .
 ${R} .hw-root.hw-edit > .hw-bar { left: auto; }
 ${R} .hw-bar-r { margin: 0; overflow: visible; }
 ${R} .hw-bar .hw-hint:not(:empty) { position: absolute; top: 100%; right: 0; white-space: nowrap; }
-${R} .hw-bar .hw-btn { gap: 8px; }
+${A} .hw-bar .hw-btn { gap: 8px; }
 /* No device views: Home is this one; the TV button goes to your TV. */
 ${R} .hw-bar > .hw-seg { display: none !important; }
 ${R} .hw-root.hw-edit .hw-tvbtn { display: none; }
@@ -105,8 +107,8 @@ ${R} .tvm-screen iframe { position: absolute; left: 0; top: 0; width: 1920px; he
 ${R} .tvm-cover { position: absolute; inset: 0; cursor: pointer; }
 ${R} .tvm-note { position: absolute; inset: 0; display: grid; place-items: center; padding: 40px; text-align: center; font-size: 20px; font-weight: 600; background: rgba(0, 0, 0, .72); pointer-events: none; }
 ${R} .tvm-note[hidden] { display: none; }
-${R} .hw-bar .hw-btn .hw-ic { display: block; }
-${R} .seg.hw-seg button { gap: 7px; }
+${A} .hw-bar .hw-btn .hw-ic { display: block; }
+${A} .seg.hw-seg button { gap: 7px; }
 /* Too tight for words: the buttons keep their icons. */
 ${R}[data-tight] .hw-bar .hw-btn { width: 42px; padding: 0; justify-content: center; }
 ${R}[data-tight] .hw-bar .hw-btn-t, ${R}[data-tight] .hw-bar .hw-seg span:not(.seg-thumb) { display: none; }
@@ -114,12 +116,12 @@ ${R}[data-tight] .hw-bar .hw-seg { width: 190px; }
 ${R}[data-tight] .hw-bar .hw-ic { display: block; }
 ${R}[data-tighter] .hw-bar .hw-seg { display: none; }
 /* Editing: a back button, what you can do, Done. */
-${R} .tvround { display: none; flex: none; place-items: center; width: 56px; height: 56px; border-radius: 50%; background: var(--ui-fill); box-shadow: var(--ui-edge); color: #fff; }
-${R}:has(.hw-root) .tvround { display: grid; }
-${R} .tvround:hover, ${R} .tvround.on { background: var(--ui-sel); color: #000; }
-${R} .tvround svg { width: 26px; height: 26px; }
-${R}:not(:has(.hw-edit)) #tvback.tvround { display: none; }
-${R}:has(.hw-edit) :is(#tvlayout, #tvfilter).tvround { display: none; }
+${A} .tvround { display: none; flex: none; place-items: center; width: 56px; height: 56px; border-radius: 50%; background: var(--ui-fill); box-shadow: var(--ui-edge); color: #fff; }
+${A}:has(.hw-root) .tvround { display: grid; }
+${A} .tvround:hover, ${A} .tvround.on { background: var(--ui-sel); color: #000; }
+${A} .tvround svg { width: 26px; height: 26px; }
+${A}:not(:has(.hw-edit)) #tvback.tvround { display: none; }
+${A}:has(.hw-edit) :is(#tvlayout, #tvfilter, #tvgear).tvround { display: none; }
 #tvmenu { display: none; }
 ${R}:not(:has(#tvset.on)) #tvmenu.on { display: block; position: fixed; z-index: 70; min-width: 220px; padding: 8px; border-radius: 24px; background: var(--ui-panel); box-shadow: var(--ui-edge), 0 24px 60px rgba(0, 0, 0, .5); color: #fff; }
 ${R} #tvmenu h4 { margin: 8px 16px 6px; font-size: 13px; font-weight: 600; color: rgba(255, 255, 255, .56); }
@@ -131,7 +133,7 @@ ${R} .hw-root[data-view="desktop"] .hw-grid { grid-template-columns: repeat(5, m
 ${R} .hw-root[data-view="desktop"] .hw-cell.a { display: block; grid-column: auto !important; grid-row: auto !important; }
 ${R} .hw-root[data-view="desktop"] .hw-app-b { padding: 0; gap: 10px; }
 ${R} .hw-root[data-view="desktop"] .hw-app-b > .hc-app { width: 100% !important; height: auto !important; aspect-ratio: 5 / 3; }
-${R} .hw-app-b > .hc-app { border-radius: 18px !important; background: var(--ui-fill) !important; color: #fff !important; box-shadow: var(--ui-edge); }
+${A} .hw-app-b > .hc-app { border-radius: 18px !important; background: var(--ui-fill) !important; color: #fff !important; box-shadow: var(--ui-edge); }
 ${R} .hw-root[data-view="desktop"] .hw-app-l { display: block; width: 100%; text-align: center; font-size: 14px; }
 ${R} .hw-root[data-view="desktop"] .hw-app .hw-del { left: -8px; top: -8px; }
 /* Widgets are drawn off screen here, at their real size, and shown in the column (#tvside). */
@@ -152,30 +154,74 @@ ${R} .hw-dots { display: none; }
 
 /* ── Settings: the TV's page, at a computer's size ── */
 #tvset { display: none; }
-${R} #tvset.on { position: fixed; z-index: 55; left: var(--tvrail); right: 0; top: 0; bottom: 0; display: grid; grid-template-columns: minmax(220px, 34%) minmax(0, 1fr); background: var(--chat-bg); color: #fff; }
-${R} .tvs-art { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; text-align: center; }
-${R} .tvs-art img { width: 170px; height: 170px; border-radius: 38px; box-shadow: 0 25px 55px rgba(0, 0, 0, .55); }
-${R} .tvs-art p { margin: 0; font-size: 14px; line-height: 1.5; color: rgba(255, 255, 255, .6); }
-${R} .tvs-list { overflow-y: auto; scrollbar-width: none; padding: 48px 64px 90px 8px; }
-${R} .tvs-list::-webkit-scrollbar { display: none; }
-${R} .tvs-title { display: flex; align-items: center; gap: 16px; margin: 0 0 20px 6px; font: 700 34px/1.1 var(--display); letter-spacing: -.02em; }
-${R} .tvs-title button { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: var(--ui-fill); box-shadow: var(--ui-edge); }
-${R} .tvs-title button:hover { background: var(--ui-sel); color: #000; }
-${R} .tvs-title svg { width: 22px; height: 22px; }
-${R} .tvs-group { margin: 24px 0 8px 16px; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: rgba(255, 255, 255, .56); }
-${R} .tvs-row { display: flex; align-items: center; gap: 16px; width: 100%; min-height: 58px; padding: 9px 20px; margin-bottom: 8px; border-radius: 18px; background: var(--ui-fill); box-shadow: var(--ui-edge); text-align: left; transition: transform .2s var(--ease); }
+${A} #tvset.on { position: fixed; z-index: 55; left: var(--tvrail); right: 0; top: 0; bottom: 0; display: grid; grid-template-columns: minmax(220px, 34%) minmax(0, 1fr); background: var(--chat-bg); color: #fff; }
+${A} .tvs-art { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; text-align: center; }
+${A} .tvs-art img { width: 170px; height: 170px; border-radius: 38px; box-shadow: 0 25px 55px rgba(0, 0, 0, .55); }
+${A} .tvs-art p { margin: 0; font-size: 14px; line-height: 1.5; color: rgba(255, 255, 255, .6); }
+${A} .tvs-list { overflow-y: auto; scrollbar-width: none; padding: 48px 64px 90px 8px; }
+${A} .tvs-list::-webkit-scrollbar { display: none; }
+${A} .tvs-title { display: flex; align-items: center; gap: 16px; margin: 0 0 20px 6px; font: 700 34px/1.1 var(--display); letter-spacing: -.02em; }
+${A} .tvs-title button { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: var(--ui-fill); box-shadow: var(--ui-edge); }
+${A} .tvs-title button:hover { background: var(--ui-sel); color: #000; }
+${A} .tvs-title svg { width: 22px; height: 22px; }
+${A} .tvs-group { margin: 24px 0 8px 16px; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: rgba(255, 255, 255, .56); }
+${A} .tvs-row { display: flex; align-items: center; gap: 16px; width: 100%; min-height: 58px; padding: 9px 20px; margin-bottom: 8px; border-radius: 18px; background: var(--ui-fill); box-shadow: var(--ui-edge); text-align: left; transition: transform .2s var(--ease); }
 ${R} button.tvs-row:is(:hover, :focus-visible) { background: var(--ui-sel); color: #000; transform: scale(1.015); outline: 0; }
-${R} .tvs-row .txt { flex: 1; min-width: 0; }
-${R} .tvs-row .t1 { font-size: 16px; font-weight: 600; }
-${R} .tvs-row .t2 { margin-top: 2px; font-size: 13px; color: rgba(255, 255, 255, .6); }
-${R} .tvs-row .v { font-size: 15px; color: rgba(255, 255, 255, .6); white-space: nowrap; }
-${R} .tvs-row .v.on { color: #0a84ff; }
+${A} .tvs-row .txt { flex: 1; min-width: 0; }
+${A} .tvs-row .t1 { font-size: 16px; font-weight: 600; }
+${A} .tvs-row .t2 { margin-top: 2px; font-size: 13px; color: rgba(255, 255, 255, .6); }
+${A} .tvs-row .v { font-size: 15px; color: rgba(255, 255, 255, .6); white-space: nowrap; }
+${A} .tvs-row .v.on { color: #0a84ff; }
 ${R} button.tvs-row:is(:hover, :focus-visible) :is(.t2, .v) { color: rgba(0, 0, 0, .55); }
-${R} .tvs-walls { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 22px 18px; padding: 6px; }
-${R} .tvs-wall i { display: block; aspect-ratio: 16 / 9; border-radius: 16px; background: #2c2c2e center / cover no-repeat; box-shadow: var(--ui-edge); }
-${R} .tvs-wall span { display: block; margin-top: 8px; padding-left: 4px; font-size: 14px; font-weight: 600; text-align: left; color: rgba(255, 255, 255, .75); }
-${R} .tvs-wall:is(:hover, :focus-visible) i { box-shadow: 0 0 0 3px #fff; } ${R} .tvs-wall { outline: 0; }
-${R} .tvs-wall.on span { color: #fff; } ${R} .tvs-wall.on span::after { content: " ✓"; color: #0a84ff; }
+${A} .tvs-walls { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 22px 18px; padding: 6px; }
+${A} .tvs-wall i { display: block; aspect-ratio: 16 / 9; border-radius: 16px; background: #2c2c2e center / cover no-repeat; box-shadow: var(--ui-edge); }
+${A} .tvs-wall span { display: block; margin-top: 8px; padding-left: 4px; font-size: 14px; font-weight: 600; text-align: left; color: rgba(255, 255, 255, .75); }
+${A} .tvs-wall:is(:hover, :focus-visible) i { box-shadow: 0 0 0 3px #fff; } ${A} .tvs-wall { outline: 0; }
+${A} .tvs-wall.on span { color: #fff; } ${A} .tvs-wall.on span::after { content: " ✓"; color: #0a84ff; }
+
+/* ── A phone or an iPad: the clock, a row of round buttons and search, the tiles, then the widgets ── */
+#tvwx { display: none; }
+${T}:has(.hw-root:not(.hw-edit)) #tvwx:not(:empty) { display: block; padding: 18px 22px; margin: 0 0 18px; border-radius: 26px; background: var(--ui-panel); box-shadow: var(--ui-edge); color: #fff; }
+#tvgear.tvround { display: none; }
+${T}:has(.hw-root:not(.hw-edit)) #tvgear.tvround { display: grid; }
+${T}:has(.hw-root) #tvfilter.tvround { display: none; }
+${T}:has(.hw-root) :is(.head, .nav) { display: none; }
+${T}:has(.hw-root) #tvtop { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; flex-wrap: wrap; padding: calc(env(safe-area-inset-top, 0px) + 34px) 4px 24px; color: #fff; text-shadow: 0 2px 14px rgba(0, 0, 0, .35); }
+${T} .tvt-name { display: none; }
+${T} .tvt-clock { font-size: 64px; }
+${T} .tvt-date { font-size: 18px; margin-top: 0; flex: 1 0 100%; }
+${T} #seg-scroll { margin-bottom: 4px; }
+${T}:has(.hw-root) .controls { display: flex; flex-direction: row; gap: 10px; align-items: center; flex-wrap: wrap; }
+${T}:has(.hw-root) #seg-scroll { flex: 1 0 100%; order: -1; margin: 0 0 4px; }
+${T}:has(.hw-root) .search { flex: 1 1 100px; width: auto; min-width: 100px; max-width: none; margin: 0; }
+${T} .tvround { width: 50px; height: 50px; } ${T} .search input { height: 50px; font-size: 17px; }
+${T} .tvround:active { background: var(--ui-sel); color: #000; }
+${T} .hw-root:not(.hw-edit) > .hw-bar { display: none; }
+/* Home is as long as what's on it and the page scrolls, as the TV's does. */
+html[data-tvtouch]:has(.hw-root:not(.hw-edit)):not(:has(#tvset.on)) { overflow-y: auto !important; overflow-x: clip; }
+${T} .hw-root:not(.hw-edit) .hw-frame { height: auto !important; }
+${T} .hw-root:not(.hw-edit) .hw-pager { overflow: visible; flex: none; overscroll-behavior: auto; touch-action: pan-y; -webkit-mask: none; mask: none; }
+${T} .hw-root:not(.hw-edit) .hw-grid { padding-bottom: 120px; }
+${T} .hw-bar .hw-btn.hw-iconly { width: 42px; padding: 0; justify-content: center; } ${T} .hw-bar .hw-btn svg { flex: none; } ${T} .hw-bar .hw-iconly .hw-btn-t { display: none; }
+${T} #tvpanel { width: min(418px, 88vw); } ${T} #tvpanel > div { zoom: min(.55, calc(88vw / 760px)); padding: 80px 48px; }
+${T} #tvset.on { position: fixed; z-index: 55; inset: 0; display: block; background: var(--chat-bg); color: #fff; }
+${T} .tvs-art { display: none; } ${T} .tvs-row .t2 { white-space: normal; }
+${T} .tvs-list { height: 100%; box-sizing: border-box; padding: calc(env(safe-area-inset-top, 0px) + 22px) 16px 90px; -webkit-overflow-scrolling: touch; }
+${T} .tvs-walls { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+${T}:has(#tvset.on) body { overflow: hidden; }
+@media (max-width: 700px) {
+  ${T} .hw-root:not(.hw-edit) .hw-cell[data-dup] { display: none; }
+  ${T} .hw-root:not(.hw-edit) .hw-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; grid-auto-rows: auto !important; gap: 18px 14px !important; }
+  ${T} .hw-root:not(.hw-edit) .hw-cell { grid-area: auto !important; height: 168px; min-width: 0; }
+  ${T} .hw-root:not(.hw-edit) .hw-cell:is(.m, .l):not(.a) { grid-column: 1 / -1 !important; }
+  ${T} .hw-root:not(.hw-edit) .hw-cell.l:not(.a) { height: 360px; }
+  ${T} .hw-root:not(.hw-edit) .hw-cell.a { display: block; height: auto; order: -1; }
+  ${T} .hw-root:not(.hw-edit) .hw-app { width: 100%; height: auto; }
+  ${T} .hw-root:not(.hw-edit) .hw-app-b { width: 100%; height: auto; padding: 0; gap: 8px; }
+  ${T} .hw-root:not(.hw-edit) .hw-app-b > .hc-app { width: 100% !important; height: auto !important; aspect-ratio: 5 / 3; }
+  ${T} .hw-root:not(.hw-edit) .hw-app-b svg { width: 34px; height: 34px; }
+  ${T} .hw-root:not(.hw-edit) .hw-app-l { max-width: 100%; font-size: 14px; }
+}
 
 /* ── Screensaver, on a computer or a phone ── */
 #hubsaver { position: fixed; inset: 0; z-index: 200; background: #000; color: #fff; opacity: 0; transition: opacity .6s; cursor: none; overflow: hidden; }
@@ -221,7 +267,9 @@ ${R} .tvs-wall.on span { color: #fff; } ${R} .tvs-wall.on span::after { content:
   const top = document.createElement('div')
   top.id = 'tvtop'
   top.innerHTML = '<div class="tvt-clock"></div><div class="tvt-date"></div><div class="tvt-name">LocalHub</div>'
-  document.querySelector('.page').prepend(top)
+  const wxCard = document.createElement('div')
+  wxCard.id = 'tvwx'
+  document.querySelector('.page').prepend(top, wxCard)
 
   // ── Layout: the TV's panel (its markup and styles, tv/ui/panel.js and panel.css), working the TV from here ──
   const panel = document.createElement('aside')
@@ -240,7 +288,10 @@ ${R} .tvs-wall.on span { color: #fff; } ${R} .tvs-wall.on span::after { content:
   const back = mk('tvback', 'Back', '<path d="M15 5l-7 7 7 7"/>')
   const filter = mk('tvfilter', 'Filter and sort', '<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>')
   const controls = document.getElementById('controls')
+  const gear = mk('tvgear', 'Settings', IC.gear)
+  gear.addEventListener('click', () => openSettings())
   controls.prepend(back, btn, filter)
+  controls.append(gear)
   back.addEventListener('click', () => document.querySelector('.hw-root.hw-edit [data-hw-act="edit"]')?.click())
 
   // Filter and sort, the TV's filter button.
@@ -273,6 +324,8 @@ ${R} .tvs-wall.on span { color: #fff; } ${R} .tvs-wall.on span::after { content:
   // and updates work here (the column is inside .hw-root). The clock and date are already at the top left.
   let side = null, sideWatch = null, sideRoot = null
   function paintSide() {
+    const w = look.weather && wxBody && window.HubWeatherCard ? window.HubWeatherCard(wxBody, 'm') : ''
+    if (wxCard._html !== w) wxCard.innerHTML = wxCard._html = w
     const root = document.querySelector('.hw-root')
     if (!root) return
     if (sideRoot !== root) {
@@ -303,6 +356,8 @@ ${R} .tvs-wall.on span { color: #fff; } ${R} .tvs-wall.on span::after { content:
     document.documentElement.toggleAttribute('data-noside', !html)
   }
   function arrange() {
+    const dup = document.documentElement.matches('[data-tvtouch]') && matchMedia('(max-width: 700px)').matches && !document.querySelector('.hw-root.hw-edit')
+    for (const c of document.querySelectorAll('.hw-grid > .hw-cell:not(.a)')) c.toggleAttribute('data-dup', dup && ((id => /(^|-)(clock|date|weather)$/.test(id) && !/world-clock$/.test(id))(c.querySelector('[data-hw-widget], [data-hw-wid]')?.dataset.hwWidget || c.dataset.hwKey || '')))
     document.documentElement.dataset.tvshow = look.show || 'all'
     const cells = [...document.querySelectorAll('.hw-grid > .hw-cell.a')]
     const names = look.sort === 'az' ? cells.map(c => c.querySelector('.hw-app-l')?.textContent || '').sort((a, b) => a.localeCompare(b)) : null
@@ -310,6 +365,8 @@ ${R} .tvs-wall.on span { color: #fff; } ${R} .tvs-wall.on span::after { content:
   }
   // One row: the search box gives way first, then the buttons become icons.
   function fitRow() {
+    const box = document.getElementById('q')
+    if (box && document.querySelector('.hw-root') && document.documentElement.hasAttribute('data-tvtouch') && box.placeholder !== 'Search') box.placeholder = 'Search'
     const r = document.documentElement, bar = document.querySelector('.hw-root > .hw-bar')
     if (!bar || !r.hasAttribute('data-tvlook')) return
     r.removeAttribute('data-tight')
@@ -747,7 +804,7 @@ ${R} .tvs-wall.on span { color: #fff; } ${R} .tvs-wall.on span::after { content:
   }
   let wxAt = 0
   async function weather() {
-    if (!document.documentElement.hasAttribute('data-tvlook') || document.hidden || Date.now() - wxAt < 15 * 60_000 || !window.HubWeatherCard) return
+    if (!document.documentElement.matches('[data-tvlook], [data-tvtouch]') || document.hidden || Date.now() - wxAt < 15 * 60_000 || !window.HubWeatherCard) return
     wxAt = Date.now()
     try {
       const r = await fetch('/api/tv/weather', { cache: 'no-store' })

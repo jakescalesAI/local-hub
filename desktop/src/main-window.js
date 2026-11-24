@@ -55,6 +55,8 @@ export class MainWindow {
       webPreferences: securePrefs({ preload: true }),
     })
     this.#win = win
+    // On a scaled display the constructor rounds the size up, so the window grew a little at every start.
+    if (fitted.x !== undefined) win.setBounds(fitted)
     // maximize() also shows the window, so a start in the tray has to wait until it's opened.
     this.#maximizeOnShow = Boolean(this.#settings.values.window?.maximized)
 

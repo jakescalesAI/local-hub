@@ -17,7 +17,7 @@ import { hubConfig, enabledTabs, addonOn, activeTheme, baseTheme } from './confi
 import { isLocal } from './access.mjs'
 
 export const BUILTIN_TABS = ['home', 'laptop', 'server', 'drives', 'ai', 'cloud', 'calendar', 'stripe']
-const NOT_TABS = new Set(['home', 'chat', 'custom', 'setup', 'launcher', 'browser', 'tvlook']) // files in tabs/ that are not plug-in tabs
+const NOT_TABS = new Set(['home', 'chat', 'custom', 'setup', 'launcher', 'browser', 'tvlook', 'tvsetup']) // files in tabs/ that are not plug-in tabs
 const QUIET_TABS = ['connections'] // reached from Settings; stays out of the header until someone adds it
 export const SIZES = ['s', 'm', 'l']
 const MAX_ITEMS = 60
