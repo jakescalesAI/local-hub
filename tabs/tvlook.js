@@ -785,20 +785,22 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     } catch { msg('The hub didn’t answer.') }
   }
   // ── Settings › Fire TV remote ──
-  let RM = null, rmSel = 'menu'
+  let RM = null, rmSel = 'menu', KEYS = { on: false, state: 'off', why: '' }
+  async function keys(body) { try { const r = await fetch('/api/tv/keys', body ? { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: JSON.stringify(body) } : { cache: 'no-store' }); if (r.ok) KEYS = await r.json() } catch {} setHtml = ''; paintSettings(); if (KEYS.state === 'starting' && picking === 'remote') setTimeout(keys, 1500) }
   const btns = () => H()?.settings.tv?.buttons || {}
   function remoteHtml(backB) {
     if (!RM) return backB
     const b = RM.BUTTONS.find(x => x.id === rmSel), now = RM.actionOf(rmSel, btns())
     const apps = (TV?.apps || [])
     const opt = (v, t) => `<option value="${esc(v)}"${v === now ? ' selected' : ''}>${esc(t)}</option>`
-    const pick = id => { const a = RM.actionOf(id, btns()); const oo = (v, t) => `<option value="${esc(v)}"${v === a ? ' selected' : ''}>${esc(t)}</option>`
-      return `<div class="tvs-row rmr${rmSel === id ? ' rmsel' : ''}" data-rmrow="${esc(id)}"><div class="txt"><div class="t1">${esc(RM.labelOf(id))}</div></div><select data-rmset="${esc(id)}" aria-label="${esc(RM.labelOf(id))}">${RM.ACTIONS.map(([v, t]) => oo(v, v === id ? `${t} (standard)` : t)).join('')}${apps.length ? `<optgroup label="Open an app">${apps.map(n => oo('app:' + n, n)).join('')}${a.startsWith('app:') && !apps.includes(a.slice(4)) ? oo(a, a.slice(4)) : ''}</optgroup>` : ''}</select></div>` }
+    const pick = id => { const sys = RM.BUTTONS.find(x => x.id === id)?.sys && !btns()[id], a = sys ? id : RM.actionOf(id, btns()); const oo = (v, t) => `<option value="${esc(v)}"${v === a ? ' selected' : ''}>${esc(t)}</option>`
+      return `<div class="tvs-row rmr${rmSel === id ? ' rmsel' : ''}" data-rmrow="${esc(id)}"><div class="txt"><div class="t1">${esc(RM.labelOf(id))}</div></div><select data-rmset="${esc(id)}" aria-label="${esc(RM.labelOf(id))}">${(RM.ACTIONS.some(([v]) => v === id) ? '' : oo(id, 'Standard')) + RM.ACTIONS.map(([v, t]) => oo(v, v === id ? `${t} (standard)` : t)).join('')}${apps.length ? `<optgroup label="Open an app">${apps.map(n => oo('app:' + n, n)).join('')}${a.startsWith('app:') && !apps.includes(a.slice(4)) ? oo(a, a.slice(4)) : ''}</optgroup>` : ''}</select></div>` }
     return `<div class="tvs-title">${backB}Fire TV remote</div><div class="tvs-group">Press a button on the picture, or choose here</div>`
+      + `<button type="button" class="tvs-row" data-set="rmeverywhere"><div class="txt"><div class="t1">In every app</div><div class="t2">${esc(KEYS.state === 'error' ? KEYS.why : 'Your buttons work while Netflix or any app is open. This computer starts it on the TV after each restart')}</div></div><div class="v${KEYS.on ? ' on' : ''}">${{ off: 'Off', starting: 'Starting…', on: 'On', error: 'Couldn’t start' }[KEYS.state] || 'Off'}</div></button>`
       + RM.rowIds(btns()).filter(x => x !== 'reset').map(pick).join('')
       + (b && !b.map ? `<div class="tvs-row"><div class="txt"><div class="t1">${esc(b.label)}</div><div class="t2">${esc(b.why)}</div></div></div>` : '')
       + '<button type="button" class="tvs-row" data-set="rmreset"><div class="txt"><div class="t1">Back to standard</div><div class="t2">Menu is the microphone, the rest do what they say</div></div></button>'
-      + '<div class="tvs-group">Saved to your TV within half a minute. A button that isn’t here, such as a game controller’s, can be added from the TV: Settings, Fire TV remote, then press it</div>'
+      + '<div class="tvs-group">To use these while another app is open, and for Guide and the app buttons, turn on In every app above. Saved to your TV within half a minute. A button that isn’t here, such as a game controller’s, can be added from the TV: Settings, Fire TV remote, then press it</div>'
   }
   async function saveButtons(map) { try { await H().patch({ tv: { buttons: map } }) } catch (e) { alert(e.message) } setHtml = ''; paintSettings() }
   set.addEventListener('change', e => { const id = e.target.dataset?.rmset; if (!id) return; const v = e.target.value; e.target.blur(); const m = { ...btns() }; if (v === id || RM.DEFAULTS[id] === v) delete m[id]; else m[id] = v; if (v === id && RM.DEFAULTS[id]) m[id] = v; rmSel = id; saveButtons(m) })
@@ -825,7 +827,8 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     if (k === 'saver') return saveDev(d, { saver: MIN[(MIN.indexOf(devLook(d).saver) + 1) % MIN.length] })
     if (k === 'show') return saveDev(d, { show: devLook(d).show === 'photos' ? 'background' : 'photos' })
     if (id === 'musicpage') { picking = 'music'; setHtml = ''; await readPc(); return paintSettings() }
-    if (id === 'remotepage') { picking = 'remote'; setHtml = ''; try { RM ??= await import('/tv/remote.js?v=1') } catch {} return paintSettings() }
+    if (id === 'remotepage') { picking = 'remote'; setHtml = ''; try { RM ??= await import('/tv/remote.js?v=2') } catch {} return keys() }
+    if (id === 'rmeverywhere') return keys({ on: !KEYS.on })
     if (id === 'musicsrc') { press('music'); return void setTimeout(() => { setHtml = ''; paintSettings() }, 500) }
     if (id === 'spon') return spotifyOn()
     if (id === 'spoff') { await fetch('/api/music/spotify', { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: '{"clientId":""}' }).catch(() => {}); await readPc(); setHtml = ''; return paintSettings() }

@@ -182,7 +182,7 @@ export const SCROLL_DEFAULT = { desktop: 'pages', ipad: 'pages', mobile: 'pages'
 // in neither list (new, or from another TV) shows after the listed ones; both empty is the default order.
 const TV_APP_RE = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/
 const MAX_TV_APPS = 200
-const TV_BUTTON_RE = /^(menu|rew|ff|ai|settings|key:\d{1,4})$/
+const TV_BUTTON_RE = /^(menu|rew|ff|ai|settings|guide|app[1-4]|key:\d{1,4})$/
 const TV_ACTION_RE = /^(mic|assistant|overlay|home|menu|files|ai|rew|ff|saver|sleep|settings|none|app:[^\u0000-\u001f]{1,60})$/
 
 const WIDGET_DEFAULTS = {

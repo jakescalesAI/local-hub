@@ -33,3 +33,14 @@ test('the remote: arrows, OK and Back never change; a button can open an app', (
   assert.ok(rowIds({ 'key:99': 'home' }).includes('key:99'))
   for (const b of BUTTONS) assert.ok(remoteHTML('menu', {}).includes(`data-rm="${b.id}"`))
 })
+
+test('the remote in every app: only known jobs, and a command nothing can be slipped into', async () => {
+  const { cleanMap, startCommand, isPrivate } = await import('../../tv-keys.mjs')
+  const { nativeMap } = await import('../../tv/ui/remote.js')
+  assert.deepEqual(cleanMap({ MENU: 'mic', APP_1: 'app:Plex|com.plexapp.android', BAD: 'rm -rf', 'x;y': 'mic', APP_2: 'app:X|a;b', APP_3: 'app:$(x)' }), { MENU: 'mic', APP_1: 'app:Plex|com.plexapp.android', APP_3: 'app:$(x)' })
+  assert.match(startCommand({ APP_3: 'app:$(reboot)' }), /KeyDaemon [A-Za-z0-9+/=]+ >\/data\/local\/tmp\/localhub-keys\.log/)
+  assert.ok(isPrivate('192.168.1.50') && !isPrivate('8.8.8.8') && !isPrivate('127.0.0.1') && !isPrivate('192.168.1.1; x'))
+  // A button doing its standard job is left to the TV; the Fire TV ones only once given a job.
+  assert.deepEqual(nativeMap({}), { MENU: 'mic' })
+  assert.deepEqual(nativeMap({ menu: 'menu', rew: 'app:Plex', app1: 'home' }, n => (n === 'Plex' ? 'com.plexapp.android' : '')), { MEDIA_REWIND: 'app:Plex|com.plexapp.android', APP_1: 'home' })
+})

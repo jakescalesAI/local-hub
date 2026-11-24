@@ -17,7 +17,7 @@
 import * as Stream from "./stream.js?v=4";
 import * as Panel from "./panel.js?v=5";
 import * as Files from "./files.js?v=1";
-import * as Remote from "./remote.js?v=1";
+import * as Remote from "./remote.js?v=2";
 import * as Mirror from "./mirror.js?v=2";
 // The TV's own assistant screen (assistant.js): the hub's agent and conversation, without the hub's chat UI.
 let Assistant = null;
@@ -205,6 +205,7 @@ function takeSettings(next) {
   const gridChanged = grid(next) !== grid(SETTINGS);
   const saverChanged = SETTINGS && saver(next) !== saver(SETTINGS);
   SETTINGS = next;
+  setTimeout(sendKeys, 1500);
   if (saverChanged) saverSettingsChanged();
   if (gridChanged) {
     const keep = S.touched ? ITEMS[S.i]?.id : null;
@@ -2168,6 +2169,12 @@ window.haven = {
   },
   closeHub: () => closeHub(),
   resumed: () => { endLaunch(); whenDrawn(); },
+  // A remote button pressed while another app was open (or one Fire TV would have taken): what it does is already chosen.
+  button: (action) => {
+    S.touched = true;
+    endLaunch();
+    setTimeout(() => { if (S.overlay !== "remote" && !runButton(String(action)) && action === "menu") openRail(); }, S.overlay === "launch" ? 600 : 200);
+  },
   // Until the first key press, the list filling in (the TV's apps arrive a moment after the page) keeps focus on
   // the first app; after it, focus stays on the app you were on.
   appsChanged: () => { const keep = S.touched ? ITEMS[S.i]?.id : null; loadItems(); S.i = Math.max(0, ITEMS.findIndex((x) => x.id === keep)); S.shelfId = null; renderGrid(); APPS_READY.resolve?.(); reportApps(); },
@@ -2390,18 +2397,24 @@ async function bakeGlass() {
   } catch (e) { console.warn("glass", e); }
 }
 
+function runButton(name) {
+  if (name === "mic") { micNow(); return true; }
+  if (name === "home") { window.haven.home(); return true; }
+  if (name === "assistant") { if (S.overlay === "saver") stopSaver(); if (S.overlay === "settings") closeSettings(); closeRail(); showView("assistant"); return true; }
+  if (name.startsWith("app:")) { if (S.overlay === "saver") stopSaver(); const app = findApp(name.slice(4)); app ? runIntent({ type: "launch", app }) : toast(`No app called “${name.slice(4)}” here`); return true; }
+  if (name === "overlay") { if (S.overlay === "saver") stopSaver(); if (S.overlay === "settings") closeSettings(); if (S.overlay === "wpanel") { closeWidgets(); return true; } if (S.overlay) return true; closeRail(); if (S.view !== "home") showView("home"); openWidgets(); return true; }
+  if (name === "files") { if (S.overlay === "saver") stopSaver(); if (S.overlay === "settings") closeSettings(); closeRail(); showView("files"); return true; }
+  if (name === "sleep") { sleepNow(); return true; }
+  if (name === "settings" && S.overlay !== "settings") { if (S.overlay) return false; closeRail(); openSettings(); return true; }
+  if (name === "saver" && !S.overlay) { startSaver(); return true; }
+  return false;
+}
 function handleKey(raw) {
   S.touched = true;
   if (S.overlay === "remote") return remoteKey(raw);
   const name = buttonAction(raw);
   if (name === "none") return;
-  if (name === "mic") return micNow();
-  if (name === "home") return window.haven.home();
-  if (name.startsWith("app:")) { if (S.overlay === "saver") stopSaver(); const app = findApp(name.slice(4)); return app ? runIntent({ type: "launch", app }) : toast(`No app called “${name.slice(4)}” here`); }
-  if (name === "overlay") { if (S.overlay === "saver") stopSaver(); if (S.overlay === "settings") closeSettings(); if (S.overlay === "wpanel") return closeWidgets(); if (S.overlay) return; closeRail(); if (S.view !== "home") showView("home"); return openWidgets(); }
-  if (name === "files") { if (S.overlay === "saver") stopSaver(); if (S.overlay === "settings") closeSettings(); closeRail(); return showView("files"); }
-  if (name === "sleep") return sleepNow();
-  if (name === "assistant") { if (S.overlay === "saver") stopSaver(); if (S.overlay === "settings") closeSettings(); closeRail(); return showView("assistant"); }
+  if (runButton(name)) return;
   // Typing in the search bar: Back closes it (keeping what's typed) and stays on it.
   const sb = document.activeElement?.classList?.contains("sb") ? document.activeElement : null;
   if (sb && name === "back") return endSearch(sb, true);
@@ -2527,6 +2540,28 @@ function buttonSummary() {
   const set = Object.entries(Remote.merged(buttonsNow())).filter(([k, v]) => v !== k).map(([k, v]) => `${buttonLabel(k)}: ${Remote.actionName(v)}`);
   return set.slice(0, 3).join(" · ") + (set.length > 3 ? " …" : "");
 }
+// The same buttons while another app is open (tv-keys.mjs on the hub starts it on the TV): the hub is told what each does.
+let keysSent = "", KEYS = { state: "none" };
+async function keysPost(body) {
+  if (!IN_HUB) return;
+  try { const r = await fetch("/api/tv/keys", body ? { method: "POST", headers: { "content-type": "application/json", "x-hub": "1" }, body: JSON.stringify(body) } : { cache: "no-store" }); if (r.ok) KEYS = await r.json(); } catch { /* the hub is away */ }
+  paintRemote();
+}
+function sendKeys() {
+  if (!NATIVE || !IN_HUB) return;
+  const map = Remote.nativeMap(buttonsNow(), (n) => (APPS.find((a) => a.pkg && a.name === n) || {}).pkg || "");
+  const json = JSON.stringify(map);
+  if (json !== keysSent) { keysSent = json; keysPost({ map }); }
+}
+const KEYS_SAY = { off: "Off", starting: "Starting…", on: "On", error: "Couldn’t start", none: "Needs LocalHub" };
+function toggleKeys() {
+  if (!NATIVE) return toast("Turn this on at the TV");
+  const on = !KEYS.on;
+  keysPost({ on });
+  let n = 10;
+  const look = () => { keysPost(); if (S.overlay === "remote" && (n-- > 0 || KEYS.state === "starting") && n > -20) setTimeout(look, 1500); };
+  setTimeout(look, 1500);
+}
 async function saveButtons(map, say) {
   prefs.buttons = map;
   savePrefs();
@@ -2538,6 +2573,7 @@ async function saveButtons(map, say) {
     } catch { return toast("LocalHub didn't answer"); }
   }
   toast(say);
+  sendKeys();
   paintRemote();
 }
 // Settings › Fire TV remote: the remote itself. Up and Down go through its buttons, and pressing one on the real
@@ -2545,6 +2581,7 @@ async function saveButtons(map, say) {
 function openButtons() {
   S.rmAt = S.rmAt || "menu";
   S.rmFrom = S.overlay;
+  keysPost();
   paintRemote();
   $("#remote").classList.add("on");
   setOverlay("remote");
@@ -2553,16 +2590,17 @@ function paintRemote() {
   const box = $("#remote .rm-card");
   if (!box) return;
   const b = buttonsNow();
-  const html = `<div class="rm-left">${Remote.remoteHTML(S.rmAt, b)}</div><div class="rm-right"><h2>Fire TV remote</h2><p>Press a button on your remote, or choose one here. OK changes what it does.</p><div class="rm-rows">${Remote.rowsHTML(S.rmAt, b)}</div><p class="rm-why">Power, Alexa, Home, volume and the four app buttons belong to Fire TV.</p></div>`;
+  const html = `<div class="rm-left">${Remote.remoteHTML(S.rmAt, b)}</div><div class="rm-right"><h2>Fire TV remote</h2><p>Press a button on your remote, or choose one here. OK changes what it does.</p><div class="rm-rows"><button type="button" class="rm-row${S.rmAt === "everywhere" ? " sel" : ""}" data-rm="everywhere" tabindex="-1"><span>In every app</span><em>${KEYS_SAY[KEYS.state] || "Off"}</em></button>${Remote.rowsHTML(S.rmAt, b)}</div><p class="rm-why">Arrows, OK, Back, Home, Power, Alexa and volume stay as they are. ${esc(KEYS.state === "error" && KEYS.why ? KEYS.why : "Guide and the app buttons need “In every app”. Hold Back for ten seconds to let go of the remote.")}</p></div>`;
   if (box._html !== html) { box.innerHTML = html; box._html = html; }
+  box.querySelector(".rm-row.sel")?.scrollIntoView({ block: "nearest" });
 }
 function remoteKey(raw) {
-  const ids = Remote.rowIds(buttonsNow()), at = ids.indexOf(S.rmAt);
+  const ids = ["everywhere", ...Remote.rowIds(buttonsNow())], at = ids.indexOf(S.rmAt);
   if (raw === "back") { $("#remote").classList.remove("on"); setOverlay(S.rmFrom === "settings" ? "settings" : null); if (S.overlay === "settings") renderSettings(); return; }
   if (raw === "up" || raw === "down") { S.rmAt = ids[clamp(at + (raw === "down" ? 1 : -1), 0, ids.length - 1)]; return paintRemote(); }
   if (raw === "enter" || raw === "hold") {
     if (S.rmAt === "reset") return saveButtons({}, "Every button is back to standard: Menu is the microphone");
-    return openButtonMenu(S.rmAt);
+    return S.rmAt === "everywhere" ? toggleKeys() : openButtonMenu(S.rmAt);
   }
   if (raw === "left" || raw === "right" || raw === "help") return;
   S.rmAt = raw;

@@ -327,6 +327,8 @@ public class MainActivity extends Activity {
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
+        String button = intent == null ? null : intent.getStringExtra("button");
+        if (button != null) { intent.removeExtra("button"); js("window.haven&&haven.button&&haven.button(" + org.json.JSONObject.quote(button) + ")"); }
         if (intent != null && intent.getBooleanExtra("fromHomeKey", false)) js("window.haven&&haven.home&&haven.home()");
     }
 
