@@ -1260,7 +1260,7 @@ export async function voice() {
   if (O.NATIVE && await O.listenNow?.()) return
   V.cancelled = false
   fetch('/api/voice/warm', { method: 'POST', headers: { 'x-hub': '1' } }).catch(() => {}) // wake Whisper while they talk
-  V.state = 'rec'; headStart(); headStart()
+  V.state = 'rec'; headStart()
   V.since = Date.now()
   syncVoice()
   let text = ''
