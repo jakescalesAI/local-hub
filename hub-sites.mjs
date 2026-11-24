@@ -113,7 +113,7 @@ function readPage(html, base) {
     try { abs = webUrl(new URL(decode(href), base).href) } catch {}
     if (abs && s > score) (best = abs), (score = s)
   }
-  return { title, favicon: best || webUrl(new URL('/favicon.ico', base).href) }
+  return { title, small: score < 100, favicon: best || webUrl(new URL('/favicon.ico', base).href) }
 }
 
 const ICON_TYPES = { png: 'image/png', jpg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', ico: 'image/x-icon', svg: 'image/svg+xml' }
@@ -151,7 +151,7 @@ export function create({ here }) {
       try {
         const r = await fetchSafe(href, MAX_PAGE)
         const page = /html|xml/i.test(r.headers['content-type'] || '') ? readPage(r.body.toString('utf8'), r.url) : { title: '', favicon: webUrl(new URL('/favicon.ico', r.url).href) }
-        const value = { embeddable: frameAllowed(r.headers), title: page.title || new URL(href).hostname, favicon: page.favicon }
+        const value = { embeddable: frameAllowed(r.headers), title: page.title || new URL(href).hostname, favicon: page.favicon, small: !!page.small, base: r.url }
         checks.set(href, { at: Date.now(), ttl: CHECK_TTL, value })
         return value
       } catch (e) {
@@ -167,10 +167,12 @@ export function create({ here }) {
 
   // A page's icon as { ext, body }: the given src or the page's <link rel=icon>, else /favicon.ico.
   async function loadIcon(pageUrl, src) {
-    if (!src) src = (await check(pageUrl)).favicon
+    let touch = null
+    if (!src) { const c = await check(pageUrl); src = c.favicon; if (c.small || !c.base) touch = webUrl(new URL('/apple-touch-icon.png', c.base || pageUrl).href) }
     const tryOne = async u => { try { const r = await fetchSafe(u, MAX_ICON); const ext = r.status < 400 ? sniffIcon(r.body) : ''; return ext ? { ext, body: r.body } : null } catch { return null } }
     const ico = new URL('/favicon.ico', pageUrl).href
-    return (src && await tryOne(src)) || (src !== ico ? await tryOne(ico) : null)
+    const big = touch && await tryOne(touch)
+    return (big?.ext === 'png' && big) || (src && await tryOne(src)) || (src !== ico ? await tryOne(ico) : null)
   }
 
   // Saved sites: cached on disk per site and icon choice; a miss is tried again after a day.

@@ -393,13 +393,6 @@ html.lite .saver .w.card { --lg-tint: rgba(22, 22, 28, .72); }
 .toast { position: fixed; left: 50%; bottom: 3.5vh; z-index: 2147483500; transform: translate(-50%, 10px) scale(.94); padding: 10px 18px; border-radius: 20px; font-size: 15px; font-weight: 600; background: var(--menu-bg); box-shadow: 0 0 0 .5px var(--sep), 0 10px 30px rgba(0, 0, 0, .2); opacity: 0; transition: opacity .2s, transform .3s var(--ease); pointer-events: none; }
 .toast.on { opacity: 1; transform: translate(-50%, 0); }
 
-/* ── splash: the hub's house ───────────────────────────────────────────────── */
-.splash { position: fixed; inset: 0; z-index: 2147483647; display: grid; place-items: center; align-content: center; background: #000; animation: splashOut .7s 1.6s var(--ease) both; }
-.splash.is-gone { display: none; }
-@keyframes splashOut { to { opacity: 0; transform: scale(1.03); visibility: hidden; } }
-.splash img { width: 22vh; height: 22vh; border-radius: 5vh; box-shadow: 0 0 0 1px rgba(255, 255, 255, .14), 0 4vh 10vh rgba(0, 0, 0, .7); animation: plateIn .9s var(--ease) both; }
-@keyframes plateIn { from { opacity: 0; transform: scale(.86); } to { opacity: 1; transform: none; } }
-.splash b { margin-top: 4vh; font: 600 4.2vh/1 var(--display); letter-spacing: .01em; color: #fff; animation: nameIn .9s .35s var(--ease) both; }
 @keyframes nameIn { from { opacity: 0; transform: translateY(1.2vh); } to { opacity: .94; transform: none; } }
 
 body.booted .grid { animation: riseIn .9s .05s var(--ease) backwards; }
@@ -539,19 +532,6 @@ html.lite .lg, html.lite .cc, html.lite .w.card, html.lite .gear, html.lite .key
 .cc-tile.status-tile .t1 { font-size: 28px; margin-bottom: 8px; }
 .cc-sect { margin: 8px 0 -2px 14px; font-size: 17px; }
 
-/* ══ The opening: the same as trylocalhub.com's (splash.js) ═══════════════════════ */
-.splash { position: fixed; inset: 0; z-index: 2147483647; display: grid; place-items: center; background: #000; animation: none; opacity: 1; transform: none; transition: opacity .7s var(--ease); }
-.splash.leaving { opacity: 0; }
-.splash.quick { transition-duration: .3s; }
-.splash.quick .splash-mark { display: none; }
-.splash.is-gone { display: none; }
-.splash-mark { margin: 0; font: 600 min(15.6vw, 24vh)/1.06 var(--display); letter-spacing: -0.05em; white-space: nowrap; color: #fff; }
-.splash-tile { display: inline-block; width: .86em; height: .86em; margin: 0 .045em 0 .1em; vertical-align: -.08em; overflow: visible; opacity: 0; }
-.splash .word { display: inline-block; opacity: 0; transition: opacity .45s var(--ease), transform .7s var(--ease); }
-.splash .word-l { transform: translateX(.2em); }
-.splash .word-r { transform: translateX(-.2em); }
-.splash.moving .splash-tile { opacity: 1; }
-.splash.words .word { opacity: 1; transform: none; }
 
 /* ══ App tiles: liquid glass over the app's own colour ═══════════════════════════════════════ */
 .icon { background: transparent; }

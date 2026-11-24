@@ -98,10 +98,9 @@ public class MainActivity extends Activity {
         prefs = new Prefs(this);
         if (savedInstanceState == null) takeButton(getIntent());
         // The opening (the LocalHub logo) is a loading screen for a fresh start. Coming back is not one: Android
-        // rebuilding LocalHub after closing it behind another app, Home, or anything within half an hour.
+        // rebuilding LocalHub after closing it behind another app, or Home.
         quickStart = savedInstanceState != null
-                || (getIntent() != null && getIntent().getBooleanExtra("fromHomeKey", false))
-                || System.currentTimeMillis() - prefs.lastSeen() < 30 * 60 * 1000L;
+                || (getIntent() != null && getIntent().getBooleanExtra("fromHomeKey", false));
         apps = new Apps(this);
         hub = new Hub(prefs);
         voice = new Voice(this, new Voice.Listener() {
@@ -164,7 +163,12 @@ public class MainActivity extends Activity {
                 view.post(MainActivity.this::hubAway);
             }
         });
-        setContentView(web);
+        android.widget.FrameLayout root = new android.widget.FrameLayout(this);
+        root.setBackgroundColor(Color.BLACK);
+        root.addView(web);
+        // A fresh start plays the opening over the page; a return just shows it.
+        if (!quickStart) root.addView(intro = new Intro(this));
+        setContentView(root);
         web.requestFocus();
         apps.loadSaved(); // the last list and its art, read from the cache: the home screen doesn't wait for PackageManager
         if (hub.paired()) loadHub(); else loadLocal();
@@ -299,6 +303,10 @@ public class MainActivity extends Activity {
 
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
+        if (intro != null && intro.showing()) {
+            if (event.getAction() == KeyEvent.ACTION_DOWN) intro.skip();
+            return true;
+        }
         String name = keyName(event.getKeyCode());
         // While the hub's chat box (or a code field) has the keyboard, arrows and OK belong to it.
         // Back, Menu and ⏯ always come to the page, so Back never closes the home screen.
@@ -333,8 +341,19 @@ public class MainActivity extends Activity {
         if (HomeWatchService.pageReady && web != null) doButton();
     }
 
+    private Intro intro;
+
+    boolean playsIntro() { return intro != null; }
+
+    void introDone(Intro i) {
+        if (i.getParent() instanceof android.view.ViewGroup) ((android.view.ViewGroup) i.getParent()).removeView(i);
+        if (intro == i) intro = null;
+        web.requestFocus();
+    }
+
     /** The page is drawn. */
     void doButton() {
+        ui.post(() -> { if (intro != null) intro.drawn(); });
         String b = pendingButton;
         pendingButton = null;
         if (b != null) js("window.haven&&haven.button&&haven.button(" + org.json.JSONObject.quote(b) + ")");
@@ -430,7 +449,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onPause() {
         resumed = false;
-        quickStart = true;
+        if (HomeWatchService.pageReady) quickStart = true; // left after its opening had played
         prefs.setInFront(false);
         prefs.seen(System.currentTimeMillis());
         ui.removeCallbacks(retryHub);

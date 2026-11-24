@@ -1,0 +1,14 @@
+/* Before the hub answers: LocalHub's glass tile, as its opening has it. */
+:root { --bg: #000; --text: #fff; --muted: rgba(255, 255, 255, .6); --line: rgba(255, 255, 255, .14); --panel: rgba(255, 255, 255, .08); --accent: #f2f2f5; --accent-text: #000; color-scheme: dark; }
+body { background: #000; }
+.centre { text-align: center; }
+.stack { justify-items: center; align-items: center; }
+.glass { position: relative; width: 132px; height: 132px; margin: 0 auto 26px; border-radius: 30%; box-shadow: 0 0 0 1px rgba(255, 255, 255, .16), inset 0 1px 12px rgba(255, 255, 255, .2), 0 0 70px rgba(150, 170, 210, .18); overflow: hidden; animation: breathe 2.6s ease-in-out infinite; }
+.glass .tile { display: block; width: 100%; height: 100%; }
+.glass::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(115deg, transparent 38%, rgba(255, 255, 255, .28) 50%, transparent 62%); transform: translateX(-120%); animation: sheen 2.6s ease-in-out infinite; }
+h1 { font-size: 22px; letter-spacing: -.02em; }
+.actions { justify-content: center; }
+button { border-radius: 99px; padding: 9px 20px; font-weight: 600; }
+@keyframes breathe { 50% { transform: scale(1.03); } }
+@keyframes sheen { 60%, 100% { transform: translateX(120%); } }
+@media (prefers-reduced-motion: reduce) { .glass, .glass::after { animation: none; } }

@@ -9,13 +9,18 @@
   // The TV's own tiles for these (tv/ui/brands).
   const B = (bg, fg, icon, wide) => ({ bg, fg, icon, wide })
   const L = (bg, d, fg = '#fff') => ({ bg, fg, d })
+  const M = (bg, box, art) => ({ bg, art: `<svg viewBox="${box}" aria-hidden="true">${art}</svg>` }) // a mark in its own colours
   const BRAND = {
-    gmail: L('linear-gradient(155deg,#ea4335,#8e1f16)', '<path d="M3.5 7.2v10.3h3.2V10l5.3 4 5.3-4v7.5h3.2V7.2L12 13.4z"/><path d="M3.5 7.2 5 6l7 5.4L19 6l1.5 1.2"/>'),
-    gcal: L('linear-gradient(155deg,#4285f4,#174ea6)', '<rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 9.5h16M8.5 3v4M15.5 3v4"/><path d="M10 13l2-1v5"/>'),
-    gdrive: L('linear-gradient(155deg,#1fa463,#0b5c33)', '<path d="M9 4h6l6 10.5-3 5H6l-3-5z"/><path d="M9 4l6 10.5H21M15 4 6 19.5M3 14.5h12"/>'),
-    gdocs: L('linear-gradient(155deg,#4285f4,#1a56c4)', '<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 15h6M9 18h4"/>'),
     gmaps: L('linear-gradient(155deg,#34a853,#14612b)', '<path d="M12 21s-7-6.4-7-11.5a7 7 0 0 1 14 0C19 14.6 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.4"/>'),
     outlook: L('linear-gradient(155deg,#0f78d4,#083f73)', '<rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="m3.5 8 8.5 6 8.5-6"/>'),
+    gmail: M('#fff', '52 42 88 66', '<path fill="#4285f4" d="M58 108h14V74L52 59v43c0 3.32 2.69 6 6 6"/><path fill="#34a853" d="M120 108h14c3.32 0 6-2.69 6-6V59l-20 15"/><path fill="#fbbc04" d="M120 48v26l20-15v-8c0-7.42-8.47-11.65-14.4-7.2"/><path fill="#ea4335" d="M72 74V48l24 18 24-18v26L96 92"/><path fill="#c5221f" d="M52 51v8l20 15V48l-5.6-4.2c-5.94-4.45-14.4-.22-14.4 7.2"/>'),
+    gcal: M('#fff', '0 0 200 200', '<path fill="#fff" d="M152.6 47.4H47.4v105.2h105.2z"/><path fill="#ea4335" d="M152.6 200 200 152.6h-47.4z"/><path fill="#fbbc04" d="M200 47.4h-47.4v105.2H200z"/><path fill="#34a853" d="M152.6 152.6H47.4V200h105.2z"/><path fill="#188038" d="M0 152.6v31.6C0 192.9 7.1 200 15.8 200h31.6v-47.4z"/><path fill="#1967d2" d="M200 47.4V15.8C200 7.1 192.9 0 184.2 0h-31.6v47.4z"/><path fill="#4285f4" d="M152.6 0H15.8C7.1 0 0 7.1 0 15.8v136.8h47.4V47.4h105.2z"/><text x="100" y="129" text-anchor="middle" fill="#4285f4" style="font:600 78px Arial,sans-serif;letter-spacing:-4px">31</text>'),
+    gdrive: M('#fff', '0 0 87.3 78', '<path fill="#0066da" d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8H0c0 1.55.4 3.1 1.2 4.5z"/><path fill="#00ac47" d="M43.65 25 29.9 1.2c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44A9.06 9.06 0 0 0 0 53h27.5z"/><path fill="#ea4335" d="M73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5H59.8l5.85 11.5z"/><path fill="#00832d" d="M43.65 25 57.4 1.2C56.05.4 54.5 0 52.9 0H34.4c-1.6 0-3.15.45-4.5 1.2z"/><path fill="#2684fc" d="M59.8 53H27.5L13.75 76.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z"/><path fill="#ffba00" d="M73.4 26.5 60.7 4.5c-.8-1.4-1.95-2.5-3.3-3.3L43.65 25 59.8 53h27.45c0-1.55-.4-3.1-1.2-4.5z"/>'),
+    gdocs: M('#fff', '0 0 48 64', '<path fill="#4285f4" d="M30 0H4.5A4.5 4.5 0 0 0 0 4.5v55A4.5 4.5 0 0 0 4.5 64h39a4.5 4.5 0 0 0 4.5-4.5V18z"/><path fill="#a1c2fa" d="M30 0v13.5a4.5 4.5 0 0 0 4.5 4.5H48z"/><path fill="#f1f1f1" d="M12 46.5h24v-3H12zm0 6h17v-3H12zm0-21v3h24v-3zm0 9h24v-3H12z"/>'),
+    instagram: L('radial-gradient(130% 150% at 28% 108%,#fdf497 0,#fd8a3f 22%,#fd3e57 45%,#c13aa5 68%,#5a50d8 100%)', '<rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17" cy="7" r=".6" fill="currentColor"/>'),
+    x: M('#000', '0 0 24 24', '<path fill="#fff" d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>'),
+    linkedin: M('#0a66c2', '2.5 2.5 19 19', '<path fill="#fff" d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455zM5.337 7.433a2.062 2.062 0 1 1 0-4.125 2.062 2.062 0 0 1 0 4.125m1.782 13.019H3.555V9h3.564z"/>'),
+    facebook: M('#0866ff', '0 0 24 24', '<path fill="#fff" d="M15.12 24v-9.3h3.13l.6-3.63h-3.73V8.72c0-1 .49-1.96 2.05-1.96h1.59V3.67s-1.44-.25-2.82-.25c-2.88 0-4.76 1.75-4.76 4.91v2.74H7.98v3.63h3.2V24z"/>'),
     youtube: B('#fff', '#ff0000', 'youtube'), netflix: B('#000', '#e50914', 'netflix'), spotify: B('#121212', '#1ed760', 'spotify'), primevideo: B('#00050d', '#1aa8f0', 'primevideo', 1),
     max: B('linear-gradient(160deg,#002be7,#000d6b)', '#fff', 'max'), appletv: B('#000', '#fff', 'appletv'), plex: B('#1f1f1f', '#ebaf00', 'plex'), crunchyroll: B('#f47521', '#fff', 'crunchyroll'),
     paramountplus: B('linear-gradient(160deg,#0064ff,#002a8f)', '#fff', 'paramountplus'), twitch: B('#9146ff', '#fff', 'twitch'), tubi: B('#7408ff', '#ffff13', 'tubi'),
@@ -41,7 +46,7 @@ ${T}:has(.hw-root) #dkfav { flex: 1 0 100%; overflow-x: auto; scrollbar-width: n
 /* A little light along the top edge, as on the TV's tiles. */
 .dk-a::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; background: linear-gradient(180deg, rgba(255, 255, 255, .13), rgba(255, 255, 255, 0) 45%); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .09); }
 .dk-a i { display: block; width: 46%; height: 52%; background: currentColor; -webkit-mask: var(--g) center / contain no-repeat; mask: var(--g) center / contain no-repeat; }
-.dk-a i.wide { width: 74%; height: 62%; } .dk-a > svg { width: auto; height: 50%; }
+.dk-a i.wide { width: 74%; height: 62%; } .dk-a > svg { width: auto; height: 50%; } .dk-a.mk > svg { height: 46%; max-width: 46%; }
 .dk-a img { width: auto; height: 46%; max-width: 46%; object-fit: contain; border-radius: 22%; filter: drop-shadow(0 6px 12px rgba(0, 0, 0, .35)); }
 .dk-a img.pc { border-radius: 0; height: 54%; }
 .dk-a b { font: 700 clamp(22px, 2.6vw, 40px)/1 var(--display); letter-spacing: -.02em; }
@@ -83,7 +88,7 @@ ${A} #dkadd.on { display: grid; position: fixed; z-index: 72; inset: 0; place-it
   async function save() { paint(); try { const r = await post('/api/desk', { apps: S.apps, favorites: S.favorites }); if (!r.ok) throw 0 } catch { window.hud?.('That didn’t save. Try again in a moment.'); load() } }
 
   // A tile's colour comes from its own icon, so a site without a known logo still looks like itself.
-  const tints = JSON.parse(localStorage.getItem('localhub.tints2') || '{}')
+  const tints = { ...JSON.parse(localStorage.getItem('localhub.tints3') || '{}'), claude: '#f0eee6' }
   function tint(img, id) {
     try {
       const c = document.createElement('canvas')
@@ -101,11 +106,11 @@ ${A} #dkadd.on { display: grid; position: fixed; z-index: 72; inset: 0; place-it
       let ink = 0, inkN = 0
       for (let i = 0; i < px.length; i += 4) if (px[i + 3] > 120) { ink += (px[i] * .3 + px[i + 1] * .59 + px[i + 2] * .11); inkN++ }
       const solid = inkN > 24 * 24 * .9
-      if (inkN && ink / inkN < 46 && !solid) { tints[id] = 'linear-gradient(155deg, #f4f4f6, #c9cad1)'; localStorage.setItem('localhub.tints2', JSON.stringify(tints)); document.querySelectorAll(`[data-dk="${CSS.escape(id)}"] .dk-a`).forEach(n => n.style.setProperty('--dk-bg', tints[id])); return }
+      if (inkN && ink / inkN < 46 && !solid) { tints[id] = 'linear-gradient(155deg, #f4f4f6, #c9cad1)'; localStorage.setItem('localhub.tints3', JSON.stringify(tints)); document.querySelectorAll(`[data-dk="${CSS.escape(id)}"] .dk-a`).forEach(n => n.style.setProperty('--dk-bg', tints[id])); return }
       const k = v => Math.round(v / n), m = (f, v) => Math.round(Math.min(255, v * f))
       const [R, G, Bl] = [k(r), k(gr), k(b)], lum = (R * .3 + G * .59 + Bl * .11) || 1, f = Math.min(.62, 74 / lum)
       tints[id] = `linear-gradient(155deg, rgb(${m(f, R) + 16},${m(f, G) + 16},${m(f, Bl) + 16}), rgb(${m(f * .42, R)},${m(f * .42, G)},${m(f * .42, Bl)}))`
-      localStorage.setItem('localhub.tints2', JSON.stringify(tints))
+      localStorage.setItem('localhub.tints3', JSON.stringify(tints))
       document.querySelectorAll(`[data-dk="${CSS.escape(id)}"] .dk-a`).forEach(n => n.style.setProperty('--dk-bg', tints[id]))
     } catch {}
   }
@@ -113,6 +118,7 @@ ${A} #dkadd.on { display: grid; position: fixed; z-index: 72; inset: 0; place-it
   document.addEventListener('error', e => { const i = e.target; if (!i?.dataset?.dkicon) return; i.replaceWith(Object.assign(document.createElement('b'), { textContent: (i.alt || '?').slice(0, 1).toUpperCase() })) }, true)
   function art(a) {
     const b = BRAND[a.id]
+    if (b?.art) return `<span class="dk-a mk" style="--dk-bg:${b.bg}">${b.art}</span>`
     if (b?.d) return `<span class="dk-a" style="--dk-bg:${b.bg};--dk-fg:${b.fg}">${svg(b.d, 1.7)}</span>`
     if (b) return `<span class="dk-a" style="--dk-bg:${b.bg};--dk-fg:${b.fg}"><i class="${b.wide ? 'wide' : ''}" style="--g:url('/tv/brands/${b.icon}.svg')"></i></span>`
     const src = isPc(a) || (a.pc && LOCAL) ? `/api/desk/icon?id=${encodeURIComponent(a.pc || a.id)}` : `/api/hub/site-icon?url=${encodeURIComponent(a.url)}`

@@ -199,7 +199,7 @@ final class Native {
     /** A return to LocalHub, not a fresh start: the page skips its logo and just fades in. */
     @JavascriptInterface
     public boolean quickStart() {
-        return activity.quickStart;
+        return activity.quickStart || activity.playsIntro(); // the app itself is playing the opening
     }
 
     /** The wallpaper, so Home's cover can show it while Android brings LocalHub back. path: e.g. /tv/photos/aurora.jpg */

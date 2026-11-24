@@ -49,7 +49,7 @@ export class MainWindow {
       minWidth: MIN_SIZE.width,
       minHeight: MIN_SIZE.height,
       title: APP_NAME,
-      backgroundColor: '#14161a',
+      backgroundColor: '#000000',
       show: false,
       autoHideMenuBar: true,
       webPreferences: securePrefs({ preload: true }),
