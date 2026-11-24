@@ -64,6 +64,17 @@
             android:name=".HomeWatchService"
             android:exported="false" />
 
+        <!-- What's playing, for the Layout panel's player. Only with notification access, which you turn on yourself. -->
+        <service
+            android:name=".MediaListener"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+
         <service
             android:name=".HomeRedirectService"
             android:exported="true"

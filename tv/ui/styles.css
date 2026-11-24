@@ -163,6 +163,9 @@ body.shelf-hub .shelf-fade { background: linear-gradient(180deg, transparent 60%
 /* The row's buttons: widgets, sort, search (a wider pill), and the + card that adds a favorite. */
 .fav-track .app.ctl { width: 172px; }
 .fav-track .app.ctl.search { width: 640px; }
+/* Round like the Assistant's buttons; your favorites and the + card keep the tile shape. */
+.app .icon.ctl { border-radius: 999px; }
+.fav-track .app.ctl:not(.search) { width: var(--icon-h); }
 .app .icon.ctl, .app .icon.favadd { display: flex; align-items: center; justify-content: center; gap: 22px; --a-bg: var(--ui-fill); --a-fg: #fff; color: #fff; box-shadow: var(--ui-edge); }
 .app .icon.ctl > .fill, .app .icon.favadd > .fill { opacity: 1; background: var(--ui-fill); }
 .app .icon.ctl .sym, .app .icon.favadd .sym { position: relative; width: 84px; height: 84px; }
@@ -717,18 +720,40 @@ html.native #hub-chat { zoom: calc(var(--k, .5) * 1.25); }
    opening (a 200 ms frame). */
 .wpanel.on { opacity: 1; pointer-events: auto; transform: none; }
 .wpanel-title { font: 700 48px/1 var(--display); letter-spacing: -0.02em; margin: 0 0 30px 8px; }
-.wpanel-list { display: flex; flex-direction: column; gap: 14px; }
-.wpi { display: flex; align-items: center; gap: 22px; min-height: 96px; padding: 18px 26px; border-radius: 28px; background: var(--ui-fill); box-shadow: var(--ui-edge); font-size: 28px; }
-.wpi .sym { width: 36px; height: 36px; flex: none; }
-.wpi .t1 { font-weight: 600; }
-.wpi .t2 { font-size: 22px; color: rgba(255, 255, 255, .6); margin-top: 4px; }
-.wpi .grow { flex: 1; min-width: 0; }
-.wpi.sel { background: var(--ui-sel); color: #000; }
-.wpi.sel .t2 { color: rgba(0, 0, 0, .55); }
-.wpi.wx { display: block; padding: 26px 30px; }
-.wpi.wx .wxw { font-size: 21px; color: inherit; }
-.wpi .bar { height: 10px; margin-top: 12px; border-radius: 6px; background: rgba(128, 128, 128, .3); overflow: hidden; }
-.wpi .bar i { display: block; height: 100%; border-radius: 6px; background: #0a84ff; }
+.wpanel-list { display: grid; grid-template-columns: repeat(4, 148px); gap: 22px 24px; grid-auto-rows: auto; }
+.wpanel-list .sym { width: 52px; height: 52px; flex: none; }
+.wpanel-list .t1 { font-weight: 600; font-size: 27px; }
+.wpanel-list .t2 { font-size: 22px; color: rgba(255, 255, 255, .6); margin-top: 2px; }
+.wpanel-list .grow { flex: 1; min-width: 0; }
+.mp, .wps { height: 320px; background: var(--ui-fill); box-shadow: var(--ui-edge); border-radius: 44px; }
+.mp { grid-column: span 2; display: flex; flex-direction: column; padding: 26px 22px 18px; min-width: 0; }
+.mp-art { width: 84px; height: 84px; margin-left: 6px; border-radius: 20px; background: rgba(255, 255, 255, .1); display: grid; place-items: center; overflow: hidden; color: rgba(255, 255, 255, .6); }
+.mp-art img { width: 100%; height: 100%; object-fit: cover; }
+.mp-t, .mp-s { margin: 0 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mp-t { margin-top: auto; font-size: 27px; font-weight: 600; }
+.mp-s { min-height: 28px; font-size: 22px; color: rgba(255, 255, 255, .6); }
+.mp-row { display: flex; justify-content: space-between; margin-top: 8px; }
+.mp-b { width: 84px; height: 84px; padding: 0; border: 0; outline: 0; border-radius: 50%; display: grid; place-items: center; background: transparent; color: #fff; }
+.wps { position: relative; overflow: hidden; border-radius: 74px; }
+.wps i { position: absolute; left: 0; right: 0; bottom: 0; background: #fff; }
+.wps span { position: absolute; left: 0; right: 0; bottom: 30px; display: grid; place-items: center; color: #8e8e93; }
+.wps.off span { color: rgba(255, 255, 255, .35); }
+.wps.sel { box-shadow: 0 0 0 5px #0a84ff; }
+.wps.grab { box-shadow: 0 0 0 10px #0a84ff; }
+.wpr { text-align: center; }
+.wpr b { width: 132px; height: 132px; margin: 0 auto; border-radius: 50%; display: grid; place-items: center; background: var(--ui-fill); box-shadow: var(--ui-edge); }
+.wpr em { display: block; margin: 10px -10px 0; font: 500 21px/1.2 var(--display); font-style: normal; color: rgba(255, 255, 255, .7); white-space: nowrap; }
+.wpp { grid-column: span 2; height: 112px; padding: 0 26px; border-radius: 56px; display: flex; align-items: center; gap: 18px; background: var(--ui-fill); box-shadow: var(--ui-edge); }
+.wpp b { display: grid; }
+.wpp .sym { width: 44px; height: 44px; }
+.wpr.on b, .wpp.on b { color: #0a84ff; }
+.wpp.sel, .wpr.sel b, .mp-b.sel { background: var(--ui-sel); color: #000; }
+.wpp.sel .t2 { color: rgba(0, 0, 0, .55); }
+.wpx { grid-column: 1 / -1; padding: 22px 28px; border-radius: 40px; background: var(--ui-fill); box-shadow: var(--ui-edge); }
+.wpx .wxw { font-size: 19px; color: inherit; }
+/* Brightness, where the TV app's own shade isn't allowed: over LocalHub only. */
+.dim-shade { position: absolute; inset: 0; z-index: 90; background: #000; pointer-events: none; }
+.dim-shade[hidden] { display: none; }
 
 .rail { position: absolute; left: 0; top: 0; bottom: 0; width: var(--rail-w); z-index: 30; display: flex; flex-direction: column; align-items: stretch; padding: 56px 0; }
 .rail-panel { position: absolute; left: 0; top: 0; bottom: 0; width: 460px; z-index: -1; border-radius: 0 40px 40px 0; will-change: transform;

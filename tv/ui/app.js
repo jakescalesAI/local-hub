@@ -1136,52 +1136,163 @@ function paintHomeWidgets() {
 }
 const WP_IC = {
   vol: sym('<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/>', 2),
+  sun: sym('<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3 7 7M17 17l1.7 1.7M5.3 18.7 7 17M17 7l1.7-1.7"/>', 2),
   pic: sym('<rect x="3" y="4.5" width="18" height="12" rx="2"/><path d="M8 20h8M12 16.5V20"/>', 2),
+  note: sym('<path d="M9 18V5.5l10-2V16"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/>', 2),
+  prev: sym('<path fill="currentColor" d="M20 6v12l-8-6zM11 6v12l-8-6z"/>', 1.5),
+  next: sym('<path fill="currentColor" d="M4 6v12l8-6zM13 6v12l8-6z"/>', 1.5),
+  play: sym('<path fill="currentColor" d="M7 4.5v15l13-7.5z"/>', 1.5),
+  pause: sym('<path fill="currentColor" d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/>', 1.5),
+  clock: sym('<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>', 2),
+  cloud: sym('<path d="M7 18.5h10a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.2 11.6 3.5 3.5 0 0 0 7 18.5z"/>', 2),
 };
 function volState() { return NATIVE ? safeJson(native("volume", 0), {}) || {} : {}; }
-function wpItems() {
-  const v = volState();
-  const pct = v.max ? Math.round((v.level / v.max) * 100) : 0;
-  return [
-    { id: "weather", html: WX.body ? wxCard(WX.body, "m") : `<div class="t2">${WX.err ? "Weather isn’t available right now" : "Finding the weather…"}</div>`, cls: "wx" },
-    { id: "volume", html: `${WP_IC.vol}<div class="grow"><div class="t1">Volume</div>${NATIVE && !v.fixed ? `<div class="bar"><i style="width:${pct}%"></i></div>` : `<div class="t2">With your TV's remote</div>`}</div><div class="t2">${NATIVE && !v.fixed ? "◀ ▶" : ""}</div>` },
-    { id: "picture", html: `${WP_IC.pic}<div class="grow"><div class="t1">Picture & brightness</div><div class="t2">Your TV's own settings</div></div>` },
-    { id: "timer", html: `${SYM.timer}<div class="grow"><div class="t1">Sleep timer</div><div class="t2">${S.sleepAt ? `At ${clockText(new Date(S.sleepAt))}` : "Off"}</div></div>` },
-    { id: "saver", html: `${SYM.moon}<div class="grow"><div class="t1">Screensaver</div><div class="t2">Start it now</div></div>` },
-    { id: "settings", html: `${SYM.gear}<div class="grow"><div class="t1">Settings</div><div class="t2">LocalHub TV</div></div>` },
-  ];
+
+// Brightness: LocalHub dims the picture itself, as an app can't reach the TV's backlight. The TV app's shade lies over
+// every app (it needs the "draw over other apps" grant); without it, and on a laptop, only LocalHub's own screen dims.
+const DIM_MIN = 20;
+const brightness = () => clamp(Math.round(Number(prefs.brightness ?? 100)) || 100, DIM_MIN, 100);
+function applyBrightness() {
+  const shade = $("#dimShade"), b = brightness();
+  const over = NATIVE && native("dim", 100 - b) === true;
+  if (shade) { shade.hidden = over || b >= 100; shade.style.opacity = over ? 0 : (100 - b) / 100; }
+}
+function setBrightness(v) {
+  prefs.brightness = clamp(v, DIM_MIN, 100);
+  savePrefs();
+  applyBrightness();
+}
+
+// What's playing on the TV (Spotify, Amazon Music, a video): its buttons work with the same keys a remote sends. The
+// title and picture need "notification access", granted once; without it the player still plays, pauses and skips.
+let MEDIA = {};
+let mediaTimer = null;
+function readMedia() { MEDIA = NATIVE ? safeJson(native("media", "state"), {}) || {} : {}; }
+function mediaDo(act) {
+  if (!NATIVE) return toast("The player works on the TV");
+  native("media", act);
+  setTimeout(() => { readMedia(); if (S.overlay === "wpanel") paintWpanel(); }, 500);
+}
+function playerHTML() {
+  const t = MEDIA.title || (MEDIA.playing ? "Playing" : "Not playing");
+  const sub = MEDIA.title ? MEDIA.artist || MEDIA.app || "" : "";
+  const art = MEDIA.art ? `<img src="${esc(MEDIA.art)}" alt="">` : WP_IC.note;
+  const b = (id, ic, label) => `<button class="mp-b" data-w="${id}" aria-label="${label}" tabindex="-1">${ic}</button>`;
+  return `<div class="mp"><div class="mp-art">${art}</div><div class="mp-t">${esc(t)}</div><div class="mp-s">${esc(sub)}</div><div class="mp-row">${b("prev", WP_IC.prev, "Previous")}${b("play", MEDIA.playing ? WP_IC.pause : WP_IC.play, MEDIA.playing ? "Pause" : "Play")}${b("next", WP_IC.next, "Next")}</div></div>`;
+}
+const homeWeatherOn = () => (SETTINGS?.widgets?.tv || []).some((w) => (w?.id || w?.[0]) === "weather");
+async function toggleHomeWeather() {
+  if (!IN_HUB) return toast("Pair this TV with LocalHub to change its widgets");
+  const now = (SETTINGS?.widgets?.tv || []).map((w) => (Array.isArray(w) ? { key: `t-${w[0]}`, id: w[0], size: w[1] } : w));
+  const tv = homeWeatherOn() ? now.filter((w) => w.id !== "weather") : [...now, { key: "t-weather", id: "weather", size: "l" }];
+  try {
+    const r = await fetch("/api/hub/settings", { method: "POST", headers: { "content-type": "application/json", "x-hub": "1" }, body: JSON.stringify({ widgets: { tv } }) });
+    if (!r.ok) return toast("LocalHub couldn't save that");
+    await syncHub();
+    paintHomeWidgets();
+    paintWpanel();
+  } catch { toast("LocalHub didn't answer"); }
+}
+const CLOCKS = ["Time and date", "Time", "Off"];
+function wpHTML() {
+  const v = volState(), canVol = NATIVE && !v.fixed && v.max;
+  const pct = canVol ? Math.round((v.level / v.max) * 100) : 0;
+  const slider = (id, val, ic, label, off) => `<div class="wps${off ? " off" : ""}" data-w="${id}" aria-label="${label}"><i style="height:${off ? 0 : val}%"></i><span>${ic}</span></div>`;
+  const round = (id, ic, label, on) => `<div class="wpr${on ? " on" : ""}" data-w="${id}"><b>${ic}</b><em>${esc(label)}</em></div>`;
+  const pill = (id, ic, t1, t2, on) => `<div class="wpp${on ? " on" : ""}" data-w="${id}"><b>${ic}</b><div class="grow"><div class="t1">${esc(t1)}</div><div class="t2">${esc(t2)}</div></div></div>`;
+  const wx = WX.body ? wxCard(WX.body, "m") : `<div class="t2">${WX.err ? "Weather isn’t available right now" : "Finding the weather…"}</div>`;
+  return `${playerHTML()}${slider("brightness", brightness(), WP_IC.sun, "Brightness")}${slider("volume", pct, WP_IC.vol, "Volume", !canVol)}`
+    + round("timer", SYM.timer, S.sleepAt ? clockText(new Date(S.sleepAt)) : "Timer", !!S.sleepAt) + round("saver", SYM.moon, "Screensaver") + round("picture", WP_IC.pic, "Picture") + round("settings", SYM.gear, "Settings")
+    + pill("homeclock", WP_IC.clock, "Home clock", prefs.homeClock || CLOCKS[0], (prefs.homeClock || CLOCKS[0]) !== "Off")
+    + pill("homeweather", WP_IC.cloud, "Home weather", homeWeatherOn() ? "On" : "Off", homeWeatherOn())
+    + `<div class="wpx">${wx}</div>`;
 }
 function paintWpanel() {
-  S.wp = wpItems();
-  S.wpAt = clamp(S.wpAt ?? 1, 0, S.wp.length - 1);
-  // Only what changed: the rows are rebuilt when their content changes, the selection just moves.
-  const list = $("#wpList"), html = S.wp.map((x, i) => `<div class="wpi ${x.cls || ""}" data-w="${i}">${x.html}</div>`).join("");
+  const list = $("#wpList"), html = wpHTML();
+  // Only what changed: the panel is rebuilt when its content changes, the selection just moves.
   if (list._html !== html) { list.innerHTML = html; list._html = html; }
-  list.querySelectorAll(".wpi").forEach((n) => n.classList.toggle("sel", Number(n.dataset.w) === S.wpAt));
+  S.wpAt = S.wpAt || "play";
+  list.querySelectorAll("[data-w]").forEach((n) => { n.classList.toggle("sel", n.dataset.w === S.wpAt); n.classList.toggle("grab", n.dataset.w === S.wpGrab); });
 }
 function openWidgets() {
   loadWeather();
-  S.wpAt = 1;
+  readMedia();
+  S.wpAt = "play";
+  S.wpGrab = null;
   paintWpanel();
   $("#wpanel").classList.add("on");
   setOverlay("wpanel");
+  clearInterval(mediaTimer);
+  if (NATIVE) mediaTimer = setInterval(() => { if (S.overlay !== "wpanel") return clearInterval(mediaTimer); readMedia(); paintWpanel(); }, 2000);
 }
 function closeWidgets() {
+  clearInterval(mediaTimer);
+  S.wpGrab = null;
   $("#wpanel").classList.remove("on");
   setOverlay(null);
 }
+function wpMove(dx, dy) {
+  const all = [...$("#wpList").querySelectorAll("[data-w]")];
+  const a = all.find((n) => n.dataset.w === S.wpAt)?.getBoundingClientRect();
+  if (!a) return false;
+  let best = null, score = Infinity;
+  for (const n of all) {
+    if (n.dataset.w === S.wpAt) continue;
+    const b = n.getBoundingClientRect();
+    // Past this one's edge in that direction, then how far off line it is (0 when they overlap across).
+    const main = dx ? (dx > 0 ? b.left - a.right : a.left - b.right) : (dy > 0 ? b.top - a.bottom : a.top - b.bottom);
+    if (main < -2) continue;
+    const off = dx ? Math.max(0, b.top - a.bottom, a.top - b.bottom) : Math.max(0, b.left - a.right, a.left - b.right);
+    const mid = dx ? Math.abs(b.top + b.height / 2 - a.top - a.height / 2) : Math.abs(b.left + b.width / 2 - a.left - a.width / 2);
+    const s = main + off * 4 + mid * .5;
+    if (s < score) { score = s; best = n; }
+  }
+  if (!best) return false;
+  S.wpAt = best.dataset.w;
+  paintWpanel();
+  return true;
+}
+function wpSlide(id, dir) {
+  if (id === "brightness") setBrightness(brightness() + dir * 10);
+  else native("volume", dir);
+  paintWpanel();
+}
 function wpKey(name) {
-  const it = S.wp[S.wpAt];
-  if (name === "up") { S.wpAt = Math.max(0, S.wpAt - 1); return paintWpanel(); }
-  if (name === "down") { S.wpAt = Math.min(S.wp.length - 1, S.wpAt + 1); return paintWpanel(); }
-  if (it?.id === "volume" && (name === "left" || name === "right")) { native("volume", name === "right" ? 1 : -1); return paintWpanel(); }
-  if (name === "back" || name === "menu" || name === "left") return closeWidgets();
+  const id = S.wpAt;
+  // A slider that's held: Up and Down change it, OK or Back lets go.
+  if (S.wpGrab) {
+    if (name === "up") return wpSlide(S.wpGrab, 1);
+    if (name === "down") return wpSlide(S.wpGrab, -1);
+    S.wpGrab = null;
+    if (name === "enter" || name === "back") return paintWpanel();
+  }
+  if (name === "left") return wpMove(-1, 0) || closeWidgets();
+  if (name === "right") return void wpMove(1, 0);
+  if (name === "up") return void wpMove(0, -1);
+  if (name === "down") return void wpMove(0, 1);
+  if (name === "back" || name === "menu") return closeWidgets();
   if (name !== "enter") return;
-  if (it?.id === "picture") { closeWidgets(); return native("openDisplaySettings"); }
-  if (it?.id === "timer") { cycleSleepTimer(); return paintWpanel(); }
-  if (it?.id === "saver") { closeWidgets(); return startSaver(); }
-  if (it?.id === "settings") { closeWidgets(); return openSettings(); }
-  if (it?.id === "volume") { native("volume", 1); return paintWpanel(); }
+  if (id === "prev" || id === "next") return mediaDo(id);
+  if (id === "play") return mediaDo("toggle");
+  if (id === "brightness") { S.wpGrab = id; return paintWpanel(); }
+  if (id === "volume") {
+    const v = volState();
+    if (!NATIVE || v.fixed || !v.max) return toast("Use your TV's remote for the volume");
+    S.wpGrab = id;
+    return paintWpanel();
+  }
+  if (id === "timer") { cycleSleepTimer(); return paintWpanel(); }
+  if (id === "homeclock") {
+    prefs.homeClock = CLOCKS[(CLOCKS.indexOf(prefs.homeClock || CLOCKS[0]) + 1) % CLOCKS.length];
+    savePrefs();
+    tick();
+    return paintWpanel();
+  }
+  if (id === "homeweather") return toggleHomeWeather();
+  closeWidgets();
+  if (id === "picture") return native("openDisplaySettings");
+  if (id === "saver") return startSaver();
+  if (id === "settings") return openSettings();
 }
 
 function openCC() {
@@ -2785,8 +2896,14 @@ document.addEventListener("click", (e) => {
   if (PREVIEW) { const a = e.target.closest(".app"); if (a) pickTile(a); return; }
   if (S.overlay === "saver") return stopSaver();
   if (S.overlay === "wpanel") {
-    const row = e.target.closest(".wpi");
-    if (row) { S.wpAt = Number(row.dataset.w); paintWpanel(); return wpKey("enter"); }
+    const row = e.target.closest("#wpList [data-w]");
+    if (row) {
+      S.wpAt = row.dataset.w;
+      // A tap on a slider sets it where it was tapped.
+      if (S.wpAt === "brightness") { const r = row.getBoundingClientRect(); setBrightness(Math.round((1 - (e.clientY - r.top) / r.height) * 10) * 10); return paintWpanel(); }
+      paintWpanel();
+      return wpKey("enter");
+    }
     if (!e.target.closest(".wpanel")) return closeWidgets();
     return;
   }
@@ -2919,6 +3036,7 @@ async function boot() {
     setInterval(syncHub, 30_000);
     startCommandLoop();
     reportApps();
+    applyBrightness();
     if (NATIVE) { const st = safeJson(native("status"), {}); HUB.paired = Boolean(st.paired); HUB.url = st.hub || ""; }
   } else {
     probeNative();

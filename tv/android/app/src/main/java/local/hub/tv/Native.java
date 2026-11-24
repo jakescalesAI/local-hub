@@ -90,6 +90,19 @@ final class Native {
         return o.toString();
     }
 
+    /** Brightness as a shade over every app: 0 none, 80 darkest. False when it can't be drawn over other apps. */
+    @JavascriptInterface
+    public boolean dim(int percent) {
+        return activity.pageTrusted && Dimmer.set(context, percent);
+    }
+
+    /** What's playing: "state" tells, "toggle", "next" and "prev" send the remote's own media keys. */
+    @JavascriptInterface
+    public String media(String action) {
+        if (!activity.pageTrusted) return "{}";
+        return Media.run(context, action);
+    }
+
     @JavascriptInterface
     public void openBluetoothSettings() {
         if (!activity.pageTrusted) return;
