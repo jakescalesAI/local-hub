@@ -1,5 +1,5 @@
-// AI tab: Claude plan usage per account (with a 7-day history graph), Claude Code token use by
-// day, model and machine, and optional OpenRouter / DeepSeek balances. Data: /api/ai/state.
+// AI tab: your Claude accounts with the tokens Claude Code logged for each (plan limits link to
+// claude.ai), Claude Code token use by day, model and machine, and optional OpenRouter / DeepSeek balances. Data: /api/ai/state.
 // Uses the main script's globals at call time: render, widget, group, esc, ago, api, showMenu,
 // copy, hud, MI, ICON, env, store.
 ;(() => {
@@ -76,16 +76,7 @@
     const f = (v, u) => `${(v >= 100 ? v.toFixed(0) : v >= 10 ? v.toFixed(1) : v.toFixed(2)).replace(/\.?0+$/, '')}${u}`
     return a >= 1e12 ? f(n / 1e12, 'T') : a >= 1e9 ? f(n / 1e9, 'B') : a >= 1e6 ? f(n / 1e6, 'M') : a >= 1e3 ? f(n / 1e3, 'K') : String(Math.round(n))
   }
-  const pct = v => (v == null ? '–' : `${Math.round(v)}`)
   const usd = (v, cur = 'USD') => (v == null ? '–' : `${{ USD: '$', CNY: '¥', EUR: '€' }[cur] ?? ''}${Number(v).toFixed(2)}${{ USD: 1, CNY: 1, EUR: 1 }[cur] ? '' : ' ' + cur}`)
-  const clock = t => new Date(t).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
-  const resets = t => {
-    if (!t) return ''
-    const d = t - Date.now()
-    if (d < 20 * 3600e3) return `Resets ${clock(t)}`
-    if (d < 6 * 864e5) return `Resets ${new Date(t).toLocaleDateString(undefined, { weekday: 'short' })} ${clock(t)}`
-    return `Resets ${new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`
-  }
   const since = t => { if (!t) return 'never'; const s = (Date.now() - t) / 1000; return s < 90 ? 'just now' : s < 5400 ? `${Math.round(s / 60)}m ago` : s < 129600 ? `${Math.round(s / 3600)}h ago` : `${Math.round(s / 86400)}d ago` }
   const dayLabel = d => new Date(`${d}T12:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
   const niceMax = v => { if (!(v > 0)) return 1; const p = 10 ** Math.floor(Math.log10(v)); return [1, 2, 2.5, 5, 10].map(m => m * p).find(x => x >= v) }
@@ -118,72 +109,23 @@
   const rowKey = (r, series) => { const k = S.by === 'source' ? r.src : r.model; return series.some(s => s.key === k && !s.other) ? k : '_other' }
   const metricOf = r => (S.metric === 'io' ? r.i + r.o : r.cw + r.cr)
 
-  /* ---------- plan usage ---------- */
+  /* ---------- accounts ---------- */
 
-  function usageChart(a) {
-    const u = a.usage || {}
-    const now = Date.now()
-    const t0 = now - 7 * 864e5
-    const X = t => ((t - t0) / (now - t0)) * 100
-    const pts = (a.history || []).filter(p => p[0] >= t0)
-    const path = idx => {
-      let d = ''
-      let prev = 0
-      for (const p of pts) {
-        if (p[idx] == null) { prev = 0; continue }
-        d += `${prev && p[0] - prev < 20 * 60e3 ? 'L' : 'M'}${(X(p[0]) * 10).toFixed(1)} ${(100 - p[idx]).toFixed(2)}`
-        prev = p[0]
-      }
-      return d
-    }
-    const series = [{ idx: 1, name: '5-hour', c: 'var(--ai-1)', cur: u.fiveHour?.pct }, { idx: 2, name: '7-day', c: 'var(--ai-2)', cur: u.sevenDay?.pct }]
-    const last = pts.at(-1)
-    const grid = [100, 50, 0].map(v => `<div class="ai-grid${v ? '' : ' base'}" style="top:${100 - v}%"><span>${v}%</span></div>`).join('')
-    // Weekly resets inside the window, counted back from the next one.
-    let marks = ''
-    if (u.sevenDay?.resetsAt) for (let r = u.sevenDay.resetsAt - 7 * 864e5; r > t0; r -= 7 * 864e5) if (r < now) marks += `<div class="ai-reset" style="left:${X(r).toFixed(2)}%"><span>Weekly reset</span></div>`
-    const ticks = []
-    const mid = new Date(t0); mid.setHours(24, 0, 0, 0)
-    for (let t = mid.getTime(); t < now; t += 864e5) { const x = X(t); if (x < 97) ticks.push(`<span style="left:${x.toFixed(2)}%">${new Date(t).toLocaleDateString(undefined, { weekday: 'short' })}</span>`) }
-    const dots = last ? series.filter(s => last[s.idx] != null && now - last[0] < 20 * 60e3).map(s => `<i class="ai-dot" style="--c:${s.c};left:${X(last[0]).toFixed(2)}%;top:${100 - last[s.idx]}%"></i>`).join('') : ''
-    const legend = series.map(s => `<span><i class="ai-key line" style="--c:${s.c}"></i>${s.name} <b>${pct(s.cur)}%</b></span>`).join('')
-    const empty = pts.length < 2 ? `<div class="ai-empty">${pts.length ? 'History started. A point is added every 5 minutes.' : 'No history yet. A point is added every 5 minutes.'}</div>` : ''
-    const br = (u.breakdown || []).map(b => `${esc(b.name)} ${Math.round(b.pct)}%`).join(' · ')
-    return `<div class="ai-card">
-      <div class="ai-card-head"><div class="ai-card-title">Last 7 days</div><div class="ai-legend">${legend}</div></div>
-      <div class="ai-plot" data-ai-chart="usage" data-acc="${esc(a.id)}">${grid}${marks}
-        <svg viewBox="0 0 1000 100" preserveAspectRatio="none" aria-hidden="true">${series.map(s => `<path d="${path(s.idx)}" fill="none" stroke="${s.c}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>`).join('')}</svg>
-        ${dots}${empty}<div class="ai-cross"></div><div class="ai-tip"></div></div>
-      <div class="ai-x">${ticks.join('')}</div>
-      ${br ? `<div class="ai-foot">This week by surface: ${br}</div>` : ''}
-    </div>`
-  }
-
+  // Per account: who it is signed in as and the tokens Claude Code logged for it on this computer.
+  // Plan limits (5-hour, weekly) live on claude.ai; the hub never reads Claude's sign-in tokens.
   function accountSection(a) {
-    const hay = esc([a.label, a.email, a.plan, a.configDir, 'claude usage plan'].join(' ').toLowerCase())
-    const head = `<div class="group-head"><h2>${esc(a.label || a.email)}</h2>${a.plan ? `<span class="n">${esc(a.plan)}</span>` : ''}</div>`
+    const hay = esc([a.label, a.email, a.configDir, 'claude usage plan tokens'].join(' ').toLowerCase())
+    const head = `<div class="group-head"><h2>${esc(a.label || a.email)}</h2>${a.email && a.email !== a.label ? `<span class="n">${esc(a.email)}</span>` : ''}</div>`
     const fixRow = (title, sub) => `<div class="list"><div class="row" data-menu="ai" data-kind="fix" data-v="${esc(a.fix || '')}"><div class="row-line"><span class="status" style="--c:${STATUS_C[a.status] || 'var(--gray)'}"><i></i></span><span class="txt"><div class="t1">${esc(title)}</div><div class="t2" style="white-space:normal">${esc(sub)}</div></span></div>
       ${a.fix ? `<div class="ai-code"><div class="urls"><div class="url"><code>${esc(a.fix)}</code><button class="icon-btn" data-copy="${esc(a.fix)}" aria-label="Copy command">${ICON.copy}</button></div></div></div>` : ''}</div></div>`
     if (a.status === 'connect')
-      return `<section class="group ai-acc" data-hay="${hay}">${head}<div class="list"><div class="row"><div class="row-line"><span class="status" style="--c:var(--gray)"><i></i></span><span class="txt"><div class="t1">${esc(`Connect ${a.label}`)}</div><div class="t2">Sign in once. The hub reads its plan usage after that.</div></span><button type="button" class="get" data-connect="claude-account">Sign In</button></div></div></div></section>`
-    const u = a.usage
-    let notice = ''
-    if (a.status !== 'ok') notice = a.fix && !a.isDefault
-      ? `<div class="list" style="margin-bottom:12px"><div class="row"><div class="row-line"><span class="status" style="--c:${STATUS_C[a.status] || 'var(--gray)'}"><i></i></span><span class="txt"><div class="t1">${esc(a.message || 'Usage unavailable')}</div><div class="t2">Sign in again to keep reading this account’s usage.</div></span><button type="button" class="get" data-connect="claude-account">Sign In</button></div></div></div>`
-      : `<div style="margin-bottom:12px">${fixRow(a.message || 'Usage unavailable', a.fix ? 'Run this in a terminal to sign in again, then press Refresh.' : a.usageAt ? `Showing numbers from ${since(a.usageAt)}.` : 'Trying again in a few minutes.')}</div>`
-    if (!u) return `<section class="group ai-acc" data-hay="${hay}">${head}${notice}</section>`
-    const w = []
-    if (u.fiveHour) w.push(widget('5-hour', `${pct(u.fiveHour.pct)}<small>%</small>`, esc(resets(u.fiveHour.resetsAt)), u.fiveHour.pct))
-    if (u.sevenDay) w.push(widget('7-day', `${pct(u.sevenDay.pct)}<small>%</small>`, esc(resets(u.sevenDay.resetsAt)), u.sevenDay.pct))
-    for (const l of u.limits || []) w.push(widget(`${esc(l.name)} · 7-day`, `${pct(l.pct)}<small>%</small>`, esc(resets(l.resetsAt)), l.pct))
-    for (const c of u.credits || []) w.push(widget('Credit', `${usd(c.used)}`, `of ${usd(c.limit)}${c.resetsAt ? ` · ${esc(resets(c.resetsAt).replace(/^Resets/, 'resets'))}` : ''}`, c.pct))
-    if (u.extra) {
-      const e = u.extra
-      w.push(e.enabled
-        ? widget('Extra usage', usd(e.used, e.currency), e.limit != null ? `of ${usd(e.limit, e.currency)} this month` : 'this month', e.limit ? (100 * e.used) / e.limit : null, e.limit ? null : 'var(--blue)')
-        : widget('Extra usage', 'Off', e.used ? `${usd(e.used, e.currency)} used` : 'Not turned on', null, 'var(--gray)'))
-    }
-    return `<section class="group ai-acc" data-hay="${hay}" data-menu="ai" data-kind="account" data-v="${esc(a.email || a.label)}">${head}${notice}<div class="widgets">${w.join('')}</div>${usageChart(a)}</section>`
+      return `<section class="group ai-acc" data-hay="${hay}">${head}<div class="list"><div class="row"><div class="row-line"><span class="status" style="--c:var(--gray)"><i></i></span><span class="txt"><div class="t1">${esc(`Connect ${a.label}`)}</div><div class="t2">Sign in to Claude Code once with your own Claude account. The hub then counts this account’s tokens from Claude Code’s logs.</div></span><button type="button" class="get" data-connect="claude-account">Sign In</button></div></div></div></section>`
+    const notice = a.status !== 'ok' ? `<div style="margin-bottom:12px">${fixRow(a.message || 'Check this account', a.fix ? 'Run this in a terminal to sign in again, then press Refresh.' : '')}</div>` : ''
+    const L = a.local || {}
+    const stat = (label, x) => widget(label, compact(x?.io), `in + out · ${compact(x?.cache)} cache · ${compact(x?.calls)} calls`, null, 'var(--indigo)')
+    const w = [stat('Last 5 hours', L.fiveHour), stat('Last 7 days', L.sevenDay)]
+    const plan = `<div class="list"><div class="row"><div class="row-line"><span class="status" style="--c:var(--blue)"><i></i></span><span class="txt"><div class="t1">Plan limits</div><div class="t2" style="white-space:normal">Your 5-hour and weekly limits are on claude.ai. The counts above come from Claude Code’s logs on this computer${L.lastAt ? `, last used ${since(L.lastAt)}` : ''}.</div></span><a class="get" href="${esc(a.usageUrl || 'https://claude.ai/settings/usage')}" target="_blank" rel="noopener noreferrer">Open</a></div></div></div>`
+    return `<section class="group ai-acc" data-hay="${hay}" data-menu="ai" data-kind="account" data-v="${esc(a.email || a.label)}">${head}${notice}<div class="widgets">${w.join('')}</div>${plan}</section>`
   }
 
   /* ---------- tokens ---------- */
@@ -300,25 +242,6 @@
     tip.style.left = `${Math.max(-4, Math.min(W - w + 4, xPx + 12 + w > W ? xPx - w - 12 : xPx + 12))}px`
   }
 
-  function hoverUsage(plot, clientX) {
-    const a = S.data?.accounts.find(x => x.id === plot.dataset.acc)
-    const pts = a?.history || []
-    if (!pts.length) return
-    const r = plot.getBoundingClientRect()
-    const now = Date.now(), t0 = now - 7 * 864e5
-    const t = t0 + ((clientX - r.left) / r.width) * (now - t0)
-    let best = pts[0]
-    for (const p of pts) if (Math.abs(p[0] - t) < Math.abs(best[0] - t)) best = p
-    const x = ((best[0] - t0) / (now - t0)) * r.width
-    const cross = plot.querySelector('.ai-cross')
-    cross.style.display = 'block'
-    cross.style.left = `${x}px`
-    const tip = plot.querySelector('.ai-tip')
-    tipRows(tip, new Date(best[0]).toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' }), [['var(--ai-1)', `${pct(best[1])}%`, '5-hour'], ['var(--ai-2)', `${pct(best[2])}%`, '7-day']])
-    placeTip(plot, tip, x)
-    S.hover = { chart: 'usage', acc: a.id, clientX }
-  }
-
   function hoverTokens(plot, col) {
     const t = S.data?.tokens
     if (!t || !col) return
@@ -349,8 +272,7 @@
   function restoreHover() {
     const h = S.hover
     if (!h) return
-    if (h.chart === 'usage') { const p = document.querySelector(`[data-ai-chart="usage"][data-acc="${CSS.escape(h.acc)}"]`); if (p) hoverUsage(p, h.clientX) }
-    else { const p = document.querySelector('[data-ai-chart="tokens"]'); const c = p?.querySelector(`.ai-col[data-i="${h.i}"]`); if (c) hoverTokens(p, c) }
+    { const p = document.querySelector('[data-ai-chart="tokens"]'); const c = p?.querySelector(`.ai-col[data-i="${h.i}"]`); if (c) hoverTokens(p, c) }
   }
 
   const onPoint = e => {
@@ -358,8 +280,7 @@
     const plot = e.target.closest?.('[data-ai-chart]')
     document.querySelectorAll('[data-ai-chart]').forEach(p => p !== plot && (p.querySelector('.ai-tip')?.style.display === 'block') && clearHover(p))
     if (!plot) return
-    if (plot.dataset.aiChart === 'usage') hoverUsage(plot, e.clientX)
-    else hoverTokens(plot, e.target.closest('.ai-col'))
+    hoverTokens(plot, e.target.closest('.ai-col'))
   }
   document.addEventListener('pointermove', onPoint, { passive: true })
   document.addEventListener('pointerdown', onPoint, { passive: true })

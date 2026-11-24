@@ -3,7 +3,8 @@
 Your own private dashboard and AI agent, running on your own computer. One page for your files, your
 services and a chat that can look things up, write, and work in a real browser while you watch.
 
-Nothing leaves your computer unless you connect something, and no account is needed to run it.
+Nothing leaves your computer unless you connect something. There is no LocalHub account and no LocalHub
+server. The chat needs your own Claude account (see below).
 
 ## Start
 
@@ -68,7 +69,7 @@ These stay off until you set them up, and a tab that's off fetches nothing:
 
 - **This Computer:** running services, health and files
 - **Server:** a server you reach over ssh
-- **AI:** Claude usage and tokens, other AI providers
+- **AI:** the tokens Claude Code used per account (plan limits link to claude.ai), other AI providers
 - **Cloud:** deploys, servers and clients, read-only
 - **Calendar:** a local calendar plus your feeds and bookings
 - **Stripe:** balance, revenue and payouts, read-only
@@ -91,6 +92,11 @@ Chrome you can watch and take over at any time.
 It runs on [Claude Code](https://claude.com/claude-code) by default, using your own login. You can also
 give it an API key or any Anthropic-compatible provider, and choose its name, instructions, models and
 tools. All of that is `assistant` in `config/hub.json`.
+
+You need your own Claude account (or your own API key) and Claude Code installed. You sign in to Claude
+Code yourself, with Anthropic. LocalHub runs the unmodified `claude` command on your computer and never
+reads, stores or passes on your Claude sign-in. LocalHub is an independent project. It is not made by,
+endorsed by or affiliated with Anthropic. Claude and Claude Code are Anthropic's trademarks.
 
 ## Your choices, and what stays fixed
 

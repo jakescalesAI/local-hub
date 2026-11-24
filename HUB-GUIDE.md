@@ -28,7 +28,7 @@ A homescreen of widgets built from the other tabs' data. Each widget links to th
 - Press Edit to rearrange: drag to reorder, use the size button, remove with the badge, and "Add widget" opens the gallery. Press Done to finish.
 - There is a desktop layout and a mobile layout (2 columns). Both are saved on the hub, so all your devices share them. Reset puts a layout back to the default. Layouts are stored in `data/home-layout.json` and served at `/api/home/layout`.
 - Widget groups:
-  - AI: Claude usage (5-hour), Claude reset timer, Claude 7-day pace, Claude model limits, Tokens, Tokens by model, Tokens by machine, Laptop vs server tokens, Recent Claude sessions, OpenRouter balance, OpenRouter spend, DeepSeek balance.
+  - AI: Claude usage (tokens per account, last 5 hours and 7 days), Tokens, Tokens by model, Tokens by machine, Laptop vs server tokens, Recent Claude sessions, OpenRouter balance, OpenRouter spend, DeepSeek balance.
   - Cloud: Coolify apps, All Coolify apps, Apps that are down, Recent deploys, Servers, Clients, Client sites, Cloudflare, Cloud accounts, Euronodes.
   - Storage: Drives, Backup drive F:, iCloud storage.
   - Laptop and Server: Services, Tunnels, Mutagen syncs, Tailnet devices.
@@ -68,14 +68,10 @@ The file browser. Roots: "This PC" on Windows (every drive letter) or "This Comp
 
 Claude usage and tokens, per account, plus other AI providers.
 
-- Accounts come from `claudeAccounts` in `config/secrets.json` (each has a `configDir` and a `label`). An account's status is `ok` (numbers shown), or `connect` (not signed in; the response has a `fix` command to run in a terminal, which signs it in), or another status with a message and a stale-numbers note.
-- Per account:
-  - 5-hour: percent of the current 5-hour window used, and when it resets.
-  - 7-day: percent of the weekly allowance used, and when it resets.
-  - Model limits (the `limits` list, for example a model with its own weekly cap): percent used and reset time.
-  - Credit (`credits`): dollars used of the limit.
-  - Extra usage: whether paid overage is on, and how much was spent this month.
-  - A "Last 7 days" line chart of usage history (a point is added about every 5 minutes) and "this week by surface" percentages.
+- Accounts come from `claudeAccounts` in `config/secrets.json` (each has a `configDir` and a `label`). An account's status is `ok`, `connect` (not signed in; the response has a `fix` command to run in a terminal, which signs it in with Claude Code's own `claude auth login`), or `mismatch` (the folder is signed in to a different account than its label).
+- The hub never reads Claude Code's sign-in tokens and never calls Anthropic's API itself. It reads only the account email in Claude Code's `.claude.json` and the session logs.
+- Per account (`local`): tokens Claude Code logged on this computer for that account in the last 5 hours (`fiveHour`) and the last 7 days (`sevenDay`), each as `io` (input + output), `cache` (cache writes + reads) and `calls`, plus `lastAt`. Windows start on the hour.
+- Plan limits (the 5-hour and weekly percentages, resets, extra usage) are not in the hub: they are on claude.ai at `usageUrl` (https://claude.ai/settings/usage). Token counts are not plan percentages.
 - Claude Code tokens (last 30 days), read from Claude Code session logs on this computer and on the server:
   - Today, 7 days and 30 days cards show input plus output tokens, then cache tokens and number of calls.
   - Fields: `i` input, `o` output, `cw` cache write, `cr` cache read, `n` calls.
@@ -119,8 +115,8 @@ Always read them with the `hub_read` tool, passing the path, for example `/api/s
 | Path | What it holds |
 |---|---|
 | `/api/state` | This computer's and the server's services and health, Mutagen syncs, tailnet, tunnels, port names (about 22 KB) |
-| `/api/ai/usage` | Claude plan usage per account (small, fast) |
-| `/api/ai/state` | Usage plus tokens plus providers (about 18 KB) |
+| `/api/ai/usage` | Claude accounts with their token counts for the last 5 hours and 7 days (small, fast) |
+| `/api/ai/state` | Accounts plus tokens plus providers (about 18 KB) |
 | `/api/ai/tokens` | Token rows only (about 16 KB) |
 | `/api/ai/providers` | OpenRouter and DeepSeek balances (small) |
 | `/api/cloud/state` | Coolify, servers, AWS, Azure, Cloudflare, clients (about 22 KB) |
@@ -241,7 +237,7 @@ You may say which of these fields the live endpoints report as missing (for exam
 
 ## Common questions and where the answer is
 
-- "How much Claude do I have left?" -> `/api/ai/usage`, 5-hour and 7-day percent used and the reset times. Remaining is 100 minus used.
+- "How much Claude do I have left?" -> the hub doesn't know plan limits; send them to https://claude.ai/settings/usage. `/api/ai/usage` gives the tokens each account used in the last 5 hours and 7 days.
 - "How many tokens did I use today?" -> `/api/ai/tokens` or `/api/ai/state`, the last day in `days`; sum `i + o` for that day's rows.
 - "Is anything down?" -> `/api/cloud/state`: apps with a bad status or health, servers where `up` is false, client health. Also `/api/state` for services with `code` 0.
 - "What's running on the server?" -> `/api/state`, `server.services`, grouped by `kind` (dev, session, production, other).
