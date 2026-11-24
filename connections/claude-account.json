@@ -4,7 +4,7 @@
   "category": "AI",
   "auth": {
     "type": "claudeLogin",
-    "keyHelp": "Sign in to a second Claude account. The hub shows its usage next to your first one. It needs Claude Code on this computer.",
+    "keyHelp": "Sign in to a second Claude account with Claude Code’s own sign-in. The hub shows the tokens Claude Code used with it, next to your first one. It needs Claude Code on this computer.",
     "fields": [
       {
         "name": "label",

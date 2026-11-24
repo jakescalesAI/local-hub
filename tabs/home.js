@@ -143,6 +143,7 @@
 .hw-btn.tint { background: color-mix(in srgb, var(--blue) 14%, transparent); }
 .hw-btn.red { color: var(--red); }
 .hw-pill { height: 30px; padding: 0 14px; border-radius: 99px; background: var(--fill); color: var(--blue); font-size: 15px; font-weight: 600; letter-spacing: -0.016em; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; transition: opacity .15s, transform .15s; }
+a.hw-pill { text-decoration: none; }
 .hw-pill:active { opacity: .45; transform: scale(.96); }
 .hw-btn:focus-visible, .hw-pill:focus-visible, .hw-x:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 
@@ -641,16 +642,6 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
   const dhero = (v, sub) => `<div class="hw-dhero"><div class="v">${v}</div>${sub ? `<div class="hw-sub">${sub}</div>` : ''}</div>`
   const empty = text => `<div class="hw-dnote">${text}</div>`
 
-  // Two lines: the 5-hour and the 7-day Claude limits, as percent of the plan, over time.
-  function usageChart(hist, cls = 'hw-grow') {
-    const pts = (hist || []).filter(p => Array.isArray(p) && p.length >= 3 && Number.isFinite(p[0]))
-    if (pts.length < 2) return `<div class="hw-sub" data-fit>Usage history shows here once a few readings are in.</div>`
-    const t0 = pts[0][0], span = Math.max(1, pts[pts.length - 1][0] - t0)
-    const line = i => pts.map((p, k) => `${k ? 'L' : 'M'}${(((p[0] - t0) / span) * 100).toFixed(2)} ${(100 - clamp(p[i])).toFixed(2)}`).join(' ')
-    return `<div class="${cls}"><div class="hw-chart" style="height:100%;min-height:56px"><svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-label="Claude usage over time" role="img"><path class="g" d="M0 0H100M0 50H100M0 100H100"/><path class="ln" stroke="var(--orange)" d="${line(2)}"/><path class="ln" stroke="var(--blue)" d="${line(1)}"/></svg></div></div>`
-      + `<div class="hw-legend" data-fit><span><i style="background:var(--blue)"></i>5 hour</span><span><i style="background:var(--orange)"></i>7 day</span></div>`
-  }
-
   // Two rings, one inside the other (the 5-hour limit outside, the 7-day limit inside).
   function dualRing(a, b, center, size = 92, ca = 'var(--blue)', cb = 'var(--orange)') {
     const sw = Math.max(7, Math.round(size / 10)), m = size / 2, r1 = (size - sw) / 2, r2 = r1 - sw - 3
@@ -667,7 +658,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
   const connectBtn = (service, tab) => (service && window.HUB_CONNECT ? `<button type="button" class="hw-pill" data-connect="${esc(service)}">Connect</button>` : tab ? openBtn(tab, `Open ${tabName(tab)}`) : '')
   const connect = (title, sub, tab, ic = 'card', service) => `<div class="hw-connect" data-fit><span class="ic">${icon(ic, 22)}</span><b>${esc(title)}</b>${sub ? `<span>${esc(sub)}</span>` : ''}${connectBtn(service, tab)}</div>`
 
-  const H = { esc, clamp, pct, compact, bytes, until, tone, money, moneyMajor, toDate, dot, fig, meter, row, list, note, openBtn, cols, split, ring, spark, usageChart, dsec, dlist, dkv, dhero, empty, icon, SKELETON, TONE, dualRing, bars, connect }
+  const H = { esc, clamp, pct, compact, bytes, until, tone, money, moneyMajor, toDate, dot, fig, meter, row, list, note, openBtn, cols, split, ring, spark, dsec, dlist, dkv, dhero, empty, icon, SKELETON, TONE, dualRing, bars, connect }
   window.HOME_UI = Object.assign(window.HOME_UI || {}, H)
 
   /* ---------- registry ---------- */
@@ -1458,66 +1449,38 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
   const reg = def => window.registerHomeWidget(def)
   const GIB = 1024 ** 3
 
-  // --- Claude usage
+  // --- Claude accounts: the tokens Claude Code logged for each on this computer. Plan limits
+  // (5-hour, weekly) are on claude.ai; the hub never reads Claude's sign-in tokens.
+  const USAGE_PAGE = 'https://claude.ai/settings/usage'
   const accountsOf = d => d.ai?.accounts || []
-  const mainAccount = accs => accs.find(a => a.isDefault && a.usage) || accs.find(a => a.usage) || null
+  const liveAcc = a => !!a && a.status !== 'connect' && !!a.local
+  const mainAccount = accs => accs.find(a => a.isDefault && liveAcc(a)) || accs.find(liveAcc) || null
   const shortName = a => String(a.label || a.email || a.id || '').split('@')[0] || 'Account'
-  const resetIn = at => (at ? `resets in ${until(at - Date.now())}` : '')
-  function accountCol(a, withReset) {
-    const u = a.usage
-    if (!u) return `<div class="hw-col" data-fit><h4 class="ell">${esc(shortName(a))}</h4><div class="hw-sub">${esc(a.message || 'Not signed in')}</div></div>`
-    const f = u.fiveHour?.pct ?? 0, s = u.sevenDay?.pct ?? 0
-    return `<div class="hw-col" data-fit><h4 class="ell">${esc(shortName(a))}</h4>${a.plan ? `<div class="hw-sub ell">${esc(a.plan)}</div>` : ''}${meter('5 hour', `${Math.round(f)}%`, f, tone(f))}${meter('7 day', `${Math.round(s)}%`, s, tone(s))}${withReset && u.fiveHour?.resetsAt ? `<div class="hw-sub ell">5 hour ${esc(resetIn(u.fiveHour.resetsAt))}</div>` : ''}</div>`
+  const planLink = (label = 'Plan limits') => `<a class="hw-pill" href="${USAGE_PAGE}" target="_blank" rel="noopener noreferrer">${esc(label)}</a>`
+  const tok = x => compact(x?.io || 0)
+  const planNote = () => empty(`Your 5-hour and weekly plan limits are on claude.ai. The counts here come from Claude Code’s logs on this computer. ${planLink('Open claude.ai usage')}`)
+  function accountCol(a) {
+    if (!liveAcc(a)) return `<div class="hw-col" data-fit><h4 class="ell">${esc(shortName(a))}</h4><div class="hw-sub">${esc(a.message || 'Not signed in')}</div></div>`
+    return `<div class="hw-col" data-fit><h4 class="ell">${esc(shortName(a))}</h4>${fig(tok(a.local.fiveHour), 'tokens, last 5 hours')}<div class="hw-sub ell">7 days ${tok(a.local.sevenDay)} · ${compact(a.local.sevenDay?.calls || 0)} calls</div></div>`
   }
-  // A colour for a usage ring: the widget's own until it gets high, then orange or red.
-  const ringTone = (p, base) => (p >= 65 ? TONE[tone(p)] : base)
-  function accountRing(a, size = 64) {
-    if (viewKey() === 'mobile') size = Math.min(size, 48)
-    const u = a.usage
-    if (!u) return `<div class="hw-acc" data-fit><div><h4 class="ell">${esc(shortName(a))}</h4><span class="hw-sub ell">${esc(a.message || 'Not signed in')}</span></div></div>`
-    const f = u.fiveHour?.pct ?? 0, s = u.sevenDay?.pct ?? 0, c5 = ringTone(f, 'var(--t)'), c7 = ringTone(s, 'var(--teal, #30b0c7)')
-    return `<div class="hw-acc" data-fit>${dualRing(f, s, '', size, c5, c7)}<div><h4 class="ell">${esc(shortName(a))}</h4><span class="k"><i style="background:${c5}"></i>5 hour <b>${Math.round(f)}%</b></span><span class="k"><i style="background:${c7}"></i>7 day <b>${Math.round(s)}%</b></span></div></div>`
-  }
+  const accDetail = a => liveAcc(a)
+    ? dsec(shortName(a), dlist([dkv('Last 5 hours', `${tok(a.local.fiveHour)} in + out`), dkv('Last 7 days', `${tok(a.local.sevenDay)} in + out`), dkv('Cache, 7 days', compact(a.local.sevenDay?.cache || 0)), dkv('Calls, 7 days', compact(a.local.sevenDay?.calls || 0))]))
+    : dsec(shortName(a), dlist([dkv('Status', esc(a.message || 'Not signed in'))]))
   reg({
     id: 'claude-usage', label: 'Claude usage', labels: { s: 'Claude 5h' }, cat: 'AI', icon: 'gauge', tint: 'var(--indigo)', tab: 'ai',
-    sizes: ['s', 'm', 'l'], defaultSize: 's', sources: ['ai'], blurb: 'Plan usage per Claude account: the 5-hour and 7-day limits.',
-    render(d, size, ui, o = {}) {
+    sizes: ['s', 'm', 'l'], defaultSize: 's', sources: ['ai'], blurb: 'Tokens Claude Code used per account in the last 5 hours and 7 days, from its logs.',
+    render(d, size) {
       const accs = accountsOf(d)
-      if (!accs.length) return connect('Add a Claude account', 'Usage for each account shows here.', 'ai', 'gauge', 'claude-account')
-      const main = mainAccount(accs), rings = o.style !== 'bars'
-      if (size === 's') {
-        if (!main) return note('Sign in to a Claude account to see its usage.', openBtn('ai', 'Open AI'))
-        const p = main.usage.fiveHour?.pct ?? 0, s7 = main.usage.sevenDay?.pct ?? 0
-        const r = rings ? dualRing(p, s7, `${Math.round(p)}%`, 92, ringTone(p, 'var(--t)'), ringTone(s7, 'var(--teal, #30b0c7)')) : ring(p, tone(p), `${Math.round(p)}%`, 84, 9, 20)
-        const sub = rings ? `7 day ${Math.round(s7)}%${main.usage.fiveHour?.resetsAt ? ` · ${until(main.usage.fiveHour.resetsAt - Date.now())}` : ''}` : resetIn(main.usage.fiveHour?.resetsAt)
-        return `<div class="hw-ringwrap" data-fit>${r}</div>${sub ? `<div class="hw-sub c ell" data-fit>${esc(sub)}</div>` : ''}`
-      }
-      if (rings) {
-        const shown = accs.slice(0, size === 'm' ? 2 : 4)
-        return cols(Math.min(2, shown.length), shown.map(a => accountRing(a, size === 'm' ? 66 : 72))) + (size === 'l' && main ? usageChart(main.history) : '')
-      }
-      const n = Math.min(accs.length, size === 'm' ? 2 : 3)
-      let html = cols(n, accs.slice(0, n).map(a => accountCol(a, size === 'l')))
-      if (size === 'l') html += main ? usageChart(main.history) : ''
-      return html
-    },
-    detail(d) {
-      const accs = accountsOf(d)
-      let html = ''
-      for (const a of accs) {
-        const u = a.usage
-        if (!u) { html += dsec(shortName(a), dlist([dkv('Status', esc(a.message || 'Not signed in'))])); continue }
-        const rows = []
-        for (const [name, v] of [['5 hour', u.fiveHour], ['7 day', u.sevenDay]]) if (v) rows.push(`<div>${meter(name, `${Math.round(v.pct)}%${v.resetsAt ? ` · ${resetIn(v.resetsAt)}` : ''}`, v.pct, tone(v.pct))}</div>`)
-        for (const l of u.limits || []) rows.push(dkv(`${l.name} limit`, `${Math.round(l.pct)}%${l.resetsAt ? ` · ${resetIn(l.resetsAt)}` : ''}`))
-        for (const c of u.credits || []) rows.push(dkv('Credits', `${moneyMajor(c.used, 'USD')} of ${moneyMajor(c.limit, 'USD')}`))
-        for (const b of u.breakdown || []) rows.push(dkv(b.name, `${Math.round(b.pct)}%`))
-        html += dsec(`${shortName(a)}${a.plan ? ` · ${a.plan}` : ''}`, dlist(rows))
-      }
+      if (!accs.length) return connect('Add a Claude account', 'Token use for each account shows here.', 'ai', 'gauge', 'claude-account')
       const main = mainAccount(accs)
-      if (main) html += dsec('Last readings', `<div class="hw-dchart">${usageChart(main.history, 'hw-chart-wrap')}</div>`.replace('hw-chart-wrap', ''))
-      return html
+      if (size === 's') {
+        if (!main) return note('Sign in to Claude Code to see its token use.', openBtn('ai', 'Open AI'))
+        return fig(tok(main.local.fiveHour), 'tokens, last 5 hours') + `<div class="hw-sub ell" data-fit>${esc(shortName(main))} · 7 days ${tok(main.local.sevenDay)}</div>`
+      }
+      const shown = accs.slice(0, size === 'm' ? 2 : 4)
+      return cols(Math.min(2, shown.length), shown.map(accountCol)) + (size === 'l' ? `<div class="hw-sub" data-fit>Plan limits are on claude.ai. ${planLink('Open')}</div>` : '')
     },
+    detail: d => accountsOf(d).map(accDetail).join('') + planNote(),
   })
 
   // --- OpenRouter / DeepSeek balances
@@ -1973,87 +1936,30 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
 
   /* --- AI --- */
   const acctSlug = a => slug(shortName(a))
-  const limitRows = a => {
-    const u = a.usage
-    if (!u) return []
-    const out = []
-    for (const l of u.limits || []) out.push(meter(`${l.name} limit`, `${Math.round(l.pct)}%${l.resetsAt ? ` · ${until(l.resetsAt - Date.now())}` : ''}`, l.pct, tone(l.pct)))
-    for (const c of u.credits || []) out.push(meter('Credits', `${moneyMajor(c.used, 'USD', true)} of ${moneyMajor(c.limit, 'USD', true)}`, c.pct, tone(c.pct)))
-    for (const b of u.breakdown || []) out.push(meter(b.name, `${Math.round(b.pct)}%`, b.pct, 'blue'))
-    return out
-  }
-  const acctDetail = a => {
-    const u = a.usage
-    if (!u) return dsec(shortName(a), dlist([dkv('Status', esc(a.message || 'Not signed in'))]))
-    const rows = []
-    for (const [name, v] of [['5 hour', u.fiveHour], ['7 day', u.sevenDay]]) if (v) rows.push(`<div>${meter(name, `${Math.round(v.pct)}%${v.resetsAt ? ` · ${resetIn(v.resetsAt)}` : ''}`, v.pct, tone(v.pct))}</div>`)
-    for (const l of u.limits || []) rows.push(dkv(`${l.name} limit`, `${Math.round(l.pct)}%${l.resetsAt ? ` · ${resetIn(l.resetsAt)}` : ''}`))
-    for (const c of u.credits || []) rows.push(dkv('Credits', `${moneyMajor(c.used, 'USD')} of ${moneyMajor(c.limit, 'USD')}`))
-    for (const b of u.breakdown || []) rows.push(dkv(b.name, `${Math.round(b.pct)}%`))
-    return dsec(`${shortName(a)}${a.plan ? ` · ${a.plan}` : ''}`, dlist(rows)) + (a.history?.length > 1 ? dsec('Last readings', `<div class="hw-dchart">${usageChart(a.history, 'hw-grow')}</div>`) : '')
-  }
   window.registerHomeFamily({
     prefix: 'claude-account.', title: 'Claude: ', source: 'ai', cat: 'AI', icon: 'gauge', tint: 'var(--indigo)', tab: 'ai',
     items: d => accountsOf(d).map(a => ({ key: acctSlug(a), label: `Claude: ${shortName(a)}` })),
     make: key => ({
-      sizes: ['s', 'm', 'l'], defaultSize: 's', blurb: 'One Claude account: its 5-hour and 7-day usage, resets and history.',
+      sizes: ['s', 'm', 'l'], defaultSize: 's', blurb: 'One Claude account: the tokens Claude Code used in the last 5 hours and 7 days.',
       render(d, size) {
         const a = accountsOf(d).find(x => acctSlug(x) === key)
         if (!a) return unavailable('This account isn’t listed on this hub.', 'ai')
-        if (!a.usage) return unavailable(a.message || 'Sign in to see its usage.', 'ai')
-        const f = a.usage.fiveHour, s7 = a.usage.sevenDay
-        if (size === 's') return `<div class="hw-ringwrap" data-fit>${ring(f?.pct ?? 0, tone(f?.pct ?? 0), `${Math.round(f?.pct ?? 0)}%`, 84, 9, 20)}</div><div class="hw-sub c ell" data-fit>${f?.resetsAt ? esc(resetIn(f.resetsAt)) : esc(a.plan || '5 hour')}</div>`
-        let html = (a.plan ? `<div class="hw-sub ell" data-fit>${esc(a.plan)}</div>` : '') + meter('5 hour', `${Math.round(f?.pct ?? 0)}%${f?.resetsAt ? ` · ${until(f.resetsAt - Date.now())}` : ''}`, f?.pct ?? 0, tone(f?.pct ?? 0)) + meter('7 day', `${Math.round(s7?.pct ?? 0)}%${s7?.resetsAt ? ` · ${until(s7.resetsAt - Date.now())}` : ''}`, s7?.pct ?? 0, tone(s7?.pct ?? 0))
-        if (size === 'l') html += limitRows(a).join('') + usageChart(a.history)
+        if (!liveAcc(a)) return unavailable(a.message || 'Sign in to see its token use.', 'ai')
+        let html = fig(tok(a.local.fiveHour), 'tokens, last 5 hours')
+        if (size !== 's') html += `<div class="hw-sub ell" data-fit>7 days ${tok(a.local.sevenDay)} · ${compact(a.local.sevenDay?.calls || 0)} calls</div>`
+        if (size === 'l') html += `<div class="hw-sub" data-fit>Plan limits are on claude.ai. ${planLink('Open')}</div>`
         return html
       },
-      detail: d => { const a = accountsOf(d).find(x => acctSlug(x) === key); return a ? acctDetail(a) : empty('This account isn’t listed on this hub.') },
+      detail: d => { const a = accountsOf(d).find(x => acctSlug(x) === key); return a ? accDetail(a) + planNote() : empty('This account isn’t listed on this hub.') },
     }),
   })
-  reg({
-    id: 'claude-reset', label: 'Claude reset timer', labels: { s: 'Resets in' }, cat: 'AI', icon: 'clock', tint: 'var(--indigo)', tab: 'ai',
-    sizes: ['s', 'm'], defaultSize: 's', sources: ['ai'], blurb: 'Countdown to the next 5-hour and 7-day Claude limit resets.',
-    render(d, size) {
-      const accs = accountsOf(d).filter(a => a.usage)
-      if (!accs.length) return unavailable('Sign in to a Claude account to see resets.', 'ai', 'claude-account')
-      const t = x => (x ? until(x - Date.now()) : '–')
-      if (size === 's') { const a = mainAccount(accs); return fig(t(a.usage.fiveHour?.resetsAt), '5 hour window resets') + `<div class="hw-sub ell" data-fit>${esc(shortName(a))} · ${Math.round(a.usage.fiveHour?.pct ?? 0)}% used</div>` }
-      return list(accs.flatMap(a => [row({ t: `${shortName(a)} · 5 hour`, r: t(a.usage.fiveHour?.resetsAt) }), row({ t: `${shortName(a)} · 7 day`, r: t(a.usage.sevenDay?.resetsAt) })]))
-    },
-  })
-  const paceOf = a => {
-    const s = a.usage?.sevenDay
-    if (!s?.resetsAt) return null
-    const el = clamp(100 - ((s.resetsAt - Date.now()) / (7 * 86400000)) * 100), used = s.pct ?? 0
-    return { used, el, proj: el > 3 ? (used / el) * 100 : null, state: used > el + 8 ? 'ahead' : used < el - 8 ? 'behind' : 'on' }
-  }
-  const PACE = { ahead: ['Burning fast', 'var(--orange)'], behind: ['Room to spare', 'var(--green)'], on: ['On pace', 'var(--green)'] }
-  reg({
-    id: 'claude-pace', label: 'Claude 7-day pace', labels: { s: 'Weekly pace' }, cat: 'AI', icon: 'trend', tint: 'var(--indigo)', tab: 'ai',
-    sizes: ['s', 'm'], defaultSize: 's', sources: ['ai'], blurb: 'How your 7-day usage compares with how much of the week has passed.',
-    render(d, size) {
-      const accs = accountsOf(d).filter(a => a.usage && paceOf(a))
-      if (!accs.length) return unavailable('No 7-day window to compare yet.', 'ai')
-      const one = a => { const p = paceOf(a), [txt, col] = PACE[p.state]; return { p, txt, col } }
-      if (size === 's') {
-        const a = mainAccount(accs), { p, txt, col } = one(a)
-        return `<div class="hw-fig"><div class="v" style="color:${col};font-size:26px">${txt}</div><div class="hw-sub ell">${Math.round(p.used)}% used · ${Math.round(p.el)}% of week</div></div>` + meter('Used', `${Math.round(p.used)}%`, p.used, tone(p.used)) + meter('Week gone', `${Math.round(p.el)}%`, p.el, 'blue')
-      }
-      return cols(Math.min(accs.length, 2), accs.slice(0, 2).map(a => {
-        const { p, txt, col } = one(a)
-        return `<div class="hw-col"><h4 class="ell">${esc(shortName(a))}</h4><div class="hw-sub" data-fit style="color:${col};font-weight:600">${txt}</div>${meter('Used', `${Math.round(p.used)}%`, p.used, tone(p.used))}${meter('Week gone', `${Math.round(p.el)}%`, p.el, 'blue')}${p.proj != null ? `<div class="hw-sub ell" data-fit>On track for ${Math.round(p.proj)}% at reset</div>` : ''}</div>`
-      }))
-    },
-  })
-  reg({
-    id: 'claude-limits', label: 'Claude model limits', labels: { m: 'Model limits' }, cat: 'AI', icon: 'list', tint: 'var(--indigo)', tab: 'ai',
-    sizes: ['m', 'l'], defaultSize: 'm', sources: ['ai'], blurb: 'Fable and other per-model limits, credits and where usage goes, per account.',
-    render(d, size) {
-      const accs = accountsOf(d).filter(a => a.usage)
-      if (!accs.length) return unavailable('Sign in to a Claude account to see limits.', 'ai', 'claude-account')
-      return cols(Math.min(accs.length, size === 'l' ? 2 : 2), accs.slice(0, 2).map(a => `<div class="hw-col"><h4 class="ell">${esc(shortName(a))}</h4>${limitRows(a).join('') || '<div class="hw-sub" data-fit>No extra limits.</div>'}</div>`))
-    },
-    detail: d => accountsOf(d).map(acctDetail).join('') || empty('No Claude accounts.'),
+  // These three showed plan percentages the hub no longer reads. They stay registered so saved
+  // layouts keep their place, but leave the gallery and point to claude.ai.
+  for (const [id, label, sizes] of [['claude-reset', 'Claude reset timer', ['s', 'm']], ['claude-pace', 'Claude 7-day pace', ['s', 'm']], ['claude-limits', 'Claude model limits', ['m', 'l']]]) reg({
+    id, label, cat: 'AI', icon: 'gauge', tint: 'var(--indigo)', tab: 'ai', sizes, defaultSize: sizes[0], sources: [], retired: true,
+    blurb: 'Plan limits are on claude.ai.',
+    render: () => note('Plan limits and resets are on claude.ai.', planLink('Open')),
+    detail: planNote,
   })
   const modelParts = d => {
     const st = tokenStats(d), top = Object.entries(st.byModel).sort((a, b) => b[1] - a[1]), total = top.reduce((s, x) => s + x[1], 0)
@@ -2672,7 +2578,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
       return `<div class="hw-gitem" data-hw-wid="${esc(w.id)}" data-hay="${esc(`${w.label} ${w.blurb || ''} ${w.cat || 'Other'} ${w.id}`.toLowerCase())}"><div class="hw-ghead"><b>${esc(w.label)}</b>${w.blurb ? `<span>${esc(w.blurb)}</span>` : ''}</div><div class="hw-gstage" style="--ph:${DIMS[vk][size][1]}px;--k:${scale()}">${preview(w, size)}</div><div class="hw-gfoot">${seg}<button type="button" class="hw-btn solid" data-hw-add="${esc(w.id)}">${icon('plus', 14)}Add</button></div></div>`
     }
     const build = () => {
-      const all = [...widgetMap(true).values()]
+      const all = [...widgetMap(true).values()].filter(w => !w.retired)
       const cats = [...new Set(all.map(w => w.cat || 'Other'))].sort((a, b) => (CAT_ORDER.indexOf(a) + 1 || 99) - (CAT_ORDER.indexOf(b) + 1 || 99))
       return cats.map(cat => {
         const items = all.filter(w => (w.cat || 'Other') === cat)

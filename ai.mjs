@@ -1,5 +1,7 @@
-// AI tab back end: Claude plan usage per account, token use from Claude Code session logs
+// AI tab back end: your Claude accounts and the tokens Claude Code logged in its session logs
 // (this computer and your server), and optional OpenRouter / DeepSeek balances.
+// The hub never reads Claude Code's sign-in tokens and never calls Anthropic itself: plan limits
+// are on claude.ai (USAGE_PAGE). The chat runs your own `claude` with your own sign-in.
 // Tokens and keys stay in this process: page responses carry only numbers, labels, emails
 // and timestamps. Nothing here throws at import; timers are unref'd.
 import fs from 'node:fs'
@@ -10,12 +12,9 @@ import { execFileSync } from 'node:child_process'
 import { configPath } from './config.mjs'
 import { IS_WIN } from './platform.mjs'
 
-const USAGE_URL = 'https://api.anthropic.com/api/oauth/usage'
 const MIN = 60e3
 const DAY = 864e5
 const SAMPLE_EVERY = 5 * MIN
-const CALL_GAP = MIN // at most one usage call per account per minute
-const NUDGE_GAP = 10 * MIN // `claude auth status` for an expired non-default account
 const KEEP_DAYS = 35 // token buckets kept; the page shows 30
 const FILE_CUTOFF = 31 * DAY // session files untouched for longer hold nothing we show
 const SCAN_BUDGET = 12e3
@@ -23,7 +22,7 @@ const CHUNK = 4 << 20
 const NEEDLE = Buffer.from('"usage":{')
 const HOME = os.homedir()
 const DEFAULT_DIR = path.resolve(HOME, '.claude')
-const CLAUDE_EXE = [path.join(HOME, '.local', 'bin', IS_WIN ? 'claude.exe' : 'claude')].find(f => fs.existsSync(f)) || 'claude'
+export const USAGE_PAGE = 'https://claude.ai/settings/usage'
 
 // Runs on the server over `ssh <host> python3 -`. Same incremental scan as the laptop one, with
 // its own cache in /root/.hub-cache; prints compact JSON. Read-only outside that folder.
@@ -195,12 +194,6 @@ export function modelName(id) {
   return id || 'Unknown'
 }
 
-function planName(c) {
-  if (!c) return ''
-  const x = /(\d+x)/.exec(c.rateLimitTier || '')
-  return [cap(c.subscriptionType || ''), x?.[1]].filter(Boolean).join(' ')
-}
-
 // The terminal command that signs a config dir in. The default dir needs no env var.
 function loginCommand(configDir, isDefault) {
   if (isDefault) return 'claude auth login'
@@ -208,53 +201,51 @@ function loginCommand(configDir, isDefault) {
   return IS_WIN ? `$env:CLAUDE_CONFIG_DIR="${dir.replace(/\//g, '\\')}"; claude auth login` : `CLAUDE_CONFIG_DIR="${dir}" claude auth login`
 }
 
-function money(v) {
-  if (v == null) return null
-  if (typeof v === 'number') return v
-  if (typeof v === 'object' && typeof v.amount_minor === 'number') return v.amount_minor / 10 ** (v.exponent ?? 2)
-  return null
-}
-
-// The usage response, reduced to what the page shows.
-export function normUsage(j) {
-  const win = o => (o && typeof o.utilization === 'number' ? { pct: o.utilization, resetsAt: Date.parse(o.resets_at) || null } : null)
-  const limits = (Array.isArray(j.limits) ? j.limits : [])
-    .filter(l => l && l.kind !== 'session' && l.kind !== 'weekly_all' && typeof l.percent === 'number')
-    .map(l => ({ name: l.scope?.model?.display_name || l.scope?.surface?.display_name || cap(String(l.kind).replace(/_/g, ' ')), pct: l.percent, resetsAt: Date.parse(l.resets_at) || null }))
-  if (!limits.length)
-    for (const [k, name] of [['seven_day_opus', 'Opus'], ['seven_day_sonnet', 'Sonnet']]) { const w = win(j[k]); if (w) limits.push({ name, ...w }) }
-  const credits = Object.entries(j)
-    .filter(([k, v]) => v && typeof v === 'object' && !['five_hour', 'seven_day'].includes(k) && typeof v.limit_dollars === 'number')
-    .map(([, v]) => ({ used: v.used_dollars ?? 0, limit: v.limit_dollars, pct: v.utilization ?? (v.limit_dollars ? (100 * (v.used_dollars ?? 0)) / v.limit_dollars : 0), resetsAt: Date.parse(v.resets_at) || null }))
-  const sp = j.spend, ex = j.extra_usage
-  let extra = null
-  if (sp && typeof sp === 'object') extra = { enabled: !!sp.enabled, used: money(sp.used) ?? 0, limit: money(sp.limit) ?? money(sp.cap), currency: sp.used?.currency || 'USD' }
-  else if (ex && typeof ex === 'object') {
-    const d = 10 ** (ex.decimal_places ?? 2)
-    extra = { enabled: !!ex.is_enabled, used: (ex.used_credits ?? 0) / d, limit: ex.monthly_limit == null ? null : ex.monthly_limit / d, currency: ex.currency || 'USD' }
+// Tokens one account's Claude Code logged on this computer in the last 5 hours and 7 days, from
+// the hourly buckets the log scan keeps (so a window starts on the hour). io = input + output,
+// cache = cache writes + reads. These are counts, not plan percentages: Anthropic doesn't publish
+// how tokens map to plan limits.
+export function localWindows(files, src, now = Date.now()) {
+  const H = 36e5
+  const from5 = Math.floor(now / H) * H - 4 * H, from7 = Math.floor(now / H) * H - (7 * 24 - 1) * H
+  const w = () => ({ io: 0, cache: 0, calls: 0 })
+  const out = { fiveHour: w(), sevenDay: w(), lastAt: 0 }
+  const add = (o, v) => { o.io += (v[0] || 0) + (v[1] || 0); o.cache += (v[2] || 0) + (v[3] || 0); o.calls += v[4] || 0 }
+  for (const e of Object.values(files || {})) {
+    if (!e || e.src !== src || !e.b) continue
+    let hit = false
+    for (const [k, v] of Object.entries(e.b)) {
+      const t = Date.parse(k.slice(0, 13) + ':00:00Z')
+      if (!(t >= from7) || !Array.isArray(v)) continue
+      hit = true
+      add(out.sevenDay, v)
+      if (t >= from5) add(out.fiveHour, v)
+    }
+    const last = Date.parse(e.last) || 0
+    if (hit && last > out.lastAt) out.lastAt = last
   }
-  const breakdown = (j.seven_day_breakdown?.rows || []).filter(r => r?.percent > 0).map(r => ({ name: r.display_name || r.key, pct: r.percent }))
-  return { fiveHour: win(j.five_hour), sevenDay: win(j.seven_day), limits, credits, extra, breakdown }
+  return out
 }
 
 export function create({ run, sshHost, here }) {
   const dataDir = path.join(here, 'data')
-  const historyFile = path.join(dataDir, 'usage-history.jsonl')
   const laptopCacheFile = path.join(dataDir, 'ai-tokens-laptop.json')
   const serverCacheFile = path.join(dataDir, 'ai-tokens-server.json')
   try { fs.mkdirSync(dataDir, { recursive: true }) } catch {}
 
   const secrets = () => readJsonSync(configPath('secrets.json')) || {}
-  const accounts = new Map() // id -> page record (+ private fields prefixed _)
-  let history = loadHistory()
   const providers = { at: 0, list: [] }
   const laptop = { cache: null, scanning: false, at: 0, pending: 0, files: 0, error: '', pass: 0 }
   const server = { data: readJsonSync(serverCacheFile), scanning: false, at: 0, error: '' }
   if (server.data) server.at = server.data.at || 0
   let aggMemo = { key: '', body: null }
 
-  /* ---------- plan usage ---------- */
+  /* ---------- Claude accounts ---------- */
 
+  // Who each config dir is signed in as, from Claude Code's own .claude.json. The sign-in tokens
+  // in .credentials.json belong to Claude Code: the hub checks that the file is there and never
+  // opens it, renews it or sends it anywhere. Plan limits (the 5-hour and 7-day percentages) are on
+  // claude.ai; what the hub shows per account is the tokens Claude Code logged on this computer.
   function accountList() {
     const list = Array.isArray(secrets().claudeAccounts) && secrets().claudeAccounts.length ? secrets().claudeAccounts : [{ label: '', configDir: '~/.claude' }]
     return list.map(a => {
@@ -262,93 +253,31 @@ export function create({ run, sshHost, here }) {
       const isDefault = dir.toLowerCase() === DEFAULT_DIR.toLowerCase()
       // With CLAUDE_CONFIG_DIR set, Claude Code keeps .claude.json inside that folder.
       const cfg = readJsonSync(isDefault ? path.join(HOME, '.claude.json') : path.join(dir, '.claude.json'))
-      const cred = readJsonSync(path.join(dir, '.credentials.json'))?.claudeAiOauth || null
       const email = cfg?.oauthAccount?.emailAddress || ''
       const uuid = cfg?.oauthAccount?.accountUuid || ''
+      const signedIn = !!(email || uuid) || fs.existsSync(path.join(dir, '.credentials.json'))
       const label = a.label || email || a.configDir
-      return { id: label, label, email, uuid, configDir: a.configDir || '~/.claude', dir, isDefault, cred }
+      return { id: label, label, email, uuid, configDir: a.configDir || '~/.claude', dir, isDefault, signedIn }
     }).map((a, i, all) => {
-      // Two config dirs signed in to one account would show (and record) the same numbers twice.
+      // Two config dirs signed in to one account would show the same person twice.
       const same = all.slice(0, i).find(b => (a.uuid && a.uuid === b.uuid) || (!a.uuid && a.email && a.email === b.email))
       const wrong = /@/.test(a.label) && a.email && a.email.toLowerCase() !== a.label.toLowerCase()
       return { ...a, dupOf: same?.label || '', mismatch: same || wrong ? `Signed in as ${a.email}${same ? `, the same account as ${same.label}` : ''}: sign in again${/@/.test(a.label) ? ` with ${a.label}` : ''}` : '' }
     })
   }
 
-  function loadHistory() {
-    try {
-      const keep = Date.now() - 30 * DAY
-      const lines = fs.readFileSync(historyFile, 'utf8').split('\n').filter(Boolean)
-      const rows = []
-      for (const l of lines) { try { const r = JSON.parse(l); if (r.at >= keep) rows.push(r) } catch {} }
-      if (rows.length < lines.length) fs.writeFileSync(historyFile, rows.map(r => JSON.stringify(r)).join('\n') + (rows.length ? '\n' : ''))
-      return rows
-    } catch { return [] }
-  }
-
-  function record(acc, u) {
-    const row = { at: Date.now(), account: acc.label, five_hour: u.fiveHour?.pct ?? null, seven_day: u.sevenDay?.pct ?? null, extra_used: u.extra?.used ?? null, credit_used: u.credits[0]?.used ?? null }
-    history.push(row)
-    fs.appendFile(historyFile, JSON.stringify(row) + '\n', () => {})
-  }
-
-  async function nudgeCli(acc, prev) {
-    if (Date.now() - (prev._nudgedAt || 0) < NUDGE_GAP) return acc.cred
-    prev._nudgedAt = Date.now()
-    await run(CLAUDE_EXE, ['auth', 'status'], { timeout: 25_000, env: { ...process.env, CLAUDE_CONFIG_DIR: acc.dir } })
-    return readJsonSync(path.join(acc.dir, '.credentials.json'))?.claudeAiOauth || null
-  }
-
-  async function sampleAccount(acc) {
-    const prev = accounts.get(acc.id) || {}
-    const base = { id: acc.id, label: acc.label, email: acc.email || prev.email || '', configDir: acc.configDir, isDefault: acc.isDefault, plan: planName(acc.cred) || prev.plan || '', usage: prev.usage || null, usageAt: prev.usageAt || 0, _calledAt: prev._calledAt || 0, _backoff: prev._backoff || 0, _nudgedAt: prev._nudgedAt || 0 }
-    const set = r => (accounts.set(acc.id, r), r)
-    const now = Date.now()
-    let cred = acc.cred
-    if (!cred?.accessToken) return set({ ...base, usage: null, status: 'connect', message: 'Not signed in', fix: loginCommand(acc.configDir, acc.isDefault) })
-    if (acc.dupOf) return set({ ...base, usage: null, usageAt: 0, status: 'mismatch', message: acc.mismatch, fix: loginCommand(acc.configDir, acc.isDefault) })
-    if (now - base._calledAt < CALL_GAP || now < base._backoff) return prev.status ? prev : set({ ...base, status: 'ok', message: '' })
-    if (cred.expiresAt && cred.expiresAt < now + 30e3) {
-      // The CLI owns the default credentials; never refresh or write them here.
-      if (acc.isDefault) return set({ ...base, status: 'stale', message: 'Sign-in token expired; Claude Code renews it the next time it runs', fix: '' })
-      const before = cred.expiresAt
-      cred = await nudgeCli(acc, base)
-      if (!cred?.accessToken || !(cred.expiresAt > before) || cred.expiresAt < now + 30e3)
-        return set({ ...base, status: 'expired', message: 'Sign-in expired', fix: loginCommand(acc.configDir, false) })
-    }
-    base._calledAt = now
-    let res
-    try {
-      res = await fetch(USAGE_URL, { headers: { Authorization: `Bearer ${cred.accessToken}`, 'anthropic-beta': 'oauth-2025-04-20', 'User-Agent': 'claude-code/2.1' }, signal: AbortSignal.timeout(10_000) })
-    } catch (e) {
-      return set({ ...base, status: base.usage ? 'stale' : 'error', message: `Couldn’t reach Anthropic (${scrub(e.cause?.code || e.name)})`, fix: '' })
-    }
-    if (res.status === 429) return set({ ...base, _backoff: now + 5 * MIN, status: base.usage ? 'stale' : 'error', message: 'Usage API is rate limiting; trying again in 5 minutes', fix: '' })
-    if (res.status === 401 || res.status === 403)
-      return set({ ...base, status: acc.isDefault ? 'stale' : 'expired', message: acc.isDefault ? 'Sign-in token was refused; Claude Code renews it the next time it runs' : 'Sign-in expired', fix: acc.isDefault ? '' : loginCommand(acc.configDir, false) })
-    if (!res.ok) return set({ ...base, status: base.usage ? 'stale' : 'error', message: `Usage API answered ${res.status}`, fix: '' })
-    let j
-    try { j = await res.json() } catch { return set({ ...base, status: 'error', message: 'Usage API sent bad JSON', fix: '' }) }
-    const usage = normUsage(j)
-    record(acc, usage)
-    if (acc.mismatch) return set({ ...base, usage, usageAt: now, status: 'mismatch', message: acc.mismatch, fix: loginCommand(acc.configDir, acc.isDefault) })
-    return set({ ...base, usage, usageAt: now, status: 'ok', message: '', fix: '' })
-  }
-
-  let sampling = null
-  function sampleAll() {
-    sampling ||= Promise.all(accountList().map(a => sampleAccount(a).catch(e => console.error('ai usage', scrub(e.message))))).finally(() => (sampling = null))
-    return sampling
-  }
-
   function accountsBody() {
-    const ids = new Set(accountList().map(a => a.id))
-    const since = Date.now() - 7 * DAY
-    return [...accounts.values()].filter(a => ids.has(a.id)).map(a => {
-      const out = {}
-      for (const [k, v] of Object.entries(a)) if (!k.startsWith('_')) out[k] = v
-      out.history = history.filter(r => r.account === a.id && r.at >= since).map(r => [r.at, r.five_hour, r.seven_day])
-      return out
+    const files = loadLaptopCache().files
+    return accountList().map(a => {
+      const status = !a.signedIn ? 'connect' : a.mismatch ? 'mismatch' : 'ok'
+      return {
+        id: a.id, label: a.label, email: a.email, configDir: a.configDir, isDefault: a.isDefault, status,
+        message: status === 'connect' ? 'Not signed in' : status === 'mismatch' ? a.mismatch : '',
+        fix: status === 'ok' ? '' : loginCommand(a.configDir, a.isDefault),
+        usageUrl: USAGE_PAGE,
+        local: localWindows(files, a.id),
+        localAt: laptop.at,
+      }
     })
   }
 
@@ -656,9 +585,9 @@ export function create({ run, sshHost, here }) {
 
   /* ---------- schedule ---------- */
 
-  const tick = () => { sampleAll(); refreshProviders(false).catch(() => {}) }
+  const tick = () => { refreshProviders(false).catch(() => {}) }
   const scanTick = () => { scanLaptop(); scanServer() }
-  let ready = Promise.race([Promise.all([sampleAll(), refreshProviders(false)]).catch(() => {}), new Promise(r => setTimeout(r, 12_000).unref())])
+  let ready = Promise.race([refreshProviders(false).catch(() => {}), new Promise(r => setTimeout(r, 12_000).unref())])
   setInterval(tick, SAMPLE_EVERY).unref()
   setTimeout(scanTick, 3000).unref()
   setInterval(scanTick, SAMPLE_EVERY).unref()
@@ -675,7 +604,7 @@ export function create({ run, sshHost, here }) {
       if (req.method === 'GET' && p === 'providers') { await ready; return send(res, 200, { at: providers.at, list: providers.list }), true }
       if (req.method === 'POST' && p === 'refresh') {
         scanTick() // runs in the background; the page sees progress in scan
-        await Promise.all([sampleAll(), refreshProviders(true)])
+        await refreshProviders(true)
         return send(res, 200, stateBody()), true
       }
       send(res, 404, { error: 'not found' })
