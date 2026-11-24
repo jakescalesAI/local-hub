@@ -48,6 +48,7 @@ final class Apps {
         int edge; // the banner's own edge colour, for the strips above and below it; 0 not worked out yet, 1 none
         float[] fit; // where the banner's logo is (x0, y0, x1, y1, 0..1), so a tile can zoom to it; null: the whole banner
         boolean hasMark; // a white version of the logo (art/<pkg>/mark.png), for the home screen's header
+        float ar; // the banner's own shape, height over width (0: not known yet: drawn again)
         boolean marked; // the logo has been looked for (false in a list saved before this existed: look again)
         long stamp; // the package's lastUpdateTime: unchanged means its saved art is still right
 
@@ -128,6 +129,7 @@ final class Apps {
                 JSONArray fitArr = o.optJSONArray("fit");
                 if (fitArr != null && fitArr.length() == 4) a.fit = new float[]{(float) fitArr.optDouble(0), (float) fitArr.optDouble(1), (float) fitArr.optDouble(2), (float) fitArr.optDouble(3)};
                 a.hasMark = o.optBoolean("mark");
+                a.ar = (float) o.optDouble("ar", 0);
                 a.marked = o.has("mark");
                 out.add(a);
             }
@@ -151,7 +153,7 @@ final class Apps {
             for (App a : list) {
                 JSONObject o = new JSONObject();
                 o.put("label", a.label).put("pkg", a.packageName).put("activity", a.activityName)
-                        .put("banner", a.hasBanner).put("icon", a.hasIcon).put("color", a.color).put("stamp", a.stamp).put("edge", a.edge).put("mark", a.hasMark);
+                        .put("banner", a.hasBanner).put("icon", a.hasIcon).put("color", a.color).put("stamp", a.stamp).put("edge", a.edge).put("mark", a.hasMark).put("ar", a.ar);
                 if (a.fit != null) o.put("fit", new JSONArray().put(a.fit[0]).put(a.fit[1]).put(a.fit[2]).put(a.fit[3]));
                 arr.put(o);
             }
@@ -199,6 +201,7 @@ final class Apps {
                 if (a.hasBanner && (a.edge >>> 24) == 0xFF) o.put("edge", String.format(Locale.US, "#%06X", a.edge & 0xFFFFFF));
                 if (a.hasBanner && a.fit != null) o.put("fit", new JSONArray().put(a.fit[0]).put(a.fit[1]).put(a.fit[2]).put(a.fit[3]));
                 if (a.hasMark) o.put("mark", "http://localhub.tv/art/" + a.packageName + "/mark.png");
+                if (a.hasBanner && a.ar > 0) o.put("ar", a.ar);
                 long at = prefs.openedAt(a.packageName);
                 if (at > 0) o.put("recent", at);
                 arr.put(o);
@@ -259,7 +262,7 @@ final class Apps {
             try { stamp = pm.getPackageInfo(pkg, 0).lastUpdateTime; } catch (Exception ignored) { }
             App old = saved.get(pkg);
             if (old != null && stamp != 0 && old.stamp == stamp && ri.activityInfo.name.equals(old.activityName)
-                    && (!old.hasBanner || (old.edge != 0 && old.marked && artFile(pkg + "/banner").length() > 0)) && (!old.hasIcon || artFile(pkg + "/icon").length() > 0)) {
+                    && (!old.hasBanner || (old.edge != 0 && old.marked && old.ar > 0 && artFile(pkg + "/banner").length() > 0)) && (!old.hasIcon || artFile(pkg + "/icon").length() > 0)) {
                 out.add(old); // unchanged since it was drawn
                 continue;
             }
@@ -274,7 +277,7 @@ final class Apps {
             try {
                 Drawable d = ri.activityInfo.loadBanner(pm);
                 if (d == null) d = ri.activityInfo.applicationInfo.loadBanner(pm);
-                banner = draw(d, BANNER_W, BANNER_H);
+                banner = drawBanner(d); // its own shape: drawn into 16:9, a banner that isn't came out squished
             } catch (Exception ignored) { }
 
             Bitmap icon = null;
@@ -283,6 +286,7 @@ final class Apps {
             } catch (Exception ignored) { }
 
             int color = dominant(banner != null ? banner : icon); // before png(), which recycles the bitmap
+            float bannerAr = banner != null ? banner.getHeight() / (float) banner.getWidth() : 0;
             int edge = edge(banner);
             float[] fit = banner != null ? logoBox(banner, edge) : null;
             Bitmap mark = fit != null ? whiteMark(banner, edge, fit) : null;
@@ -296,11 +300,23 @@ final class Apps {
             a.stamp = stamp;
             a.edge = hasBanner ? edge : 0;
             a.fit = hasBanner ? fit : null;
+            a.ar = hasBanner ? bannerAr : 0;
             a.hasMark = hasBanner && markPng != null && markPng.length > 0;
             a.marked = true;
             if (a.hasMark) images.put(pkg + "/mark", markPng);
             out.add(a);
         }
+    }
+
+    /** A banner at its own proportions, 640 wide (taller ones capped at 640 high). */
+    private static Bitmap drawBanner(Drawable d) {
+        if (d == null) return null;
+        int iw = d.getIntrinsicWidth(), ih = d.getIntrinsicHeight();
+        if (iw <= 0 || ih <= 0) return draw(d, BANNER_W, BANNER_H);
+        float ar = ih / (float) iw;
+        int w = BANNER_W, h = Math.round(BANNER_W * ar);
+        if (h > 640) { h = 640; w = Math.max(1, Math.round(640 / ar)); }
+        return draw(d, w, h);
     }
 
     private static Bitmap draw(Drawable d, int w, int h) {

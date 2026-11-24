@@ -209,6 +209,7 @@ function takeSettings(next) {
   }
   if (lookChanged) applyLook(); // repaints the shelf too
   paintHomeWidgets();
+  paintWpanel(); // the Layout panel stays drawn, ready to open
 }
 function paintChip() {
   $("#splashName").textContent = HUB.name;
@@ -227,10 +228,10 @@ const TILE_ART = {
 };
 // A tile zooms to its banner's logo (the TV app measures where it is): a logo with wide empty margins fills its
 // tile like the others. The tile is 276x172; a banner is 16:9.
-function fitStyle(fit) {
+function fitStyle(fit, ar) {
   if (!Array.isArray(fit) || fit.length !== 4) return "";
   const [x0, y0, x1, y1] = fit, bw = Math.max(0.05, x1 - x0), bh = Math.max(0.05, y1 - y0);
-  const TA = 276 / 172, BA = 9 / 16;
+  const TA = 276 / 172, BA = ar > 0 ? ar : 9 / 16; // the banner's own shape (height over width): never squished
   const wf = Math.max(1, Math.min(2.6, Math.min(0.8 / bw, (0.62 / TA) / (BA * bh)))); // the picture's width, in tile widths
   const hf = wf * BA * TA; // its height, in tile heights
   const left = 50 - (x0 + bw / 2) * wf * 100, top = 50 - (y0 + bh / 2) * hf * 100;
@@ -281,11 +282,17 @@ async function addSite(text) {
 function loadItems() {
   if (NATIVE) {
     APPS = safeJson(native("apps") || "[]", []).map((a) => ({
-      id: a.id, pkg: a.id, name: a.name, banner: a.banner || null, img: a.icon || null, edge: a.edge || null, mark: a.mark || null, fit: a.fit || null,
+      id: a.id, pkg: a.id, name: a.name, banner: a.banner || null, img: a.icon || null, edge: a.edge || null, mark: a.mark || null, fit: a.fit || null, ar: a.ar || null,
       ...(TILE_ART[a.id] || {}),
       bg: a.color || "#2c2c2e", fg: "#ffffff", recentAt: a.recent || 0, wordmark: wordmarkFor(a.name),
     }));
     if (IN_HUB) APPS.push(...Stream.STREAM_APPS.map((a) => ({ ...a, note: Stream.noteFor(a) })), ...siteApps());
+    // More apps: the streaming services this TV doesn't have installed, opened in the laptop's Chrome on the TV.
+    if (IN_HUB && !PREVIEW) {
+      const have = new Set(APPS.map((a) => nameKey(a.name)));
+      APPS.push(...WEB_APPS.filter((w) => !["kodi", "vlc", "steam"].includes(w.id) && !have.has(nameKey(w.name)))
+        .map((w) => ({ ...w, stream: Stream.engineFor(w) || "chrome", note: Stream.noteFor(w), recentAt: 0 })));
+    }
     INPUTS = safeJson(native("inputs") || "[]", []);
     S.inputCount = INPUTS.length;
   } else {
@@ -360,7 +367,7 @@ function iconHTML(it) {
   // A banner that won't load (an app can hand Android an empty one) falls back to its icon, or its colour.
   const fallback = it.img ? `this.onerror=null;this.className='square';this.src='${esc(it.img)}'` : "this.remove()";
   // The whole banner, never cropped: a 16:9 banner on a slightly taller tile, the strips above and below in its own edge colour.
-  if (it.banner) return `<div class="icon" style="--a-bg:${it.edge || it.bg};--a-fg:${it.fg}"><i class="fill flat"></i><img class="banner" src="${esc(it.banner)}" alt="" decoding="async"${it.fit ? ` style="${fitStyle(it.fit)}"` : ""} onerror="${fallback}"></div>`;
+  if (it.banner) return `<div class="icon" style="--a-bg:${it.edge || it.bg};--a-fg:${it.fg}"><i class="fill flat"></i><img class="banner" src="${esc(it.banner)}" alt="" decoding="async"${it.fit ? ` style="${fitStyle(it.fit, it.ar)}"` : ""} onerror="${fallback}"></div>`;
   if (it.img) return `<div class="icon" style="${colors}">${fill}<img class="square" src="${esc(it.img)}" alt="" decoding="async"></div>`;
   if (it.icon) return `<div class="icon" style="${colors}">${fill}<i class="glyph${it.wide ? " wide" : ""}" style="--glyph:url('./brands/${it.icon}.svg')"></i>${it.note ? `<span class="sub">${esc(it.note)}</span>` : ""}</div>`;
   return `<div class="icon" style="${colors}">${fill}<b class="letter"${it.letter && it.letter.length > 4 ? ' style="font-size:58px"' : ""}>${esc(it.letter || it.name.slice(0, 1))}</b></div>`;
@@ -1098,7 +1105,10 @@ function wpItems() {
 function paintWpanel() {
   S.wp = wpItems();
   S.wpAt = clamp(S.wpAt ?? 1, 0, S.wp.length - 1);
-  $("#wpList").innerHTML = S.wp.map((x, i) => `<div class="wpi ${x.cls || ""}${i === S.wpAt ? " sel" : ""}" data-w="${i}">${x.html}</div>`).join("");
+  // Only what changed: the rows are rebuilt when their content changes, the selection just moves.
+  const list = $("#wpList"), html = S.wp.map((x, i) => `<div class="wpi ${x.cls || ""}" data-w="${i}">${x.html}</div>`).join("");
+  if (list._html !== html) { list.innerHTML = html; list._html = html; }
+  list.querySelectorAll(".wpi").forEach((n) => n.classList.toggle("sel", Number(n.dataset.w) === S.wpAt));
 }
 function openWidgets() {
   loadWeather();
