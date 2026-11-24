@@ -1,0 +1,15 @@
+/* LocalHub's one theme, loaded by the TV (tv/ui/index.html) and by the hub page on a computer (index.html). Change a
+   colour or a chat measure here and both follow. Sizes are the TV's, in units of --ui-u: 1px on the TV's 1920 canvas,
+   half that on a computer (tabs/tvlook.js), so the two keep the same proportions. */
+:root {
+  --ui-u: 1px;
+  --ui-fill: #26272d; --ui-edge: inset 0 0 0 1.5px rgba(255, 255, 255, .1); --ui-panel: #1c1d22; --ui-sel: #f2f2f5;
+  --chat-bg: #0b0b0e; --chat-surface: #1e1e23; --chat-text: #fff; --chat-text-2: rgba(235, 235, 245, .62); --chat-text-3: rgba(235, 235, 245, .36);
+  --chat-me: var(--blue, #0a84ff); --chat-code: #121215; --chat-warn: #2a2620; --chat-side-panel: #17171c;
+}
+:root, [data-chat] {
+  --chat-size: calc(36 * var(--ui-u)); --chat-line: 1.42; --chat-title: calc(44 * var(--ui-u)); --chat-note: calc(28 * var(--ui-u));
+  --chat-bub-y: calc(24 * var(--ui-u)); --chat-bub-x: calc(36 * var(--ui-u)); --chat-bub-r: calc(40 * var(--ui-u)); --chat-tail: calc(14 * var(--ui-u));
+  --chat-gap: calc(28 * var(--ui-u)); --chat-side: calc(96 * var(--ui-u)); --chat-bar: calc(104 * var(--ui-u)); --chat-card-r: calc(32 * var(--ui-u));
+  --chat-me-w: calc(1120 * var(--ui-u)); --chat-bot-w: calc(1320 * var(--ui-u));
+}

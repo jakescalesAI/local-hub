@@ -105,6 +105,12 @@ export const SAVER_MAX_WIDGETS = 4
 export const SAVER_INTERVAL = { min: 5, max: 300, default: 12 }
 const MAX_FOLDER = 1024
 export const saverDefault = () => ({ source: 'wallpapers', folder: '', interval: SAVER_INTERVAL.default, shuffle: true, motion: 'kenburns', widgets: ['clock', 'date'] })
+// What each kind of device shows behind Home, and when it's left alone: desktop (and iPad) and mobile. wallpaper ''
+// is the shared one (wallpaper.current); saver is the minutes before the screensaver, 0 for none.
+export const LOOK_DEVICES = ['desktop', 'mobile']
+export const SAVER_MINUTES = [0, 2, 5, 10, 15]
+const lookDefault = () => ({ desktop: { wallpaper: '', saver: 0, show: 'photos' }, mobile: { wallpaper: '', saver: 0, show: 'photos' } })
+const wallIds = s => ['', 'none', ...BUILTIN_WALLPAPERS.map(x => x.id), ...s.wallpaper.custom.map(x => x.id), ...s.wallpaper.uploads.map(x => x.id)]
 const withoutFolder = v => { const { folder, ...rest } = v; return rest }
 // '' means no folder chosen. Anything else is an absolute path, tidied (no trailing separator).
 export function cleanFolder(v) {
@@ -209,6 +215,7 @@ const defaults = here => ({
   wallpaper: { current: activeTheme().wallpaper || 'none', custom: [], uploads: [] },
   scroll: { ...SCROLL_DEFAULT },
   tv: { apps: [], hidden: [], favorites: [], saver: saverDefault() },
+  look: lookDefault(),
 })
 
 /* ---------- validation ---------- */
@@ -378,8 +385,9 @@ export function applyPatch(cur, body, here) {
   next.pages = next.pages || []
   next.scroll = { ...SCROLL_DEFAULT, ...(next.scroll || {}) }
   next.tv = { apps: [], hidden: [], favorites: [], ...(next.tv || {}), saver: { ...saverDefault(), ...(next.tv?.saver || {}) } }
-  if (!c.obj('body', body, ['tabs', 'apps', 'sites', 'groups', 'pages', 'widgets', 'scroll', 'tv', 'style', 'wallpaper', 'reset'])) c.done()
-  if (!Object.keys(body).length) c.fail('body', 'is empty: send at least one of tabs, apps, sites, groups, pages, widgets, scroll, tv, style, wallpaper, reset')
+  next.look = Object.fromEntries(LOOK_DEVICES.map(k => [k, { ...lookDefault()[k], ...(next.look?.[k] || {}) }]))
+  if (!c.obj('body', body, ['tabs', 'apps', 'sites', 'groups', 'pages', 'widgets', 'scroll', 'tv', 'style', 'wallpaper', 'look', 'reset'])) c.done()
+  if (!Object.keys(body).length) c.fail('body', 'is empty: send at least one of tabs, apps, sites, groups, pages, widgets, scroll, tv, style, wallpaper, look, reset')
 
   if (body.reset !== undefined) {
     const parts = ['tabs', 'apps', 'widgets', 'scroll', 'tv', 'style', 'wallpaper', 'pages', 'all']
@@ -656,6 +664,19 @@ export function applyPatch(cur, body, here) {
     if (!['none', ...BUILTIN_WALLPAPERS.map(x => x.id), ...next.wallpaper.custom.map(x => x.id), ...next.wallpaper.uploads.map(x => x.id)].includes(next.wallpaper.current)) next.wallpaper.current = 'none'
   }
 
+  // { desktop?: { wallpaper?, saver?, show? }, mobile?: {…} }, each a partial patch.
+  if (body.look !== undefined && c.obj('look', body.look, LOOK_DEVICES)) {
+    for (const k of LOOK_DEVICES) {
+      const v = body.look[k], p = `look.${k}`
+      if (v === undefined || !c.obj(p, v, ['wallpaper', 'saver', 'show'])) continue
+      if (v.wallpaper !== undefined && c.oneOf(`${p}.wallpaper`, v.wallpaper, wallIds(next)) !== undefined) next.look[k].wallpaper = v.wallpaper
+      if (v.saver !== undefined && c.oneOf(`${p}.saver`, v.saver, SAVER_MINUTES) !== undefined) next.look[k].saver = v.saver
+      if (v.show !== undefined && c.oneOf(`${p}.show`, v.show, ['photos', 'background']) !== undefined) next.look[k].show = v.show
+    }
+  }
+  // One that was removed goes back to the shared background.
+  for (const k of LOOK_DEVICES) if (!wallIds(next).includes(next.look[k].wallpaper)) next.look[k].wallpaper = ''
+
   c.done()
   return next
 }
@@ -689,6 +710,7 @@ function repair(saved, here) {
   out.wallpaper.current = known.includes(saved.wallpaper?.current) ? saved.wallpaper.current : 'none'
   out.tv = { ...out.tv, saver: saverDefault() }
   for (const k of Object.keys(saverDefault())) tryPart(`tv.saver.${k}`, () => { out.tv = { ...out.tv, saver: applyPatch({ ...d, tv: out.tv }, { tv: { saver: { [k]: saved.tv.saver[k] } } }, here).tv.saver } })
+  for (const dev of LOOK_DEVICES) for (const k of ['wallpaper', 'saver', 'show']) tryPart(`look.${dev}.${k}`, () => { out.look = applyPatch(out, { look: { [dev]: { [k]: saved.look[dev][k] } } }, here).look })
   out.at = Number(saved.at) || 0
   return out
 }

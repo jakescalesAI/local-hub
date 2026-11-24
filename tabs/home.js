@@ -137,6 +137,7 @@
   .hw-btn.hw-iconly .hw-btn-t { display: none; }
 }
 .hw-btn { height: 32px; padding: 0 14px; border-radius: 99px; background: var(--fill); color: var(--blue); font-size: 15px; font-weight: 600; letter-spacing: -0.016em; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; transition: opacity .15s, transform .15s; }
+.hw-ic { display: none; flex: none; }
 .hw-btn:active { opacity: .45; transform: scale(.96); }
 .hw-btn[hidden] { display: none; }
 .hw-btn.solid { background: var(--blue); color: #fff; }
@@ -818,7 +819,8 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
   // Pages (sideways, like an iPhone) or one long vertical scroll, chosen per view in Edit and kept on the hub.
   // The TV scrolls by default, like tvOS; its view here is LocalHub TV itself.
   const SCROLL_DEFAULT = { desktop: 'pages', ipad: 'pages', mobile: 'pages', tv: 'infinite' }
-  const scrollOf = vk => S.scroll?.[vk] || SCROLL_DEFAULT[vk] || 'pages'
+  // Home is one list that scrolls, as on the TV: no pages to swipe between. (What was on later pages follows on.)
+  const scrollOf = () => 'infinite'
   const infinite = () => viewKey() !== 'tv' && scrollOf(viewKey()) === 'infinite'
   const layoutItems = vk => (S.layout ? S.layout[vk] || [] : [])
   // A layout holds widgets and app places ({ id: 'app', app }); in memory an app place has the key app:<id>.
@@ -1088,13 +1090,19 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
 
   /* ---------- painting ---------- */
 
+  const dic = d => `<svg class="hw-ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`
+  const DEV_IC = {
+    desktop: dic('<rect x="4" y="5" width="16" height="11" rx="1.6"/><path d="M2 19h20"/>'), ipad: dic('<rect x="5" y="3" width="14" height="18" rx="2.4"/><path d="M11 18h2"/>'),
+    mobile: dic('<rect x="7" y="3" width="10" height="18" rx="2.4"/><path d="M11 18h2"/>'), tv: dic('<rect x="3" y="4.5" width="18" height="12" rx="2"/><path d="M8 20h8M12 16.5V20"/>'),
+    reset: dic('<path d="M4 12a8 8 0 1 0 2.5-5.8L4 8.5"/><path d="M4 4v4.5h4.5"/>'), edit: dic('<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13 7l4 4"/>'), done: dic('<path d="m5 12.5 4.5 4.5L19 7.5"/>'),
+  }
   function buildRoot() {
     const root = document.createElement('div')
     root.className = 'hw-root'
     root.innerHTML = `<div class="hw-bar">
-      <div class="seg hw-seg" role="tablist" aria-label="Layout" style="--n:4;--i:0"><span class="seg-thumb"></span><button type="button" role="tab" data-hw-mode="desktop">Desktop</button><button type="button" role="tab" data-hw-mode="ipad">iPad</button><button type="button" role="tab" data-hw-mode="mobile">Mobile</button><button type="button" role="tab" data-hw-mode="tv">TV</button></div>
+      <div class="seg hw-seg" role="tablist" aria-label="Layout" style="--n:4;--i:0"><span class="seg-thumb"></span><button type="button" role="tab" data-hw-mode="desktop" aria-label="Desktop" title="Desktop">${DEV_IC.desktop}<span>Desktop</span></button><button type="button" role="tab" data-hw-mode="ipad" aria-label="iPad" title="iPad">${DEV_IC.ipad}<span>iPad</span></button><button type="button" role="tab" data-hw-mode="mobile" aria-label="Mobile" title="Mobile">${DEV_IC.mobile}<span>Mobile</span></button><button type="button" role="tab" data-hw-mode="tv" aria-label="TV" title="TV">${DEV_IC.tv}<span>TV</span></button></div>
       <div class="hw-hint" data-hw-hint></div>
-      <div class="hw-bar-r"><div class="seg hw-scroll" role="radiogroup" aria-label="Scrolling" style="--n:2;--i:0" hidden><span class="seg-thumb"></span><button type="button" role="radio" data-hw-scroll="pages">Pages</button><button type="button" role="radio" data-hw-scroll="infinite">Infinite Scroll</button></div><button type="button" class="hw-btn red" data-hw-act="reset" hidden>Reset</button><button type="button" class="hw-btn tint hw-iconly" data-hw-act="tabs" aria-label="Edit Tabs" hidden>${hic('tabs', 15)}<span class="hw-btn-t">Edit Tabs</span></button><button type="button" class="hw-btn tint hw-iconly" data-hw-act="style" aria-label="Edit Style" hidden>${hic('palette', 15)}<span class="hw-btn-t">Edit Style</span></button><button type="button" class="hw-btn tint hw-iconly" data-hw-act="pages" aria-label="Named Pages" hidden>${icon('layers', 15)}<span class="hw-btn-t">Named Pages</span></button><button type="button" class="hw-btn tint" data-hw-act="add" hidden>${icon('plus', 15)}Add</button><button type="button" class="hw-btn tint" data-hw-act="edit">Edit</button></div>
+      <div class="hw-bar-r"><div class="seg hw-scroll" role="radiogroup" aria-label="Scrolling" style="--n:2;--i:0" hidden><span class="seg-thumb"></span><button type="button" role="radio" data-hw-scroll="pages">Pages</button><button type="button" role="radio" data-hw-scroll="infinite">Infinite Scroll</button></div><button type="button" class="hw-btn red" data-hw-act="reset" aria-label="Reset" title="Reset" hidden>${DEV_IC.reset}<span class="hw-btn-t">Reset</span></button><button type="button" class="hw-btn tint hw-iconly" data-hw-act="tabs" aria-label="Edit Tabs" hidden>${hic('tabs', 15)}<span class="hw-btn-t">Edit Tabs</span></button><button type="button" class="hw-btn tint hw-iconly" data-hw-act="style" aria-label="Edit Style" hidden>${hic('palette', 15)}<span class="hw-btn-t">Edit Style</span></button><button type="button" class="hw-btn tint hw-iconly" data-hw-act="pages" aria-label="Named Pages" hidden>${icon('layers', 15)}<span class="hw-btn-t">Named Pages</span></button><button type="button" class="hw-btn tint" data-hw-act="add" aria-label="Add" title="Add" hidden>${icon('plus', 15)}<span class="hw-btn-t">Add</span></button><button type="button" class="hw-btn tint" data-hw-act="edit" aria-label="Edit" title="Edit">${DEV_IC.edit}<span class="hw-btn-t">Edit</span></button></div>
     </div>
     <div class="hw-pages" data-hw-pages role="tablist" aria-label="Home Pages" hidden></div>
     <div class="hw-stage"><div class="hw-device"><div class="hw-frame"><div class="hw-pager"><div class="hw-grid" data-hw-grid role="list" aria-label="Home"></div></div><div class="hw-dots" data-hw-dots></div></div></div></div>
@@ -1197,7 +1205,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     if (box._shape !== shape) {
       box._shape = shape
       const dots = n > 1 ? Array.from({ length: n }, (_, k) => `<button type="button" class="hw-pdot" data-hw-dot="${k}" aria-label="Page ${k + 1} of ${n}"></button>`).join('') : ''
-      box.innerHTML = `${S.editing && n > 1 ? `<button type="button" class="hw-btn red hw-iconly hw-pgl" data-hw-pagebtn="remove" aria-label="Remove Page" title="Remove Page">${icon('trash', 15)}<span class="hw-btn-t">Remove Page</span></button>` : ''}<div class="hw-dots-in" role="group" aria-label="Pages" style="--n:${n > 1 ? n : 0}">${dots}</div>${S.editing ? `<button type="button" class="hw-btn tint hw-iconly hw-pgr" data-hw-pagebtn="add" aria-label="Add Page" title="Add Page">${icon('plus', 15)}<span class="hw-btn-t">Add Page</span></button>` : ''}`
+      box.innerHTML = '' // no pages: Home is one list
     }
     box.querySelectorAll('[data-hw-dot]').forEach(b => { if (Number(b.dataset.hwDot) === i) b.setAttribute('aria-current', 'true'); else b.removeAttribute('aria-current') })
   }
@@ -1251,7 +1259,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     root.dataset.intv = IN_TV ? '1' : '0'
     root.querySelector('[data-hw-tv]').hidden = vk !== 'tv'
     const sc = root.querySelector('.hw-scroll'), how = scrollOf(vk)
-    sc.hidden = !S.editing
+    sc.hidden = true
     sc.style.setProperty('--i', how === 'infinite' ? 1 : 0)
     sc.querySelectorAll('[data-hw-scroll]').forEach(b => b.setAttribute('aria-checked', String(b.dataset.hwScroll === how)))
     frameFit()
@@ -1261,12 +1269,15 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     seg.style.setProperty('--i', VIEWS.indexOf(vk))
     seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.hwMode === vk)))
     const edit = root.querySelector('[data-hw-act=edit]')
-    edit.textContent = S.editing ? 'Done' : 'Edit'
+    edit.querySelector('.hw-btn-t').textContent = S.editing ? 'Done' : 'Edit'
+    edit.setAttribute('aria-label', S.editing ? 'Done' : 'Edit')
+    edit.title = S.editing ? 'Done' : 'Edit'
+    edit.querySelector('svg').outerHTML = S.editing ? DEV_IC.done : DEV_IC.edit
     edit.classList.toggle('solid', S.editing)
     edit.classList.toggle('tint', !S.editing)
     paintPages(root)
     // The TV view edits LocalHub TV beside its screen; of the rest, only the look (the hub's own) applies to it.
-    for (const a of ['add', 'reset', 'style', 'tabs', 'pages']) root.querySelector(`[data-hw-act=${a}]`).hidden = !S.editing || (a !== 'add' && a !== 'reset' && !window.HUB) || (a === 'pages' && !S.pages.length) || (vk === 'tv' && a !== 'style')
+    for (const a of ['add', 'reset', 'style', 'tabs', 'pages']) root.querySelector(`[data-hw-act=${a}]`).hidden = (!S.editing && !(a === 'add' && document.documentElement.hasAttribute('data-tvlook'))) || (a !== 'add' && a !== 'reset' && !window.HUB) || (a === 'pages' && !S.pages.length) || (vk === 'tv' && a !== 'style')
     const hint = root.querySelector('[data-hw-hint]')
     const bad = S.layoutErr
     hint.classList.toggle('err', !!bad)
@@ -3908,7 +3919,6 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     const items = [
       { label: 'Add Widget…', icon: icon('plus', 16), run: openGallery },
       ...(HUB ? [{ label: 'Add App…', icon: icon('grid', 16), run: openAppPicker }] : []),
-      { label: 'Add Page', icon: icon('layers', 16), run: addPage },
       editItem(),
     ]
     if (HUB) items.push('-', { label: 'Edit Style…', icon: hic('palette', 16), run: () => HUB.openStyle() }, { label: 'Change Wallpaper…', icon: hic('image', 16), run: () => HUB.openStyle('wallpaper') }, { label: 'Edit Tabs…', icon: hic('tabs', 16), run: () => HUB.openTabs() }, ...(window.HUB_CONNECTIONS ? [{ label: 'Connections…', icon: hic('plug', 16), run: () => window.HUB_CONNECTIONS() }] : []))

@@ -573,6 +573,52 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
   .acts button span { display: none; } /* icons only on a phone so the row stays on one line */
 }
 @media (prefers-reduced-motion: reduce) { .bar, .card, .card.on, .fp, .full.on .fp, .scrim, .ghead::after, .ghead .ib, .ghead .sb { transition: none; } .spin, .dots i, .menu, .plus.rec, .msg.bro.on .live { animation: none; } .vbar { transition: none; } }
+/* ----- the TV's chat (tv/ui/assistant.css), on a computer with the TV's look. Measures and colours are theme.css's, shared with the TV. ----- */
+:host-context(html[data-tvlook]) .full { left: var(--tvrail, 0px); }
+:host-context(html[data-tvlook]) .scrim { display: none; }
+:host-context(html[data-tvlook]) .fp { left: 0; top: 0; bottom: 0; width: 100%; border-radius: 0; box-shadow: none; background: var(--chat-bg); color: var(--chat-text); transform: none; }
+:host-context(html[data-tvlook]) .full.on .fp { transform: none; }
+:host-context(html[data-tvlook]) .ghead.fhead { position: absolute; left: 0; right: 0; top: 0; height: auto; padding: 24px var(--chat-side) 0; gap: 10px; background: none; border: 0; -webkit-backdrop-filter: none; backdrop-filter: none; overflow: visible; pointer-events: none; }
+:host-context(html[data-tvlook]) .fhead::after { display: none; }
+:host-context(html[data-tvlook]) .fhead .ttl { transition: opacity .2s; }
+:host-context(html[data-tvlook]) .fp.scrolled .fhead .ttl { opacity: 0; }
+:host-context(html[data-tvlook]) .fhead .ttl b { font: 700 var(--chat-title)/1.2 var(--display, inherit); letter-spacing: -0.02em; }
+:host-context(html[data-tvlook]) .fhead .ttl span { font-size: var(--chat-note); color: var(--chat-text-2); }
+:host-context(html[data-tvlook]) .ghead .ib { pointer-events: auto; width: 42px; height: 42px; border-radius: 50%; background: var(--ui-fill); box-shadow: var(--ui-edge); color: #fff; }
+:host-context(html[data-tvlook]) .ghead .ib:hover { background: var(--ui-sel); color: #000; opacity: 1; }
+:host-context(html[data-tvlook]) .ghead .ib[aria-pressed="true"] { background: var(--ui-sel); color: #000; }
+:host-context(html[data-tvlook]) .flog { padding: 96px var(--chat-side) 18px; gap: var(--chat-gap); scrollbar-width: none; }
+:host-context(html[data-tvlook]) .flog::-webkit-scrollbar { display: none; }
+:host-context(html[data-tvlook]) .flog .bub { max-width: min(100%, var(--chat-bot-w)); padding: var(--chat-bub-y) var(--chat-bub-x); border-radius: var(--chat-bub-r); font-size: var(--chat-size); line-height: var(--chat-line); letter-spacing: -0.016em; }
+:host-context(html[data-tvlook]) .flog .u .bub { max-width: min(100%, var(--chat-me-w)); background: var(--chat-me); border-bottom-right-radius: var(--chat-tail); }
+:host-context(html[data-tvlook]) .flog .a .bub { background: var(--chat-surface); box-shadow: none; border-bottom-left-radius: var(--chat-tail); }
+:host-context(html[data-tvlook]) .code { background: var(--chat-code); box-shadow: none; }
+:host-context(html[data-tvlook]) .flog .tool { align-self: flex-start; background: none; }
+:host-context(html[data-tvlook]) .flog .tool > button { padding: 0 7px; font-size: var(--chat-note); color: var(--chat-text-2); }
+:host-context(html[data-tvlook]) .flog .tool > button:hover { color: #fff; }
+:host-context(html[data-tvlook]) .confirm { max-width: 600px; padding: 14px 18px; border-radius: var(--chat-card-r); background: var(--chat-warn); box-shadow: none; }
+:host-context(html[data-tvlook]) .confirm-row button { border-radius: 99px; min-height: 42px; background: var(--ui-fill); box-shadow: var(--ui-edge); color: #fff; }
+:host-context(html[data-tvlook]) .confirm-row button.yes, :host-context(html[data-tvlook]) .confirm-row button:hover { background: var(--ui-sel); color: #000; }
+:host-context(html[data-tvlook]) .err { background: none; color: #ff8a80; padding: 0 7px; }
+:host-context(html[data-tvlook]) .ffoot { padding: 8px var(--chat-side) 32px; }
+:host-context(html[data-tvlook]) .pill, :host-context(html[data-tvlook]) .ffoot .pill { min-height: var(--chat-bar); padding: 4px; border-radius: calc(var(--chat-bar) / 2); background: var(--ui-fill); box-shadow: var(--ui-edge); -webkit-backdrop-filter: none; backdrop-filter: none; }
+:host-context(html[data-tvlook]) .pill:focus-within, :host-context(html[data-tvlook]) .ffoot .pill:focus-within { box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .55); }
+:host-context(html[data-tvlook]) textarea { font-size: calc(var(--chat-size) * .95); }
+:host-context(html[data-tvlook]) textarea::placeholder { color: var(--chat-text-2); }
+:host-context(html[data-tvlook]) .send { background: var(--ui-sel); color: #000; }
+:host-context(html[data-tvlook]) .send.voice { background: rgba(255, 255, 255, .1); color: #fff; }
+:host-context(html[data-tvlook]) .send.voice:hover { background: var(--ui-sel); color: #000; }
+:host-context(html[data-tvlook]) .send.voice.rec { background: var(--red); color: #fff; }
+:host-context(html[data-tvlook]) .card { background: var(--chat-side-panel); border-radius: var(--chat-card-r); box-shadow: var(--ui-edge), 0 24px 60px rgba(0, 0, 0, .5); }
+:host-context(html[data-tvlook]) .card .ghead { background: none; border: 0; -webkit-backdrop-filter: none; backdrop-filter: none; }
+:host-context(html[data-tvlook]) .card .ghead .ib { width: 36px; height: 36px; margin-left: 6px; }
+:host-context(html[data-tvlook]) .menu { background: var(--ui-panel); border-radius: 22px; box-shadow: var(--ui-edge), 0 24px 60px rgba(0, 0, 0, .5); -webkit-backdrop-filter: none; backdrop-filter: none; }
+:host-context(html[data-tvlook]) .mi { border-radius: 16px; }
+:host-context(html[data-tvlook]) .mi .mic { color: #fff; }
+:host-context(html[data-tvlook]) .mi:hover, :host-context(html[data-tvlook]) .mi:focus-visible { background: var(--ui-sel); color: #000; }
+:host-context(html[data-tvlook]) .mi:hover :is(.mic, .mv, .hint, .ck), :host-context(html[data-tvlook]) .mi:focus-visible :is(.mic, .mv, .hint, .ck) { color: rgba(0, 0, 0, .6); }
+:host-context(html[data-tvlook]) .hist { background: var(--chat-side-panel); }
+:host-context(html[data-tvlook]) .att, :host-context(html[data-tvlook]) .note { background: var(--ui-fill); box-shadow: var(--ui-edge); }
 `
 
   /* ---------- DOM ---------- */
@@ -1194,6 +1240,8 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
     syncCard()
     views.forEach(v => v.restream())
   }
+  // As on the TV: the title steps aside while the conversation is scrolled under it.
+  $('.flog').addEventListener('scroll', e => $('.fp').classList.toggle('scrolled', e.target.scrollTop > 12), { passive: true })
   cExpand.addEventListener('click', () => setFull(true))
   fX.addEventListener('click', () => setFull(false))
   scrim.addEventListener('click', () => setFull(false))
@@ -2552,5 +2600,5 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
 
   // A tiny handle for other tabs or tests: HubChat.open(), HubChat.ask('...').
   // voice/hush/say/listening are for pages around the chat: LocalHub TV's ⏯ key and Control Center talk through them.
-  window.HubChat = { open: () => setFull(true), close: () => setFull(false), toggle: () => setFull(!S.full), ask: t => submit(t), openChat: async id => { setFull(true); await openConv(id) }, voice: () => toggleVoice(S.full ? fta : bta), cancelVoice, hush, say, busy: () => S.busy, listening: () => V.state !== 'idle' }
+  window.HubChat = { isOpen: () => S.full, open: () => setFull(true), close: () => setFull(false), toggle: () => setFull(!S.full), ask: t => submit(t), openChat: async id => { setFull(true); await openConv(id) }, voice: () => toggleVoice(S.full ? fta : bta), cancelVoice, hush, say, busy: () => S.busy, listening: () => V.state !== 'idle' }
 })()

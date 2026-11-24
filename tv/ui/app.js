@@ -15,6 +15,7 @@
 // ============================================================================
 
 import * as Stream from "./stream.js?v=4";
+import * as Panel from "./panel.js?v=1";
 // The TV's own assistant screen (assistant.js): the hub's agent and conversation, without the hub's chat UI.
 let Assistant = null;
 
@@ -1134,19 +1135,14 @@ function paintHomeWidgets() {
   const html = Object.keys(sizes).slice(0, 2).map((id) => widgetCard(id, sizes[id])).join("");
   if (box._html !== html) { box.innerHTML = html; box._html = html; }
 }
-const WP_IC = {
-  vol: sym('<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/>', 2),
-  sun: sym('<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3 7 7M17 17l1.7 1.7M5.3 18.7 7 17M17 7l1.7-1.7"/>', 2),
-  pic: sym('<rect x="3" y="4.5" width="18" height="12" rx="2"/><path d="M8 20h8M12 16.5V20"/>', 2),
-  note: sym('<path d="M9 18V5.5l10-2V16"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/>', 2),
-  prev: sym('<path fill="currentColor" d="M20 6v12l-8-6zM11 6v12l-8-6z"/>', 1.5),
-  next: sym('<path fill="currentColor" d="M4 6v12l8-6zM13 6v12l8-6z"/>', 1.5),
-  play: sym('<path fill="currentColor" d="M7 4.5v15l13-7.5z"/>', 1.5),
-  pause: sym('<path fill="currentColor" d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/>', 1.5),
-  clock: sym('<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>', 2),
-  cloud: sym('<path d="M7 18.5h10a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.2 11.6 3.5 3.5 0 0 0 7 18.5z"/>', 2),
-};
-function volState() { return NATIVE ? safeJson(native("volume", 0), {}) || {} : {}; }
+const WP_IC = Panel.IC;
+// Some TVs take the volume keys themselves and the stick's own level never moves: then there's no slider to offer.
+let volStuck = false;
+function volState() { return NATIVE ? { ...(safeJson(native("volume", 0), {}) || {}), ...(volStuck ? { fixed: true } : {}) } : {}; }
+function volStep(dir) {
+  const was = volState(), now = safeJson(native("volume", dir), {}) || {};
+  if (!was.fixed && now.level === was.level && (dir > 0 ? was.level < was.max : was.level > 0)) volStuck = true;
+}
 
 // Brightness: LocalHub dims the picture itself, as an app can't reach the TV's backlight. The TV app's shade lies over
 // every app (it needs the "draw over other apps" grant); without it, and on a laptop, only LocalHub's own screen dims.
@@ -1173,13 +1169,7 @@ function mediaDo(act) {
   native("media", act);
   setTimeout(() => { readMedia(); if (S.overlay === "wpanel") paintWpanel(); }, 500);
 }
-function playerHTML() {
-  const t = MEDIA.title || (MEDIA.playing ? "Playing" : "Not playing");
-  const sub = MEDIA.title ? MEDIA.artist || MEDIA.app || "" : "";
-  const art = MEDIA.art ? `<img src="${esc(MEDIA.art)}" alt="">` : WP_IC.note;
-  const b = (id, ic, label) => `<button class="mp-b" data-w="${id}" aria-label="${label}" tabindex="-1">${ic}</button>`;
-  return `<div class="mp"><div class="mp-art">${art}</div><div class="mp-t">${esc(t)}</div><div class="mp-s">${esc(sub)}</div><div class="mp-row">${b("prev", WP_IC.prev, "Previous")}${b("play", MEDIA.playing ? WP_IC.pause : WP_IC.play, MEDIA.playing ? "Pause" : "Play")}${b("next", WP_IC.next, "Next")}</div></div>`;
-}
+const playerHTML = () => Panel.player(MEDIA);
 const homeWeatherOn = () => (SETTINGS?.widgets?.tv || []).some((w) => (w?.id || w?.[0]) === "weather");
 async function toggleHomeWeather() {
   if (!IN_HUB) return toast("Pair this TV with LocalHub to change its widgets");
@@ -1197,9 +1187,7 @@ const CLOCKS = ["Time and date", "Time", "Off"];
 function wpHTML() {
   const v = volState(), canVol = NATIVE && !v.fixed && v.max;
   const pct = canVol ? Math.round((v.level / v.max) * 100) : 0;
-  const slider = (id, val, ic, label, off) => `<div class="wps${off ? " off" : ""}" data-w="${id}" aria-label="${label}"><i style="height:${off ? 0 : val}%"></i><span>${ic}</span></div>`;
-  const round = (id, ic, label, on) => `<div class="wpr${on ? " on" : ""}" data-w="${id}"><b>${ic}</b><em>${esc(label)}</em></div>`;
-  const pill = (id, ic, t1, t2, on) => `<div class="wpp${on ? " on" : ""}" data-w="${id}"><b>${ic}</b><div class="grow"><div class="t1">${esc(t1)}</div><div class="t2">${esc(t2)}</div></div></div>`;
+  const { slider, round, pill } = Panel;
   const wx = WX.body ? wxCard(WX.body, "m") : `<div class="t2">${WX.err ? "Weather isn’t available right now" : "Finding the weather…"}</div>`;
   return `${playerHTML()}${slider("brightness", brightness(), WP_IC.sun, "Brightness")}${slider("volume", pct, WP_IC.vol, "Volume", !canVol)}`
     + round("timer", SYM.timer, S.sleepAt ? clockText(new Date(S.sleepAt)) : "Timer", !!S.sleepAt) + round("saver", SYM.moon, "Screensaver") + round("picture", WP_IC.pic, "Picture") + round("settings", SYM.gear, "Settings")
@@ -1254,7 +1242,7 @@ function wpMove(dx, dy) {
 }
 function wpSlide(id, dir) {
   if (id === "brightness") setBrightness(brightness() + dir * 10);
-  else native("volume", dir);
+  else { volStep(dir); if (volStuck) S.wpGrab = null; }
   paintWpanel();
 }
 function wpKey(name) {
@@ -1980,6 +1968,20 @@ function reportApps() {
   reported = body;
   fetch("/api/tv/apps", { method: "POST", headers: { "content-type": "application/json", "x-hub": "1" }, body }).then((r) => { if (!r.ok) reported = ""; }).catch(() => { reported = ""; });
 }
+function setVolume(pct) {
+  const v = volState();
+  if (!NATIVE || v.fixed || !v.max) return;
+  const want = Math.round((clamp(Number(pct) || 0, 0, 100) / 100) * v.max);
+  for (let i = v.level; i !== want && !volStuck; i += Math.sign(want - i)) volStep(Math.sign(want - i));
+}
+function reportState() {
+  if (!NATIVE || !IN_HUB) return;
+  readMedia();
+  const v = volState();
+  const { title, artist, app, playing, art } = MEDIA;
+  const state = { brightness: brightness(), volume: v.max && !v.fixed ? Math.round((v.level / v.max) * 100) : null, media: { title, artist, app, playing: !!playing, art } };
+  fetch("/api/tv/state", { method: "POST", headers: { "content-type": "application/json", "x-hub": "1" }, body: JSON.stringify(state) }).catch(() => {});
+}
 let commandLoop = false;
 async function startCommandLoop() {
   if (commandLoop || !IN_HUB) return;
@@ -1999,6 +2001,11 @@ async function startCommandLoop() {
 function runCommand(cmd) {
   if (!cmd || typeof cmd !== "object") return;
   if (cmd.type === "listen") return heardMic(cmd);
+  // The Layout panel on the computer: what the TV is doing, and the same controls, without leaving what's on screen.
+  if (cmd.type === "state") return reportState();
+  if (cmd.type === "media") { mediaDo(cmd.action); return void setTimeout(reportState, 700); }
+  if (cmd.type === "brightness") { setBrightness(cmd.value); if (S.overlay === "wpanel") paintWpanel(); return reportState(); }
+  if (cmd.type === "volume") { setVolume(cmd.value); if (S.overlay === "wpanel") paintWpanel(); return reportState(); }
   // Behind another app (Netflix is up): LocalHub comes forward first.
   if (NATIVE && document.hidden && ["home", "launch", "open", "saver"].includes(cmd.type)) native("toFront");
   if (S.overlay === "saver") stopSaver();

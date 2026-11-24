@@ -109,6 +109,7 @@
     widgets: { desktop: [], mobile: [] },
     style: STYLE_DEFAULT,
     wallpaper: { current: THEME.wallpaper || 'none', custom: [], uploads: [] },
+    look: { desktop: { wallpaper: '', saver: 0, show: 'photos' }, mobile: { wallpaper: '', saver: 0, show: 'photos' } },
     at: 0,
   }
 
@@ -343,10 +344,13 @@ html[data-wall] .hw-bar .hw-btn:not(.solid) { background: color-mix(in srgb, var
     r.style.setProperty('--hub-blur', `${st.blur}px`)
     r.style.setProperty('--hub-alpha', `${100 - st.transparency}%`)
     r.style.setProperty('--hub-radius', `${st.radius}px`)
-    const w = preview?.wall !== undefined ? preview.wall : wallFor(S.wallpaper.current)
+    // This device's own background, or the shared one.
+    const own = S.look?.[PHONE.matches ? 'mobile' : 'desktop']?.wallpaper
+    const here = own && (own === 'none' || wallFor(own)) ? own : S.wallpaper.current
+    const w = preview?.wall !== undefined ? preview.wall : wallFor(here)
     if (!w) { delete r.dataset.wall; wall.style.backgroundImage = ''; return }
     r.dataset.wall = '1'
-    wall.style.backgroundImage = tv && WALLS.some(x => x.id === S.wallpaper.current) && preview?.wall === undefined && PHOTOS.includes(S.wallpaper.current) ? `url("/tv/photos/${S.wallpaper.current}.jpg")` : w.image
+    wall.style.backgroundImage = preview?.wall === undefined && PHOTOS.includes(here) && (tv || own === here) ? `url("/tv/photos/${here}.jpg")` : w.image
     // A tint of the page colour over the wallpaper keeps text readable: light over a light
     // wallpaper (or dark over dark) needs little, the opposite needs more.
     const dark = tv || st.theme === 'dark' || (st.theme === 'auto' && DARK.matches)
@@ -355,6 +359,7 @@ html[data-wall] .hw-bar .hw-btn:not(.solid) { background: color-mix(in srgb, var
   }
   DARK.addEventListener?.('change', apply)
   WIDE.addEventListener?.('change', apply)
+  PHONE.addEventListener?.('change', apply)
   apply()
 
   /* ---------- loading and saving ---------- */
@@ -365,7 +370,7 @@ html[data-wall] .hw-bar .hw-btn:not(.solid) { background: color-mix(in srgb, var
     S = { ...DEFAULT, ...next, style: { ...STYLE_DEFAULT, ...next.style } }
     keep()
     apply()
-    const changed = ['tabs', 'apps', 'sites', 'groups', 'pages', 'files', 'widgets', 'style', 'wallpaper'].filter(k => JSON.stringify(prev[k]) !== JSON.stringify(S[k]))
+    const changed = ['tabs', 'apps', 'sites', 'groups', 'pages', 'files', 'widgets', 'style', 'wallpaper', 'look'].filter(k => JSON.stringify(prev[k]) !== JSON.stringify(S[k]))
     if (!changed.length) return
     if (changed.includes('tabs') && typeof chrome === 'function') { try { chrome() } catch {} }
     if (!quiet) for (const fn of listeners) { try { fn(S, changed) } catch (e) { console.error(e) } }

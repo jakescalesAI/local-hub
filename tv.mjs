@@ -8,12 +8,14 @@
 //   POST /api/voice/transcribe <audio>  the same, for the hub's chat mic (the dashboard and the TV)
 //   POST /api/voice/warm                 -> { whisper } start Whisper now, while someone is still talking
 //   GET  /api/tv/status                 -> { whisper, alexa, tvs, tv: { on, setUp, apps } }
+//   POST /api/tv/state { brightness, volume, media }  what the TV is doing, for the Layout panel on the computer
 //   POST /api/tv/apps  { apps }          the Fire TV app's app names, for the desktop app's tray menu
 //   GET  /api/tv/listen                 -> { on, state, mic } "Hey LocalHub" from this computer's mic (tv/listen.py)
 //   POST /api/tv/listen  { on }         turns it on or off (kept in data/tv-listen.json)
 //   POST /api/tv/listen/now             the remote's mic button: listen for a request at once -> { ok }
 //
 // Commands: { type: 'launch', app } · { type: 'input', name } · { type: 'home' } · { type: 'saver' } ·
+// { type: 'state' } · { type: 'media', action: 'toggle' | 'next' | 'prev' } · { type: 'brightness' | 'volume', value: 0-100 } ·
 // { type: 'open', url } (a web page, in the TV's browser) · { type: 'sleep' } · { type: 'say', text } · { type: 'answer', text, heard?, from? } ·
 // { type: 'listen', stage: 'wake' | 'again' | 'working' | 'heard' | 'off', text? } ("Hey LocalHub", step by step)
 //
@@ -44,7 +46,7 @@ const MAX_AUDIO = 8 * 2 ** 20
 const COMMAND_TTL = 90e3
 const MAX_WAIT = 30e3
 const TV_SEEN = 60e3
-const TYPES = new Set(['launch', 'input', 'home', 'saver', 'sleep', 'say', 'answer', 'listen', 'open'])
+const TYPES = new Set(['launch', 'input', 'home', 'saver', 'sleep', 'say', 'answer', 'listen', 'open', 'state', 'media', 'brightness', 'volume'])
 const LISTEN_STAGES = new Set(['wake', 'again', 'working', 'heard', 'off'])
 
 const tvConfig = () => hubConfig().tv || {}
@@ -70,6 +72,7 @@ export function create({ here }) {
   let lastTvPoll = 0 // a real TV (the Fire TV app), not the TV page open on a laptop
 
   const known = knownTv(here)
+  let tvState = null // what the TV last said of itself (POST /api/tv/state), for the Layout panel on the computer
   const tvOn = () => Date.now() - lastTvPoll < TV_SEEN
   const tvsOnline = () => waiters.size > 0 || Date.now() - lastPoll < TV_SEEN
 
@@ -138,6 +141,13 @@ export function create({ here }) {
         waiters.add(w)
       })
       return true
+    }
+
+    if (p === '/api/tv/state' && req.method === 'POST') {
+      let body
+      try { body = JSON.parse((await readRaw(req, 256 * 1024)).toString('utf8') || '{}') } catch { return send(res, 400, { error: 'body is not valid JSON' }), true }
+      tvState = cleanState(body)
+      return send(res, 200, { ok: true }), true
     }
 
     if (p === '/api/tv/apps' && req.method === 'POST') {
@@ -216,7 +226,7 @@ export function create({ here }) {
         whisper: whisper.state(),
         alexa: { on: !!alexa.listening(), port: a.port || 3109, configured: !!a.skillId },
         tvs: tvsOnline(),
-        tv: { on: tvOn(), setUp: tvOn() || !!known.get(), apps: known.get()?.apps || [] },
+        tv: { on: tvOn(), setUp: tvOn() || !!known.get(), apps: known.get()?.apps || [], state: tvOn() ? tvState : null },
         listen: listener.status(),
         version: hubVersion(here),
       }), true
@@ -282,6 +292,13 @@ function readRaw(req, limit) {
 
 const str = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '')
 
+export function cleanState(raw) {
+  const pct = v => (Number.isFinite(v) ? Math.max(0, Math.min(100, Math.round(v))) : null)
+  const m = raw?.media && typeof raw.media === 'object' ? raw.media : {}
+  const art = typeof m.art === 'string' && m.art.length < 200_000 && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(m.art) ? m.art : ''
+  return { brightness: pct(raw?.brightness), volume: pct(raw?.volume), media: { title: str(m.title, 200), artist: str(m.artist, 200), app: str(m.app, 80), playing: m.playing === true, art } }
+}
+
 // Names only, as they go into a menu: printable, short, each once, in order.
 export function cleanApps(list) {
   const names = list.map(n => str(n, 60).replace(/[\u0000-\u001f\u007f]/g, '').trim()).filter(Boolean)
@@ -321,6 +338,8 @@ export function cleanCommand(raw) {
   switch (raw.type) {
     case 'launch': { const app = str(raw.app, 80); return app ? { type: 'launch', app } : null }
     case 'input': { const name = str(raw.name || raw.id, 80); return name ? { type: 'input', name } : null }
+    case 'media': return ['toggle', 'next', 'prev'].includes(raw.action) ? { type: 'media', action: raw.action } : null
+    case 'brightness': case 'volume': { const v = raw.value; return Number.isFinite(v) && v >= 0 && v <= 100 ? { type: raw.type, value: Math.round(v) } : null }
     case 'open': { const url = webUrl(raw.url); return url ? { type: 'open', url } : null }
     case 'say': { const text = str(raw.text, 2000); return text ? { type: 'say', text } : null }
     case 'listen': return LISTEN_STAGES.has(raw.stage) ? { type: 'listen', stage: raw.stage, text: str(raw.text, 1000) } : null

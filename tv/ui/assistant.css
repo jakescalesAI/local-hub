@@ -5,16 +5,17 @@
    the reply's pending dots and the mic's wave, which run only while they show. */
 
 .as {
-  --as-bg: #0b0b0e;
-  --as-surface: #1e1e23;
+  /* Colours and measures come from theme.css, which the hub page's chat (tabs/chat.js) uses too. */
+  --as-bg: var(--chat-bg);
+  --as-surface: var(--chat-surface);
   --as-fill: var(--ui-fill, #26272d); /* the TV's one button look (styles.css) */
-  --as-text: #fff;
-  --as-text-2: rgba(235, 235, 245, .62);
-  --as-text-3: rgba(235, 235, 245, .36);
+  --as-text: var(--chat-text);
+  --as-text-2: var(--chat-text-2);
+  --as-text-3: var(--chat-text-3);
   --as-blue: var(--blue, #0a84ff);
   --as-green: var(--green, #30d158);
   --as-red: var(--red, #ff453a);
-  --as-side: 96px;
+  --as-side: var(--chat-side);
   contain: layout paint;
   overflow: hidden;
   background: var(--as-bg);
@@ -37,13 +38,13 @@
 /* The transcript runs to the top of the screen and is cut off right at the edge: no fade band, no gap. The header
    steps aside while the conversation is scrolled under it. */
 .as.scrolled .as-head { opacity: 0; }
-.as-title { flex: 1; min-width: 0; font: 700 44px/1.2 var(--display, inherit); letter-spacing: -0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.as-title { flex: 1; min-width: 0; font: 700 var(--chat-title)/1.2 var(--display, inherit); letter-spacing: -0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .as-state { font-size: 28px; font-weight: 600; color: var(--as-text-2); }
 
 /* ── transcript ─────────────────────────────────────────────────────────── */
 .as-log { position: absolute; left: 0; right: 0; top: 0; bottom: 196px; padding: 152px var(--as-side) 36px; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; outline: 0; }
 .as-log::-webkit-scrollbar { display: none; }
-.as-item { margin: 0 0 28px; }
+.as-item { margin: 0 0 var(--chat-gap); }
 
 .as-empty { margin: 170px auto 0; max-width: 1100px; text-align: center; }
 .as-empty h3 { font: 700 68px/1.1 var(--display, inherit); letter-spacing: -0.025em; }
@@ -51,9 +52,9 @@
 
 .as-msg { display: flex; flex-direction: column; align-items: flex-start; }
 .as-user { align-items: flex-end; }
-.as-bub { max-width: 1320px; padding: 24px 36px; border-radius: 40px; font-size: 36px; line-height: 1.42; overflow-wrap: anywhere; }
-.as-user .as-bub { max-width: 1120px; background: var(--as-blue); color: #fff; border-bottom-right-radius: 14px; white-space: pre-wrap; }
-.as-bot .as-bub { background: var(--as-surface); border-bottom-left-radius: 14px; }
+.as-bub { max-width: var(--chat-bot-w); padding: var(--chat-bub-y) var(--chat-bub-x); border-radius: var(--chat-bub-r); font-size: var(--chat-size); line-height: var(--chat-line); overflow-wrap: anywhere; }
+.as-user .as-bub { max-width: var(--chat-me-w); background: var(--chat-me); color: #fff; border-bottom-right-radius: var(--chat-tail); white-space: pre-wrap; }
+.as-bot .as-bub { background: var(--as-surface); border-bottom-left-radius: var(--chat-tail); }
 .as-files { margin-top: 10px; font-size: 24px; color: var(--as-text-2); }
 
 .as-md p, .as-md ul, .as-md ol, .as-md pre, .as-md h4 { margin: 0 0 .5em; }
@@ -64,12 +65,12 @@
 .as-md h4 { font-size: 38px; font-weight: 700; letter-spacing: -0.02em; }
 .as-md b { font-weight: 700; }
 .as-md code { font-family: var(--mono, ui-monospace, Menlo, Consolas, monospace); font-size: .84em; padding: .05em .3em; border-radius: 8px; background: rgba(255, 255, 255, .12); }
-.as-md pre { font: 26px/1.45 var(--mono, ui-monospace, Menlo, Consolas, monospace); white-space: pre-wrap; padding: 18px 24px; border-radius: 18px; background: #121215; }
+.as-md pre { font: 26px/1.45 var(--mono, ui-monospace, Menlo, Consolas, monospace); white-space: pre-wrap; padding: 18px 24px; border-radius: 18px; background: var(--chat-code); }
 .as-md .as-row-t { margin-bottom: .2em; }
 .as-tail { white-space: pre-wrap; }
 
 /* the turn's steps: small lines, not cards */
-.as-acts { width: max-content; max-width: calc(100% - 14px); margin-left: 14px; font-size: 28px; line-height: 1.5; color: var(--as-text-2); }
+.as-acts { width: max-content; max-width: calc(100% - 14px); margin-left: 14px; font-size: var(--chat-note); line-height: 1.5; color: var(--as-text-2); }
 .as-act { display: flex; align-items: center; gap: 18px; }
 .as-act i { width: 14px; height: 14px; flex: none; border-radius: 50%; background: var(--as-text-3); }
 .as-act.ok i { background: var(--as-green); }
@@ -89,7 +90,7 @@
 
 .as-err { width: max-content; max-width: calc(100% - 14px); margin-left: 14px; font-size: 30px; line-height: 1.4; color: #ff8a80; }
 
-.as-confirm { max-width: 1200px; padding: 28px 36px; border-radius: 32px; background: #2a2620; }
+.as-confirm { max-width: 1200px; padding: 28px 36px; border-radius: var(--chat-card-r); background: var(--chat-warn); }
 .as-confirm b { display: block; font-size: 32px; font-weight: 600; }
 .as-confirm p { margin: 10px 0 22px; font-size: 28px; line-height: 1.4; color: var(--as-text-2); white-space: pre-wrap; }
 .as-confirm-row { display: flex; gap: 20px; }
@@ -116,8 +117,8 @@
 .as-chips { position: absolute; left: var(--as-side); right: var(--as-side); bottom: 196px; display: flex; flex-wrap: nowrap; gap: 20px; overflow: hidden; }
 .as-chip { flex: none; height: 72px; padding: 0 32px; border-radius: 36px; background: var(--as-fill); box-shadow: var(--ui-edge, none); font-size: 28px; font-weight: 600; white-space: nowrap; }
 
-.as-bar { position: absolute; left: var(--as-side); right: var(--as-side); bottom: 64px; height: 104px; display: flex; align-items: center; gap: 20px; }
-.as-field { position: relative; flex: 1; min-width: 0; height: 104px; display: flex; align-items: center; padding: 0 44px; border-radius: 52px; background: var(--as-fill); box-shadow: var(--ui-edge, none); }
+.as-bar { position: absolute; left: var(--as-side); right: var(--as-side); bottom: 64px; height: var(--chat-bar); display: flex; align-items: center; gap: 20px; }
+.as-field { position: relative; flex: 1; min-width: 0; height: var(--chat-bar); display: flex; align-items: center; padding: 0 44px; border-radius: 52px; background: var(--as-fill); box-shadow: var(--ui-edge, none); }
 .as-input { width: 100%; height: 100%; font-size: 36px; color: inherit; caret-color: var(--as-blue); user-select: text; -webkit-user-select: text; }
 .as-input::placeholder { color: var(--as-text-2); opacity: 1; }
 .as-voice { position: absolute; inset: 0 44px; display: flex; align-items: center; gap: 28px; }
@@ -137,7 +138,7 @@
 .as .as-field.f { transform: none; }
 
 /* ── Recent chats: a solid panel from the right ─────────────────────────── */
-.as-panel { position: absolute; top: 0; right: 0; bottom: 0; width: 820px; z-index: 5; padding: 64px 56px 120px; background: #17171c; box-shadow: -1px 0 0 rgba(255, 255, 255, .08); overflow-y: auto; scrollbar-width: none; }
+.as-panel { position: absolute; top: 0; right: 0; bottom: 0; width: 820px; z-index: 5; padding: 64px 56px 120px; background: var(--chat-side-panel); box-shadow: -1px 0 0 rgba(255, 255, 255, .08); overflow-y: auto; scrollbar-width: none; }
 .as-panel::-webkit-scrollbar { display: none; }
 .as-panel h3 { margin: 0 0 28px 32px; font: 700 48px/1.15 var(--display, inherit); letter-spacing: -0.02em; }
 .as-row { display: block; width: 100%; text-align: left; padding: 22px 32px; margin-bottom: 10px; border-radius: 28px; }
