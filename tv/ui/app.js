@@ -17,7 +17,7 @@
 import * as Stream from "./stream.js?v=4";
 import * as Panel from "./panel.js?v=6";
 import * as Files from "./files.js?v=1";
-import { createLock } from "./lock.js?v=1";
+import { createLock } from "./lock.js?v=2";
 import * as Remote from "./remote.js?v=3";
 import * as Mirror from "./mirror.js?v=2";
 // The TV's own assistant screen (assistant.js): the hub's agent and conversation, without the hub's chat UI.
@@ -2426,7 +2426,7 @@ let tvOk = false, awayAt = 0, lastKeyAt = Date.now();
 const lockSpan = () => Math.max(LOCK.conf().after * 60_000, 4000);
 function lockTv() {
   if (PREVIEW || tvOk || !LOCK.locked("tv") || LOCK.isOpen()) return;
-  LOCK.ask({ title: HUB.name || "LocalHub", cancel: false, remote: true }).then((ok) => { if (ok) { tvOk = true; lastKeyAt = Date.now(); } else lockTv(); });
+  LOCK.ask({ title: HUB.name || "LocalHub", cancel: false, remote: true, place: () => LOCK.locked("tv") }).then((ok) => { if (ok) { tvOk = true; lastKeyAt = Date.now(); } else lockTv(); });
 }
 function lockAgain(gone) { if (LOCK.locked("tv") && gone >= LOCK.conf().after * 60_000) { tvOk = false; for (const k in OPENED) delete OPENED[k]; lockTv(); } }
 document.addEventListener("visibilitychange", () => { if (document.hidden) awayAt = Date.now(); else if (awayAt) lockAgain(Date.now() - awayAt); });
@@ -2434,7 +2434,7 @@ document.addEventListener("visibilitychange", () => { if (document.hidden) awayA
 function unlocked(place, label, fn) {
   const need = place.startsWith("app:") ? LOCK.lockedApp(place.slice(4)) : LOCK.locked(place);
   if (PREVIEW || !need || Date.now() - (OPENED[place] || 0) < lockSpan()) { if (need) OPENED[place] = Date.now(); return fn(); }
-  LOCK.ask({ title: label, remote: true }).then((ok) => { if (ok) { OPENED[place] = Date.now(); fn(); } });
+  LOCK.ask({ title: label, remote: true, place: () => (place.startsWith("app:") ? LOCK.lockedApp(place.slice(4)) : LOCK.locked(place)) }).then((ok) => { if (ok) { OPENED[place] = Date.now(); fn(); } });
 }
 if (!PREVIEW) { lockTv(); if (IN_HUB) { LOCK.load().then(lockTv); setInterval(() => LOCK.load(), 30_000); } }
 

@@ -1112,7 +1112,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     if (!LK.locked('desk')) deskOk = true
     if (!deskOk) {
       lkBusy = true
-      const ok = await LK.ask({ title: H()?.name || 'LocalHub', cancel: false })
+      const ok = await LK.ask({ title: H()?.name || 'LocalHub', cancel: false, place: () => LK.locked('desk') })
       lkBusy = false
       if (ok) { deskOk = true; lkAt = Date.now(); try { sessionStorage.setItem('lock', String(Date.now())) } catch {} }
       document.documentElement.toggleAttribute('data-lockwait', !deskOk)
@@ -1124,7 +1124,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     if (!LK.locked(p)) return
     if (lkUsed[p] && (Date.now() - lkAt < Math.max(lkSpan(), 60_000))) { lkUsed[p] = Date.now(); return }
     lkBusy = true
-    const ok = await LK.ask({ title: label })
+    const ok = await LK.ask({ title: label, place: () => LK.locked(p) })
     lkBusy = false
     if (ok) { lkUsed[p] = Date.now(); lkAt = Date.now() }
     else document.querySelector('[data-rail="tab:home"]')?.click()
@@ -1137,7 +1137,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   }
   for (const ev of ['pointerdown', 'keydown']) addEventListener(ev, lkTouch, true)
   document.addEventListener('visibilitychange', () => { if (!document.hidden) lkTouch() })
-  import('/tv/lock.js?v=1').then(async m => {
+  import('/tv/lock.js?v=2').then(async m => {
     LK = m.createLock({ host: document.body, store: { read: () => localStorage.getItem('localhub.lock'), write: t => localStorage.setItem('localhub.lock', t) }, changed: () => { guard(); paintSettings() } })
     // A reload just now, in this window, isn't a new visit.
     try { const t = Number(sessionStorage.getItem('lock')); if (t && Date.now() - t < Math.max(lkSpan(), 30_000)) deskOk = true } catch {}

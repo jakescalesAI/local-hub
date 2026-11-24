@@ -47,6 +47,8 @@ export function createLock({ host, store, changed }) {
       saved.conf = C;
       if (!C.on) { delete saved.offline; delete saved.bad; }
       keep();
+      // Turned off, or this place no longer asks (changed on the computer while this screen waits): the pad goes.
+      if (cur && !cur.check && (!C.on || (cur.place && !cur.place()))) done(true);
       if (JSON.stringify(C) !== was) changed?.();
     } catch { /* the hub is away: as it last was */ }
     return C;
@@ -111,7 +113,7 @@ export function createLock({ host, store, changed }) {
     paint();
     setTimeout(() => { if (cur === me) { me.shake = false; paint(); } }, 500);
   }
-  function ask({ title, sub = "", cancel = true, digits, check, remote = false }) {
+  function ask({ title, sub = "", cancel = true, digits, check, place, remote = false }) {
     if (cur) { if (cur.title === title) return cur.promise; done(false); }
     if (!box) {
       box = document.createElement("div");
@@ -122,7 +124,7 @@ export function createLock({ host, store, changed }) {
       box.addEventListener("click", (e) => { const k = e.target.closest?.("[data-lk]")?.dataset.lk; e.stopPropagation(); if (k) { if (cur) { cur.sel = k; } press(k); } });
       host.append(box);
     }
-    cur = { title, sub, cancel, digits: digits || C.digits, check, remote, pin: "", sel: "5", msg: "", err: false, until: 0 };
+    cur = { title, sub, cancel, digits: digits || C.digits, check, place, remote, pin: "", sel: "5", msg: "", err: false, until: 0 };
     cur.promise = new Promise((r) => { cur.resolve = r; });
     box.classList.add("on");
     clearInterval(tick);
