@@ -83,7 +83,7 @@ ${R}:has(.hw-root) .page { position: relative; padding-right: 48px; }
 ${R}:has(.hw-root:is([data-view="tv"], [data-view="ipad"], [data-view="mobile"])) .page, ${R}[data-noside]:has(.hw-root) .page { padding-right: 48px; }
 /* The TV's own proportions: the clock at the top, the name of what you're on above the row, the row three fifths down. */
 ${R}:has(.hw-root) #tvtop { display: flex; flex-direction: column; box-sizing: border-box; height: max(250px, 63vh); padding: 36px 0 22px; margin: 0; color: #fff; pointer-events: none; }
-${R} .tvt-name { margin-top: auto; max-width: calc(100% - var(--side) - 20px); font: 700 clamp(54px, 7.2vw, 120px)/1.05 var(--display); letter-spacing: -.035em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 2px 14px rgba(0, 0, 0, .35); }
+${R} .tvt-name { margin-top: auto; max-width: calc(100% - var(--side) - 20px); font: 700 clamp(54px, 7.2vw, 120px)/1.05 var(--display); padding: .06em .06em .2em 0; margin-bottom: -.2em; letter-spacing: -.035em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 2px 14px rgba(0, 0, 0, .35); }
 @media (max-height: 620px) { ${R}:has(.hw-root) #tvtop { height: 150px; } ${R} .tvt-name { display: none; } }
 ${R} .controls { margin-bottom: 26px; top: 12px; }
 ${R}:has(.hw-root) .controls { position: relative; top: 0; z-index: 12; min-height: 56px; padding-right: var(--barw, 0px); gap: 12px; }
