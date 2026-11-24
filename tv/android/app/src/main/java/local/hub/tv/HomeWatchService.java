@@ -123,6 +123,17 @@ public class HomeWatchService extends Service {
         if (s != null && pageReady) s.main.postDelayed(s::hideCover, 2500);
     }
 
+    /** "Hey LocalHub" over another app: LocalHub to the front, as the Home key brings it back. */
+    static boolean toFront() {
+        HomeWatchService s = self;
+        if (s == null) return false;
+        s.main.post(() -> {
+            Intent i = new Intent(s, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+            try { s.startActivity(i); } catch (Exception e) { android.util.Log.w("LocalHub", "toFront", e); }
+        });
+        return true;
+    }
+
     /** False from when LocalHub's page starts loading until it has drawn its home screen. */
     static volatile boolean pageReady = false;
 

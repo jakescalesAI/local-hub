@@ -141,9 +141,12 @@ final class Native {
     /** "Hey LocalHub" heard while another app is on: LocalHub comes to the front to answer. */
     @JavascriptInterface
     public void toFront() {
+        android.util.Log.i("LocalHub", "toFront, resumed=" + activity.resumed);
         if (activity.resumed) return;
+        // Through the Home watcher when it runs: Fire OS lets it bring LocalHub back over another app.
+        if (HomeWatchService.toFront()) return;
         Intent i = new Intent(activity, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
-        try { activity.startActivity(i); } catch (Exception ignored) { }
+        activity.ui.post(() -> { try { activity.startActivity(i); } catch (Exception e) { android.util.Log.w("LocalHub", "toFront", e); } });
     }
 
     /** A return to LocalHub, not a fresh start: the page skips its logo and just fades in. */

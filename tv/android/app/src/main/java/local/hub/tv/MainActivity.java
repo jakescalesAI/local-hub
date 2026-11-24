@@ -84,7 +84,7 @@ public class MainActivity extends Activity {
             } catch (Exception ignored) { }
         });
     }
-    private final Handler ui = new Handler(Looper.getMainLooper());
+    final Handler ui = new Handler(Looper.getMainLooper());
     private volatile long keyLoadAt;
     boolean resumed; // in front (Native.toFront reads it)
     private BroadcastReceiver packageReceiver;
