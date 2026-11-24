@@ -700,7 +700,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   let homeY = 0, homePager = null, hush = 0
   document.addEventListener('scroll', e => {
     if (e.target?.classList?.contains('hw-pager')) { if (homePager === e.target) homeY = e.target.scrollTop }
-    else if (e.target === document) { const k = spotKey(); if (Date.now() > hush) spots[k] = { y: scrollY, at: document.getElementById('title')?.textContent } }
+    else if (e.target === document) { const k = spotKey(); if (Date.now() > hush && (k === 'home') === !!document.querySelector('#main .hw-root')) spots[k] = { y: scrollY, at: document.getElementById('title')?.textContent } }
   }, { capture: true, passive: true })
   function keepSpots() {
     const p = document.querySelector('.hw-root .hw-pager')
