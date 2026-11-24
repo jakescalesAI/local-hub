@@ -2887,10 +2887,11 @@ async function boot() {
     renderGrid();
     if (PREVIEW) { setInterval(syncHub, 30_000); return paintChip(); }
     // The TV is its own light app: the hub's chat.js and browser.js stay on the laptop.
-    Assistant = await import("./assistant.js?v=10").catch((e) => { console.warn("assistant", e); return null; });
+    Assistant = await import("./assistant.js?v=11").catch((e) => { console.warn("assistant", e); return null; });
     Assistant?.init({
       el: $("#assistantView"), toast, native, NATIVE,
       intercept: (t) => window.HubChatHooks?.intercept?.(t) || false,
+      listenNow: () => fetch("/api/tv/listen/now", { method: "POST", headers: { "x-hub": "1" } }).then((r) => r.json()).then((r) => !!r.ok).catch(() => false),
       openApp: (id) => { const a = APPS.find((x) => x.id === id); if (a) runIntent({ type: "launch", app: a }); else toast("That app isn't on this TV"); },
       openUrl: (url, name) => { let host = ""; try { host = new URL(url).hostname.replace(/^www\./, ""); } catch { /* not a URL */ } openInStream({ id: `url:${url}`, name: name || host || "Website", url, kind: "site", bg: "#26272d", fg: "#ffffff", letter: (name || host || "W").slice(0, 1).toUpperCase() }); },
       appArt: (id) => { const a = APPS.find((x) => x.id === id); return a ? iconHTML(a) : ""; },

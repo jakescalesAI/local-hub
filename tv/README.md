@@ -141,6 +141,12 @@ The rest of this section is the same by hand, for building it yourself or using 
 Manage Installed Applications*). To keep it first in Amazon's own app row: highlight it, ☰, *Move to front*.
 "Alexa, open LocalHub" works too.
 
+**The remote's buttons.** Arrows, OK and Back always work the same. ☰ is the microphone: the laptop listens
+for what you ask straight away (with *Hey LocalHub* on), or the remote's own dictation when it's off; ⏯ talks
+too. Settings → Remote → *Remote buttons* gives any other button a job, on any remote or game controller:
+OK, press the button, pick what it does (microphone, sidebar, Assistant, Home, screensaver, Settings, a page
+up or down, or nothing). *Back to the standard buttons* undoes it all.
+
 **It opens by itself.** You rarely see Amazon's home:
 
 | When | What happens |

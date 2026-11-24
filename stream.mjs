@@ -262,7 +262,9 @@ const SNAP_JS = (x, y, dir) => `((x, y, dir) => {
     const dx = c.cx - x, dy = c.cy - y
     // Ahead in the direction, then near in line with it: the usual TV spatial-navigation weighting.
     const main = dir === 'right' ? dx : dir === 'left' ? -dx : dir === 'down' ? dy : -dy
-    const side = dir === 'left' || dir === 'right' ? Math.abs(dy) : Math.abs(dx)
+    // Sideways: how far the pointer is from the thing's own span (0 when it lines up with any part of it), so a
+    // wide search box straight above wins over a small icon off to the side.
+    const side = dir === 'left' || dir === 'right' ? Math.max(0, c.y - y, y - (c.y + c.h)) : Math.max(0, c.x - x, x - (c.x + c.w))
     if (main <= 4) continue
     const s = main + side * 2.5
     if (s < score) { score = s; best = c }

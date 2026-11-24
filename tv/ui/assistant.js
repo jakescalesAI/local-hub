@@ -1246,6 +1246,8 @@ export async function voice() {
   if (V.state === 'rec') { if (HV()) HV().stop?.(); else V.rec?.stop(); return }
   if (V.state === 'wait') return
   hush()
+  // On a TV with no mic of its own: the laptop's, when it's listening ("Hey LocalHub" on). It shows Listening… itself.
+  if (O.NATIVE && await O.listenNow?.()) return
   V.cancelled = false
   fetch('/api/voice/warm', { method: 'POST', headers: { 'x-hub': '1' } }).catch(() => {}) // wake Whisper while they talk
   V.state = 'rec'
