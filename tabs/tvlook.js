@@ -702,6 +702,8 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     if (e.target?.classList?.contains('hw-pager')) { if (homePager === e.target) homeY = e.target.scrollTop }
     else if (e.target === document) { const k = spotKey(); if (Date.now() > hush && (k === 'home') === !!document.querySelector('#main .hw-root')) spots[k] = { y: scrollY, at: document.getElementById('title')?.textContent } }
   }, { capture: true, passive: true })
+  // And at the moment you leave, before anything moves.
+  document.addEventListener('click', e => { if (!e.target.closest?.('#tvrail [data-rail], #seg [data-env]')) return; const k = spotKey(); if ((k === 'home') === !!document.querySelector('#main .hw-root')) spots[k] = { y: scrollY, at: document.getElementById('title')?.textContent } }, true)
   function keepSpots() {
     const p = document.querySelector('.hw-root .hw-pager')
     if (p !== homePager) { homePager = p; if (p && homeY) requestAnimationFrame(() => { p.scrollTop = homeY }) }
