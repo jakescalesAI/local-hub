@@ -408,19 +408,23 @@ function renderFavs() {
   const head = $("#favsHead");
   if (!head.firstElementChild) head.innerHTML = `${SYM.star}<span>Favorites</span>`;
   const html = FAVS.map((it, f) => `<div class="app fav${it.kind === "ctl" ? ` ctl ${it.id.slice(4)}` : ""}" data-f="${f}">${iconHTML(it)}<span class="name">${esc(it.name)}</span></div>`).join("");
-  if (track._html !== html) { track.innerHTML = html; track._html = html; }
+  if (track._html !== html) { track.innerHTML = html; track._html = html; track._boxes = null; }
   const sb = track.querySelector(".sb");
   if (sb && document.activeElement !== sb && sb.value !== (S.search || "")) sb.value = S.search || "";
   if (box.hidden === hasFavs()) { box.hidden = !hasFavs(); $("#page").classList.toggle("has-favs", hasFavs()); }
 }
 // The row slides so the focused favorite is always on screen, five at a time like the grid.
 // Where a tile of the row is, in screen pixels (1920 wide): its left edge in the strip and its width.
+// Measured once per row (renderFavs clears it): measuring on every move forced a layout pass, ~100 ms when the
+// sidebar closed into Settings.
 function favBox(f) {
-  const n = $(`.fav[data-f="${f}"]`), track = $("#favTrack");
-  if (!n) return null;
-  const k = $("#stage").getBoundingClientRect().width / 1920 || 1;
-  const t = track.getBoundingClientRect(), r = n.getBoundingClientRect();
-  return { l: (r.left - t.left) / k, w: r.width / k };
+  const track = $("#favTrack");
+  if (!track._boxes) {
+    const k = $("#stage").getBoundingClientRect().width / 1920 || 1;
+    const t = track.getBoundingClientRect();
+    track._boxes = [...track.querySelectorAll(".fav")].map((n) => { const r = n.getBoundingClientRect(); return { l: (r.left - t.left) / k, w: r.width / k }; });
+  }
+  return track._boxes[f] || null;
 }
 const FAV_VIEW = 1920 - 212 - 90; // the strip's visible width
 function slideFavs() {
@@ -461,6 +465,8 @@ async function walkRows() {
   if (!document.body.classList.contains("booted")) {
     // The header's wordmarks are baked after the home screen is up (in the background), not before it.
     setTimeout(() => [...new Set(ITEMS.map((x) => x.wordmark).filter(Boolean))].reduce((p, w) => p.then(() => bakeMark(w)), Promise.resolve()), 3000);
+    // And your favorites' white logos decoded ahead, so the first move along the row doesn't stop to decode one (~150 ms).
+    setTimeout(() => FAVS.filter((x) => x.mark).reduce((p, x) => p.then(() => { const i = new Image(); i.src = x.mark; return i.decode().catch(() => {}); }), Promise.resolve()), 2500);
     renderSettings(); // Settings stays drawn, a hair above invisible (styles.css), from here on
     window.__boot.settings = Math.round(performance.now());
     setView("assistant");
@@ -1395,6 +1401,14 @@ function armSaver() {
   if (!mins || S.overlay === "saver") return;
   if (document.hidden) return; // another app is on screen: no screensaver behind it
   saverTimer = setTimeout(() => { if (!S.overlay && S.zone !== "bar" && !document.hidden) startSaver(); }, mins * 60000);
+  // 15 s before it starts, its first photo is fetched and decoded, so starting doesn't stop to decode it (~170 ms).
+  clearTimeout(armSaver.warm);
+  armSaver.warm = setTimeout(async () => {
+    if (S.overlay || document.hidden) return;
+    if (!SAVER.photos.length || Date.now() - SAVER.at > SAVER_STALE) await loadSaverPhotos();
+    preloadNext();
+    SAVER.preload?.decode?.().catch(() => {});
+  }, Math.max(0, mins * 60000 - 15000));
 }
 
 /* The screensaver: photos from the library chosen in LocalHub (tv.saver: the hub's wallpapers, this
