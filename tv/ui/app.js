@@ -2002,9 +2002,17 @@ function railKey(name) {
   if (name === "right" || name === "back" || name === "menu") return closeRail();
   if (name !== "enter") return;
   const id = RAIL[S.rail].id;
+  // Settings and the assistant open first, and the sidebar folds away a moment later under them: doing both in
+  // one frame cost a 100+ ms frame on a Fire TV Stick.
+  if (id === "settings" || id === "assistant") {
+    S.zone = S.railFrom === "favs" && id === "settings" ? "favs" : "grid";
+    if (id === "settings") openSettings(); else showView(id);
+    setTimeout(() => { railOpen(false); paintRail(); }, 320);
+    return;
+  }
   railOpen(false);
   S.zone = "grid";
-  if (id === "home" || id === "assistant") return showView(id);
+  if (id === "home") return showView(id);
   paintRail();
   if (S.view === "home") applyFocus();
   if (id === "browser") { const app = APPS.find((a) => a.id === "browser") || Stream.STREAM_APPS.find((a) => a.id === "browser"); return app ? openApp(app) : toast("The browser runs on the laptop: open LocalHub TV from the hub"); }
