@@ -35,7 +35,7 @@ jobs:
         with:
           node-version: "22"
       # A glob, not a folder: Node 22 doesn't expand a directory argument to --test.
-      - run: node --test "test/tv/*.test.mjs"
+      - run: node --test "test/tv/*.test.mjs" "test/desk/*.test.mjs"
         env:
           # The runner's kernel blocks Chrome's sandbox; the real-browser stream test needs it off here.
           LOCALHUB_NO_SANDBOX: "1"

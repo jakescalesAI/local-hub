@@ -43,3 +43,18 @@
 .mp.wide .mp-b { width: 68px; height: 68px; }
 .mp.wide .mp-b .sym { width: 42px; height: 42px; }
 .mp-b.sel { background: var(--ui-sel); color: #000; }
+/* Settings › Fire TV remote (remote.js), on the TV and the hub page. Sizes are the TV's. */
+.rm-card { display: grid; grid-template-columns: 430px 760px; gap: 110px; align-items: center; color: #fff; }
+.rm { height: 940px; display: block; margin: 0 auto; filter: drop-shadow(0 40px 60px rgba(0, 0, 0, .6)); overflow: visible; }
+.rm-s { fill: #2e3036; stroke: rgba(255, 255, 255, .1); stroke-width: 1; }
+.rm-g { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.rm-b { color: rgba(255, 255, 255, .38); outline: 0; }
+.rm-b.map { color: #fff; cursor: pointer; }
+.rm-b.set .rm-s { fill: #0a4d94; }
+.rm-b.sel .rm-s { fill: #f2f2f5; stroke: #fff; stroke-width: 5; } .rm-b.sel { color: #000; }
+.rm-right h2 { margin: 0 0 12px; font: 700 60px/1.1 var(--display); letter-spacing: -.02em; }
+.rm-right p { margin: 0 0 30px; font-size: 27px; line-height: 1.4; color: rgba(255, 255, 255, .6); }
+.rm-right .rm-why { margin: 26px 0 0; font-size: 23px; }
+.rm-row { display: flex; justify-content: space-between; align-items: center; gap: 24px; width: 100%; min-height: 88px; padding: 0 34px; margin-bottom: 12px; border: 0; border-radius: 30px; background: var(--ui-fill); box-shadow: var(--ui-edge); color: #fff; font: 600 29px/1 var(--display); text-align: left; }
+.rm-row em { font: 500 26px/1 var(--display); font-style: normal; color: rgba(255, 255, 255, .6); }
+.rm-row.sel { background: var(--ui-sel); color: #000; } .rm-row.sel em { color: rgba(0, 0, 0, .55); }

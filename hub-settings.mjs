@@ -17,7 +17,7 @@ import { hubConfig, enabledTabs, addonOn, activeTheme, baseTheme } from './confi
 import { isLocal } from './access.mjs'
 
 export const BUILTIN_TABS = ['home', 'laptop', 'server', 'drives', 'ai', 'cloud', 'calendar', 'stripe']
-const NOT_TABS = new Set(['home', 'chat', 'custom', 'setup', 'launcher', 'browser', 'tvlook', 'tvsetup']) // files in tabs/ that are not plug-in tabs
+const NOT_TABS = new Set(['home', 'chat', 'custom', 'setup', 'launcher', 'browser', 'tvlook', 'tvsetup', 'desk']) // files in tabs/ that are not plug-in tabs
 const QUIET_TABS = ['connections'] // reached from Settings; stays out of the header until someone adds it
 export const SIZES = ['s', 'm', 'l']
 const MAX_ITEMS = 60
@@ -182,6 +182,8 @@ export const SCROLL_DEFAULT = { desktop: 'pages', ipad: 'pages', mobile: 'pages'
 // in neither list (new, or from another TV) shows after the listed ones; both empty is the default order.
 const TV_APP_RE = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/
 const MAX_TV_APPS = 200
+const TV_BUTTON_RE = /^(menu|rew|ff|ai|settings|key:\d{1,4})$/
+const TV_ACTION_RE = /^(mic|assistant|overlay|home|menu|files|ai|rew|ff|saver|sleep|settings|none|app:[^\u0000-\u001f]{1,60})$/
 
 const WIDGET_DEFAULTS = {
   desktop: [['claude-usage', 'm'], ['clock', 's'], ['next-event', 's'], ['tokens', 'm'], ['coolify', 's'], ['services', 's'], ['today', 'm'], ['stripe-balance', 's'], ['openrouter', 's'], ['server-health', 'm'], ['deepseek', 's'], ['icloud', 's'], ['drives', 'm'], ['backup-drive', 's'], ['laptop-health', 's'], ['servers', 'l'], ['revenue', 'm'], ['clients', 'm']],
@@ -612,7 +614,18 @@ export function applyPatch(cur, body, here) {
 
   // LocalHub TV: { apps?: [ids in order] | null, hidden?: [ids], favorites?: [ids in order], saver?: {…} }. For apps,
   // hidden and favorites, null or [] puts back the default (no favorites). saver is the screensaver, a partial patch merged into the current one.
-  if (body.tv !== undefined && c.obj('tv', body.tv, ['apps', 'hidden', 'favorites', 'saver'])) {
+  if (body.tv !== undefined && c.obj('tv', body.tv, ['apps', 'hidden', 'favorites', 'saver', 'buttons'])) {
+    // The remote's buttons: { menu: 'mic', rew: 'app:Netflix', 'key:172': 'overlay', … }. null is the standard set.
+    if (body.tv.buttons === null) next.tv.buttons = {}
+    else if (body.tv.buttons !== undefined && c.obj('tv.buttons', body.tv.buttons, Object.keys(body.tv.buttons || {}))) {
+      const set = {}
+      for (const [k, v] of Object.entries(body.tv.buttons).slice(0, 40)) {
+        if (!TV_BUTTON_RE.test(k)) c.fail(`tv.buttons.${k}`, 'is not a remote button')
+        else if (typeof v !== 'string' || !TV_ACTION_RE.test(v)) c.fail(`tv.buttons.${k}`, 'is not something a button can do')
+        else set[k] = v
+      }
+      next.tv.buttons = set
+    }
     if (body.tv.saver !== undefined) next.tv.saver = cleanSaver(c, 'tv.saver', body.tv.saver, next.tv.saver)
     for (const k of ['apps', 'hidden', 'favorites']) {
       const v = body.tv[k]
@@ -702,6 +715,7 @@ function repair(saved, here) {
   for (const vk of VIEWS) tryPart(vk, () => { out.widgets = { ...out.widgets, [vk]: applyPatch(d, { widgets: { [vk]: (saved.widgets[vk] ?? (vk === 'tv' ? seedLayout('tv') : saved.widgets.desktop)).filter(itemIdOk) } }, here).widgets[vk] } })
   tryPart('scroll', () => { out.scroll = applyPatch(d, { scroll: Object.fromEntries(Object.entries(saved.scroll || {}).filter(([vk, v]) => VIEWS.includes(vk) && SCROLLS.includes(v))) }, here).scroll })
   for (const k of ['apps', 'hidden', 'favorites']) tryPart(`tv.${k}`, () => { out.tv = { ...out.tv, [k]: applyPatch(d, { tv: { [k]: [...new Set((saved.tv?.[k] || []).filter(x => typeof x === 'string' && TV_APP_RE.test(x)))].slice(0, MAX_TV_APPS) } }, here).tv[k] } })
+  tryPart('tv.buttons', () => { if (saved.tv?.buttons) out.tv = { ...out.tv, buttons: applyPatch(d, { tv: { buttons: saved.tv.buttons } }, here).tv.buttons } })
   for (const k of Object.keys(STYLE)) tryPart(k, () => { out.style = { ...out.style, [k]: applyPatch(d, { style: { [k]: saved.style[k] } }, here).style[k] } })
   tryPart('custom', () => { out.wallpaper = { ...out.wallpaper, custom: applyPatch(d, { wallpaper: { custom: saved.wallpaper.custom } }, here).wallpaper.custom } })
   out.wallpaper.uploads = (saved.wallpaper?.uploads || []).filter(u => u && UPLOAD_ID_RE.test(u.id) && UPLOAD_FILE_RE.test(u.file) && fs.existsSync(path.join(here, 'data', 'wallpapers', u.file))).slice(0, MAX_UPLOADS)

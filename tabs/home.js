@@ -3287,7 +3287,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
   // A scroll or resize is the one thing besides a swap that moves the cells under a drag.
   addEventListener('scroll', e => {
     const d = S.drag
-    if (e.target === document && showing() && S.root?.isConnected && scrollY && (S.editing || !document.documentElement.hasAttribute('data-tvtouch'))) scrollTo(0, 0) // on a phone Home scrolls with the page
+    if (e.target === document && showing() && S.root?.isConnected && scrollY && (S.editing || !document.documentElement.matches('[data-tvtouch], [data-tvlook]'))) scrollTo(0, 0) // on a phone Home scrolls with the page
     if (d?.on && (e.target === document || e.target === d.v.el || e.target === d.v.pg)) { d.px = d.v.x(); d.py = d.v.y(); dragPlace(d) }
     if (appDrag?.on) { appMeasure(appDrag); appPlace(appDrag) }
   }, { capture: true, passive: true })
@@ -4373,7 +4373,7 @@ html[data-effect="glow"] .hw-app-b > .hc-app { box-shadow: var(--hub-shadow), 0 
     const slot = document.getElementById('hw-slot')
     if (!slot || !S.root) return
     slot.replaceWith(S.root)
-    const flows = !S.editing && document.documentElement.hasAttribute('data-tvtouch') // a phone: Home scrolls with the page
+    const flows = !S.editing && document.documentElement.matches('[data-tvtouch], [data-tvlook]') // a phone: Home scrolls with the page
     if (!flows && scrollY) scrollTo(0, 0)
     if (flows && S.kept?.page) { const y = S.kept.page; scrollTo(0, y); requestAnimationFrame(() => { if (S.root?.isConnected && scrollY < y) scrollTo(0, y) }) }
     for (const k of KEEP_SCROLL) { const el = S.root.querySelector(`.${k}`); if (el && S.kept?.[k] && el.scrollTop !== S.kept[k]) el.scrollTop = S.kept[k] }

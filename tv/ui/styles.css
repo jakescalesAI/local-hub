@@ -26,7 +26,7 @@
   /* tabs/custom.js */
   --hub-radius: 20px; --hub-blur: 20px; --hub-alpha: 70%; --hub-scrim: .45; --hub-shadow: 0 0 0 .5px var(--sep);
   /* tvOS geometry, in canvas pixels */
-  --icon-w: 300px; --icon-h: 180px; --icon-r: 24px; --gap-x: 49px; --pitch: 252px; --row0: 648px; --side: 112px;
+  --icon-w: 300px; --icon-h: 180px; --icon-r: 24px; --gap-x: 49px; --pitch: 252px; --row0: 690px; --side: 112px;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -92,7 +92,7 @@ html.lite .card, html.lite .glass { -webkit-backdrop-filter: none !important; ba
    stick 100-350 ms frames, and a class on body for it restyled every tile (~30 ms each time Settings opened). */
 
 /* Top Shelf: full-bleed art for whatever the top row has in focus. */
-.shelf { position: relative; height: 760px; overflow: hidden; transition: opacity .6s var(--ease), filter .6s var(--ease); }
+.shelf { position: relative; height: 802px; overflow: hidden; transition: opacity .6s var(--ease), filter .6s var(--ease); }
 body.in-grid .shelf { opacity: 0; }
 .shelf-art { position: absolute; inset: 0; opacity: 0; transition: opacity 1s var(--ease); overflow: hidden; }
 .shelf-art.on { opacity: 1; }
@@ -283,6 +283,9 @@ html.lite .settings::before { background: var(--bg); -webkit-backdrop-filter: no
 .tilemenu.on { opacity: 1; pointer-events: auto; }
 .tilemenu-card { width: 560px; padding: 34px 28px 28px; border-radius: 36px; background: var(--ui-panel); box-shadow: var(--ui-edge); color: #fff; }
 .tilemenu-name { font: 700 40px/1.1 var(--display); letter-spacing: -0.02em; margin: 0 14px 22px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#tileMenuList { max-height: 700px; overflow-y: auto; scrollbar-width: none; }
+.remote { position: absolute; inset: 0; z-index: 39; display: grid; place-items: center; background: var(--chat-bg, #0b0b0e); opacity: 0; pointer-events: none; transition: opacity .2s var(--ease); }
+.remote.on { opacity: 1; pointer-events: auto; }
 .tilemenu-item { display: flex; align-items: center; gap: 22px; height: 76px; padding: 0 24px; border-radius: 20px; font: 600 30px/1 var(--display); color: rgba(255, 255, 255, .78); }
 .tilemenu-item .sym { width: 34px; height: 34px; }
 .tilemenu-item.sel { background: #f2f2f5; color: #000; }

@@ -15,8 +15,9 @@
 // ============================================================================
 
 import * as Stream from "./stream.js?v=4";
-import * as Panel from "./panel.js?v=4";
+import * as Panel from "./panel.js?v=5";
 import * as Files from "./files.js?v=1";
+import * as Remote from "./remote.js?v=1";
 import * as Mirror from "./mirror.js?v=2";
 // The TV's own assistant screen (assistant.js): the hub's agent and conversation, without the hub's chat UI.
 let Assistant = null;
@@ -520,7 +521,7 @@ function applyFocus(instant) {
   // Row 0 sits on the Top Shelf. Further down, in one long scroll (the default, like tvOS) the
   // focused row rides about a third of the way up; in pages the rows move three at a time.
   const paged = SETTINGS?.scroll?.tv === "pages";
-  const gridTop = 648 + (fav ? FAVS_H : 0);
+  const gridTop = 690 + (fav ? FAVS_H : 0);
   const first = fav ? Math.floor(gRow / 3) * 3 : 1 + Math.floor((gRow - 1) / 3) * 3;
   const y = !inGrid ? 0 : paged ? -(gridTop + first * 236 - 190) : -(gridTop + gRow * 236 - 400);
   // A page shows its own rows: the ones before it leave with it instead of hanging under the clock.
@@ -1140,8 +1141,8 @@ function paintHomeWidgets() {
   const box = $("#homeW");
   if (!box) return;
   const sizes = {};
-  for (const x of SETTINGS?.widgets?.tv || []) { const id = x?.id || x?.[0]; if (id && id !== "clock" && id !== "date" && WIDGETS[id]) sizes[id] = x?.size || x?.[1] || "s"; }
-  const html = (prefs.homePlayer === false ? "" : Panel.player(MEDIA, true)) + Object.keys(sizes).slice(0, 2).map((id) => widgetCard(id, sizes[id])).join("");
+  for (const x of SETTINGS?.widgets?.tv || []) { const id = x?.id || x?.[0]; if (id && id !== "clock" && id !== "date" && id !== "world-clock" && WIDGETS[id]) sizes[id] = x?.size || x?.[1] || "s"; }
+  const html = (prefs.homePlayer === false ? "" : Panel.player(MEDIA, true)) + Object.keys(sizes).slice(0, 3).map((id) => widgetCard(id, sizes[id])).join("");
   if (box._html !== html) { box.innerHTML = html; box._html = html; }
   box.querySelectorAll(".mp-b").forEach((n) => n.classList.toggle("sel", S.zone === "player" && !S.overlay && S.view === "home" && n.dataset.w === S.mp));
 }
@@ -1175,8 +1176,29 @@ function setBrightness(v) {
 // title and picture need "notification access", granted once; without it the player still plays, pauses and skips.
 let MEDIA = {};
 let mediaTimer = null;
-function readMedia() { MEDIA = NATIVE ? safeJson(native("media", "state"), {}) || {} : {}; }
+// With nothing on the TV itself, it's what the computer (or your Spotify) is playing, and the buttons work that.
+let HUB_MEDIA = null;
+async function readHubMusic() {
+  if (!IN_HUB || document.hidden || (S.overlay && S.overlay !== "wpanel") || S.view !== "home") return;
+  try { const r = await fetch("/api/music", { cache: "no-store" }); const n = r.ok ? (await r.json()).now : null; HUB_MEDIA = n && n.from !== "tv" && n.title ? n : null; } catch { HUB_MEDIA = null; }
+  const was = JSON.stringify(MEDIA);
+  readMedia();
+  if (JSON.stringify(MEDIA) !== was) { paintHomeWidgets(); if (S.overlay === "wpanel") paintWpanel(); }
+}
+setInterval(readHubMusic, 5000);
+setTimeout(readHubMusic, 2500);
+function readMedia() {
+  const own = NATIVE ? safeJson(native("media", "state"), {}) || {} : {};
+  MEDIA = own.playing || own.title || !HUB_MEDIA ? own : { ...HUB_MEDIA, hub: true };
+}
 function mediaDo(act) {
+  if (MEDIA.hub) {
+    MEDIA = { ...MEDIA, playing: act === "toggle" ? !MEDIA.playing : MEDIA.playing };
+    paintHomeWidgets();
+    fetch("/api/music/do", { method: "POST", headers: { "content-type": "application/json", "x-hub": "1" }, body: JSON.stringify({ action: act, from: MEDIA.from }) })
+      .then((r) => r.json()).then((r) => { if (!r.ok) toast(r.error || "That didn't go through"); setTimeout(readHubMusic, 600); }, () => toast("LocalHub didn't answer"));
+    return;
+  }
   if (!NATIVE) return toast("The player works on the TV");
   native("media", act);
   setTimeout(() => { readMedia(); if (S.overlay === "wpanel") paintWpanel(); paintHomeWidgets(); }, 500);
@@ -1415,7 +1437,7 @@ function settingsModel() {
     ...(IN_HUB ? [listenRow(), modelRow()] : []),
     ...(!NATIVE ? [{ key: "help", t1: "Keyboard help", t2: "The remote's keys, along the top", toggle: true }] : []),
     { group: "Remote" },
-    { id: "buttons", t1: "Remote buttons", t2: buttonSummary(), v: "" },
+    { id: "buttons", t1: "Fire TV remote", t2: buttonSummary(), v: "" },
     { group: "About" },
     { id: "setup", t1: "Set up LocalHub", t2: "trylocalhub.com/setup · opens here, in the TV's browser", v: "" },
     { info: true, t1: "Version", t2: NATIVE ? "LocalHub TV for Fire TV" : "LocalHub TV on this laptop", v: NATIVE ? st.version || "?" : LIVE.status?.version ? `LocalHub ${LIVE.status.version}` : "LocalHub" },
@@ -1702,7 +1724,7 @@ function paintSaverHud() {
   // Each at the size you gave it in LocalHub (s, m or l): the same card, the same sizes, as on LocalHub's Home.
   const sizes = {};
   for (const x of SETTINGS?.widgets?.tv || []) { const id = x?.id || x?.[0]; if (id) sizes[id] = x?.size || x?.[1] || "m"; }
-  const ids = [...new Set([...Object.keys(sizes), ...w])].filter((id) => id !== "clock" && id !== "date" && WIDGETS[id]).slice(0, 3);
+  const ids = [...new Set([...Object.keys(sizes), ...w])].filter((id) => id !== "clock" && id !== "date" && id !== "world-clock" && WIDGETS[id]).slice(0, 3);
   const cards = ids.map((id) => widgetCard(id, sizes[id] || "m")).join("");
   $("#saverHud").innerHTML = `${cards ? `<div class="saver-cards">${cards}</div>` : ""}${time || date ? `<div class="saver-when">${time}${date}</div>` : ""}`;
 }
@@ -2370,12 +2392,15 @@ async function bakeGlass() {
 
 function handleKey(raw) {
   S.touched = true;
-  // Settings › Remote buttons is waiting for a button to set up.
-  if (S.capture && !FIXED_KEYS.has(raw)) return captureButton(raw);
+  if (S.overlay === "remote") return remoteKey(raw);
   const name = buttonAction(raw);
   if (name === "none") return;
   if (name === "mic") return micNow();
   if (name === "home") return window.haven.home();
+  if (name.startsWith("app:")) { if (S.overlay === "saver") stopSaver(); const app = findApp(name.slice(4)); return app ? runIntent({ type: "launch", app }) : toast(`No app called “${name.slice(4)}” here`); }
+  if (name === "overlay") { if (S.overlay === "saver") stopSaver(); if (S.overlay === "settings") closeSettings(); if (S.overlay === "wpanel") return closeWidgets(); if (S.overlay) return; closeRail(); if (S.view !== "home") showView("home"); return openWidgets(); }
+  if (name === "files") { if (S.overlay === "saver") stopSaver(); if (S.overlay === "settings") closeSettings(); closeRail(); return showView("files"); }
+  if (name === "sleep") return sleepNow();
   if (name === "assistant") { if (S.overlay === "saver") stopSaver(); if (S.overlay === "settings") closeSettings(); closeRail(); return showView("assistant"); }
   // Typing in the search bar: Back closes it (keeping what's typed) and stays on it.
   const sb = document.activeElement?.classList?.contains("sb") ? document.activeElement : null;
@@ -2484,22 +2509,13 @@ function press(fn) {
    Arrows, OK and Back always do what they do, so nobody can lock themselves out. Every other button (a Fire TV
    remote's ☰ ⏯ ⏪ ⏩, a game controller's X Y L R Start, a TV remote's colour and number keys, which the TV app
    passes on as "key:<code>") does what Settings › Remote buttons says. ☰ is the microphone unless changed. */
-const FIXED_KEYS = new Set(["left", "right", "up", "down", "enter", "back", "hold"]);
-const BUTTON_ACTIONS = [
-  ["mic", "Microphone", SYM.mic], ["menu", "Sidebar and menus", SYM.sort], ["ai", "Play / pause", SYM.open],
-  ["assistant", "Assistant", SYM.mic], ["home", "Home", SYM.widgets], ["saver", "Screensaver", SYM.moon],
-  ["settings", "Settings", SYM.gear], ["rew", "Page up, rewind", SYM.sort], ["ff", "Page down, fast forward", SYM.sort], ["none", "Nothing", SYM.hide],
-];
-const DEFAULT_BUTTONS = { menu: "mic" };
-function buttonAction(name) {
-  if (FIXED_KEYS.has(name)) return name;
-  const m = { ...DEFAULT_BUTTONS, ...(prefs.buttons || {}) };
-  return m[name] || (String(name).startsWith("key:") ? "none" : name);
-}
-const ANDROID_KEYS = { 96: "A", 97: "B", 98: "C", 99: "X", 100: "Y", 101: "Z", 102: "L1", 103: "R1", 104: "L2", 105: "R2", 106: "Left stick", 107: "Right stick", 108: "Start", 109: "Select", 110: "Guide", 183: "Red", 184: "Green", 185: "Yellow", 186: "Blue", 172: "Guide", 165: "Info", 175: "Captions", 174: "Bookmark" };
+// Chosen on the TV here or on the computer (Settings › Fire TV remote): kept in the hub (tv.buttons), so both agree.
+const buttonsNow = () => (IN_HUB && SETTINGS?.tv?.buttons ? { ...(prefs.buttons || {}), ...SETTINGS.tv.buttons } : prefs.buttons || {});
+const buttonAction = (name) => Remote.actionOf(name, buttonsNow());
+const ANDROID_KEYS = { 96: "A", 97: "B", 98: "C", 99: "X", 100: "Y", 101: "Z", 102: "L1", 103: "R1", 104: "L2", 105: "R2", 106: "Left stick", 107: "Right stick", 108: "Start", 109: "Select", 110: "Guide", 172: "Guide", 183: "Red", 184: "Green", 185: "Yellow", 186: "Blue", 166: "Channel up", 167: "Channel down" };
 function buttonLabel(name) {
-  const fixed = { menu: "☰ (Menu)", ai: "⏯ (Play / pause)", rew: "⏪ (Rewind)", ff: "⏩ (Fast forward)", settings: "Settings button" }[name];
-  if (fixed) return fixed;
+  if (Remote.BUTTONS.some((b) => b.id === name)) return Remote.labelOf(name);
+  if (name === "settings") return "Settings button";
   const code = Number(String(name).replace(/^key:/, ""));
   if (ANDROID_KEYS[code]) return `${ANDROID_KEYS[code]} button`;
   if (code >= 7 && code <= 16) return `${code - 7} key`;
@@ -2507,46 +2523,71 @@ function buttonLabel(name) {
   if (code >= 131 && code <= 142) return `F${code - 130} key`;
   return `Button ${code || name}`;
 }
-const actionName = (a) => (BUTTON_ACTIONS.find(([id]) => id === a) || [, "Nothing"])[1];
 function buttonSummary() {
-  const m = { ...DEFAULT_BUTTONS, ...(prefs.buttons || {}) };
-  const set = Object.entries(m).filter(([k, v]) => v !== k).map(([k, v]) => `${buttonLabel(k).replace(/ \(.*\)$/, "")} ${actionName(v)}`);
-  return set.length ? `${set.slice(0, 3).join(" · ")}${set.length > 3 ? " …" : ""}` : "Any remote or controller: OK, then press a button";
+  const set = Object.entries(Remote.merged(buttonsNow())).filter(([k, v]) => v !== k).map(([k, v]) => `${buttonLabel(k)}: ${Remote.actionName(v)}`);
+  return set.slice(0, 3).join(" · ") + (set.length > 3 ? " …" : "");
 }
+async function saveButtons(map, say) {
+  prefs.buttons = map;
+  savePrefs();
+  if (IN_HUB) {
+    if (SETTINGS) SETTINGS.tv = { ...(SETTINGS.tv || {}), buttons: map };
+    try {
+      const r = await fetch("/api/hub/settings", { method: "POST", headers: { "content-type": "application/json", "x-hub": "1" }, body: JSON.stringify({ tv: { buttons: map } }) });
+      if (!r.ok) return toast("LocalHub couldn't save that");
+    } catch { return toast("LocalHub didn't answer"); }
+  }
+  toast(say);
+  paintRemote();
+}
+// Settings › Fire TV remote: the remote itself. Up and Down go through its buttons, and pressing one on the real
+// remote goes straight to it; OK picks what it does.
 function openButtons() {
-  S.capture = true;
-  S.menu = [
-    { id: "btn:reset", label: "Back to the standard buttons", ic: SYM.move },
-  ];
-  S.menuAt = 0;
+  S.rmAt = S.rmAt || "menu";
+  S.rmFrom = S.overlay;
+  paintRemote();
+  $("#remote").classList.add("on");
+  setOverlay("remote");
+}
+function paintRemote() {
+  const box = $("#remote .rm-card");
+  if (!box) return;
+  const b = buttonsNow();
+  const html = `<div class="rm-left">${Remote.remoteHTML(S.rmAt, b)}</div><div class="rm-right"><h2>Fire TV remote</h2><p>Press a button on your remote, or choose one here. OK changes what it does.</p><div class="rm-rows">${Remote.rowsHTML(S.rmAt, b)}</div><p class="rm-why">Power, Alexa, Home, volume and the four app buttons belong to Fire TV.</p></div>`;
+  if (box._html !== html) { box.innerHTML = html; box._html = html; }
+}
+function remoteKey(raw) {
+  const ids = Remote.rowIds(buttonsNow()), at = ids.indexOf(S.rmAt);
+  if (raw === "back") { $("#remote").classList.remove("on"); setOverlay(S.rmFrom === "settings" ? "settings" : null); if (S.overlay === "settings") renderSettings(); return; }
+  if (raw === "up" || raw === "down") { S.rmAt = ids[clamp(at + (raw === "down" ? 1 : -1), 0, ids.length - 1)]; return paintRemote(); }
+  if (raw === "enter" || raw === "hold") {
+    if (S.rmAt === "reset") return saveButtons({}, "Every button is back to standard: Menu is the microphone");
+    return openButtonMenu(S.rmAt);
+  }
+  if (raw === "left" || raw === "right" || raw === "help") return;
+  S.rmAt = raw;
+  paintRemote();
+}
+function openButtonMenu(id) {
+  S.buttonFor = id;
+  const now = buttonAction(id);
+  const apps = [...new Set([...FAVS.filter(isPicked), ...APPS.filter((a) => a.recentAt).sort((a, b) => b.recentAt - a.recentAt)].map((a) => a.name))].slice(0, 8);
+  S.menu = [...Remote.ACTIONS, ...apps.map((n) => [`app:${n}`, `Open ${n}`])].map(([a, label]) => ({ id: `btn:set:${a}`, label: a === now ? `${label} ✓` : label, ic: "" }));
+  S.menuAt = Math.max(0, S.menu.findIndex((m) => m.id === `btn:set:${now}`));
   S.menuFor = null;
-  S.menuFrom = S.overlay;
-  $("#tileMenuName").textContent = "Press any button";
-  $("#tileMenuList").innerHTML = S.menu.map((m, i) => `<div class="tilemenu-item" data-m="${i}">${m.ic}<span>${esc(m.label)}</span></div>`).join("");
+  S.menuFrom = "remote";
+  $("#tileMenuName").textContent = buttonLabel(id);
+  $("#tileMenuList").innerHTML = S.menu.map((m, i) => `<div class="tilemenu-item" data-m="${i}"><span>${esc(m.label)}</span></div>`).join("");
   paintTileMenu();
+  $("#tileMenuList").querySelector(".sel")?.scrollIntoView({ block: "center" });
   $("#tileMenu").classList.add("on");
   setOverlay("tilemenu");
 }
-function captureButton(name) {
-  S.capture = false;
-  S.buttonFor = name;
-  const now = buttonAction(name);
-  S.menu = BUTTON_ACTIONS.map(([id, label, ic]) => ({ id: `btn:set:${id}`, label: id === now ? `${label} ✓` : label, ic }));
-  S.menuAt = Math.max(0, BUTTON_ACTIONS.findIndex(([id]) => id === now));
-  $("#tileMenuName").textContent = `${buttonLabel(name)} does…`;
-  $("#tileMenuList").innerHTML = S.menu.map((m, i) => `<div class="tilemenu-item" data-m="${i}">${m.ic}<span>${esc(m.label)}</span></div>`).join("");
-  paintTileMenu();
-}
 function buttonPick(act) {
-  if (act === "reset") { prefs.buttons = {}; savePrefs(); toast("Every button is back to standard: ☰ is the microphone"); }
-  else if (act.startsWith("set:") && S.buttonFor) {
-    const name = S.buttonFor, to = act.slice(4);
-    prefs.buttons = { ...(prefs.buttons || {}), [name]: to };
-    savePrefs();
-    toast(`${buttonLabel(name)}: ${actionName(to)}`);
-  }
+  if (!act.startsWith("set:") || !S.buttonFor) return;
+  const name = S.buttonFor, to = act.slice(4);
   S.buttonFor = null;
-  if (S.overlay === "settings") renderSettings();
+  saveButtons({ ...buttonsNow(), [name]: to }, `${buttonLabel(name)}: ${Remote.actionName(to)}`);
 }
 
 // The microphone button: the laptop listens for a request now (no "Hey LocalHub" needed). With the laptop not

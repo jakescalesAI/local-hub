@@ -77,7 +77,7 @@ ${R} { --side: 380px; --sidegap: 40px; }
 ${R}:has(.hw-root) .page { position: relative; padding-right: 48px; }
 ${R}:has(.hw-root:is([data-view="tv"], [data-view="ipad"], [data-view="mobile"])) .page, ${R}[data-noside]:has(.hw-root) .page { padding-right: 48px; }
 /* The TV's own proportions: the clock at the top, the name of what you're on above the row, the row three fifths down. */
-${R}:has(.hw-root) #tvtop { display: flex; flex-direction: column; box-sizing: border-box; height: max(250px, 59vh); padding: 36px 0 22px; margin: 0; color: #fff; pointer-events: none; }
+${R}:has(.hw-root) #tvtop { display: flex; flex-direction: column; box-sizing: border-box; height: max(250px, 63vh); padding: 36px 0 22px; margin: 0; color: #fff; pointer-events: none; }
 ${R} .tvt-name { margin-top: auto; max-width: calc(100% - var(--side) - 20px); font: 700 clamp(54px, 7.2vw, 120px)/1.05 var(--display); letter-spacing: -.035em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 2px 14px rgba(0, 0, 0, .35); }
 @media (max-height: 620px) { ${R}:has(.hw-root) #tvtop { height: 150px; } ${R} .tvt-name { display: none; } }
 ${R} .controls { margin-bottom: 26px; top: 12px; }
@@ -141,12 +141,33 @@ ${R} .hw-root[data-view="desktop"] .hw-grid > .hw-cell:not(.a) { position: absol
 ${R} .hw-root[data-view="desktop"] .hw-grid > .hw-cell.m:not(.a) { width: var(--side); }
 ${R} .hw-root[data-view="desktop"] .hw-grid > .hw-cell.l:not(.a) { width: var(--side); height: 380px; }
 #tvside { display: none; }
-${R} .hw-root[data-view="desktop"] > #tvside { display: grid; position: fixed; z-index: 11; top: 30px; right: max(48px, calc((100vw - 1500px) / 2 + 48px)); width: var(--side); max-height: max(190px, calc(59vh - 70px)); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-content: start; padding: 8px; margin: -8px; box-sizing: content-box; }
+${R} .hw-root[data-view="desktop"] > #tvside { display: grid; position: fixed; z-index: 11; top: 30px; right: max(48px, calc((100vw - 1500px) / 2 + 48px)); width: var(--side); max-height: max(190px, calc(63vh - 52px)); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-content: start; padding: 8px; margin: -8px; box-sizing: content-box; }
 ${R} #tvside::-webkit-scrollbar { display: none; }
 ${R} #tvside .hw-cell { height: 184px; min-width: 0; grid-column: auto !important; grid-row: auto !important; }
 ${R} #tvside .hw-cell:is(.m, .l), ${R} #tvside .tvt-wx { grid-column: 1 / -1 !important; }
 ${R} #tvside .hw-cell.l { height: 380px; }
 ${R} #tvside .tvp-card { grid-column: 1 / -1; } ${R} .tvp-card .mp { zoom: .62; } ${R} .tvp-card .mp-b { cursor: pointer; } ${R} .tvp-card .mp-b:hover { background: var(--ui-sel); color: #000; }
+${R} #tvside .tvs-card { grid-column: 1 / -1; padding: 18px 22px; border-radius: 26px; background: var(--ui-panel); box-shadow: var(--ui-edge); color: #fff; }
+.tvs-h { font: 600 14px/1 var(--display); color: rgba(255, 255, 255, .6); }
+.tvs-g { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; text-align: center; }
+.tvs-g > div { position: relative; } .tvs-g svg { width: 76px; height: 76px; margin: 0 auto; } .tvs-g circle { transition: stroke-dasharray .6s var(--ease); }
+.tvs-g b { position: absolute; left: 0; right: 0; top: 27px; font: 700 20px/1 var(--display); letter-spacing: -.02em; } .tvs-g b i { font: 600 11px/1 var(--display); color: rgba(255, 255, 255, .6); }
+.tvs-g span { display: block; margin-top: 6px; font-size: 13px; font-weight: 600; } .tvs-g em { display: block; min-height: 14px; font: 500 11.5px/14px var(--font); color: rgba(255, 255, 255, .5); white-space: nowrap; }
+/* The hub's own widgets, in the same cut: a tinted glow from the corner, a quiet label, big figures. */
+${A} .hw-card { border-radius: 26px !important; padding: 18px 20px !important; background: radial-gradient(120% 90% at 0 0, color-mix(in srgb, var(--t, #0a84ff) 22%, transparent), transparent 62%), var(--ui-panel) !important; }
+${A} .hw-card .hw-label { font: 600 14px/1 var(--display); color: rgba(255, 255, 255, .62); text-transform: none; letter-spacing: 0; }
+${A} .hw-card .hw-label svg { color: var(--t, #fff); }
+${A} .hw-card .hw-row { border-color: rgba(255, 255, 255, .07); }
+${A} .hw-card .hw-track { height: 8px; border-radius: 4px; background: rgba(255, 255, 255, .1); } ${A} .hw-card .hw-fill { border-radius: 4px; }
+${A} #tvside .tvp-card .mp { position: relative; overflow: hidden; }
+${A} .mp.art::before { content: ""; position: absolute; inset: -40px; background: var(--art) center / cover; filter: blur(40px) saturate(1.5); opacity: .5; }
+${A} .mp.art > * { position: relative; }
+/* The Overlay on a computer: all of it, its own scroll, and headings. */
+${A} #tvpanel .wpanel-list { max-height: none; overflow: visible; }
+${A} #tvpanel .wph { grid-column: 1 / -1; margin: 8px 8px -6px; font: 600 24px/1 var(--display); color: rgba(255, 255, 255, .56); }
+${A} #tvpanel .wpt { grid-column: 1 / -1; display: flex; padding: 8px; border-radius: 50px; background: var(--ui-fill); box-shadow: var(--ui-edge); }
+${A} #tvpanel .wpt button { flex: 1; height: 74px; border-radius: 37px; font: 600 26px/1 var(--display); color: rgba(255, 255, 255, .7); }
+${A} #tvpanel .wpt button.on { background: var(--ui-sel); color: #000; }
 ${R} #tvside .tvt-wx { padding: 18px 22px; border-radius: 26px; background: var(--ui-panel); box-shadow: var(--ui-edge); color: #fff; }
 ${R}[data-tvshow="apps"] #tvside { visibility: hidden; }
 ${R}[data-tvshow="widgets"] .hw-grid > .hw-cell.a { display: none !important; }
@@ -173,6 +194,13 @@ ${A} .tvs-row .t2 { margin-top: 2px; font-size: 13px; color: rgba(255, 255, 255,
 ${A} .tvs-row .v { font-size: 15px; color: rgba(255, 255, 255, .6); white-space: nowrap; }
 ${A} .tvs-row .v.on { color: #0a84ff; }
 ${R} button.tvs-row:is(:hover, :focus-visible) :is(.t2, .v) { color: rgba(0, 0, 0, .55); }
+${A} .tvs-art .rm { height: min(78vh, 720px); }
+${A} .rmr select { height: 40px; max-width: 260px; padding: 0 14px; border: 0; border-radius: 20px; background: rgba(255, 255, 255, .1); color: #fff; font: 600 14px var(--font); } ${A} .rmr option { background: #1c1d22; }
+${A} .rmr.rmsel { box-shadow: 0 0 0 2px #fff; }
+${A} .tvs-form { padding: 18px 22px; border-radius: 18px; background: var(--ui-fill); box-shadow: var(--ui-edge); font-size: 15px; line-height: 1.6; }
+${A} .tvs-form ol { margin: 0 0 14px; padding-left: 20px; color: rgba(255, 255, 255, .75); } ${A} .tvs-form code { padding: 2px 8px; border-radius: 8px; background: rgba(255, 255, 255, .1); font-size: 13px; user-select: all; } ${A} .tvs-form a { color: #4aa3ff; }
+${A} .tvs-form > div { display: flex; gap: 12px; } ${A} .tvs-form input { flex: 1; min-width: 0; height: 44px; padding: 0 18px; border: 0; border-radius: 22px; background: rgba(255, 255, 255, .08); color: #fff; font: 500 15px var(--mono); }
+${A} .tvs-form button { height: 44px; padding: 0 20px; border-radius: 22px; background: var(--ui-sel); color: #000; font-size: 15px; font-weight: 600; white-space: nowrap; } ${A} .tvs-form p { margin: 10px 0 0; min-height: 20px; color: rgba(255, 255, 255, .7); }
 ${A} .tvs-walls { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 22px 18px; padding: 6px; }
 ${A} .tvs-wall i { display: block; aspect-ratio: 16 / 9; border-radius: 16px; background: #2c2c2e center / cover no-repeat; box-shadow: var(--ui-edge); }
 ${A} .tvs-wall span { display: block; margin-top: 8px; padding-left: 4px; font-size: 14px; font-weight: 600; text-align: left; color: rgba(255, 255, 255, .75); }
@@ -323,6 +351,13 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
 
   // The widget column: the weather, then Home's widgets, copied from where home.js draws them so its own clicks, edits
   // and updates work here (the column is inside .hw-root). The clock and date are already at the top left.
+  let MU = null, SYS = null
+  const gauge = (label, v, sub = '') => { const p = Math.max(0, Math.min(100, Number(v) || 0)), c = p > 90 ? '#ff453a' : p > 75 ? '#ff9f0a' : '#30d158'; return `<div><svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="26" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="7"/><circle cx="32" cy="32" r="26" fill="none" stroke="${c}" stroke-width="7" stroke-linecap="round" stroke-dasharray="${(p * 1.634).toFixed(1)} 164" transform="rotate(-90 32 32)"/></svg><b>${Math.round(p)}<i>%</i></b><span>${label}</span><em>${sub}</em></div>` }
+  async function readPc() {
+    try { const [m, y] = await Promise.all([fetch('/api/music', { cache: 'no-store' }), fetch('/api/desk/system', { cache: 'no-store' })]); MU = m.ok ? await m.json() : null; SYS = y.ok ? await y.json() : null } catch { MU = null }
+    if (!dragging) paintPanel()
+    paintSide()
+  }
   let onScreen = [] // the widgets the Overlay can show or hide
   let side = null, sideWatch = null, sideRoot = null
   function paintSide() {
@@ -347,13 +382,14 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     const wx = look.weather && wxBody && window.HubWeatherCard ? `<div class="tvt-wx">${window.HubWeatherCard(wxBody, 'm')}</div>` : ''
     const cells = [...root.querySelectorAll('.hw-grid > .hw-cell:not(.a)')].filter(c => {
       const id = c.querySelector('[data-hw-widget], [data-hw-wid]')?.dataset.hwWidget || c.dataset.hwKey || ''
-      if (/(^|-)(clock|date|weather)$/.test(id) && !/world-clock$/.test(id)) return editing && c.style.display !== 'none'
+      if (/(^|-)(clock|date|weather|world-clock)$/.test(id)) return editing && c.style.display !== 'none'
       const key = c.dataset.hwKey, name = (c.querySelector('.hw-label')?.textContent || c.querySelector('[aria-label]')?.getAttribute('aria-label') || id.replace(/^[a-z]\d+-/, '').replace(/-/g, ' ')).trim()
       onScreen.push({ key, name: name.charAt(0).toUpperCase() + name.slice(1) })
       return c.style.display !== 'none' && (editing || !look.off?.includes(key))
     })
-    const pl = P && TV?.on && look.player !== false ? `<div class="tvp-card">${P.player(TV.state?.media || {}, true)}</div>` : ''
-    const html = pl + wx + cells.map(c => c.outerHTML).join('')
+    const pl = P && MU && look.player !== false ? `<div class="tvp-card">${P.player(MU.now || {}, true)}</div>` : ''
+    const sysCard = SYS && look.sys !== false ? `<div class="tvs-card"><div class="tvs-h">This PC</div><div class="tvs-g">${gauge('CPU', SYS.cpu)}${gauge('Memory', SYS.mem)}${gauge('Disk', SYS.disk, SYS.diskFree ? `${Math.round(SYS.diskFree / 2 ** 30)} GB free` : '')}</div></div>` : ''
+    const html = pl + wx + sysCard + cells.map(c => c.outerHTML).join('')
     if (side._html === html) return
     const y = side.scrollTop
     side._html = html
@@ -393,6 +429,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     top.querySelector('.tvt-date').style.display = look.clock === 'Time and date' ? '' : 'none'
     paintSide()
   }
+  const SRC = { auto: 'Automatic', pc: 'This PC', spotify: 'Spotify', tv: 'Your TV' }
   const saveLook = () => { try { localStorage.setItem(PREF, JSON.stringify(look)) } catch {} applyLook(); paintPanel() }
   let P = null, TV = null, dragging = null, poll = 0
   const post = c => fetch('/api/tv/command', { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: JSON.stringify(c) }).catch(() => {})
@@ -405,17 +442,23 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   function paintPanel() {
     if (!P) return
     const on = !!TV?.on, st = (on && TV.state) || {}
-    panel.querySelector('.tvp-sub').textContent = on ? 'Your TV' : 'Your TV isn’t connected'
+    const tvSide = on && look.target === 'tv'
+    panel.querySelector('.tvp-sub').textContent = tvSide ? 'Your TV' : 'This PC'
     const list = panel.querySelector('.wpanel-list')
-    const html = P.player(on ? st.media || {} : {})
-      + P.slider('brightness', st.brightness ?? 100, P.IC.sun, 'TV brightness', !on) + P.slider('volume', st.volume ?? 0, P.IC.vol, 'TV volume', !on || st.volume == null)
-      + P.round('home', P.IC.home, 'TV home') + P.round('saver', P.IC.moon, 'Screensaver') + P.round('sleep', P.IC.power, 'Sleep') + P.round('settings', P.IC.gear, 'Settings')
-      + (st.inputs || []).map(i => P.pill(`input:${i.name}`, P.IC.input, i.name, i.sub || 'Input')).join('')
-      + P.pill('homeclock', P.IC.clock, 'Home clock', look.clock, look.clock !== 'Off') + P.pill('homeweather', P.IC.cloud, 'Home weather', look.weather ? 'On' : 'Off', look.weather)
-      + P.pill('homeplayer', P.IC.note, 'Home player', look.player !== false ? 'On' : 'Off', look.player !== false)
-      + onScreen.map(w => P.pill('wg:' + w.key, P.IC.widgets, w.name, look.off?.includes(w.key) ? 'Hidden' : 'On screen', !look.off?.includes(w.key))).join('')
-      + P.pill('addwidget', P.IC.plus, 'Add a widget', 'To the screen')
-      + `<div class="wpx">${wxBody && window.HubWeatherCard ? window.HubWeatherCard(wxBody, 'm') : '<div class="t2">Finding the weather…</div>'}</div>`
+    const pill = (id, ic, t1, v) => P.pill(id, ic, t1, v ? 'On screen' : 'Hidden', v)
+    const html = (on ? `<div class="wpt"><button type="button" data-w="to:pc" class="${tvSide ? '' : 'on'}">This PC</button><button type="button" data-w="to:tv" class="${tvSide ? 'on' : ''}">Your TV</button></div>` : '')
+      + P.player(tvSide ? st.media || {} : MU?.now || {})
+      + (tvSide
+        ? P.slider('brightness', st.brightness ?? 100, P.IC.sun, 'TV brightness') + P.slider('volume', st.volume ?? 0, P.IC.vol, 'TV volume', st.volume == null)
+          + P.round('home', P.IC.home, 'TV home') + P.round('saver', P.IC.moon, 'Screensaver') + P.round('sleep', P.IC.power, 'Sleep') + P.round('mirror', P.IC.pic, 'Control')
+        : P.slider('brightness', MU?.brightness ?? 0, P.IC.sun, 'Brightness', MU?.brightness == null) + P.slider('volume', MU?.volume ?? 0, P.IC.vol, 'Volume', MU?.volume == null)
+          + P.round('ask', P.IC.mic, 'Assistant') + P.round('pcsaver', P.IC.moon, 'Screensaver') + P.round('mirror', P.IC.pic, 'Your TV') + P.round('settings', P.IC.gear, 'Settings'))
+      + (tvSide ? (st.inputs || []).map(i => P.pill(`input:${i.name}`, P.IC.input, i.name, i.sub || 'Input')).join('') : '')
+      + P.pill('music', P.IC.note, 'Music from', SRC[MU?.source] || 'Automatic', true) + P.pill('musicset', P.IC.sliders, 'Music platforms', MU?.spotify?.connected ? 'Spotify connected' : 'Connect one')
+      + '<div class="wph">On Home</div>'
+      + P.pill('homeclock', P.IC.clock, 'Clock', look.clock, look.clock !== 'Off') + pill('homeweather', P.IC.cloud, 'Weather', look.weather) + pill('homeplayer', P.IC.note, 'Music', look.player !== false) + pill('homesys', P.IC.gauge, 'This PC', look.sys !== false)
+      + onScreen.map(w => pill('wg:' + w.key, P.IC.widgets, w.name, !look.off?.includes(w.key))).join('')
+      + P.pill('addwidget', P.IC.plus, 'More widgets', 'Add, arrange')
     if (list._html === html) return
     const had = document.activeElement?.closest?.('#tvpanel [data-w]')?.dataset.w
     list._html = html
@@ -424,24 +467,25 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     if (had) list.querySelector(`[data-w="${had}"]`)?.focus()
   }
   async function openPanel() {
-    try { P ??= await import('/tv/panel.js?v=4') } catch { return }
+    try { P ??= await import('/tv/panel.js?v=5') } catch { return }
     paintPanel()
     panel.classList.add('on')
+    readPc()
     await readTv()
     if (TV?.on) post({ type: 'state' })
     soon()
     clearInterval(poll)
-    poll = setInterval(() => { if (document.hidden) return; if (TV?.on) post({ type: 'state' }); setTimeout(readTv, 800) }, 6000)
+    poll = setInterval(() => { if (document.hidden) return; if (TV?.on) post({ type: 'state' }); setTimeout(readTv, 800); readPc() }, 4000)
   }
   // The player at the top right of Home is your TV's.
   document.addEventListener('click', e => { const b = e.target.closest('#tvside .mp-b'); if (b) { e.stopPropagation(); press(b.dataset.w) } }, true)
   let sideAt = 0
   async function keepTv() {
-    if (document.hidden || !document.documentElement.hasAttribute('data-tvlook') || !document.querySelector('.hw-root') || Date.now() - sideAt < 8000) return
+    if (document.hidden || !document.documentElement.hasAttribute('data-tvlook') || !document.querySelector('.hw-root') || Date.now() - sideAt < 4000) return
     sideAt = Date.now()
-    try { P ??= await import('/tv/panel.js?v=4') } catch { return }
+    try { P ??= await import('/tv/panel.js?v=5') } catch { return }
     if (TV?.on) post({ type: 'state' })
-    await readTv()
+    await Promise.all([readTv(), readPc()])
   }
   function closePanel() { clearInterval(poll); panel.classList.remove('on'); if (panel.contains(document.activeElement)) btn.focus() }
   btn.addEventListener('click', e => { e.stopPropagation(); panel.classList.contains('on') ? closePanel() : openPanel() })
@@ -450,17 +494,30 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   addEventListener('keydown', e => { if (e.key === '.' && (e.ctrlKey || e.metaKey) && !e.altKey && document.documentElement.matches('[data-tvlook], [data-tvtouch]')) { e.preventDefault(); panel.classList.contains('on') ? closePanel() : openPanel() } })
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && panel.classList.contains('on')) { e.stopPropagation(); closePanel() } }, true)
   const off = () => { panel.querySelector('.tvp-sub').textContent = 'Your TV isn’t connected' }
+  const say = t => (window.hud ? window.hud(t) : (panel.querySelector('.tvp-sub').textContent = t))
+  async function music(action, from) {
+    if (MU?.now) { if (action === 'toggle') MU.now.playing = !MU.now.playing; paintPanel(); paintSide() }
+    try { const r = await (await fetch('/api/music/do', { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: JSON.stringify({ action, ...(from ? { from } : {}) }) })).json(); if (!r.ok) say(r.error || 'That didn’t go through.') } catch { say('The hub didn’t answer.') }
+    setTimeout(readPc, 700)
+  }
   function press(id) {
     if (id === 'homeclock') { look.clock = CLOCKS[(CLOCKS.indexOf(look.clock) + 1) % CLOCKS.length]; return saveLook() }
     if (id === 'homeweather') { look.weather = !look.weather; return saveLook() }
+    const tvSide = !!TV?.on && look.target === 'tv'
+    if (id.startsWith('to:')) { look.target = id.slice(3); return saveLook() }
+    if (['prev', 'play', 'next'].includes(id)) return music(id === 'play' ? 'toggle' : id, tvSide && panel.classList.contains('on') ? 'tv' : undefined)
+    if (id === 'homesys') { look.sys = look.sys === false; saveLook(); return paintSide() }
+    if (id === 'music') { const k = ['auto', 'pc', ...(MU?.spotify?.connected ? ['spotify'] : []), ...(TV?.on ? ['tv'] : [])], to = k[(k.indexOf(MU?.source) + 1) % k.length]; if (MU) MU.source = to; paintPanel(); return void fetch('/api/music/source', { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: JSON.stringify({ source: to }) }).then(readPc, () => {}) }
+    if (id === 'musicset') { closePanel(); openSettings(); return onSet('musicpage') }
+    if (id === 'ask') { closePanel(); return window.HubChat?.open() }
+    if (id === 'pcsaver') { closePanel(); return void setTimeout(() => window.HubSaver.start(), 300) }
+    if (id === 'mirror') { closePanel(); return openMirror() }
     if (id === 'homeplayer') { look.player = look.player === false; saveLook(); return paintSide() }
     if (id.startsWith('wg:')) { const k = id.slice(3), o = look.off || []; look.off = o.includes(k) ? o.filter(x => x !== k) : [...o, k]; saveLook(); return paintSide() }
     if (id === 'addwidget') { closePanel(); window.HubChat?.close(); closeSettings(); closeMirror(); return goHome('[data-hw-act="add"]') }
     if (id === 'settings') { closePanel(); return openSettings() }
     if (!TV?.on) return off()
     if (id.startsWith('input:')) post({ type: 'input', name: id.slice(6) })
-    else if (id === 'prev' || id === 'next') post({ type: 'media', action: id })
-    else if (id === 'play') post({ type: 'media', action: 'toggle' })
     else if (['home', 'saver', 'sleep'].includes(id)) post({ type: id })
     soon()
   }
@@ -475,9 +532,10 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   })
   function setSlide(n, v, send) {
     if (n.classList.contains('off')) return
-    const id = n.dataset.w, val = Math.max(id === 'brightness' ? 20 : 0, Math.min(100, Math.round(v)))
+    const id = n.dataset.w, pcSide = !(TV?.on && look.target === 'tv'), val = Math.max(id === 'brightness' ? (pcSide ? 5 : 20) : 0, Math.min(100, Math.round(v)))
     n.querySelector('i').style.height = `${val}%`
     if (!send) return
+    if (pcSide) { if (MU) MU[id] = val; return void fetch('/api/music/level', { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: JSON.stringify({ what: id, value: val }) }).then(r => r.json()).then(r => { if (!r.ok) say(r.error || 'That didn’t change.') }, () => {}) }
     if (TV?.state) TV.state[id] = val
     post({ type: id, value: val })
     soon()
@@ -591,7 +649,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
 
   // The name of what you're on, large above the row, as on the TV.
   const nameEl = top.querySelector('.tvt-name')
-  const setName = e => { const c = e.target.closest?.('.hw-grid .hw-cell.a'); nameEl.textContent = c?.querySelector('.hw-app-l')?.textContent || 'LocalHub' }
+  const setName = e => { const c = e.target.closest?.('#dk .dk-t, #dkfav .dk-t'); nameEl.textContent = c ? c.getAttribute('aria-label') : 'LocalHub' }
   document.addEventListener('pointerover', setName, { passive: true })
   document.addEventListener('focusin', setName)
 
@@ -652,16 +710,20 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
       { group: 'Home Screen' },
       { id: 'clock', t1: 'Home clock', t2: 'What the top left of Home shows', v: look.clock, on: look.clock !== 'Off' },
       { id: 'weather', t1: 'Home weather', t2: 'At the top right', v: look.weather ? 'On' : 'Off', on: look.weather },
-      { id: 'edit', t1: 'Apps and widgets', t2: 'Pick what is on Home and where', v: '' },
+      { id: 'addapps', t1: 'Apps and websites', t2: 'What is on Home', v: '' },
+      { id: 'edit', t1: 'Widgets', t2: 'Add and arrange them', v: '' },
       { id: 'tabs', t1: 'Sidebar', t2: 'Which tabs show, and their order', v: '' },
       { group: 'Background and Screensaver' }, ...dev('desktop'), ...dev('mobile'),
       { group: 'Look' },
       { id: 'theme', t1: 'Theme', t2: 'Light is the hub’s older look', v: THEMES[st.theme] || 'Dark' },
       { id: 'style', t1: 'Accent, font and wallpapers', t2: 'The style editor, and adding your own pictures', v: '' },
+      { group: 'Music' },
+      { id: 'musicpage', t1: 'Music platforms', t2: 'What the music widget plays and controls', v: MU?.spotify?.connected ? 'Spotify' : MU?.pc ? 'This PC' : '' },
       { group: 'Assistant' },
       ...(listen ? [{ id: 'listen', t1: 'Hey LocalHub', t2: 'This computer’s microphone listens for it', v: listen.on ? 'On' : 'Off', on: listen.on }] : []),
       ...(window.HUB_CONNECTIONS ? [{ id: 'connections', t1: 'Connections', t2: 'The services the assistant can use', v: '' }] : []),
       { group: 'TV' },
+      { id: 'remotepage', t1: 'Fire TV remote', t2: 'What each of its buttons does', v: '' },
       { id: 'panel', t1: 'Your TV', t2: 'Its player, brightness, volume and more', v: TV?.on ? 'Connected' : 'Not connected', on: !!TV?.on },
       { id: 'tvsetup', t1: 'Set up a TV', t2: 'Put LocalHub TV on a television and pair it', v: '' },
       { group: 'About' },
@@ -672,6 +734,16 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   function paintSettings() {
     if (!set.classList.contains('on')) return
     const backB = `<button type="button" data-set="back" aria-label="Back">${svg('<path d="M15 5l-7 7 7 7"/>')}</button>`
+    if (picking === 'music' || picking === 'remote') {
+      const html2 = picking === 'music' ? musicHtml(backB) : remoteHtml(backB)
+      const html = picking === 'music' ? `<div class="tvs-art"><img src="/icons/hub.svg" alt=""><p>Music, wherever it plays</p></div><div class="tvs-list">${html2}</div>` : `<div class="tvs-art">${RM ? RM.remoteHTML(rmSel, btns()) : ''}</div><div class="tvs-list">${html2}</div>`
+      if (setHtml === html || set.contains(document.activeElement) && document.activeElement.matches('input, select')) return
+      const y2 = set.querySelector('.tvs-list')?.scrollTop || 0
+      setHtml = html
+      set.innerHTML = html
+      set.querySelector('.tvs-list').scrollTop = y2
+      return
+    }
     const list = picking
       ? `<div class="tvs-title">${backB}${DEVS[picking]} background</div><div class="tvs-walls">${walls().map(w => `<button type="button" class="tvs-wall${devLook(picking).wallpaper === w.id ? ' on' : ''}" data-wall="${esc(w.id)}"><i style="background-image:${esc(w.css)}"></i><span>${esc(w.name)}</span></button>`).join('')}</div>`
       : `<div class="tvs-title">${backB}Settings</div>` + rows().map(r => r.group ? `<div class="tvs-group">${esc(r.group)}</div>` : `<${r.info ? 'div' : 'button type="button"'} class="tvs-row"${r.id ? ` data-set="${esc(r.id)}"` : ''}><div class="txt"><div class="t1">${esc(r.t1)}</div><div class="t2">${esc(r.t2)}</div></div><div class="v${r.on ? ' on' : ''}">${esc(r.v)}</div></${r.info ? 'div' : 'button'}>`).join('')
@@ -683,6 +755,54 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     set.querySelector('.tvs-list').scrollTop = y
     if (f) set.querySelector(`[data-set="${CSS.escape(f)}"]`)?.focus()
   }
+  // ── Settings › Music platforms ──
+  const sp = () => MU?.spotify || {}
+  function musicHtml(backB) {
+    const row = (t1, t2, v, set, on) => `<${set ? 'button type="button"' : 'div'} class="tvs-row"${set ? ` data-set="${set}"` : ''}><div class="txt"><div class="t1">${t1}</div><div class="t2">${t2}</div></div><div class="v${on ? ' on' : ''}">${v}</div></${set ? 'button' : 'div'}>`
+    const local = ['localhost', '127.0.0.1'].includes(location.hostname)
+    return `<div class="tvs-title">${backB}Music platforms</div><div class="tvs-group">The music widget</div>`
+      + row('Plays from', 'Automatic follows whatever is playing', SRC[MU?.source] || 'Automatic', 'musicsrc', true)
+      + '<div class="tvs-group">Ready now</div>'
+      + row('This PC', 'Spotify, Apple Music, Amazon Music, YouTube or any player open here. Nothing to sign in to', MU?.pc ? 'Ready' : 'Not available', '', MU?.pc)
+      + row('Your TV', 'Anything playing on the Fire TV. Titles need LocalHub allowed under notification access there', TV?.on ? 'Connected' : 'Not connected', '', TV?.on)
+      + '<div class="tvs-group">Spotify account</div>'
+      + (sp().connected
+        ? row('Spotify', 'Any of your Spotify devices. Play, pause and skip need Premium', 'Connected', '', true) + row('Disconnect Spotify', 'Forgets the sign-in on this computer', '', 'spoff')
+        : !local ? row('Spotify', 'Connect it on the computer the hub runs on', '') : `<div class="tvs-form"><ol><li>Open <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener">developer.spotify.com/dashboard</a> and create an app.</li><li>Give it this redirect address: <code>${esc(sp().redirect || '')}</code></li><li>Paste its Client ID here.</li></ol><div><input id="spid" type="text" maxlength="32" placeholder="Client ID" value="${esc(sp().clientId || '')}" aria-label="Spotify Client ID"><button type="button" data-set="spon">Sign in to Spotify</button></div><p id="spmsg"></p></div>`)
+      + '<div class="tvs-group">Good to know</div>' + row('Apple Music, YouTube Music, Amazon Music', 'These don’t let other apps sign in, so LocalHub controls them through this PC or the TV', '')
+  }
+  async function spotifyOn() {
+    const id = set.querySelector('#spid').value.trim(), msg = t => { const n = set.querySelector('#spmsg'); if (n) n.textContent = t }
+    try {
+      const r = await fetch('/api/music/spotify', { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: JSON.stringify({ clientId: id }) }), j = await r.json()
+      if (!r.ok) return msg(j.error || 'That didn’t save.')
+      if (!id) return msg('Paste your Client ID first.')
+      window.open('/api/music/spotify/login', '_blank')
+      msg('Finish signing in on the page that opened. This updates by itself.')
+      let n = 60
+      const wait = async () => { await readPc(); if (MU?.spotify?.connected) { set.querySelector('#spid')?.blur(); setHtml = ''; return paintSettings() } if (n-- && picking === 'music') setTimeout(wait, 3000) }
+      setTimeout(wait, 3000)
+    } catch { msg('The hub didn’t answer.') }
+  }
+  // ── Settings › Fire TV remote ──
+  let RM = null, rmSel = 'menu'
+  const btns = () => H()?.settings.tv?.buttons || {}
+  function remoteHtml(backB) {
+    if (!RM) return backB
+    const b = RM.BUTTONS.find(x => x.id === rmSel), now = RM.actionOf(rmSel, btns())
+    const apps = (TV?.apps || [])
+    const opt = (v, t) => `<option value="${esc(v)}"${v === now ? ' selected' : ''}>${esc(t)}</option>`
+    const pick = id => { const a = RM.actionOf(id, btns()); const oo = (v, t) => `<option value="${esc(v)}"${v === a ? ' selected' : ''}>${esc(t)}</option>`
+      return `<div class="tvs-row rmr${rmSel === id ? ' rmsel' : ''}" data-rmrow="${esc(id)}"><div class="txt"><div class="t1">${esc(RM.labelOf(id))}</div></div><select data-rmset="${esc(id)}" aria-label="${esc(RM.labelOf(id))}">${RM.ACTIONS.map(([v, t]) => oo(v, v === id ? `${t} (standard)` : t)).join('')}${apps.length ? `<optgroup label="Open an app">${apps.map(n => oo('app:' + n, n)).join('')}${a.startsWith('app:') && !apps.includes(a.slice(4)) ? oo(a, a.slice(4)) : ''}</optgroup>` : ''}</select></div>` }
+    return `<div class="tvs-title">${backB}Fire TV remote</div><div class="tvs-group">Press a button on the picture, or choose here</div>`
+      + RM.rowIds(btns()).filter(x => x !== 'reset').map(pick).join('')
+      + (b && !b.map ? `<div class="tvs-row"><div class="txt"><div class="t1">${esc(b.label)}</div><div class="t2">${esc(b.why)}</div></div></div>` : '')
+      + '<button type="button" class="tvs-row" data-set="rmreset"><div class="txt"><div class="t1">Back to standard</div><div class="t2">Menu is the microphone, the rest do what they say</div></div></button>'
+      + '<div class="tvs-group">Saved to your TV within half a minute. A button that isn’t here, such as a game controller’s, can be added from the TV: Settings, Fire TV remote, then press it</div>'
+  }
+  async function saveButtons(map) { try { await H().patch({ tv: { buttons: map } }) } catch (e) { alert(e.message) } setHtml = ''; paintSettings() }
+  set.addEventListener('change', e => { const id = e.target.dataset?.rmset; if (!id) return; const v = e.target.value; e.target.blur(); const m = { ...btns() }; if (v === id || RM.DEFAULTS[id] === v) delete m[id]; else m[id] = v; if (v === id && RM.DEFAULTS[id]) m[id] = v; rmSel = id; saveButtons(m) })
+  set.addEventListener('click', e => { const id = e.target.closest?.('.tvs-art [data-rm]')?.dataset.rm || e.target.closest?.('[data-rmrow]')?.dataset.rmrow; if (!id || e.target.closest('select')) return; rmSel = id; setHtml = ''; paintSettings(); set.querySelector('.rmsel')?.scrollIntoView({ block: 'nearest' }) })
   async function readAbout() {
     try { const s = await (await fetch('/api/tv/status', { cache: 'no-store' })).json(); TV = s.tv; listen = s.listen; version = s.version } catch {}
     paintSettings()
@@ -704,6 +824,12 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     if (k === 'wall') { picking = d; set.querySelector('.tvs-list').scrollTop = 0; return paintSettings() }
     if (k === 'saver') return saveDev(d, { saver: MIN[(MIN.indexOf(devLook(d).saver) + 1) % MIN.length] })
     if (k === 'show') return saveDev(d, { show: devLook(d).show === 'photos' ? 'background' : 'photos' })
+    if (id === 'musicpage') { picking = 'music'; setHtml = ''; await readPc(); return paintSettings() }
+    if (id === 'remotepage') { picking = 'remote'; setHtml = ''; try { RM ??= await import('/tv/remote.js?v=1') } catch {} return paintSettings() }
+    if (id === 'musicsrc') { press('music'); return void setTimeout(() => { setHtml = ''; paintSettings() }, 500) }
+    if (id === 'spon') return spotifyOn()
+    if (id === 'spoff') { await fetch('/api/music/spotify', { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: '{"clientId":""}' }).catch(() => {}); await readPc(); setHtml = ''; return paintSettings() }
+    if (id === 'rmreset') return saveButtons(null)
     if (id === 'clock') { look.clock = CLOCKS[(CLOCKS.indexOf(look.clock) + 1) % CLOCKS.length]; saveLook(); return paintSettings() }
     if (id === 'weather') { look.weather = !look.weather; saveLook(); return paintSettings() }
     if (id === 'theme') { H().save({ style: { theme: 'light' } }); return }
@@ -712,7 +838,8 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
       return paintSettings()
     }
     closeSettings()
-    if (id === 'edit') goHome('.hw-root:not(.hw-edit) [data-hw-act="edit"]')
+    if (id === 'addapps') window.HubDesk?.open()
+    else if (id === 'edit') goHome('.hw-root:not(.hw-edit) [data-hw-act="edit"]')
     else if (id === 'tabs') H()?.openTabs()
     else if (id === 'style') H()?.openStyle()
     else if (id === 'connections') window.HUB_CONNECTIONS?.()
@@ -722,7 +849,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   }
   set.addEventListener('click', e => {
     const w = e.target.closest('[data-wall]')
-    if (w && picking) return saveDev(picking, { wallpaper: w.dataset.wall })
+    if (w && DEVS[picking]) return saveDev(picking, { wallpaper: w.dataset.wall })
     const s = e.target.closest('[data-set]')
     if (s) onSet(s.dataset.set)
   })

@@ -7,14 +7,15 @@
 <link rel="icon" href="./hub.svg">
 <meta name="theme-color" content="#0b0f16">
 <link rel="stylesheet" href="./theme.css?v=1">
-<link rel="stylesheet" href="./styles.css?v=67">
-<link rel="stylesheet" href="./panel.css?v=3">
+<link rel="stylesheet" href="./styles.css?v=68">
+<link rel="stylesheet" href="./panel.css?v=4">
 <link rel="stylesheet" href="./assistant.css?v=13">
 <link rel="stylesheet" href="./files.css?v=1">
 <!-- Fetched alongside app.js instead of after it has been parsed: ~0.9 s sooner to a home screen on a Fire TV Stick. -->
-<link rel="modulepreload" href="./app.js?v=122">
+<link rel="modulepreload" href="./app.js?v=123">
 <link rel="modulepreload" href="./stream.js?v=4">
-<link rel="modulepreload" href="./panel.js?v=4">
+<link rel="modulepreload" href="./panel.js?v=5">
+<link rel="modulepreload" href="./remote.js?v=1">
 <link rel="modulepreload" href="./files.js?v=1">
 <link rel="modulepreload" href="./mirror.js?v=2">
 <!-- Served by the hub: its config and settings are asked for now, while the page's own files load, instead of
@@ -59,6 +60,7 @@ if (location.pathname.startsWith("/tv")) {
     <div class="cc-grid" id="ccGrid"></div>
   </aside>
 
+  <div class="remote" id="remote" aria-label="Fire TV remote"><div class="rm-card"></div></div>
   <section class="settings" id="settings" aria-label="Settings">
     <div class="settings-art">
       <img src="./hub.svg" alt="">
@@ -110,6 +112,6 @@ if (location.pathname.startsWith("/tv")) {
   /* The hub page defines hubFetch for chat.js (it waits out hub restarts); the TV only needs plain fetch. */
   if (typeof window.hubFetch !== "function") window.hubFetch = function (url, init) { return fetch(url, init); };
 </script>
-<script type="module" src="./app.js?v=122"></script>
+<script type="module" src="./app.js?v=123"></script>
 </body>
 </html>
