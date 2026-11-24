@@ -14,7 +14,7 @@
 // voice) comes from Java through window.LocalHubNative. On a laptop, apps open their websites.
 // ============================================================================
 
-import * as Stream from "./stream.js?v=3";
+import * as Stream from "./stream.js?v=4";
 // The TV's own assistant screen (assistant.js): the hub's agent and conversation, without the hub's chat UI.
 let Assistant = null;
 
@@ -858,7 +858,9 @@ function openInStream(it) {
 /* On a TV, Java starts the app. On a laptop, the website opens inside LocalHub in one of its browsers,
    or, with none on this laptop, in a new window; coming back to this one settles the icon into the grid. */
 function openApp(app, windowOnly) {
-  if (NATIVE) return native("launch", app.pkg) !== false;
+  // The Browser, Chromium and saved websites run on the laptop and show here, on a TV too: not Android apps.
+  if (!windowOnly && IN_HUB && (app.stream || app.kind === "site") && Stream.engineFor(app)) { openInStream(app); return true; }
+  if (NATIVE) return app.pkg ? native("launch", app.pkg) !== false : false;
   if (!windowOnly && IN_HUB && Stream.engineFor(app)) { openInStream(app); return true; }
   if (!app.url) return false;
   const w = window.open(app.url, "_blank", "noopener");
@@ -1296,6 +1298,8 @@ function settingsModel() {
     { key: "voice", t1: "Voice", t2: { Off: "The assistant only writes", "Read answers": "Answers are read aloud", Conversation: "Talk back and forth: it answers aloud, then it's your turn" }[voicePref()], values: ["Off", "Read answers", "Conversation"] },
     ...(IN_HUB ? [listenRow(), modelRow()] : []),
     ...(!NATIVE ? [{ key: "help", t1: "Keyboard help", t2: "The remote's keys, along the top", toggle: true }] : []),
+    { group: "Remote" },
+    { id: "buttons", t1: "Remote buttons", t2: buttonSummary(), v: "" },
     { group: "About" },
     { id: "setup", t1: "Set up LocalHub", t2: "trylocalhub.com/setup · opens here, in the TV's browser", v: "" },
     { info: true, t1: "Version", t2: NATIVE ? "LocalHub TV for Fire TV" : "LocalHub TV on this laptop", v: NATIVE ? st.version || "?" : LIVE.status?.version ? `LocalHub ${LIVE.status.version}` : "LocalHub" },
@@ -1357,6 +1361,7 @@ function settingsActivate() {
   else if (it.id === "wall") return openWallPicker();
   else if (it.id === "conn") return openConnMenu();
   else if (it.id === "listen") return toggleListen();
+  else if (it.id === "buttons") return openButtons();
   else if (it.id === "model") { const ms = LIVE.info?.models || []; if (ms.length) { const i = ms.findIndex(([id]) => id === chatModel()); prefs.modelId = ms[(i + 1) % ms.length][0]; } }
   else if (it.id === "setup") { closeSettings(); S.backToSettings = true; return Stream.open({ id: "url:setup", name: "Set up LocalHub", url: SETUP_URL, kind: "site", bg: "#26272d", fg: "#ffffff", letter: "L" }); }
 
@@ -1814,6 +1819,7 @@ function findApp(name) {
 function runIntent(intent) {
   if (intent.type === "launch") {
     say(`Opening ${intent.app.name}.`);
+    if (IN_HUB && (intent.app.stream || intent.app.kind === "site") && Stream.engineFor(intent.app)) return openInStream(intent.app);
     S.zone = "grid";
     S.i = ITEMS.indexOf(intent.app);
     applyFocus();
@@ -1861,7 +1867,7 @@ async function startCommandLoop() {
   let after = null;
   while (commandLoop) {
     try {
-      const r = await fetch(after == null ? "/api/tv/next" : `/api/tv/next?after=${after}&wait=25`, { cache: "no-store" });
+      const r = await fetch(after == null ? `/api/tv/next${NATIVE ? "?tv=1" : ""}` : `/api/tv/next?after=${after}&wait=25${NATIVE ? "&tv=1" : ""}`, { cache: "no-store" });
       if (r.status === 200) {
         const got = await r.json();
         if (typeof got.seq === "number") after = got.seq;
@@ -1898,6 +1904,7 @@ function runCommand(cmd) {
 // request ended and is being turned into words. heard: it's asked. off: it wasn't the phrase after all.
 function heardMic(cmd) {
   if (!Assistant) return;
+  if (cmd.tv && !NATIVE) return; // a TV is on: it answers, not this laptop's TV page
   if (cmd.stage === "wake" || cmd.stage === "again") {
     if (S.overlay === "saver") stopSaver();
     if (S.overlay === "cc") closeCC();
@@ -2199,8 +2206,15 @@ async function bakeGlass() {
   } catch (e) { console.warn("glass", e); }
 }
 
-function handleKey(name) {
+function handleKey(raw) {
   S.touched = true;
+  // Settings › Remote buttons is waiting for a button to set up.
+  if (S.capture && !FIXED_KEYS.has(raw)) return captureButton(raw);
+  const name = buttonAction(raw);
+  if (name === "none") return;
+  if (name === "mic") return micNow();
+  if (name === "home") return window.haven.home();
+  if (name === "assistant") { if (S.overlay === "saver") stopSaver(); if (S.overlay === "settings") closeSettings(); closeRail(); return showView("assistant"); }
   // Typing in the search bar: Back closes it (keeping what's typed) and stays on it.
   const sb = document.activeElement?.classList?.contains("sb") ? document.activeElement : null;
   if (sb && name === "back") return endSearch(sb, true);
@@ -2295,6 +2309,91 @@ function press(fn) {
   if (!node) return fn();
   node.classList.add("pressed");
   setTimeout(() => { node.classList.remove("pressed"); fn(); }, 80); // OK already waits for the key to come up
+}
+
+/* ── Remote buttons: what each button does, on any remote or controller ─────
+   Arrows, OK and Back always do what they do, so nobody can lock themselves out. Every other button (a Fire TV
+   remote's ☰ ⏯ ⏪ ⏩, a game controller's X Y L R Start, a TV remote's colour and number keys, which the TV app
+   passes on as "key:<code>") does what Settings › Remote buttons says. ☰ is the microphone unless changed. */
+const FIXED_KEYS = new Set(["left", "right", "up", "down", "enter", "back", "hold"]);
+const BUTTON_ACTIONS = [
+  ["mic", "Microphone", SYM.mic], ["menu", "Sidebar and menus", SYM.sort], ["ai", "Play / pause", SYM.open],
+  ["assistant", "Assistant", SYM.mic], ["home", "Home", SYM.widgets], ["saver", "Screensaver", SYM.moon],
+  ["settings", "Settings", SYM.gear], ["rew", "Page up, rewind", SYM.sort], ["ff", "Page down, fast forward", SYM.sort], ["none", "Nothing", SYM.hide],
+];
+const DEFAULT_BUTTONS = { menu: "mic" };
+function buttonAction(name) {
+  if (FIXED_KEYS.has(name)) return name;
+  const m = { ...DEFAULT_BUTTONS, ...(prefs.buttons || {}) };
+  return m[name] || (String(name).startsWith("key:") ? "none" : name);
+}
+const ANDROID_KEYS = { 96: "A", 97: "B", 98: "C", 99: "X", 100: "Y", 101: "Z", 102: "L1", 103: "R1", 104: "L2", 105: "R2", 106: "Left stick", 107: "Right stick", 108: "Start", 109: "Select", 110: "Guide", 183: "Red", 184: "Green", 185: "Yellow", 186: "Blue", 172: "Guide", 165: "Info", 175: "Captions", 174: "Bookmark" };
+function buttonLabel(name) {
+  const fixed = { menu: "☰ (Menu)", ai: "⏯ (Play / pause)", rew: "⏪ (Rewind)", ff: "⏩ (Fast forward)", settings: "Settings button" }[name];
+  if (fixed) return fixed;
+  const code = Number(String(name).replace(/^key:/, ""));
+  if (ANDROID_KEYS[code]) return `${ANDROID_KEYS[code]} button`;
+  if (code >= 7 && code <= 16) return `${code - 7} key`;
+  if (code >= 29 && code <= 54) return `${String.fromCharCode(36 + code)} key`;
+  if (code >= 131 && code <= 142) return `F${code - 130} key`;
+  return `Button ${code || name}`;
+}
+const actionName = (a) => (BUTTON_ACTIONS.find(([id]) => id === a) || [, "Nothing"])[1];
+function buttonSummary() {
+  const m = { ...DEFAULT_BUTTONS, ...(prefs.buttons || {}) };
+  const set = Object.entries(m).filter(([k, v]) => v !== k).map(([k, v]) => `${buttonLabel(k).replace(/ \(.*\)$/, "")} ${actionName(v)}`);
+  return set.length ? `${set.slice(0, 3).join(" · ")}${set.length > 3 ? " …" : ""}` : "Any remote or controller: OK, then press a button";
+}
+function openButtons() {
+  S.capture = true;
+  S.menu = [
+    { id: "btn:reset", label: "Back to the standard buttons", ic: SYM.move },
+  ];
+  S.menuAt = 0;
+  S.menuFor = null;
+  S.menuFrom = S.overlay;
+  $("#tileMenuName").textContent = "Press any button";
+  $("#tileMenuList").innerHTML = S.menu.map((m, i) => `<div class="tilemenu-item" data-m="${i}">${m.ic}<span>${esc(m.label)}</span></div>`).join("");
+  paintTileMenu();
+  $("#tileMenu").classList.add("on");
+  setOverlay("tilemenu");
+}
+function captureButton(name) {
+  S.capture = false;
+  S.buttonFor = name;
+  const now = buttonAction(name);
+  S.menu = BUTTON_ACTIONS.map(([id, label, ic]) => ({ id: `btn:set:${id}`, label: id === now ? `${label} ✓` : label, ic }));
+  S.menuAt = Math.max(0, BUTTON_ACTIONS.findIndex(([id]) => id === now));
+  $("#tileMenuName").textContent = `${buttonLabel(name)} does…`;
+  $("#tileMenuList").innerHTML = S.menu.map((m, i) => `<div class="tilemenu-item" data-m="${i}">${m.ic}<span>${esc(m.label)}</span></div>`).join("");
+  paintTileMenu();
+}
+function buttonPick(act) {
+  if (act === "reset") { prefs.buttons = {}; savePrefs(); toast("Every button is back to standard: ☰ is the microphone"); }
+  else if (act.startsWith("set:") && S.buttonFor) {
+    const name = S.buttonFor, to = act.slice(4);
+    prefs.buttons = { ...(prefs.buttons || {}), [name]: to };
+    savePrefs();
+    toast(`${buttonLabel(name)}: ${actionName(to)}`);
+  }
+  S.buttonFor = null;
+  if (S.overlay === "settings") renderSettings();
+}
+
+// The microphone button: the laptop listens for a request now (no "Hey LocalHub" needed). With the laptop not
+// listening, the Assistant's own Talk: the remote's dictation on a Fire TV.
+async function micNow() {
+  if (S.overlay === "saver") stopSaver();
+  if (IN_HUB) {
+    const r = await fetch("/api/tv/listen/now", { method: "POST", headers: { "x-hub": "1" } }).then((x) => x.json()).catch(() => null);
+    if (r?.ok) return;
+  }
+  if (S.overlay === "settings") closeSettings();
+  closeRail();
+  if (S.overlay === "stream") Stream.close();
+  showView("assistant");
+  if (IN_HUB) toast("Turn on Settings › Hey LocalHub to talk through the laptop's mic");
+  return Assistant?.voice();
 }
 
 /* ── Settings › LocalHub: search again, the address, pairing, forgetting ── */
@@ -2511,6 +2610,7 @@ function paintTileMenu() {
   document.querySelectorAll(".tilemenu-item").forEach((n) => n.classList.toggle("sel", Number(n.dataset.m) === S.menuAt));
 }
 function closeTileMenu() {
+  S.capture = false;
   $("#tileMenu").classList.remove("on");
   setOverlay(S.menuFrom || null); // back to Settings when it was opened from there
   S.menuFrom = null;
@@ -2524,6 +2624,7 @@ function tileMenuKey(name) {
   closeTileMenu();
   if (act.startsWith("sort:")) return setSort(act.slice(5));
   if (act.startsWith("conn:")) return connAction(act.slice(5));
+  if (act.startsWith("btn:")) return buttonPick(act.slice(4));
   if (act === "open") return press(activate);
   const favs = SETTINGS?.tv?.favorites || [];
   if (act === "fav") return saveTv({ favorites: [...favs.filter((x) => x !== it.id), it.id] }, `Added ${it.name} to Favorites`);
@@ -2786,7 +2887,7 @@ async function boot() {
     renderGrid();
     if (PREVIEW) { setInterval(syncHub, 30_000); return paintChip(); }
     // The TV is its own light app: the hub's chat.js and browser.js stay on the laptop.
-    Assistant = await import("./assistant.js?v=8").catch((e) => { console.warn("assistant", e); return null; });
+    Assistant = await import("./assistant.js?v=10").catch((e) => { console.warn("assistant", e); return null; });
     Assistant?.init({
       el: $("#assistantView"), toast, native, NATIVE,
       intercept: (t) => window.HubChatHooks?.intercept?.(t) || false,

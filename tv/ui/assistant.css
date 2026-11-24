@@ -159,3 +159,6 @@
 .agv-bar b { color: #fff; }
 .agv-type { position: absolute; left: 50%; top: 40%; width: 900px; height: 84px; transform: translateX(-50%); padding: 0 28px; border: 0; border-radius: 24px; background: #fff; color: #000; font-size: 32px; opacity: 0; pointer-events: none; }
 .agv.typing .agv-type { opacity: 1; pointer-events: auto; }
+
+/* A message waiting for the answer before it to end. */
+.as-msg.as-user.waiting .as-bub { opacity: .55; }

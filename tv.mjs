@@ -10,6 +10,7 @@
 //   GET  /api/tv/status                 -> { whisper, alexa, tvs }
 //   GET  /api/tv/listen                 -> { on, state, mic } "Hey LocalHub" from this computer's mic (tv/listen.py)
 //   POST /api/tv/listen  { on }         turns it on or off (kept in data/tv-listen.json)
+//   POST /api/tv/listen/now             the remote's mic button: listen for a request at once -> { ok }
 //
 // Commands: { type: 'launch', app } · { type: 'input', name } · { type: 'home' } · { type: 'saver' } ·
 // { type: 'sleep' } · { type: 'say', text } · { type: 'answer', text, heard?, from? } ·
@@ -65,12 +66,15 @@ export function create({ here }) {
   const waiters = new Set()
   let seq = 0
   let lastPoll = 0
+  let lastTvPoll = 0 // a real TV (the Fire TV app), not the TV page open on a laptop
 
   const tvsOnline = () => waiters.size > 0 || Date.now() - lastPoll < TV_SEEN
 
   function queue(raw) {
     const command = cleanCommand(raw)
     if (!command) return null
+    // "Hey LocalHub" is for the TV when one is on: a laptop with the TV page open leaves it alone.
+    if (command.type === 'listen') command.tv = Date.now() - lastTvPoll < TV_SEEN
     seq += 1
     commands.push({ seq, at: Date.now(), command })
     while (commands.length && Date.now() - commands[0].at > COMMAND_TTL) commands.shift()
@@ -102,10 +106,14 @@ export function create({ here }) {
 
     if (p === '/api/tv/next' && req.method === 'GET') {
       lastPoll = Date.now()
+      if (url.searchParams.get('tv') === '1') lastTvPoll = lastPoll
       const after = url.searchParams.get('after')
       if (after == null || after === '') return send(res, 200, { seq }), true
       const n = Number(after)
       if (!Number.isInteger(n) || n < 0) return send(res, 400, { error: 'after must be a whole number' }), true
+      // A number from before the hub restarted (it counts from 0 again): start over from now, or the TV would wait
+      // for the count to pass its old number and miss everything until then.
+      if (n > seq) return send(res, 200, { seq }), true
       const found = nextAfter(n)
       if (found) return send(res, 200, { seq: found.seq, command: found.command }), true
       const wait = Math.min(MAX_WAIT, Math.max(0, Number(url.searchParams.get('wait') || 0) * 1000))
@@ -120,6 +128,7 @@ export function create({ here }) {
           clearTimeout(timer)
           waiters.delete(w)
           lastPoll = Date.now()
+          if (url.searchParams.get('tv') === '1') lastTvPoll = lastPoll
           resolve()
         }
         req.on('close', () => { if (waiters.has(w)) finish() })
@@ -181,6 +190,7 @@ export function create({ here }) {
 
     // "Hey LocalHub": this computer's microphone, listening for the TV.
     if (p === '/api/tv/listen' && req.method === 'GET') return send(res, 200, listener.status()), true
+    if (p === '/api/tv/listen/now' && req.method === 'POST') return send(res, 200, { ok: listener.now(), ...listener.status() }), true
     if (p === '/api/tv/listen' && req.method === 'POST') {
       let body
       try { body = JSON.parse((await readRaw(req, 4096)).toString('utf8') || '{}') } catch { return send(res, 400, { error: 'body is not valid JSON' }), true }
@@ -375,7 +385,7 @@ function createListener(here, queue) {
     const py = cfg.python || (process.platform === 'win32' ? 'python' : 'python3')
     state = 'loading'; fatal = ''
     try {
-      child = spawn(py, [script, model, cfg.model || 'base.en', String(saved.mic || '')], { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true })
+      child = spawn(py, [script, model, cfg.model || 'base.en', String(saved.mic || '')], { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true })
     } catch (e) { state = 'missing'; fatal = e.message; return }
     const me = child
     let stderr = ''
@@ -421,7 +431,12 @@ function createListener(here, queue) {
     if (value) { tries = 0; start() } else stop()
   }
   const status = () => ({ on: on(), state, mic, ...(fatal ? { error: fatal } : {}) })
-  return { start, stop, set, status }
+  // The remote's mic button: listen for a request now, without the phrase. False when it isn't listening.
+  function now() {
+    if (state !== 'listening' || !child?.stdin?.writable) return false
+    try { child.stdin.write('now\n'); return true } catch { return false }
+  }
+  return { start, stop, set, status, now }
 }
 
 function createWhisper(here) {

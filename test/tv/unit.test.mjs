@@ -71,6 +71,14 @@ test('a waiting TV gets a queued command at once', async () => {
   })
 })
 
+test('a TV still counting from before the hub restarted starts over at once', async () => {
+  await withServer(async (base) => {
+    const r = await fetch(`${base}/api/tv/next?after=500&wait=5`)
+    assert.equal(r.status, 200)
+    assert.equal((await r.json()).seq, 0)
+  })
+})
+
 test('an idle poll ends with 204, and bad commands are refused', async () => {
   await withServer(async (base) => {
     const r = await fetch(`${base}/api/tv/next?after=0&wait=1`)

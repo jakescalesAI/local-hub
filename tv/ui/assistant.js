@@ -33,7 +33,7 @@
 
 const MAX_ITEMS = 60
 const MAX_ACT_LINES = 4
-import * as AgentView from './agentview.js?v=1'
+import * as AgentView from './agentview.js?v=2'
 const BROWSER = 'mcp__hub-browser__browser_'
 const SUGGEST = ['What’s on my calendar today?', 'Is anything down?', 'What’s the weather?', 'Open YouTube']
 
@@ -892,7 +892,8 @@ async function send(text) {
   S.stopped = false
   const gen = ++S.gen
   if (F.zone === 'log' || F.zone === 'chips') setFocus('bar', 'input')
-  addUser(text)
+  const voiced = V.speak
+  const mine = addUser(text)
   showPending()
   syncBar()
   syncEmpty()
@@ -909,6 +910,9 @@ async function send(text) {
     })
     if (!res.ok || !res.body) {
       const j = await res.json().catch(() => ({}))
+      // 409: this chat is still answering something (asked here or on another device). Not an error: it goes as
+      // soon as that answer ends.
+      if (res.status === 409) throw Object.assign(new Error(j.error || 'Still answering'), { waitTurn: true })
       throw new Error(j.error || `The hub answered ${res.status}`)
     }
     accepted = true
@@ -931,8 +935,11 @@ async function send(text) {
     }
     if (!finished && gen === S.gen) addError('The connection closed before the reply finished.')
   } catch (e) {
-    if (e && e.name !== 'AbortError' && gen === S.gen) {
-      if (!accepted && !R.input.value) R.input.value = text // not sent: the words come back to the field
+    if (e?.waitTurn && gen === S.gen) {
+      waitTurn(text, mine)
+    } else if (e && e.name !== 'AbortError' && gen === S.gen) {
+      // Not sent: typed words come back to the field to try again; spoken ones stay in the chat with the error.
+      if (!accepted && !voiced && !R.input.value) R.input.value = text
       addError(accepted ? 'The connection closed before the reply finished.' : e instanceof TypeError ? 'The hub didn’t answer, so that wasn’t sent.' : e.message || 'Could not reach the hub.')
     }
   } finally {
@@ -951,6 +958,22 @@ async function send(text) {
       if (!S.queue.length && L.current !== S.conv && L.ready) followCurrent(L.current)
     }
   }
+}
+
+// The chat is busy with another answer: the message waits, shown as waiting, and sends when the chat is free
+// (asked every 3 s, for up to 6 minutes). Nothing is left in the text box.
+function waitTurn(text, bubble, tries = 0) {
+  bubble?.classList.add('waiting')
+  if (tries === 0) note('That goes as soon as this answer ends.')
+  if (tries > 120) { bubble?.classList.remove('waiting'); addError('That wasn’t sent: the other answer is taking too long.'); return }
+  setTimeout(async () => {
+    const st = await fetch(`/api/chat/sessions/${encodeURIComponent(S.conv || '')}`, { cache: 'no-store' }).then(r => r.json()).catch(() => null)
+    if (st?.running) return waitTurn(text, bubble, tries + 1)
+    bubble?.remove()
+    T.items = T.items.filter(x => x !== bubble)
+    if (S.busy) { S.queue.unshift({ text, voice: false }); return }
+    submit(text)
+  }, 3000)
 }
 
 function next() {

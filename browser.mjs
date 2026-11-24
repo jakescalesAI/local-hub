@@ -919,9 +919,15 @@ setInterval(async () => {
       pushState(inst)
     }
     const s = inst.session
+    const out = { ok: true }
     for (const e of (body.events || []).slice(0, 200)) {
       const mods = +e.mods || 0
-      if (e.t === 'mouse') {
+      if (e.t === 'focus') {
+        // After a click: did it land in a text field? (The TV then opens its typing sheet at once.)
+        await new Promise(r => setTimeout(r, 120))
+        const r = await inst.cdp.send('Runtime.evaluate', { expression: `(() => { let a = document.activeElement; while (a && a.shadowRoot && a.shadowRoot.activeElement) a = a.shadowRoot.activeElement; if (!a) return false; if (a.isContentEditable) return true; if (a.tagName === 'TEXTAREA') return !a.readOnly && !a.disabled; if (a.tagName !== 'INPUT') return false; return !a.readOnly && !a.disabled && !/^(button|checkbox|color|file|hidden|image|radio|range|reset|submit)$/i.test(a.type) })()`, returnByValue: true }, s).catch(() => null)
+        out.editable = r?.result?.value === true
+      } else if (e.t === 'mouse') {
         await inst.cdp.send('Input.dispatchMouseEvent', { type: e.type, x: +e.x, y: +e.y, button: e.button || 'none', buttons: +e.buttons || 0, clickCount: +e.clicks || (e.type === 'mouseMoved' ? 0 : 1), modifiers: mods }, s)
       } else if (e.t === 'wheel') {
         await inst.cdp.send('Input.dispatchMouseEvent', { type: 'mouseWheel', x: +e.x, y: +e.y, deltaX: +e.dx || 0, deltaY: +e.dy || 0, modifiers: mods }, s)
@@ -937,7 +943,7 @@ setInterval(async () => {
         await inst.cdp.send('Input.insertText', { text: String(e.text || '') }, s)
       }
     }
-    return { ok: true }
+    return out
   }
 
   /* ---------- routes ---------- */

@@ -75,6 +75,9 @@ def main():
         return
     whisper_name = sys.argv[2] if len(sys.argv) > 2 and sys.argv[2] else "base.en"
     whisper = WhisperModel(whisper_name, device="cpu", compute_type="int8", cpu_threads=2)
+    # A quick second opinion on the phrase (a few hundred ms): Vosk, made to choose between the phrase and
+    # nothing else, takes all sorts of sounds for it. Nothing reaches the TV until Whisper hears it too.
+    checker = WhisperModel("tiny.en", device="cpu", compute_type="int8", cpu_threads=2)
 
     grammar = json.dumps(["hey local hub", "hi local hub", "okay local hub", "local hub", "[unk]"])
     rec = vosk.KaldiRecognizer(spotter, RATE, grammar)
@@ -87,8 +90,8 @@ def main():
     def take():
         return np.frombuffer(blocks.get(), dtype=np.int16)
 
-    def words(audio):
-        segs, _ = whisper.transcribe(audio.astype(np.float32) / 32768.0, language="en", beam_size=1, vad_filter=False,
+    def words(audio, model=None):
+        segs, _ = (model or whisper).transcribe(audio.astype(np.float32) / 32768.0, language="en", beam_size=1, vad_filter=False,
                                      condition_on_previous_text=False)
         return " ".join(s.text.strip() for s in segs).strip()
 
@@ -138,10 +141,35 @@ def main():
         stream = sd.RawInputStream(samplerate=RATE, blocksize=BLOCK, dtype="int16", channels=1, device=mic, callback=got)
     with stream or open(__file__):
         out({"ready": True, "mic": name})
+        # "now" on stdin: the remote's mic button was pressed. Listen for a request at once, no phrase needed.
+        import threading
+        now = threading.Event()
+
+        def commands():
+            for line in sys.stdin:
+                if line.strip() == "now":
+                    now.set()
+        threading.Thread(target=commands, daemon=True).start()
         before = deque(maxlen=PRE)
         while True:
             b = take()
             before.append(b)
+            if now.is_set():
+                now.clear()
+                t0 = time.time()
+                out({"wake": True})
+                audio, spoke = record([], wait_start=WAIT_START)
+                ask = ""
+                if spoke:
+                    out({"working": True})
+                    said = words(audio)
+                    ask = (WAKE.sub("", said, count=1) if SAID.search(said) else said).strip(" ,.!?")
+                out({"heard": ask, "ms": round((time.time() - t0) * 1000)})
+                while not blocks.empty():
+                    blocks.get_nowait()
+                before.clear()
+                rec.Reset()
+                continue
             if not loud(b):
                 floor.append(level(b))
             heard = ""
@@ -153,6 +181,10 @@ def main():
                 continue
             rec.Reset()
             t0 = time.time()
+            if not SAID.search(words(np.concatenate(list(before)[-30:]), checker)):
+                sys.stderr.write("not the phrase\n")
+                sys.stderr.flush()
+                continue
             out({"wake": True})
             # The rest of the sentence ("…open Netflix"), or, after a pause, the request that follows.
             audio, _ = record(before, wait_start=8)

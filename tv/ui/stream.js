@@ -225,7 +225,7 @@ setInterval(() => {
   P.fps = P.drawn;
   P.drawn = 0;
   window.__tvStream = { open: P.open, engine: P.engine, fps: P.fps, size: P.size, serverFps: P.state.fps || 0, quality: P.state.quality || 0, url: P.state.url || "", title: P.state.title || "" };
-  if (P.open && el) $(".player-stats", el).textContent = P.size ? `${P.size} · ${P.fps} fps` : "";
+  if (P.open && el) $(".player-stats", el).textContent = window.__tvDebug && P.size ? `${P.size} · ${P.fps} fps` : ""; // frame stats only when debugging (window.__tvDebug)
 }, 1000);
 
 function onState(s) {
@@ -234,7 +234,9 @@ function onState(s) {
   let host = "", secure = false;
   try { const u = new URL(P.state.url); host = u.protocol === "about:" ? "" : u.host.replace(/^www\./, ""); secure = u.protocol === "https:"; } catch { /* about:blank */ }
   $(".player-addr .host", el).textContent = host || "Search or type an address";
-  $(".player-addr .title", el).textContent = P.state.title && P.state.title !== P.state.url && !P.state.url.includes(P.state.title) ? P.state.title : "";
+  // The page's own title; not while it's still just the address (a page that hasn't named itself yet).
+  const t = P.state.title || "";
+  $(".player-addr .title", el).textContent = t && t !== P.state.url && !P.state.url.includes(t) && !/^(https?:\/\/)?[\w.-]+\.[a-z]{2,}(\/|$)/i.test(t) ? t : "";
   $(".player-addr .ic", el).innerHTML = host ? (secure ? IC.lock : IC.globe) : IC.search;
   if (s.url && s.url !== P.ringUrl) dropRing();
   el.classList.toggle("loading", !!P.state.loading);

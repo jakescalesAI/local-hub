@@ -356,7 +356,14 @@ public class MainActivity extends Activity {
             case KeyEvent.KEYCODE_MEDIA_NEXT:
             case KeyEvent.KEYCODE_PAGE_DOWN: return "ff";
             case KeyEvent.KEYCODE_SETTINGS: return "settings";
-            default: return null;
+            default:
+                // Any other button on a remote, game controller or keyboard goes to the page as "key:<code>", for
+                // Settings › Remote buttons to give a job (system keys such as Home and volume are left alone).
+                if (KeyEvent.isGamepadButton(code) || (code >= KeyEvent.KEYCODE_0 && code <= KeyEvent.KEYCODE_9)
+                        || (code >= KeyEvent.KEYCODE_A && code <= KeyEvent.KEYCODE_Z) || (code >= KeyEvent.KEYCODE_F1 && code <= KeyEvent.KEYCODE_F12)
+                        || (code >= KeyEvent.KEYCODE_PROG_RED && code <= KeyEvent.KEYCODE_PROG_BLUE) || code == KeyEvent.KEYCODE_GUIDE
+                        || code == KeyEvent.KEYCODE_INFO || code == KeyEvent.KEYCODE_CAPTIONS || code == KeyEvent.KEYCODE_BOOKMARK) return "key:" + code;
+                return null;
         }
     }
 

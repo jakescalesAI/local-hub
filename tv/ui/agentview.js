@@ -2,7 +2,7 @@
 // OK on a browser card in the assistant opens it full screen. The remote drives a cursor over it:
 //   arrows    move the cursor (faster while held); at the top or bottom edge the page scrolls
 //   OK        clicks where the cursor is
-//   ☰ (menu)  opens the keyboard to type into the page; OK on it sends the text and Enter
+//   OK on a text box opens the keyboard to type into the page; OK on it sends the text and Enter
 //   Back      closes it and gives the browser back to the agent
 // Frames come over /api/browser/stream (SSE, JPEG) and clicks go to /api/browser/input, like the hub's browser pop-up.
 // Clicking takes control from the agent (browser.mjs), so it never fights you while you're in there.
@@ -23,7 +23,7 @@ export async function open({ host, toast, onClose } = {}) {
   V.profile = st.current || ''
   const el = document.createElement('div')
   el.className = 'agv'
-  el.innerHTML = '<img class="agv-frame" alt=""><div class="agv-cursor"></div><div class="agv-bar"><b>The assistant’s browser</b><span>Arrows move · OK clicks · ☰ types · Back gives it back</span></div><input class="agv-type" type="text" autocomplete="off" spellcheck="false" placeholder="Type, then OK to send">'
+  el.innerHTML = '<img class="agv-frame" alt=""><div class="agv-cursor"></div><div class="agv-bar"><b>The assistant’s browser</b><span>Arrows move · OK clicks (on a text box, type) · Back gives it back</span></div><input class="agv-type" type="text" autocomplete="off" spellcheck="false" placeholder="Type, then OK to send">'
   ;(host || document.body).append(el)
   V.el = el
   V.img = el.querySelector('.agv-frame')
@@ -87,13 +87,16 @@ function move(dx, dy) {
   send([{ t: 'mouse', type: 'mouseMoved', x: p.x, y: p.y }])
 }
 
-function click() {
+async function click(native) {
   const p = pagePoint()
   V.cur.classList.remove('press'); void V.cur.offsetWidth; V.cur.classList.add('press')
-  send([
+  const r = await send([
     { t: 'mouse', type: 'mousePressed', x: p.x, y: p.y, button: 'left', buttons: 1, clicks: 1 },
     { t: 'mouse', type: 'mouseReleased', x: p.x, y: p.y, button: 'left', buttons: 0, clicks: 1 },
+    { t: 'focus' },
   ])
+  // OK on a text box opens the typing sheet (and the TV's keyboard) at once.
+  if (r?.editable && V.el && !V.typing) startTyping(native)
 }
 
 function startTyping(native) {
@@ -124,8 +127,7 @@ export function key(name, native) {
   else if (name === 'right') move(1, 0)
   else if (name === 'up') move(0, -1)
   else if (name === 'down') move(0, 1)
-  else if (name === 'enter') click()
-  else if (name === 'menu') startTyping(native)
+  else if (name === 'enter') click(native)
   else if (name === 'back' || name === 'home') close()
   return true
 }
