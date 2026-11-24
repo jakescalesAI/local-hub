@@ -1645,8 +1645,13 @@ const VOICE = {
       .then((r) => (r.ok ? r.blob() : Promise.reject(new Error(String(r.status)))));
   },
   say(text) {
-    const parts = String(text || "").replace(/\s+/g, " ").match(/[^.!?]+[.!?]+["')\]]*|[^.!?]+$/g) || [];
-    for (const p of parts) if (p.trim()) this.queue.push(p.trim());
+    const parts = (String(text || "").replace(/\s+/g, " ").match(/[^.!?]+[.!?]+["')\]]*|[^.!?]+$/g) || []).map((p) => p.trim()).filter(Boolean);
+    // Starting from silence, a long first sentence is split at its first clause: the first sound comes sooner.
+    if (!this.playing && !this.queue.length && parts[0] && parts[0].length > 70) {
+      const m = /^(.{24,}?[,;:—–])\s+(.+)$/.exec(parts[0]);
+      if (m) parts.splice(0, 1, m[1], m[2]);
+    }
+    for (const p of parts) this.queue.push(p);
     if (!this.playing) this.next(this.gen);
   },
   async next(gen) {
