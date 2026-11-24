@@ -241,6 +241,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   const IC = {
     home: '<path d="M3.5 11 12 4l8.5 7"/><path d="M5.5 9.5V20h4.5v-5.5h4V20h4.5V9.5"/>',
     files: '<path d="M4 7a2 2 0 0 1 2-2h4l2 2.5h6a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/>',
+    overlay: '<rect x="3.5" y="3.5" width="7" height="7" rx="2.2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2.2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2.2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2.2"/>',
     tab: '<rect x="4" y="4" width="16" height="16" rx="4"/>',
     laptop: '<rect x="4" y="5" width="16" height="11" rx="1.6"/><path d="M2 19h20"/>',
     server: '<rect x="4" y="4" width="16" height="7" rx="2"/><rect x="4" y="13" width="16" height="7" rx="2"/><path d="M7.5 7.5h.01M7.5 16.5h.01"/>',
@@ -271,18 +272,18 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   wxCard.id = 'tvwx'
   document.querySelector('.page').prepend(top, wxCard)
 
-  // ── Layout: the TV's panel (its markup and styles, tv/ui/panel.js and panel.css), working the TV from here ──
+  // ── Overlay: the TV's panel (its markup and styles, tv/ui/panel.js and panel.css), working the TV from here ──
   const panel = document.createElement('aside')
   panel.id = 'tvpanel'
-  panel.setAttribute('aria-label', 'Layout')
-  panel.innerHTML = '<div><div class="wpanel-title">Layout</div><div class="tvp-sub"></div><div class="wpanel-list"></div></div>'
+  panel.setAttribute('aria-label', 'Overlay')
+  panel.innerHTML = '<div><div class="wpanel-title">Overlay</div><div class="tvp-sub"></div><div class="wpanel-list"></div></div>'
   document.body.append(panel)
   const btn = document.createElement('button')
   btn.id = 'tvlayout'
   btn.className = 'tvround'
   btn.type = 'button'
-  btn.title = 'Layout'
-  btn.setAttribute('aria-label', 'Layout')
+  btn.title = 'Overlay (Ctrl+.)'
+  btn.setAttribute('aria-label', 'Overlay')
   btn.innerHTML = svg('<rect x="3.5" y="3.5" width="7" height="7" rx="2.2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2.2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2.2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2.2"/>')
   const mk = (id, label, d) => Object.assign(document.createElement('button'), { id, type: 'button', title: label, className: 'tvround', ariaLabel: label, innerHTML: svg(d) })
   const back = mk('tvback', 'Back', '<path d="M15 5l-7 7 7 7"/>')
@@ -322,6 +323,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
 
   // The widget column: the weather, then Home's widgets, copied from where home.js draws them so its own clicks, edits
   // and updates work here (the column is inside .hw-root). The clock and date are already at the top left.
+  let onScreen = [] // the widgets the Overlay can show or hide
   let side = null, sideWatch = null, sideRoot = null
   function paintSide() {
     const w = look.weather && wxBody && window.HubWeatherCard ? window.HubWeatherCard(wxBody, 'm') : ''
@@ -341,12 +343,16 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
       new MutationObserver(() => { paintSide(); fitRow() }).observe(root, { attributes: true, attributeFilter: ['class', 'data-view'] })
     }
     const editing = root.classList.contains('hw-edit')
+    onScreen = []
     const wx = look.weather && wxBody && window.HubWeatherCard ? `<div class="tvt-wx">${window.HubWeatherCard(wxBody, 'm')}</div>` : ''
     const cells = [...root.querySelectorAll('.hw-grid > .hw-cell:not(.a)')].filter(c => {
       const id = c.querySelector('[data-hw-widget], [data-hw-wid]')?.dataset.hwWidget || c.dataset.hwKey || ''
-      return c.style.display !== 'none' && (editing || !/(^|-)(clock|date|weather)$/.test(id) || /world-clock$/.test(id))
+      if (/(^|-)(clock|date|weather)$/.test(id) && !/world-clock$/.test(id)) return editing && c.style.display !== 'none'
+      const key = c.dataset.hwKey, name = (c.querySelector('.hw-label')?.textContent || c.querySelector('[aria-label]')?.getAttribute('aria-label') || id.replace(/^[a-z]\d+-/, '').replace(/-/g, ' ')).trim()
+      onScreen.push({ key, name: name.charAt(0).toUpperCase() + name.slice(1) })
+      return c.style.display !== 'none' && (editing || !look.off?.includes(key))
     })
-    const pl = P && TV?.on ? `<div class="tvp-card">${P.player(TV.state?.media || {}, true)}</div>` : ''
+    const pl = P && TV?.on && look.player !== false ? `<div class="tvp-card">${P.player(TV.state?.media || {}, true)}</div>` : ''
     const html = pl + wx + cells.map(c => c.outerHTML).join('')
     if (side._html === html) return
     const y = side.scrollTop
@@ -406,6 +412,9 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
       + P.round('home', P.IC.home, 'TV home') + P.round('saver', P.IC.moon, 'Screensaver') + P.round('sleep', P.IC.power, 'Sleep') + P.round('settings', P.IC.gear, 'Settings')
       + (st.inputs || []).map(i => P.pill(`input:${i.name}`, P.IC.input, i.name, i.sub || 'Input')).join('')
       + P.pill('homeclock', P.IC.clock, 'Home clock', look.clock, look.clock !== 'Off') + P.pill('homeweather', P.IC.cloud, 'Home weather', look.weather ? 'On' : 'Off', look.weather)
+      + P.pill('homeplayer', P.IC.note, 'Home player', look.player !== false ? 'On' : 'Off', look.player !== false)
+      + onScreen.map(w => P.pill('wg:' + w.key, P.IC.widgets, w.name, look.off?.includes(w.key) ? 'Hidden' : 'On screen', !look.off?.includes(w.key))).join('')
+      + P.pill('addwidget', P.IC.plus, 'Add a widget', 'To the screen')
       + `<div class="wpx">${wxBody && window.HubWeatherCard ? window.HubWeatherCard(wxBody, 'm') : '<div class="t2">Finding the weather…</div>'}</div>`
     if (list._html === html) return
     const had = document.activeElement?.closest?.('#tvpanel [data-w]')?.dataset.w
@@ -415,7 +424,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     if (had) list.querySelector(`[data-w="${had}"]`)?.focus()
   }
   async function openPanel() {
-    try { P ??= await import('/tv/panel.js?v=3') } catch { return }
+    try { P ??= await import('/tv/panel.js?v=4') } catch { return }
     paintPanel()
     panel.classList.add('on')
     await readTv()
@@ -430,18 +439,23 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   async function keepTv() {
     if (document.hidden || !document.documentElement.hasAttribute('data-tvlook') || !document.querySelector('.hw-root') || Date.now() - sideAt < 8000) return
     sideAt = Date.now()
-    try { P ??= await import('/tv/panel.js?v=3') } catch { return }
+    try { P ??= await import('/tv/panel.js?v=4') } catch { return }
     if (TV?.on) post({ type: 'state' })
     await readTv()
   }
   function closePanel() { clearInterval(poll); panel.classList.remove('on'); if (panel.contains(document.activeElement)) btn.focus() }
   btn.addEventListener('click', e => { e.stopPropagation(); panel.classList.contains('on') ? closePanel() : openPanel() })
-  document.addEventListener('pointerdown', e => { if (panel.classList.contains('on') && !panel.contains(e.target) && !btn.contains(e.target)) closePanel() })
+  document.addEventListener('pointerdown', e => { if (panel.classList.contains('on') && !panel.contains(e.target) && !btn.contains(e.target) && !e.target.closest?.('[data-rail="overlay"]')) closePanel() })
+  // From any page: Ctrl+. (and the sidebar).
+  addEventListener('keydown', e => { if (e.key === '.' && (e.ctrlKey || e.metaKey) && !e.altKey && document.documentElement.matches('[data-tvlook], [data-tvtouch]')) { e.preventDefault(); panel.classList.contains('on') ? closePanel() : openPanel() } })
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && panel.classList.contains('on')) { e.stopPropagation(); closePanel() } }, true)
   const off = () => { panel.querySelector('.tvp-sub').textContent = 'Your TV isn’t connected' }
   function press(id) {
     if (id === 'homeclock') { look.clock = CLOCKS[(CLOCKS.indexOf(look.clock) + 1) % CLOCKS.length]; return saveLook() }
     if (id === 'homeweather') { look.weather = !look.weather; return saveLook() }
+    if (id === 'homeplayer') { look.player = look.player === false; saveLook(); return paintSide() }
+    if (id.startsWith('wg:')) { const k = id.slice(3), o = look.off || []; look.off = o.includes(k) ? o.filter(x => x !== k) : [...o, k]; saveLook(); return paintSide() }
+    if (id === 'addwidget') { closePanel(); window.HubChat?.close(); closeSettings(); closeMirror(); return goHome('[data-hw-act="add"]') }
     if (id === 'settings') { closePanel(); return openSettings() }
     if (!TV?.on) return off()
     if (id.startsWith('input:')) post({ type: 'input', name: id.slice(6) })
@@ -769,7 +783,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     const html = '<img src="/icons/hub.svg" alt=""><div class="mid">'
       + tabs.map(b => item(`tab:${b.dataset.env}`, TAB_IC[b.dataset.env] || 'tab', name(b), isOn(b) && !chat && !set.classList.contains('on') && !mirror.classList.contains('on'))).join('')
       + item('assistant', 'mic', 'Assistant', chat && !set.classList.contains('on')) + item('tv', 'tv', 'TV', mirror.classList.contains('on'))
-      + '</div>' + item('settings', 'gear', 'Settings', set.classList.contains('on'))
+      + '</div>' + item('overlay', 'overlay', 'Overlay', panel.classList.contains('on')) + item('settings', 'gear', 'Settings', set.classList.contains('on'))
     if (rail._html === html) return
     rail._html = html
     rail.innerHTML = html
@@ -783,6 +797,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   rail.addEventListener('click', e => {
     const key = e.target.closest('[data-rail]')?.dataset.rail
     if (!key) return
+    if (key === 'overlay') return panel.classList.contains('on') ? closePanel() : openPanel()
     closePanel()
     if (key !== 'settings') closeSettings()
     if (key !== 'tv') closeMirror()

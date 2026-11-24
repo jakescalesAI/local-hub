@@ -15,7 +15,7 @@
 // ============================================================================
 
 import * as Stream from "./stream.js?v=4";
-import * as Panel from "./panel.js?v=3";
+import * as Panel from "./panel.js?v=4";
 import * as Files from "./files.js?v=1";
 import * as Mirror from "./mirror.js?v=2";
 // The TV's own assistant screen (assistant.js): the hub's agent and conversation, without the hub's chat UI.
@@ -214,7 +214,7 @@ function takeSettings(next) {
   }
   if (lookChanged) applyLook(); // repaints the shelf too
   paintHomeWidgets();
-  paintWpanel(); // the Layout panel stays drawn, ready to open
+  paintWpanel(); // the Overlay stays drawn, ready to open
 }
 function paintChip() {
   $("#splashName").textContent = HUB.name;
@@ -320,7 +320,7 @@ function loadItems() {
   const picked = favIds.map((id) => APPS.find((a) => a.id === id)).filter(Boolean);
   // The row: widgets, sort and search first, then your favorites, then the + card (always last).
   FAVS = IN_HUB && !PREVIEW
-    ? [{ id: "ctl:widgets", kind: "ctl", name: "Layout" }, { id: "ctl:sort", kind: "ctl", name: "Sort apps" }, { id: "ctl:search", kind: "ctl", name: "Search" }, ...picked, { id: "favadd", kind: "favadd", name: "Add a favorite" }]
+    ? [{ id: "ctl:widgets", kind: "ctl", name: "Overlay" }, { id: "ctl:sort", kind: "ctl", name: "Sort apps" }, { id: "ctl:search", kind: "ctl", name: "Search" }, ...picked, { id: "favadd", kind: "favadd", name: "Add a favorite" }]
     : picked;
   S.f = clamp(S.f || 0, 0, Math.max(0, FAVS.length - 1));
   if (!FAVS.length && S.zone === "favs") S.zone = "grid";
@@ -588,6 +588,7 @@ function move(dx, dy) {
       else if (dx < 0) return openRail();
       else return tilt(dx * 1.6, 0);
     }
+    if (dy < 0 && prefs.homePlayer === false) return tilt(0, -1.6);
     if (dy < 0) { S.lastF = S.f; S.zone = "player"; S.mp = "play"; applyFocus(); return paintHomeWidgets(); }
     if (dy > 0) { S.zone = "grid"; S.i = clamp(S.lastI ?? gridColUnderFav(S.f), 0, Math.min(COLS, ITEMS.length) - 1); }
     applyFocus();
@@ -1140,7 +1141,7 @@ function paintHomeWidgets() {
   if (!box) return;
   const sizes = {};
   for (const x of SETTINGS?.widgets?.tv || []) { const id = x?.id || x?.[0]; if (id && id !== "clock" && id !== "date" && WIDGETS[id]) sizes[id] = x?.size || x?.[1] || "s"; }
-  const html = Panel.player(MEDIA, true) + Object.keys(sizes).slice(0, 2).map((id) => widgetCard(id, sizes[id])).join("");
+  const html = (prefs.homePlayer === false ? "" : Panel.player(MEDIA, true)) + Object.keys(sizes).slice(0, 2).map((id) => widgetCard(id, sizes[id])).join("");
   if (box._html !== html) { box.innerHTML = html; box._html = html; }
   box.querySelectorAll(".mp-b").forEach((n) => n.classList.toggle("sel", S.zone === "player" && !S.overlay && S.view === "home" && n.dataset.w === S.mp));
 }
@@ -1205,6 +1206,7 @@ function wpHTML() {
     + INPUTS.map((i) => pill(`input:${i.id}`, WP_IC.input, i.name, i.sub || "Input")).join("")
     + pill("homeclock", WP_IC.clock, "Home clock", prefs.homeClock || CLOCKS[0], (prefs.homeClock || CLOCKS[0]) !== "Off")
     + pill("homeweather", WP_IC.cloud, "Home weather", homeWeatherOn() ? "On" : "Off", homeWeatherOn())
+    + pill("homeplayer", Panel.IC.note, "Home player", prefs.homePlayer === false ? "Off" : "On", prefs.homePlayer !== false)
     + `<div class="wpx">${wx}</div>`;
 }
 function paintWpanel() {
@@ -1283,6 +1285,7 @@ function wpKey(name) {
     return paintWpanel();
   }
   if (id === "timer") { cycleSleepTimer(); return paintWpanel(); }
+  if (id === "homeplayer") { prefs.homePlayer = prefs.homePlayer === false; savePrefs(); paintHomeWidgets(); return paintWpanel(); }
   if (id === "homeclock") {
     prefs.homeClock = CLOCKS[(CLOCKS.indexOf(prefs.homeClock || CLOCKS[0]) + 1) % CLOCKS.length];
     savePrefs();
@@ -1396,7 +1399,7 @@ function settingsModel() {
     { group: "Home Screen" },
     { key: "clock", t1: "Clock", t2: "Top left, and on the screensaver", values: ["12-hour", "24-hour"] },
     { key: "homeClock", t1: "Home clock", t2: "What the top left of the home screen shows", values: ["Time and date", "Time", "Off"] },
-    ...(S.inputCount ? [{ key: "inputs", t1: "HDMI inputs", t2: "Shown in the Layout panel", toggle: true }] : []), // only on a TV that has some
+    ...(S.inputCount ? [{ key: "inputs", t1: "HDMI inputs", t2: "Shown in the Overlay", toggle: true }] : []), // only on a TV that has some
     { key: "saver", t1: "Screensaver", t2: "After the remote has been still", values: ["Off", "2 min", "5 min", "10 min", "15 min"] },
     IN_HUB && !PREVIEW
       ? { id: "saverSource", t1: "Screensaver photos", t2: saverSourceNote(), v: saverSourceName() }
@@ -2012,7 +2015,7 @@ async function startCommandLoop() {
 function runCommand(cmd) {
   if (!cmd || typeof cmd !== "object") return;
   if (cmd.type === "listen") return heardMic(cmd);
-  // The Layout panel on the computer: what the TV is doing, and the same controls, without leaving what's on screen.
+  // The Overlay on the computer: what the TV is doing, and the same controls, without leaving what's on screen.
   if (cmd.type === "state") return reportState();
   if (cmd.type === "mirror") return Mirror.watch(cmd.on);
   if (cmd.type === "key") { cmd.name === "home" && document.hidden ? (native("toFront"), window.haven.home()) : handleKey(cmd.name); return Mirror.soon(); }
@@ -3065,7 +3068,7 @@ async function boot() {
     renderGrid();
     if (PREVIEW) { setInterval(syncHub, 30_000); return paintChip(); }
     // The TV is its own light app: the hub's chat.js and browser.js stay on the laptop.
-    Assistant = await import("./assistant.js?v=15").catch((e) => { console.warn("assistant", e); return null; });
+    Assistant = await import("./assistant.js?v=16").catch((e) => { console.warn("assistant", e); return null; });
     Assistant?.init({
       el: $("#assistantView"), toast, native, NATIVE,
       intercept: (t) => window.HubChatHooks?.intercept?.(t) || false,

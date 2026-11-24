@@ -167,7 +167,7 @@ up or down, or nothing). *Back to the standard buttons* undoes it all.
 | --- | --- |
 | Wallpaper, clock, screensaver, voice, the LocalHub connection | On the TV: the sidebar's gear (Settings) |
 | Favorites, app order, hidden apps, sort, search | On the TV: hold OK on a tile; the Favorites row's buttons |
-| Volume, picture, sleep timer, weather | On the TV: the Favorites row's Layout button |
+| Volume, picture, sleep timer, weather | On the TV: the Favorites row's Overlay button |
 | The widgets on the home screen and screensaver (weather, …) | LocalHub on the laptop: *Home → TV*, then *Edit* |
 | Installing, connecting and pairing TVs | LocalHub on the laptop: *Home → TV → Set up a TV* (or `http://localhost:3100/#tv-setup`) |
 

@@ -403,6 +403,10 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
 .clog .msg.u { align-items: flex-start; }
 .clog .u .bub { background: none; color: var(--label-2, rgba(60, 60, 67, .6)); padding: 0 0 2px; font-size: 13px; border-radius: 0; max-width: 100%; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; white-space: normal; }
 .clog .a .bub { background: none; box-shadow: none; padding: 0; border-radius: 0; width: auto; }
+/* Rows arrive instead of popping in. The answer itself doesn't: it takes the place of the dots. */
+@keyframes msgin { from { opacity: 0; transform: translateY(8px); } }
+:is(.flog, .clog):not(.still) > :is(.msg.u, .msg.bro, .msg.afile, .tool, .confirm, .err, .msg:has(.dots)) { animation: msgin .22s var(--ease, ease) backwards; }
+@media (prefers-reduced-motion: reduce) { :is(.flog, .clog) > * { animation: none !important; } }
 /* Reply content: type scale, lists, code, tables, links. Same look in the card and the full chat. */
 .bub { line-height: 1.5; }
 .bub > :first-child { margin-top: 0; }
@@ -505,7 +509,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
 .clog .bub .rqt { border-left-color: var(--sep, rgba(60, 60, 67, .18)); }
 /* Hub browser card: one per turn, live while the assistant works, its last step's screenshot after. A site the
    assistant opened (show_site) is the same card, live for as long as it is the latest thing in the chat. */
-.msg.bro { align-items: stretch; max-width: 100%; flex: none; }
+.msg.bro { align-self: flex-start; align-items: stretch; width: fit-content; min-width: min(100%, 260px); max-width: min(100%, 520px); flex: none; }
 .brc { border-radius: 14px; overflow: hidden; background: var(--surface, #fff); box-shadow: 0 0 0 .5px var(--sep, rgba(60, 60, 67, .18)), 0 2px 8px rgba(0, 0, 0, .08); }
 .brb { display: flex; align-items: center; gap: 9px; min-height: 44px; padding: 6px 6px 6px 10px; font-size: 13px; }
 .brf { position: relative; flex: none; width: 24px; height: 24px; border-radius: 6px; overflow: hidden; display: grid; place-items: center; color: var(--label-2, rgba(60, 60, 67, .6)); background: var(--fill, rgba(118, 118, 128, .12)); }
@@ -588,6 +592,14 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
 :host-context(html[data-tvlook]) .ghead .ib:hover { background: var(--ui-sel); color: #000; opacity: 1; }
 :host-context(html[data-tvlook]) .ghead .ib[aria-pressed="true"] { background: var(--ui-sel); color: #000; }
 :host-context(html[data-tvlook]) .flog { padding: 96px var(--chat-side) 18px; gap: var(--chat-gap); scrollbar-width: none; }
+:host-context(html[data-tvlook]) .fp::before { content: ""; position: absolute; z-index: 1; left: 0; right: 0; top: 0; height: 104px; pointer-events: none; opacity: 0; transition: opacity .2s; background: linear-gradient(var(--chat-bg) 40%, transparent); }
+:host-context(html[data-tvlook]) .fp.scrolled::before { opacity: 1; }
+:host-context(html[data-tvlook]) .full .fp { transition: opacity .22s ease; opacity: 0; }
+:host-context(html[data-tvlook]) .full.on .fp { opacity: 1; }
+:host-context(html[data-tvlook]) .brc { border-radius: var(--chat-card-r); background: var(--chat-surface); box-shadow: none; }
+:host-context(html[data-tvlook]) .brb { padding: 9px 9px 9px 13px; font-size: 14px; gap: 11px; }
+:host-context(html[data-tvlook]) .brc button { background: var(--ui-fill); color: #fff; }
+:host-context(html[data-tvlook]) .brc button:hover { background: var(--ui-sel); color: #000; }
 :host-context(html[data-tvlook]) .flog::-webkit-scrollbar { display: none; }
 :host-context(html[data-tvlook]) .flog .bub { max-width: min(100%, var(--chat-bot-w)); padding: var(--chat-bub-y) var(--chat-bub-x); border-radius: var(--chat-bub-r); font-size: var(--chat-size); line-height: var(--chat-line); letter-spacing: -0.016em; }
 :host-context(html[data-tvlook]) .flog .u .bub { max-width: min(100%, var(--chat-me-w)); background: var(--chat-me); border-bottom-right-radius: var(--chat-tail); }
@@ -820,10 +832,18 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
       if (!v.stick || v.gliding) return
       if (REDUCED.matches || document.hidden) { log.scrollTop = log.scrollHeight; return }
       v.gliding = true
-      const step = () => {
-        const gap = log.scrollHeight - log.scrollTop - log.clientHeight
-        if (!v.stick || gap <= .5 || !log.isConnected) { v.gliding = false; return }
-        if (!v.held) log.scrollTop += Math.ceil(gap * .16)
+      // By time, not by frame, so it's the same pull on any screen, and keeping the part of a pixel a frame can't show.
+      let last = 0, at = log.scrollTop
+      const step = now => {
+        const end = log.scrollHeight - log.clientHeight
+        if (!v.stick || end - log.scrollTop <= 1 || !log.isConnected) { v.gliding = false; return }
+        const dt = last ? Math.min(.05, (now - last) / 1000) : .016
+        last = now
+        if (!v.held) {
+          if (Math.abs(at - log.scrollTop) > 1.5) at = log.scrollTop
+          at = Math.min(end, at + Math.max((end - at) * (1 - Math.exp(-dt * 11)), 60 * dt))
+          log.scrollTop = at
+        }
         requestAnimationFrame(step)
       }
       requestAnimationFrame(step)
@@ -833,6 +853,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
       v.stick = true
       requestAnimationFrame(() => { log.scrollTop = log.scrollHeight })
     }
+    v.glideEnd = () => { v.stick = true; v.follow() }
     v.clearEmpty = () => log.querySelector('.empty')?.remove()
     v.clear = () => { cancelAnimationFrame(v.raf); v.raf = 0; v.live.length = 0; v.browser?.mini?.close(); v.browser = null; log.replaceChildren(); v.cur = null; v.pending = null; v.lastA = null; v.stick = true; v.top = 0 }
     /* Text reaches the reader at an even rate, whatever the shape of the stream. New text goes into a small buffer and each
@@ -920,7 +941,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
       const b = document.createElement('div'); b.className = 'bub'; b.textContent = text
       if (reply) { const q = document.createElement('span'); q.className = 'rqt'; q.textContent = reply; b.prepend(q) }
       if (files && files.length) { v.lastFiles = filesEl(files, () => v.scrollEnd()); b.append(v.lastFiles) }
-      m.append(b); log.append(m); v.scrollEnd(true)
+      m.append(b); log.append(m); v.glideEnd()
     }
     // The hub has saved them, so the chips can open from there instead of from this page's memory.
     v.setFiles = list => { const el = filesEl(list, () => v.scrollEnd()); v.lastFiles?.replaceWith(el); v.lastFiles = el }
@@ -1019,7 +1040,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
       m.querySelector('.brm').addEventListener('click', e => { if (e.target.tagName === 'IMG') watch(c) })
       log.append(m)
       v.setBrowser(c, b, live)
-      v.scrollEnd(true)
+      v.scrollEnd()
       return c
     }
     v.setBrowser = (c, b, live) => {
@@ -1120,7 +1141,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
       v.clearEmpty()
       const m = document.createElement('div'); m.className = 'msg a'
       m.innerHTML = '<div class="bub"><span class="dots" aria-label="Thinking"><i></i><i></i><i></i></span></div>'
-      log.append(m); v.pending = m; v.scrollEnd(true)
+      log.append(m); v.pending = m; v.follow()
     }
     v.hidePending = () => { v.pending?.remove(); v.pending = null }
     v.empty = () => {
@@ -1879,7 +1900,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
     if (!window.HubVoice?.listen && String(warm?.whisper || '').startsWith('missing') && (window.SpeechRecognition || window.webkitSpeechRecognition) && window.isSecureContext) {
       return startDictate({ send: true })
     }
-    V.state = 'rec'
+    V.state = 'rec'; headStart()
     V.since = Date.now()
     syncSend()
     let text = ''
@@ -2127,6 +2148,17 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
 
   /* ---------- sending and the NDJSON stream ---------- */
 
+  // The hub gets Claude ready as soon as a message is begun (chat.mjs, a head start).
+  let warmAt = 0, warmFor = ''
+  function headStart() {
+    const want = [S.conv, S.model, S.effort, S.mode].join('|')
+    if (S.busy || (want === warmFor && Date.now() - warmAt < 25_000)) return
+    warmAt = Date.now()
+    warmFor = want
+    fetch('/api/chat/warm', { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: JSON.stringify({ sessionId: S.conv || undefined, test: isTest() || undefined, model: S.model || undefined, effort: S.effort || undefined, mode: S.mode || undefined }) }).catch(() => {})
+  }
+  for (const t of [bta, fta]) { t.addEventListener('input', () => { if (t.value) headStart() }); t.addEventListener('focus', () => { if (S.full && t === fta) headStart() }) }
+  const drawStill = (v, fn) => { v.log.classList.add("still"); fn(); setTimeout(() => v.log.classList.remove("still"), 400) }
   const eachView = fn => { for (const v of views) fn(v) }
 
   // The composer holds one quote. If it already has a different one, this one goes in as a quoted line, so neither is lost.
@@ -2400,8 +2432,8 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
       S.busy = S.remote = !!c.running
       const items = c.items || []
       const cut = items.map(i => i.kind).lastIndexOf('user')
-      renderItems(fullView, items, c.running, c.partial)
-      renderItems(cardView, cut < 0 ? [] : items.slice(cut), c.running, c.partial)
+      drawStill(fullView, () => renderItems(fullView, items, c.running, c.partial))
+      drawStill(cardView, () => renderItems(cardView, cut < 0 ? [] : items.slice(cut), c.running, c.partial))
       if (!flogEl.children.length) fullView.empty()
       // Following a reply that's still coming shows it in the card too; a chat from History opens in the full chat.
       S.cardOn = !announce && !!c.running

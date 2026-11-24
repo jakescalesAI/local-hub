@@ -133,6 +133,7 @@ export function init(opts = {}) {
   let was = ''
   R.input.addEventListener('input', () => {
     const now = R.input.value
+    if (now) headStart()
     const grew = now.length - was.length
     was = now
     if (grew >= 4 || (S.dictating && grew > 0)) {
@@ -207,7 +208,16 @@ export function hide() {
 }
 
 // "Hey LocalHub", heard by the laptop's mic: the same Listening… look as Talk, driven from the laptop.
+// The hub gets Claude ready as soon as a message is begun (chat.mjs, a head start).
+let warmAt = 0, warmFor = null
+function headStart() {
+  if (S.busy || (warmFor === (S.conv || '') && Date.now() - warmAt < 25000)) return
+  warmAt = Date.now()
+  warmFor = S.conv || ''
+  post('/api/chat/warm', { sessionId: S.conv || undefined, model: O.model?.() || undefined }).catch(() => {})
+}
 export function hearing(stage) {
+  if (stage === 'rec') headStart()
   if (!mounted) return
   if (stage === 'rec') { hush(); V.cancelled = false; V.remote = true; V.state = 'rec'; V.since = Date.now() }
   else if (stage === 'wait') { if (!V.remote) return; V.state = 'wait' }
@@ -1250,7 +1260,7 @@ export async function voice() {
   if (O.NATIVE && await O.listenNow?.()) return
   V.cancelled = false
   fetch('/api/voice/warm', { method: 'POST', headers: { 'x-hub': '1' } }).catch(() => {}) // wake Whisper while they talk
-  V.state = 'rec'
+  V.state = 'rec'; headStart(); headStart()
   V.since = Date.now()
   syncVoice()
   let text = ''

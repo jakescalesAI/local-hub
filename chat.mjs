@@ -587,6 +587,73 @@ export function create({ run, sshHost, here }) {
     return { files }
   }
 
+  function claudeArgs(conv, { model, effort, tools, resume }) {
+    const args = [
+      '-p', '--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose', '--include-partial-messages',
+      // Not --safe-mode: it also drops --mcp-config servers. --restricted ignores settings files (so no
+      // hooks or plugins), --strict-mcp-config keeps MCP to chat-tools.mjs, and slash commands/skills are off.
+      '--restricted', '--strict-mcp-config', '--mcp-config', mcpFile(), '--disable-slash-commands',
+      '--permission-mode', 'dontAsk',
+      ...readFolders().flatMap(f => ['--add-dir', f]),
+      '--tools', ...tools.TOOLS,
+      '--allowedTools', ...tools.ALLOW,
+      '--disallowedTools', ...tools.DENY, ...(conv.test ? REAL_UPLOADS_DENY : []),
+      '--append-system-prompt-file', systemPromptFile(),
+    ]
+    if (model) args.push('--model', model)
+    if (effort) args.push('--effort', effort)
+    if (resume) args.push('--resume', resume)
+    return args
+  }
+
+  /* ---------- a head start ---------- */
+
+  // Starting Claude takes most of a second, so the page asks for it as soon as someone begins a message and the send
+  // hands the message to the one that's waiting. Only for exactly what the send would have started: the same chat as
+  // far as it has got, model, tools, prompt, login. Anything else, or a minute unused, and it's ended.
+  const WARM_MS = 60_000
+  let warm = null
+  const fileStamp = p => { try { const st = fs.statSync(p); return `${st.mtimeMs}:${st.size}` } catch { return '' } }
+  const warmKey = (conv, bin, args) => JSON.stringify([bin, args, conv.cli || '', conv.items.filter(i => i.kind === 'user').length, childEnv(), fileStamp(MCP_FILE), fileStamp(PROMPT_FILE)])
+  function dropWarm() {
+    if (!warm) return
+    clearTimeout(warm.timer)
+    const { proc } = warm
+    warm = null
+    killTree(proc)
+  }
+  function takeWarm(conv, bin, args) {
+    if (!warm) return null
+    // The send has already put its own message in the chat.
+    const { proc, key } = warm
+    if (proc.exitCode !== null || key !== warmKey({ ...conv, items: conv.items.slice(0, conv.items.findLastIndex(i => i.kind === 'user')) }, bin, args)) { dropWarm(); return null }
+    clearTimeout(warm.timer)
+    warm = null
+    return proc
+  }
+  function startWarm(body) {
+    const bin = findClaude()
+    const conv = body.sessionId ? load(String(body.sessionId)) : { cli: null, items: [], test: body.test === true }
+    if (!bin || !conv || running.size || (body.model && !models().some(([v]) => v === body.model)) || (body.mode && !MODES.some(([v]) => v === body.mode))) return false
+    const mode = body.mode || 'auto'
+    const tools = mode === 'plan' ? planPolicy(policy()) : policy()
+    const args = claudeArgs(conv, { model: body.model || defaultModel(), effort: EFFORTS.some(([v]) => v === body.effort) ? body.effort : '', tools, resume: conv.cli || null })
+    const key = warmKey(conv, bin, args)
+    if (warm?.key === key && warm.proc.exitCode === null) {
+      clearTimeout(warm.timer)
+      warm.timer = setTimeout(dropWarm, WARM_MS)
+      return true
+    }
+    dropWarm()
+    const proc = spawn(bin, args, { cwd: here, env: childEnv(), windowsHide: true })
+    const w = (warm = { key, proc, timer: setTimeout(dropWarm, WARM_MS) })
+    const gone = () => { if (warm === w) { clearTimeout(w.timer); warm = null } }
+    proc.on('error', gone)
+    proc.on('exit', gone)
+    proc.stdin.on('error', () => {})
+    return true
+  }
+
   // Handles one HTTP request: spawns claude, relays its stream as NDJSON, saves the transcript.
   async function handleSend(req, res, { send }) {
     let body
@@ -674,23 +741,9 @@ export function create({ run, sshHost, here }) {
     const tools = mode === 'plan' ? planPolicy(policy()) : policy()
     const attempt = resume =>
       new Promise(resolve => {
-        const args = [
-          '-p', '--output-format', 'stream-json', '--verbose', '--include-partial-messages',
-          // Not --safe-mode: it also drops --mcp-config servers. --restricted ignores settings files (so no
-          // hooks or plugins), --strict-mcp-config keeps MCP to chat-tools.mjs, and slash commands/skills are off.
-          '--restricted', '--strict-mcp-config', '--mcp-config', mcpFile(), '--disable-slash-commands',
-          '--permission-mode', 'dontAsk',
-          ...readFolders().flatMap(f => ['--add-dir', f]),
-          '--tools', ...tools.TOOLS,
-          '--allowedTools', ...tools.ALLOW,
-          '--disallowedTools', ...tools.DENY, ...(conv.test ? REAL_UPLOADS_DENY : []),
-          '--append-system-prompt-file', systemPromptFile(),
-        ]
-        if (model) args.push('--model', model)
-        if (effort) args.push('--effort', effort)
-        if (resume) args.push('--resume', resume)
+        const args = claudeArgs(conv, { model, effort, tools, resume })
         console.log(`chat ${conv.id}: claude -p --model ${model}${effort ? ` --effort ${effort}` : ''}${mode === 'plan' ? ' (plan mode)' : ''}${resume ? ' --resume' : ''}${saved.length ? ` (${saved.length} file${saved.length === 1 ? '' : 's'})` : ''}`)
-        const proc = spawn(bin, args, { cwd: here, env: childEnv(), windowsHide: true })
+        const proc = takeWarm(conv, bin, args) || spawn(bin, args, { cwd: here, env: childEnv(), windowsHide: true })
         entry.proc = proc
         if (entry.killed) killTree(proc)
         let pending = ''
@@ -851,7 +904,7 @@ export function create({ run, sshHost, here }) {
           resolve({ code, stderr, lastResult })
         })
         proc.stdin.on('error', () => {})
-        proc.stdin.end(prompt)
+        proc.stdin.end(JSON.stringify({ type: 'user', message: { role: 'user', content: prompt } }) + '\n')
       })
 
     let r = null
@@ -970,6 +1023,10 @@ export function create({ run, sshHost, here }) {
       if (fileAsked && req.method === 'GET') return sendFile(load(fileAsked[1]), fileAsked[2], url, res, send), true
       if (p === '/api/chat/info' && req.method === 'GET') {
         return send(res, 200, { ready: !!findClaude(), models: models(), efforts: EFFORTS, modes: MODES, defaultModel: defaultModel(), tools: policy().TOOLS, timeoutSec: TIMEOUT_MS / 1000, maxFiles: MAX_FILES, maxFileMB: MAX_FILE_BYTES / 1024 / 1024, longText: LONG_TEXT, keyNames: KEY_FILE_NAMES.source }), true
+      }
+      if (p === '/api/chat/warm' && req.method === 'POST') {
+        const b = await readBody(req).catch(() => ({}))
+        return send(res, 200, { ok: startWarm(b || {}) }), true
       }
       if (p === '/api/chat/stop' && req.method === 'POST') {
         const b = await readBody(req).catch(() => ({}))

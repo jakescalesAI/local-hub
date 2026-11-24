@@ -1,4 +1,4 @@
-/* The Layout panel's contents: the TV's (tv/ui/app.js) and the hub page's (tabs/tvlook.js). Markup in panel.js. */
+/* The Overlay panel's contents: the TV's (tv/ui/app.js) and the hub page's (tabs/tvlook.js). Markup in panel.js. */
 .wpanel-title { font: 700 48px/1 var(--display); letter-spacing: -0.02em; margin: 0 0 30px 8px; }
 .wpanel-list { max-height: 946px; overflow-y: auto; scrollbar-width: none; padding: 8px; margin: -8px; display: grid; grid-template-columns: repeat(4, 148px); gap: 22px 24px; grid-auto-rows: auto; }
 .wpanel-list .sym { width: 52px; height: 52px; flex: none; }
