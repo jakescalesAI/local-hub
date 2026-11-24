@@ -467,7 +467,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     if (had) list.querySelector(`[data-w="${had}"]`)?.focus()
   }
   async function openPanel() {
-    try { P ??= await import('/tv/panel.js?v=5') } catch { return }
+    try { P ??= await import('/tv/panel.js?v=6') } catch { return }
     paintPanel()
     panel.classList.add('on')
     readPc()
@@ -483,7 +483,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   async function keepTv() {
     if (document.hidden || !document.documentElement.hasAttribute('data-tvlook') || !document.querySelector('.hw-root') || Date.now() - sideAt < 4000) return
     sideAt = Date.now()
-    try { P ??= await import('/tv/panel.js?v=5') } catch { return }
+    try { P ??= await import('/tv/panel.js?v=6') } catch { return }
     if (TV?.on) post({ type: 'state' })
     await Promise.all([readTv(), readPc()])
   }

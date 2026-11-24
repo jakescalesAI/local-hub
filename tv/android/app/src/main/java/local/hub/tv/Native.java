@@ -333,6 +333,7 @@ final class Native {
     @JavascriptInterface
     public void drawn() {
         HomeWatchService.drawn();
+        activity.doButton();
     }
 
     @JavascriptInterface

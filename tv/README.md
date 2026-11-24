@@ -167,9 +167,18 @@ up or down, or nothing). *Back to the standard buttons* undoes it all.
 | --- | --- |
 | Wallpaper, clock, screensaver, voice, the LocalHub connection | On the TV: the sidebar's gear (Settings) |
 | Favorites, app order, hidden apps, sort, search | On the TV: hold OK on a tile; the Favorites row's buttons |
-| Volume, picture, sleep timer, weather | On the TV: the Favorites row's Overlay button |
+| Volume, picture, sleep timer, weather, what's on Home | On the TV: the Favorites row's Overlay button |
+| What each remote button does | Settings → *Fire TV remote*, on the TV or the laptop |
+| What the music widget plays | LocalHub on the laptop: *Settings → Music platforms* |
 | The widgets on the home screen and screensaver (weather, …) | LocalHub on the laptop: *Home → TV*, then *Edit* |
 | Installing, connecting and pairing TVs | LocalHub on the laptop: *Home → TV → Set up a TV* (or `http://localhost:3100/#tv-setup`) |
+
+**The remote in every app.** Settings → *Fire TV remote* → *In every app* makes the buttons you've set work while Netflix or
+anything else is open, and lets Guide and the four app buttons be set too. The laptop starts a small helper on the TV
+(`KeyDaemon`) over the same debugging connection used to install LocalHub, so it needs `adb`: on the PATH, or
+`"tv": { "adb": "…" }` in `config/hub.json`. Fire OS doesn't let an app on the TV start it. It runs until the TV restarts;
+the laptop then starts it again. Arrows, OK, Back, Home and Power are never changed, and holding Back for ten seconds
+ends it.
 
 **See it on the laptop.** `http://localhost:3100/tv/` in any browser (or `npm run tv` for a full-screen
 window); the keyboard is the remote (arrows, Enter, Esc, M). From an iPad or another computer on the same

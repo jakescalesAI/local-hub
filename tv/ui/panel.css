@@ -59,3 +59,10 @@
 .rm-row { display: flex; justify-content: space-between; align-items: center; gap: 24px; width: 100%; min-height: 88px; padding: 0 34px; margin-bottom: 12px; border: 0; border-radius: 30px; background: var(--ui-fill); box-shadow: var(--ui-edge); color: #fff; font: 600 29px/1 var(--display); text-align: left; }
 .rm-row em { font: 500 26px/1 var(--display); font-style: normal; color: rgba(255, 255, 255, .6); }
 .rm-row.sel { background: var(--ui-sel); color: #000; } .rm-row.sel em { color: rgba(0, 0, 0, .55); }
+/* This PC, on the TV's Home. */
+.gz { box-sizing: border-box; width: 560px; padding: 18px 26px 14px; border-radius: 30px; background: var(--ui-panel); box-shadow: var(--ui-edge); color: #fff; }
+.gz-h { font: 600 20px/1 var(--display); color: rgba(255, 255, 255, .62); }
+.gz-g { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 8px; text-align: center; }
+.gz-g > div { position: relative; } .gz-g svg { display: block; width: 84px; height: 84px; margin: 0 auto; }
+.gz-g b { position: absolute; left: 0; right: 0; top: 31px; font: 700 23px/1 var(--display); letter-spacing: -.02em; } .gz-g b i { font: 600 16px/1 var(--display); font-style: normal; color: rgba(255, 255, 255, .6); }
+.gz-g span { display: block; margin-top: 5px; font-size: 19px; font-weight: 600; } .gz-g em { display: block; min-height: 20px; font: 500 15px/20px var(--font); color: rgba(255, 255, 255, .5); }

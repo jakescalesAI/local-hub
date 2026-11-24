@@ -35,3 +35,11 @@ export function player(m = {}, wide = false) {
 export const slider = (id, val, ic, label, off) => `<div class="wps${off ? " off" : ""}" data-w="${id}" aria-label="${label}"><i style="height:${off ? 0 : val}%"></i><span>${ic}</span></div>`;
 export const round = (id, ic, label, on) => `<div class="wpr${on ? " on" : ""}" data-w="${id}"><b>${ic}</b><em>${esc(label)}</em></div>`;
 export const pill = (id, ic, t1, t2, on) => `<div class="wpp${on ? " on" : ""}" data-w="${id}"><b>${ic}</b><div class="grow"><div class="t1">${esc(t1)}</div><div class="t2">${esc(t2)}</div></div></div>`;
+// This PC: how busy, how full.
+export function gauges(y) {
+  const g = (label, v, sub = "") => {
+    const p = Math.max(0, Math.min(100, Number(v) || 0)), c = p > 90 ? "#ff453a" : p > 75 ? "#ff9f0a" : "#30d158";
+    return `<div><svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="26" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="7"/><circle cx="32" cy="32" r="26" fill="none" stroke="${c}" stroke-width="7" stroke-linecap="round" stroke-dasharray="${(p * 1.634).toFixed(1)} 164" transform="rotate(-90 32 32)"/></svg><b>${Math.round(p)}<i>%</i></b><span>${label}</span><em>${esc(sub)}</em></div>`;
+  };
+  return `<div class="gz"><div class="gz-h">This PC</div><div class="gz-g">${g("CPU", y.cpu)}${g("Memory", y.mem)}${g("Disk", y.disk, y.diskFree ? `${Math.round(y.diskFree / 2 ** 30)} GB free` : "")}</div></div>`;
+}

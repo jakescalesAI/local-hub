@@ -15,7 +15,7 @@
 // ============================================================================
 
 import * as Stream from "./stream.js?v=4";
-import * as Panel from "./panel.js?v=5";
+import * as Panel from "./panel.js?v=6";
 import * as Files from "./files.js?v=1";
 import * as Remote from "./remote.js?v=2";
 import * as Mirror from "./mirror.js?v=2";
@@ -1143,7 +1143,7 @@ function paintHomeWidgets() {
   if (!box) return;
   const sizes = {};
   for (const x of SETTINGS?.widgets?.tv || []) { const id = x?.id || x?.[0]; if (id && id !== "clock" && id !== "date" && id !== "world-clock" && WIDGETS[id]) sizes[id] = x?.size || x?.[1] || "s"; }
-  const html = (prefs.homePlayer === false ? "" : Panel.player(MEDIA, true)) + Object.keys(sizes).slice(0, 3).map((id) => widgetCard(id, sizes[id])).join("");
+  const html = (prefs.homePlayer === false ? "" : Panel.player(MEDIA, true)) + Object.keys(sizes).slice(0, 2).map((id) => widgetCard(id, SYS && prefs.homeSys !== false && sizes[id] === "l" ? "m" : sizes[id])).join("") + (SYS && prefs.homeSys !== false ? Panel.gauges(SYS) : "");
   if (box._html !== html) { box.innerHTML = html; box._html = html; }
   box.querySelectorAll(".mp-b").forEach((n) => n.classList.toggle("sel", S.zone === "player" && !S.overlay && S.view === "home" && n.dataset.w === S.mp));
 }
@@ -1178,13 +1178,16 @@ function setBrightness(v) {
 let MEDIA = {};
 let mediaTimer = null;
 // With nothing on the TV itself, it's what the computer (or your Spotify) is playing, and the buttons work that.
-let HUB_MEDIA = null;
+let HUB_MEDIA = null, SYS = null, sysAt = 0;
 async function readHubMusic() {
   if (!IN_HUB || document.hidden || (S.overlay && S.overlay !== "wpanel") || S.view !== "home") return;
   try { const r = await fetch("/api/music", { cache: "no-store" }); const n = r.ok ? (await r.json()).now : null; HUB_MEDIA = n && n.from !== "tv" && n.title ? n : null; } catch { HUB_MEDIA = null; }
+  // The computer's card, a few times a minute: the TV has better things to do.
+  let sysNew = false;
+  if (prefs.homeSys !== false && Date.now() - sysAt > 20_000) { sysAt = Date.now(); try { const r = await fetch("/api/desk/system", { cache: "no-store" }); SYS = r.ok ? await r.json() : null; sysNew = true; } catch { SYS = null; } }
   const was = JSON.stringify(MEDIA);
   readMedia();
-  if (JSON.stringify(MEDIA) !== was) { paintHomeWidgets(); if (S.overlay === "wpanel") paintWpanel(); }
+  if (sysNew || JSON.stringify(MEDIA) !== was) { paintHomeWidgets(); if (S.overlay === "wpanel") paintWpanel(); }
 }
 setInterval(readHubMusic, 5000);
 setTimeout(readHubMusic, 2500);
@@ -1230,6 +1233,7 @@ function wpHTML() {
     + pill("homeclock", WP_IC.clock, "Home clock", prefs.homeClock || CLOCKS[0], (prefs.homeClock || CLOCKS[0]) !== "Off")
     + pill("homeweather", WP_IC.cloud, "Home weather", homeWeatherOn() ? "On" : "Off", homeWeatherOn())
     + pill("homeplayer", Panel.IC.note, "Home player", prefs.homePlayer === false ? "Off" : "On", prefs.homePlayer !== false)
+    + pill("homesys", Panel.IC.gauge, "This PC", prefs.homeSys === false ? "Off" : "On", prefs.homeSys !== false)
     + `<div class="wpx">${wx}</div>`;
 }
 function paintWpanel() {
@@ -1308,6 +1312,7 @@ function wpKey(name) {
     return paintWpanel();
   }
   if (id === "timer") { cycleSleepTimer(); return paintWpanel(); }
+  if (id === "homesys") { prefs.homeSys = prefs.homeSys === false; sysAt = 0; savePrefs(); paintHomeWidgets(); readHubMusic(); return paintWpanel(); }
   if (id === "homeplayer") { prefs.homePlayer = prefs.homePlayer === false; savePrefs(); paintHomeWidgets(); return paintWpanel(); }
   if (id === "homeclock") {
     prefs.homeClock = CLOCKS[(CLOCKS.indexOf(prefs.homeClock || CLOCKS[0]) + 1) % CLOCKS.length];

@@ -96,6 +96,7 @@ public class MainActivity extends Activity {
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
         prefs = new Prefs(this);
+        if (savedInstanceState == null) takeButton(getIntent());
         // The opening (the LocalHub logo) is a loading screen for a fresh start. Coming back is not one: Android
         // rebuilding LocalHub after closing it behind another app, Home, or anything within half an hour.
         quickStart = savedInstanceState != null
@@ -322,13 +323,29 @@ public class MainActivity extends Activity {
      *  has been left: a page loaded after that (Fire OS dropping the page's renderer behind a big app) is a return. */
     boolean quickStart;
 
+    /** A remote button pressed over another app (KeyDaemon). If Fire OS had closed LocalHub, it waits for the page. */
+    private volatile String pendingButton;
+    private void takeButton(Intent intent) {
+        String button = intent == null ? null : intent.getStringExtra("button");
+        if (button == null) return;
+        intent.removeExtra("button");
+        pendingButton = button;
+        if (HomeWatchService.pageReady && web != null) doButton();
+    }
+
+    /** The page is drawn. */
+    void doButton() {
+        String b = pendingButton;
+        pendingButton = null;
+        if (b != null) js("window.haven&&haven.button&&haven.button(" + org.json.JSONObject.quote(b) + ")");
+    }
+
     /** Home, from another app or from LocalHub itself, lands on the home screen: first row, nothing open. */
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
-        String button = intent == null ? null : intent.getStringExtra("button");
-        if (button != null) { intent.removeExtra("button"); js("window.haven&&haven.button&&haven.button(" + org.json.JSONObject.quote(button) + ")"); }
+        takeButton(intent);
         if (intent != null && intent.getBooleanExtra("fromHomeKey", false)) js("window.haven&&haven.home&&haven.home()");
     }
 
