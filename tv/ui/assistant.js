@@ -127,7 +127,20 @@ export function init(opts = {}) {
   // Pointer and touch still work (the laptop preview, a phone): a click moves focus there and presses it.
   R.field.addEventListener('submit', e => { e.preventDefault(); sendInput() })
   R.input.addEventListener('focus', () => { S.away = false; setFocus('bar', 'input'); native('setTyping', true) })
-  R.input.addEventListener('blur', () => native('setTyping', false))
+  R.input.addEventListener('blur', () => { native('setTyping', false); clearTimeout(S.dictated) })
+  // What the remote's mic dictates lands a phrase at a time (typing on the TV's keyboard is a letter at a time).
+  // A moment after the words stop coming, it sends by itself, as if OK had been pressed.
+  let was = ''
+  R.input.addEventListener('input', () => {
+    const now = R.input.value
+    const grew = now.length - was.length
+    was = now
+    if (grew >= 4 || (S.dictating && grew > 0)) {
+      S.dictating = true
+      clearTimeout(S.dictated)
+      S.dictated = setTimeout(() => { S.dictating = false; was = ''; if (R.input.value.trim()) { sendInput(); native('keyboard', false) } }, 1300)
+    } else if (grew !== 0 && !S.dictating) clearTimeout(S.dictated)
+  })
   // Keys the shell didn't take while the field has the browser's focus (arrows, Esc). Enter is the form's submit.
   R.input.addEventListener('keydown', e => {
     if (e.defaultPrevented) return
@@ -485,6 +498,7 @@ function note(msg, ms = 6000) {
 }
 
 function sendInput() {
+  clearTimeout(S.dictated); S.dictating = false
   const t = R.input.value.trim()
   if (!t) return
   R.input.blur()
@@ -890,7 +904,7 @@ async function send(text) {
     const res = await fetch('/api/chat/send', {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-hub': '1' },
-      body: JSON.stringify({ text, client: S.client, sessionId: S.conv || undefined, tab: 'tv', tabTitle: 'TV' }),
+      body: JSON.stringify({ text, client: S.client, sessionId: S.conv || undefined, tab: 'tv', tabTitle: 'TV', model: O.model?.() || undefined }),
       signal: ctrl.signal,
     })
     if (!res.ok || !res.body) {
@@ -1245,7 +1259,7 @@ export async function voice() {
 function dictate() {
   S.away = false
   setFocus('bar', 'input')
-  note('Press OK, then hold the remote’s mic button and speak. OK again sends it.', 10000)
+  note('Press OK, then hold the remote’s mic button and speak. It sends when you stop.', 10000)
 }
 
 function cancelVoice() {

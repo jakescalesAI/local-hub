@@ -1025,6 +1025,18 @@ async function refreshLive() {
 }
 
 // "Hey LocalHub": the laptop's microphone listens for it (tv/listen.py). Off until it's turned on here.
+// The model the TV's Assistant answers with: one of those chosen in LocalHub (its chat's list).
+function chatModel() {
+  const ms = LIVE.info?.models || [];
+  return ms.some(([id]) => id === prefs.modelId) ? prefs.modelId : LIVE.info?.defaultModel || prefs.modelId || "";
+}
+function modelRow() {
+  const ms = LIVE.info?.models || [];
+  const name = (ms.find(([id]) => id === chatModel()) || [])[1] || "LocalHub's default";
+  return { id: "model", t1: "Model", t2: ms.length > 1 ? "The ones chosen in LocalHub · OK picks the next" : "The one chosen in LocalHub", v: name };
+}
+const SETUP_URL = "https://trylocalhub.com/setup";
+
 function listenRow() {
   const l = LIVE.status?.listen || {};
   const t2 = !l.on ? "Say it near the laptop: its microphone listens, nothing leaves it"
@@ -1282,9 +1294,10 @@ function settingsModel() {
     ...hubRows,
     { key: "ttsVoice", t1: "Assistant voice", t2: "Kokoro, on the laptop: a natural voice", values: ["Heart", "Bella", "Nicole", "Michael", "Fenrir", "Emma", "George"] },
     { key: "voice", t1: "Voice", t2: { Off: "The assistant only writes", "Read answers": "Answers are read aloud", Conversation: "Talk back and forth: it answers aloud, then it's your turn" }[voicePref()], values: ["Off", "Read answers", "Conversation"] },
-    ...(IN_HUB ? [listenRow()] : []),
+    ...(IN_HUB ? [listenRow(), modelRow()] : []),
     ...(!NATIVE ? [{ key: "help", t1: "Keyboard help", t2: "The remote's keys, along the top", toggle: true }] : []),
     { group: "About" },
+    { id: "setup", t1: "Set up LocalHub", t2: "trylocalhub.com/setup · opens here, in the TV's browser", v: "" },
     { info: true, t1: "Version", t2: NATIVE ? "LocalHub TV for Fire TV" : "LocalHub TV on this laptop", v: NATIVE ? st.version || "?" : LIVE.status?.version ? `LocalHub ${LIVE.status.version}` : "LocalHub" },
   ];
 }
@@ -1344,6 +1357,8 @@ function settingsActivate() {
   else if (it.id === "wall") return openWallPicker();
   else if (it.id === "conn") return openConnMenu();
   else if (it.id === "listen") return toggleListen();
+  else if (it.id === "model") { const ms = LIVE.info?.models || []; if (ms.length) { const i = ms.findIndex(([id]) => id === chatModel()); prefs.modelId = ms[(i + 1) % ms.length][0]; } }
+  else if (it.id === "setup") { closeSettings(); S.backToSettings = true; return Stream.open({ id: "url:setup", name: "Set up LocalHub", url: SETUP_URL, kind: "site", bg: "#26272d", fg: "#ffffff", letter: "L" }); }
 
   else if (it.id === "unhide") return saveTv({ hidden: null }, "Every app is back").then(renderSettings);
   else if (it.id === "reorder") return saveTv({ apps: null }, "Apps are back in recent order").then(renderSettings);
@@ -2765,13 +2780,13 @@ async function boot() {
     await syncHub();
     window.__boot.hub = Math.round(performance.now());
     HUB_READY.resolve?.();
-    Stream.init({ toast, native, NATIVE, setOverlay, closed: () => { S.zone = "grid"; setOverlay(null); window.focus(); }, changed: () => window.haven.appsChanged() });
+    Stream.init({ toast, native, NATIVE, setOverlay, closed: () => { S.zone = "grid"; setOverlay(null); window.focus(); if (S.backToSettings) { S.backToSettings = false; openSettings(); } }, changed: () => window.haven.appsChanged() });
     if (!PREVIEW) loadSaverPhotos();
     S.shelfId = null;
     renderGrid();
     if (PREVIEW) { setInterval(syncHub, 30_000); return paintChip(); }
     // The TV is its own light app: the hub's chat.js and browser.js stay on the laptop.
-    Assistant = await import("./assistant.js?v=7").catch((e) => { console.warn("assistant", e); return null; });
+    Assistant = await import("./assistant.js?v=8").catch((e) => { console.warn("assistant", e); return null; });
     Assistant?.init({
       el: $("#assistantView"), toast, native, NATIVE,
       intercept: (t) => window.HubChatHooks?.intercept?.(t) || false,
@@ -2779,6 +2794,7 @@ async function boot() {
       openUrl: (url, name) => { let host = ""; try { host = new URL(url).hostname.replace(/^www\./, ""); } catch { /* not a URL */ } openInStream({ id: `url:${url}`, name: name || host || "Website", url, kind: "site", bg: "#26272d", fg: "#ffffff", letter: (name || host || "W").slice(0, 1).toUpperCase() }); },
       appArt: (id) => { const a = APPS.find((x) => x.id === id); return a ? iconHTML(a) : ""; },
       speechMode: () => speakMode(),
+      model: () => (prefs.modelId && (!LIVE.info?.models || LIVE.info.models.some(([id]) => id === prefs.modelId)) ? prefs.modelId : ""),
       voiceMode: () => voicePref() === "Conversation",
       onActivity: (on) => $("#rail").classList.toggle("busy", Boolean(on)),
     });
