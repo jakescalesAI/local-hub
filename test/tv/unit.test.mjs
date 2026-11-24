@@ -2,6 +2,7 @@
 // Runs offline with invented values: no real Alexa, no Whisper, no chat.
 //
 //   node --test test/tv/
+import fs from 'node:fs'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import http from 'node:http'
@@ -225,4 +226,19 @@ test('a slow answer is promised to the TV and delivered there', async () => {
   } finally {
     globalThis.setTimeout = realTimeout
   }
+})
+
+test('every script and stylesheet the TV page uses is packed into the Fire TV app', () => {
+  const read = f => fs.readFileSync(new URL(`../../${f}`, import.meta.url), 'utf8')
+  const packed = new Set([.../include\(("index\.html".*)\)/.exec(read('tv/android/app/build.gradle.kts'))[1].matchAll(/"([^"]+)"/g)].map(m => m[1]))
+  const used = new Set(), todo = ['index.html']
+  for (const f of todo) {
+    for (const [, name] of read(`tv/ui/${f}`).matchAll(/["'(](?:\.\/|\/tv\/)?([a-z]+\.(?:js|css))(?:\?v=\d+)?["')]/g)) {
+      if (used.has(name) || !fs.existsSync(new URL(`../../tv/ui/${name}`, import.meta.url))) continue
+      used.add(name)
+      todo.push(name)
+    }
+  }
+  assert.ok(used.has('app.js') && used.has('panel.js'))
+  assert.deepEqual([...used].filter(f => !packed.has(f)), [])
 })
