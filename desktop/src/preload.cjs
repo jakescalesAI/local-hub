@@ -10,6 +10,7 @@ if (location.protocol === 'file:') {
     closeLauncher: call('close-launcher'),
     retry: call('retry'),
     startBundled: call('start-bundled'),
+    chooseHubFolder: call('choose-hub-folder'),
     getSettings: call('get-settings'),
     saveSettings: call('save-settings'),
   })

@@ -1,9 +1,9 @@
 // Wires the pieces together. Each piece owns its own behaviour; this file only connects them.
-import { BrowserWindow, Menu, Notification, app, clipboard, ipcMain, session, shell } from 'electron'
+import { BrowserWindow, Menu, Notification, app, clipboard, dialog, ipcMain, session, shell } from 'electron'
 import path from 'node:path'
 
 import { APP_NAME } from './app-name.js'
-import { resolveServerEntry, spawnBundledHub, spawnQuitGuard } from './hub-bundle.js'
+import { findNode, isHubFolder, resolveServerEntry, spawnBundledHub, spawnQuitGuard } from './hub-bundle.js'
 import { HubConnection } from './hub-connection.js'
 import { Hotkey } from './hotkey.js'
 import { Launcher } from './launcher.js'
@@ -43,15 +43,18 @@ function start() {
     portHolders: platform.portHolders,
     startTimeoutMs: Number(process.env.LOCAL_HUB_START_TIMEOUT_MS) || undefined,
     spawnHub: port => {
+      const { hubFolder } = settings.values
       const entry = resolveServerEntry({
         isPackaged: app.isPackaged,
         resourcesPath: process.resourcesPath,
         appPath: app.getAppPath(),
         userData,
         version: app.getVersion(),
+        hubFolder,
       })
       if (!entry) return null
-      return spawnBundledHub({ entry, port, logFile, spawnOptions: platform.spawnOptions(), cleanEnv: app.isPackaged })
+      const ownFolder = hubFolder && entry === path.join(hubFolder, 'server.mjs')
+      return spawnBundledHub({ entry, port, logFile, spawnOptions: platform.spawnOptions(), cleanEnv: app.isPackaged && !ownFolder, node: ownFolder ? findNode() : null })
     },
   })
   connection.on('child-error', error => console.error('hub process:', error.message))
@@ -88,7 +91,7 @@ function start() {
     if (settingsWindow && !settingsWindow.isDestroyed()) return settingsWindow.show()
     settingsWindow = new BrowserWindow({
       width: 440,
-      height: 340,
+      height: 440,
       resizable: false,
       minimizable: false,
       maximizable: false,
@@ -122,20 +125,26 @@ function start() {
   handle('close-launcher', () => launcher.close())
   handle('retry', () => connection.retry())
   handle('start-bundled', () => connection.useBundled())
-  handle('get-settings', () => ({ port: connection.port, hotkey: hotkey.current ?? settings.values.hotkey }))
+  handle('get-settings', () => ({ port: connection.port, hotkey: hotkey.current ?? settings.values.hotkey, hubFolder: settings.values.hubFolder }))
+  handle('choose-hub-folder', async () => {
+    const { canceled, filePaths } = await dialog.showOpenDialog(settingsWindow, { title: 'Choose the Hub folder', properties: ['openDirectory'], defaultPath: settings.values.hubFolder || undefined })
+    return canceled ? null : filePaths[0] ?? null
+  })
   handle('save-settings', async patch => {
+    const changesFolder = patch?.hubFolder !== undefined && patch.hubFolder !== settings.values.hubFolder
     const changesPort = patch?.port !== undefined && patch.port !== connection.port
     // Checked first, so a refused save changes nothing.
     if (changesPort && !validPort(patch.port)) return { ok: false, error: 'The port must be a number from 1 to 65535.' }
+    if (changesFolder && patch.hubFolder !== '' && !(typeof patch.hubFolder === 'string' && isHubFolder(patch.hubFolder))) return { ok: false, error: 'That folder has no Hub in it. Choose the one with server.mjs.' }
     if (patch?.hotkey !== undefined) {
       const applied = typeof patch.hotkey === 'string' ? hotkey.set(patch.hotkey.trim()) : { ok: false, error: 'No hotkey given.' }
       if (!applied.ok) return { ok: false, error: applied.error }
       settings.update({ hotkey: applied.hotkey })
     }
-    if (changesPort) {
-      settings.update({ port: patch.port })
-      await connection.setPort(patch.port)
-    }
+    if (changesFolder) settings.update({ hubFolder: patch.hubFolder })
+    if (changesPort) settings.update({ port: patch.port })
+    // Our own Hub starts again from the new place. One started elsewhere is left running.
+    if (changesPort || (changesFolder && (connection.ownsHub || connection.state.status !== 'online'))) await connection.setPort(settings.values.port)
     trayControls.refresh()
     return { ok: true }
   })

@@ -2,7 +2,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
-export const DEFAULTS = Object.freeze({ port: 3100, hotkey: 'Ctrl+Alt+Space', window: null })
+export const DEFAULTS = Object.freeze({ port: 3100, hotkey: 'Ctrl+Alt+Space', window: null, hubFolder: '' })
 
 export const validPort = value => Number.isInteger(value) && value >= 1 && value <= 65535
 
@@ -10,6 +10,7 @@ function clean(saved) {
   const out = { ...DEFAULTS }
   if (validPort(saved?.port)) out.port = saved.port
   if (typeof saved?.hotkey === 'string' && saved.hotkey.trim()) out.hotkey = saved.hotkey.trim()
+  if (typeof saved?.hubFolder === 'string' && path.isAbsolute(saved.hubFolder)) out.hubFolder = saved.hubFolder
   if (saved?.window && typeof saved.window === 'object') out.window = saved.window
   return out
 }

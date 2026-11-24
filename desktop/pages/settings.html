@@ -16,6 +16,14 @@
       Hub port
       <input id="port" type="number" min="1" max="65535" required>
     </label>
+    <div class="field">
+      <span id="folder-label">Hub folder</span>
+      <input id="folder" type="text" readonly aria-labelledby="folder-label" placeholder="Built in">
+      <div class="actions">
+        <button type="button" id="choose">Choose folder</button>
+        <button type="button" id="builtin">Use built in</button>
+      </div>
+    </div>
     <p class="error" id="error" role="alert"></p>
     <div class="actions">
       <button class="primary" type="submit">Save</button>

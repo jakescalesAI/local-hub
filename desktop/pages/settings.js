@@ -1,5 +1,6 @@
 const hotkeyInput = document.getElementById('hotkey')
 const portInput = document.getElementById('port')
+const folderInput = document.getElementById('folder')
 const errorLine = document.getElementById('error')
 
 const NAMED_KEYS = {
@@ -39,14 +40,22 @@ hotkeyInput.addEventListener('keydown', event => {
 document.getElementById('form').addEventListener('submit', async event => {
   event.preventDefault()
   errorLine.textContent = ''
-  const result = await window.hubDesktop.saveSettings({ hotkey: hotkeyInput.value, port: Number(portInput.value) })
+  const result = await window.hubDesktop.saveSettings({ hotkey: hotkeyInput.value, port: Number(portInput.value), hubFolder: folderInput.value })
   errorLine.textContent = result.ok ? '' : result.error
   if (result.ok) window.close()
 })
 
+document.getElementById('choose').addEventListener('click', async () => {
+  errorLine.textContent = ''
+  const folder = await window.hubDesktop.chooseHubFolder()
+  if (folder) folderInput.value = folder
+})
+document.getElementById('builtin').addEventListener('click', () => { folderInput.value = '' })
+
 document.getElementById('close').addEventListener('click', () => window.close())
 
-window.hubDesktop.getSettings().then(({ hotkey, port }) => {
+window.hubDesktop.getSettings().then(({ hotkey, port, hubFolder }) => {
+  folderInput.value = hubFolder
   hotkeyInput.value = hotkey
   portInput.value = port
 })
