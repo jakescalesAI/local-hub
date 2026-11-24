@@ -1,4 +1,4 @@
-/* Before the hub answers: LocalHub's glass tile, as its opening has it. */
+/* Before the hub answers: the glass tile, as its opening has it. */
 :root { --bg: #000; --text: #fff; --muted: rgba(255, 255, 255, .6); --line: rgba(255, 255, 255, .14); --panel: rgba(255, 255, 255, .08); --accent: #f2f2f5; --accent-text: #000; color-scheme: dark; }
 body { background: #000; }
 .centre { text-align: center; }
