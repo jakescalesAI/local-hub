@@ -6,7 +6,7 @@
 //
 //   GET  /api/browser/status[?profile=]      -> { profiles, current, running, tabs, active, controller, ask, dialog, ... }
 //   GET  /api/browser/stream?profile=        -> text/event-stream: frame {jpg(base64), meta} | state {...} | log {entry}
-//   POST /api/browser/input  { profile, events: [...] }        the user's mouse/wheel/key/text input (from the page)
+//   POST /api/browser/input  { profile, events: [...] }        the user's mouse/wheel/key/text input (from the page); snap {x,y,dir} and where for the TV remote
 //   POST /api/browser/act    { profile?, act, ... }            navigation, tabs, control, and every agent action
 //   GET  /api/browser/screenshot[?profile=&w=&format=png|jpeg&quality=]  -> image of the active tab
 //   GET  /api/browser/snapshot[?profile=]    -> { url, title, items: [{ ref, role, name, ... }], text }
@@ -26,6 +26,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { hubConfig, PORT } from './config.mjs'
 import { IS_MAC, IS_WIN } from './platform.mjs'
+import { SNAP_JS } from './page-snap.mjs'
 
 // Your Chrome profiles (hub.json browser.profiles); each keeps its own sign-ins under data/browser/<id>.
 const PROFILES = hubConfig().browser.profiles
@@ -941,6 +942,16 @@ setInterval(async () => {
         }, s)
       } else if (e.t === 'text') {
         await inst.cdp.send('Input.insertText', { text: String(e.text || '') }, s)
+      } else if (e.t === 'snap') {
+        // The TV remote's arrows: the nearest link, button or field that way from (x, y), in page pixels, hovered.
+        if (!['up', 'down', 'left', 'right'].includes(e.dir)) throw err(400, 'snap needs dir: up, down, left or right')
+        const r = await evalPage(inst, SNAP_JS(+e.x || 0, +e.y || 0, e.dir)).catch(() => null)
+        out.target = r && Number.isFinite(r.cx) ? { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.w), h: Math.round(r.h), cx: Math.round(r.cx), cy: Math.round(r.cy) } : null
+        if (out.target) await inst.cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: out.target.cx, y: out.target.cy, button: 'none', buttons: 0, modifiers: 0 }, s)
+      } else if (e.t === 'where') {
+        // How far down the page is (after a wheel): lets the TV carry on link to link past the screen's edge.
+        await new Promise(r => setTimeout(r, 80))
+        out.scroll = await evalPage(inst, `({ y: Math.round(scrollY), max: Math.max(0, document.documentElement.scrollHeight - innerHeight) })`).catch(() => null)
       }
     }
     return out

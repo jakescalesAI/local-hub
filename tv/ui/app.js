@@ -2887,7 +2887,7 @@ async function boot() {
     renderGrid();
     if (PREVIEW) { setInterval(syncHub, 30_000); return paintChip(); }
     // The TV is its own light app: the hub's chat.js and browser.js stay on the laptop.
-    Assistant = await import("./assistant.js?v=11").catch((e) => { console.warn("assistant", e); return null; });
+    Assistant = await import("./assistant.js?v=15").catch((e) => { console.warn("assistant", e); return null; });
     Assistant?.init({
       el: $("#assistantView"), toast, native, NATIVE,
       intercept: (t) => window.HubChatHooks?.intercept?.(t) || false,

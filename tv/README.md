@@ -86,6 +86,11 @@ brings up a sheet with a real input, so a Fire TV shows its keyboard; on a lapto
 `"tv": { "stream": { "zoom": 1.5, "quality": 80, "chrome": { "window": true } } }` in hub.json changes
 the zoom, the JPEG quality, or shows Chrome as a window on the laptop (about half the frame rate).
 
+**The assistant's browser** (the agent's own Chrome, `browser.mjs`) opens full screen from a browser card
+in the Assistant (`ui/agentview.js`). Its arrows jump link to link with a ring round what OK presses: the hub finds
+the nearest link, button or field that way (`page-snap.mjs`, shared with the Browser's links mode), and with nothing
+more that way Up and Down scroll and carry on. Menu swaps to a free pointer, and Back gives the browser back to the agent.
+
 ## Put it on the TV
 
 The easy way: in LocalHub on the laptop, open **Home → TV → Set up a TV** (or the TV tile, or

@@ -33,7 +33,7 @@
 
 const MAX_ITEMS = 60
 const MAX_ACT_LINES = 4
-import * as AgentView from './agentview.js?v=2'
+import * as AgentView from './agentview.js?v=6'
 const BROWSER = 'mcp__hub-browser__browser_'
 const SUGGEST = ['What’s on my calendar today?', 'Is anything down?', 'What’s the weather?', 'Open YouTube']
 
