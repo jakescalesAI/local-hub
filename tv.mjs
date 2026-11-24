@@ -7,13 +7,14 @@
 //   POST /api/tv/transcribe  <audio>    -> { ok, text, ms } speech to text with Whisper, on this computer
 //   POST /api/voice/transcribe <audio>  the same, for the hub's chat mic (the dashboard and the TV)
 //   POST /api/voice/warm                 -> { whisper } start Whisper now, while someone is still talking
-//   GET  /api/tv/status                 -> { whisper, alexa, tvs }
+//   GET  /api/tv/status                 -> { whisper, alexa, tvs, tv: { on, setUp, apps } }
+//   POST /api/tv/apps  { apps }          the Fire TV app's app names, for the desktop app's tray menu
 //   GET  /api/tv/listen                 -> { on, state, mic } "Hey LocalHub" from this computer's mic (tv/listen.py)
 //   POST /api/tv/listen  { on }         turns it on or off (kept in data/tv-listen.json)
 //   POST /api/tv/listen/now             the remote's mic button: listen for a request at once -> { ok }
 //
 // Commands: { type: 'launch', app } · { type: 'input', name } · { type: 'home' } · { type: 'saver' } ·
-// { type: 'sleep' } · { type: 'say', text } · { type: 'answer', text, heard?, from? } ·
+// { type: 'open', url } (a web page, in the TV's browser) · { type: 'sleep' } · { type: 'say', text } · { type: 'answer', text, heard?, from? } ·
 // { type: 'listen', stage: 'wake' | 'again' | 'working' | 'heard' | 'off', text? } ("Hey LocalHub", step by step)
 //
 // Alexa ("Alexa, ask local hub to open Netflix") reaches a second listener, 127.0.0.1:<tv.alexa.port>,
@@ -43,7 +44,7 @@ const MAX_AUDIO = 8 * 2 ** 20
 const COMMAND_TTL = 90e3
 const MAX_WAIT = 30e3
 const TV_SEEN = 60e3
-const TYPES = new Set(['launch', 'input', 'home', 'saver', 'sleep', 'say', 'answer', 'listen'])
+const TYPES = new Set(['launch', 'input', 'home', 'saver', 'sleep', 'say', 'answer', 'listen', 'open'])
 const LISTEN_STAGES = new Set(['wake', 'again', 'working', 'heard', 'off'])
 
 const tvConfig = () => hubConfig().tv || {}
@@ -68,6 +69,8 @@ export function create({ here }) {
   let lastPoll = 0
   let lastTvPoll = 0 // a real TV (the Fire TV app), not the TV page open on a laptop
 
+  const known = knownTv(here)
+  const tvOn = () => Date.now() - lastTvPoll < TV_SEEN
   const tvsOnline = () => waiters.size > 0 || Date.now() - lastPoll < TV_SEEN
 
   function queue(raw) {
@@ -135,6 +138,14 @@ export function create({ here }) {
         waiters.add(w)
       })
       return true
+    }
+
+    if (p === '/api/tv/apps' && req.method === 'POST') {
+      let body
+      try { body = JSON.parse((await readRaw(req, 64 * 1024)).toString('utf8') || '{}') } catch { return send(res, 400, { error: 'body is not valid JSON' }), true }
+      if (!Array.isArray(body?.apps)) return send(res, 400, { error: 'apps must be a list of names' }), true
+      known.save(cleanApps(body.apps))
+      return send(res, 200, { ok: true }), true
     }
 
     if (p === '/api/tv/command' && req.method === 'POST') {
@@ -205,6 +216,7 @@ export function create({ here }) {
         whisper: whisper.state(),
         alexa: { on: !!alexa.listening(), port: a.port || 3109, configured: !!a.skillId },
         tvs: tvsOnline(),
+        tv: { on: tvOn(), setUp: tvOn() || !!known.get(), apps: known.get()?.apps || [] },
         listen: listener.status(),
         version: hubVersion(here),
       }), true
@@ -270,11 +282,46 @@ function readRaw(req, limit) {
 
 const str = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '')
 
+// Names only, as they go into a menu: printable, short, each once, in order.
+export function cleanApps(list) {
+  const names = list.map(n => str(n, 60).replace(/[\u0000-\u001f\u007f]/g, '').trim()).filter(Boolean)
+  return [...new Set(names)].sort((a, b) => a.localeCompare(b)).slice(0, 60)
+}
+
+// The TV this hub has met and the apps it has, kept so they're known while the TV is off.
+function knownTv(here) {
+  const file = path.join(here, 'data', 'tv-apps.json')
+  let tv
+  const get = () => {
+    if (tv === undefined) {
+      try { const t = JSON.parse(fs.readFileSync(file, 'utf8')); tv = Array.isArray(t?.apps) ? t : null } catch { tv = null }
+    }
+    return tv
+  }
+  return {
+    get,
+    save(apps) {
+      if (get() && get().apps.join('\n') === apps.join('\n')) return
+      tv = { apps }
+      try { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, JSON.stringify(tv)) } catch {}
+    },
+  }
+}
+
+// A link the TV may open: an ordinary web page, nothing else (no file:, javascript: or sign-in details).
+function webUrl(raw) {
+  try {
+    const u = new URL(str(raw, 2000))
+    return /^https?:$/.test(u.protocol) && !u.username && !u.password ? u.href : null
+  } catch { return null }
+}
+
 export function cleanCommand(raw) {
   if (!raw || typeof raw !== 'object' || !TYPES.has(raw.type)) return null
   switch (raw.type) {
     case 'launch': { const app = str(raw.app, 80); return app ? { type: 'launch', app } : null }
     case 'input': { const name = str(raw.name || raw.id, 80); return name ? { type: 'input', name } : null }
+    case 'open': { const url = webUrl(raw.url); return url ? { type: 'open', url } : null }
     case 'say': { const text = str(raw.text, 2000); return text ? { type: 'say', text } : null }
     case 'listen': return LISTEN_STAGES.has(raw.stage) ? { type: 'listen', stage: raw.stage, text: str(raw.text, 1000) } : null
     case 'answer': {

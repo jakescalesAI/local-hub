@@ -8,7 +8,7 @@ import http from 'node:http'
 import crypto from 'node:crypto'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { create, cleanCommand, quickCommand, verifyAlexa, chainUrlOk, _createAlexa } from '../../tv.mjs'
+import { create, cleanApps, cleanCommand, quickCommand, verifyAlexa, chainUrlOk, _createAlexa } from '../../tv.mjs'
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
 const SKILL = 'amzn1.ask.skill.invented-0000'
@@ -44,6 +44,16 @@ test('commands are cleaned and limited to known types', () => {
   assert.deepEqual(cleanCommand({ type: 'listen', stage: 'heard', text: ' open netflix ' }), { type: 'listen', stage: 'heard', text: 'open netflix' })
   assert.equal(cleanCommand({ type: 'listen', stage: 'record everything' }), null)
   assert.equal(cleanCommand({ type: 'say', text: 'x'.repeat(5000) }).text.length, 2000)
+})
+
+test('a link sent to the TV is a plain web page', () => {
+  assert.deepEqual(cleanCommand({ type: 'open', url: ' https://example.com/a?b=1 ' }), { type: 'open', url: 'https://example.com/a?b=1' })
+  for (const url of ['javascript:alert(1)', 'file:///c:/x', 'https://me:pw@example.com/', 'not a link', '', null]) assert.equal(cleanCommand({ type: 'open', url }), null, String(url))
+})
+
+test('app names are cleaned for a menu', () => {
+  assert.deepEqual(cleanApps([' YouTube ', 'Netflix', 'Netflix', '', 7, 'A\u0007B']), ['AB', 'Netflix', 'YouTube'])
+  assert.equal(cleanApps(Array.from({ length: 200 }, (_, i) => 'App ' + i)).length, 60)
 })
 
 test('quick commands skip the model', () => {

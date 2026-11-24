@@ -1860,6 +1860,15 @@ function say(text) {
 
 
 /* ── laptop → TV commands: Alexa, the agent's tv_control tool ──────────── */
+// The app names for the desktop app's tray menu (Open an app). A laptop's TV page has no apps of its own to tell.
+let reported = "";
+function reportApps() {
+  if (!NATIVE || !IN_HUB || PREVIEW) return;
+  const body = JSON.stringify({ apps: APPS.map((a) => a.name) });
+  if (body === reported) return;
+  reported = body;
+  fetch("/api/tv/apps", { method: "POST", headers: { "content-type": "application/json", "x-hub": "1" }, body }).then((r) => { if (!r.ok) reported = ""; }).catch(() => { reported = ""; });
+}
 let commandLoop = false;
 async function startCommandLoop() {
   if (commandLoop || !IN_HUB) return;
@@ -1879,6 +1888,8 @@ async function startCommandLoop() {
 function runCommand(cmd) {
   if (!cmd || typeof cmd !== "object") return;
   if (cmd.type === "listen") return heardMic(cmd);
+  // Behind another app (Netflix is up): LocalHub comes forward first.
+  if (NATIVE && document.hidden && ["home", "launch", "open", "saver"].includes(cmd.type)) native("toFront");
   if (S.overlay === "saver") stopSaver();
   if (S.overlay === "cc") closeCC();
   if (S.overlay === "settings") closeSettings();
@@ -1889,7 +1900,12 @@ function runCommand(cmd) {
     const input = INPUTS.find((i) => i.id === cmd.id || i.name.toLowerCase().includes(want) || (i.sub || "").toLowerCase().includes(want));
     return input ? runIntent({ type: "input", input }) : toast("That input isn't here");
   }
-  if (cmd.type === "home") return runIntent({ type: "home" });
+  if (cmd.type === "open") {
+    let host = "";
+    try { host = new URL(cmd.url).hostname.replace(/^www\./, ""); } catch { return; }
+    return openInStream({ id: `url:${cmd.url}`, name: host, url: cmd.url, kind: "site", bg: "#26272d", fg: "#ffffff", letter: host.slice(0, 1).toUpperCase() });
+  }
+  if (cmd.type === "home") { if (S.view && S.view !== "home") showView("home"); return runIntent({ type: "home" }); }
   if (cmd.type === "saver") return startSaver();
   if (cmd.type === "sleep") return sleepNow();
   if (cmd.type === "say") return say(String(cmd.text || ""));
@@ -1994,7 +2010,7 @@ window.haven = {
   resumed: () => { endLaunch(); whenDrawn(); },
   // Until the first key press, the list filling in (the TV's apps arrive a moment after the page) keeps focus on
   // the first app; after it, focus stays on the app you were on.
-  appsChanged: () => { const keep = S.touched ? ITEMS[S.i]?.id : null; loadItems(); S.i = Math.max(0, ITEMS.findIndex((x) => x.id === keep)); S.shelfId = null; renderGrid(); APPS_READY.resolve?.(); },
+  appsChanged: () => { const keep = S.touched ? ITEMS[S.i]?.id : null; loadItems(); S.i = Math.max(0, ITEMS.findIndex((x) => x.id === keep)); S.shelfId = null; renderGrid(); APPS_READY.resolve?.(); reportApps(); },
   onNative(evt) {
     if (!evt) return;
     if (evt.type === "hubLine") return pending.get(evt.id)?.line(evt.line);
@@ -2902,6 +2918,7 @@ async function boot() {
     });
     setInterval(syncHub, 30_000);
     startCommandLoop();
+    reportApps();
     if (NATIVE) { const st = safeJson(native("status"), {}); HUB.paired = Boolean(st.paired); HUB.url = st.hub || ""; }
   } else {
     probeNative();

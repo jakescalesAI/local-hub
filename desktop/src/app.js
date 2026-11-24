@@ -1,5 +1,5 @@
 // Wires the pieces together. Each piece owns its own behaviour; this file only connects them.
-import { BrowserWindow, Menu, app, ipcMain, session, shell } from 'electron'
+import { BrowserWindow, Menu, Notification, app, clipboard, ipcMain, session, shell } from 'electron'
 import path from 'node:path'
 
 import { APP_NAME } from './app-name.js'
@@ -12,6 +12,7 @@ import platform from './platform/index.js'
 import { canOpenExternally, guardContents, hardenSession, isLocalPage, pagePath, securePrefs } from './security.js'
 import { Settings, validPort } from './settings.js'
 import { createTray } from './tray.js'
+import { TvStatus, linkFrom } from './tv.js'
 
 // At login a Hub started some other way may be a few seconds behind us; give it the chance to answer.
 const LOGIN_GRACE_MS = 10_000
@@ -142,8 +143,26 @@ function start() {
   const hotkeyResult = hotkey.set(settings.values.hotkey)
   if (!hotkeyResult.ok) console.error(hotkeyResult.error)
 
+  const tv = new TvStatus({ connection })
+  const tell = body => { if (Notification.isSupported()) new Notification({ title: APP_NAME, body }).show() }
+  const sendToTv = async command => { if (!(await tv.command(command))) tell('The hub didn’t pass that to the TV. Try again in a moment.') }
+
   const trayControls = createTray({
     connection,
+    tv,
+    tvActions: {
+      onTv: sendToTv,
+      onTvListen: async on => {
+        if (!(await tv.setListening(on))) tell('That setting didn’t save. Try again in a moment.')
+        trayControls.refresh()
+      },
+      onTvLink: () => {
+        const url = linkFrom(clipboard.readText())
+        if (url) sendToTv({ type: 'open', url })
+        else tell('Copy a web link first, then send it to the TV.')
+      },
+      onTvSetup: () => mainWindow.openHubUrl(`${connection.origin}/#tv-setup`),
+    },
     onOpen: () => mainWindow.show(),
     onLauncher: () => launcher.open(),
     onSettings: openSettings,
@@ -165,6 +184,7 @@ function start() {
   })
   app.on('will-quit', event => {
     hotkey.clear()
+    tv.stop()
     if (stopped) return
     event.preventDefault()
     stopped = true
@@ -180,5 +200,6 @@ function start() {
 
   mainWindow.create({ visible: !startHidden })
   launcher.create()
+  tv.start()
   connection.start({ graceMs: startHidden ? LOGIN_GRACE_MS : 0 })
 }
