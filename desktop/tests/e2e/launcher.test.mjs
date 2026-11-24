@@ -399,7 +399,7 @@ describe('settings', () => {
     assert.equal(badHotkey.ok, false)
 
     assert.deepEqual(saved(), before, 'nothing written')
-    assert.deepEqual(await evalIn(handle, 2, `window.hubDesktop.getSettings()`), { port, hotkey: TEST_HOTKEY }, 'nothing applied')
+    assert.deepEqual(await evalIn(handle, 2, `window.hubDesktop.getSettings()`), { port, hotkey: TEST_HOTKEY, hubFolder: '' }, 'nothing applied')
     await pressUntil(TEST_HOTKEY_KEYS, () => launcherVisible(handle), 'the hotkey still working')
   })
 

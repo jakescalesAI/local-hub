@@ -59,7 +59,7 @@ describe('web preferences', () => {
     }, 'settings page')
     const local = await evalIn(handle, 2, `({ bridge: Object.keys(window.hubDesktop).sort(), require: typeof require, process: typeof process })`)
     t.diagnostic(`on the app's page: ${JSON.stringify(local)}`)
-    assert.deepEqual(local.bridge, ['closeLauncher', 'getSettings', 'openHub', 'openUrl', 'retry', 'saveSettings', 'startBundled'])
+    assert.deepEqual(local.bridge, ['chooseHubFolder', 'closeLauncher', 'getSettings', 'openHub', 'openUrl', 'retry', 'saveSettings', 'startBundled'])
     assert.equal(local.require, 'undefined')
     assert.equal(local.process, 'undefined')
   })
