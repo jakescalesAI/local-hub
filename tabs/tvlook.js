@@ -717,7 +717,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     const s = spots[k]
     hush = Date.now() + 700
     if (!s) return void scrollTo(0, 0)
-    let tries = 20
+    let tries = 40
     const back = () => { if (spotKey() !== k) return; if (document.getElementById('title')?.textContent === s.at && (k !== 'home' || document.querySelector('#dk .dk-t')) && document.documentElement.scrollHeight >= s.y + innerHeight - 4) scrollTo(0, s.y); else if (tries--) setTimeout(back, 100) }
     back()
   }).observe(seg, { subtree: true, attributes: true, attributeFilter: ['aria-pressed'] })
@@ -1170,7 +1170,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   }
   const goHome = then => {
     seg.querySelector('[data-env="home"]')?.click()
-    let tries = 20
+    let tries = 40
     const wait = () => { const el = document.querySelector(then); if (el) el.click(); else if (tries--) setTimeout(wait, 50) }
     wait()
   }
