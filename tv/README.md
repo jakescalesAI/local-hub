@@ -122,17 +122,48 @@ The rest of this section is the same by hand, for building it yourself or using 
    ```
 
    Or put the APK on a web page you control and fetch it with the Downloader app.
-3. **Make Home open LocalHub.** Fire OS hides third-party accessibility services from its menu, so
-   turn the Home-button service on over adb. It only watches for Amazon's home screen coming to the
-   front; it can't read the screen or key presses:
+3. **Make LocalHub the TV's home** (Fire TV). Fire OS won't let another app be the home screen, and it
+   blocks a sideloaded app's accessibility service, so LocalHub watches for Amazon's home instead. Two
+   one-time grants over adb; neither can read the screen or your key presses:
 
    ```sh
-   adb shell settings put secure enabled_accessibility_services local.hub.tv/local.hub.tv.HomeRedirectService
-   adb shell settings put secure accessibility_enabled 1
+   adb shell pm grant local.hub.tv android.permission.READ_LOGS          # Home brings LocalHub back
+   adb shell appops set local.hub.tv SYSTEM_ALERT_WINDOW allow           # the cover while Android lets it back in
    ```
 
-   Undo: `adb shell settings put secure enabled_accessibility_services ""`. On Android TV / Google TV,
-   pick LocalHub as the home app instead.
+   Undo: `adb shell pm revoke local.hub.tv android.permission.READ_LOGS` and
+   `adb shell appops set local.hub.tv SYSTEM_ALERT_WINDOW deny`. On Android TV / Google TV, pick LocalHub
+   as the home app instead.
+
+## Day to day
+
+**Where it is on the Fire TV.** *Your Apps* (the ⋯ row on Amazon's home, or *Settings → Applications →
+Manage Installed Applications*). To keep it first in Amazon's own app row: highlight it, ☰, *Move to front*.
+"Alexa, open LocalHub" works too.
+
+**It opens by itself.** You rarely see Amazon's home:
+
+| When | What happens |
+| --- | --- |
+| The Fire TV starts (power on) | LocalHub opens (`BootReceiver`) and starts watching for Home |
+| The TV is turned off and on (sleep, wake) | Amazon's home comes up while it sleeps; LocalHub is back in front before the screen is (measured: in front within 1.5 s of waking) |
+| Home on the remote | A picture of LocalHub's home screen covers Amazon's at once (~1.2 s); the live one takes over underneath when Android allows it (~6 s: its "app switch" wait, which only Amazon's own apps skip) |
+| Fire OS closes LocalHub behind a big app, or the graphics driver crashes | It comes back quietly (no logo); the logo is only for a fresh start |
+
+**Where to change things.**
+
+| What | Where |
+| --- | --- |
+| Wallpaper, clock, screensaver, voice, the LocalHub connection | On the TV: the sidebar's gear (Settings) |
+| Favorites, app order, hidden apps, sort, search | On the TV: hold OK on a tile; the Favorites row's buttons |
+| Volume, picture, sleep timer, weather | On the TV: the Favorites row's Layout button |
+| The widgets on the home screen and screensaver (weather, …) | LocalHub on the laptop: *Home → TV*, then *Edit* |
+| Installing, connecting and pairing TVs | LocalHub on the laptop: *Home → TV → Set up a TV* (or `http://localhost:3100/#tv-setup`) |
+
+**See it on the laptop.** `http://localhost:3100/tv/` in any browser (or `npm run tv` for a full-screen
+window); the keyboard is the remote (arrows, Enter, Esc, M). From an iPad or another computer on the same
+network: `http://<laptop-address>:3100/tv/`, once that device is signed in to LocalHub; a long press there
+is the remote's held OK.
 
 ## Connect it to LocalHub
 
@@ -142,10 +173,10 @@ LocalHub has to listen there — by default it only answers on the laptop itself
 1. On the laptop, set a passcode (`npm run passcode`) and add the laptop's LAN address to `"listen"`
    in `config/hub.json`, e.g. `"listen": ["192.168.1.20"]`. Restart the hub. (Tailscale works too:
    `"access": "tailnet"`, if the TV runs Tailscale.)
-2. On the TV: *Settings → LocalHub → Laptop* searches the network for it (port 3100). If it can't
-   find it, *Laptop address* takes `192.168.1.20:3100`.
-3. On the laptop open **http://localhost:3100/pair/new**. On the TV: *Pair this TV* → type the code.
-   The TV keeps one device key, in Java, never in the web page. *Forget this laptop* removes it.
+2. On the TV: *Settings → LocalHub* (OK on it) → *Search the network again* looks for it (port 3100). If
+   it can't find it, *Type its address* takes `192.168.1.20:3100`.
+3. On the laptop open **http://localhost:3100/pair/new**. On the TV: *Settings → LocalHub → Pair this TV* →
+   type the code. The TV keeps one device key, in Java, never in the web page. *Forget LocalHub* removes it.
 
 ## Talk to it
 

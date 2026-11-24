@@ -446,7 +446,8 @@ function favOverCol(col) {
 
 async function walkRows() {
   const page = $("#page");
-  const rows = Math.ceil(ITEMS.length / COLS) + (hasFavs() ? 1 : 0);
+  // The first few rows only: with 40-odd apps, drawing every row took ~3 s of every start. Further down, rows draw as you go.
+  const rows = Math.min(5, Math.ceil(ITEMS.length / COLS) + (hasFavs() ? 1 : 0));
   const frame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
   page.style.transition = "none";
   // Two rows a step: the screen shows about two and a half, and the TV also draws a margin around what it shows.
@@ -455,13 +456,17 @@ async function walkRows() {
     page.style.transform = `translateY(${-(648 + row * 236 - 400)}px)`;
     await frame();
   }
+  window.__boot.rows = Math.round(performance.now());
   // Settings and the assistant too: their first opening otherwise drew a whole screen at 4K (100-480 ms frames).
   if (!document.body.classList.contains("booted")) {
-    await Promise.all([...new Set(ITEMS.map((x) => x.wordmark).filter(Boolean))].map(bakeMark));
+    // The header's wordmarks are baked after the home screen is up (in the background), not before it.
+    setTimeout(() => [...new Set(ITEMS.map((x) => x.wordmark).filter(Boolean))].reduce((p, w) => p.then(() => bakeMark(w)), Promise.resolve()), 3000);
     renderSettings(); // Settings stays drawn, a hair above invisible (styles.css), from here on
+    window.__boot.settings = Math.round(performance.now());
     setView("assistant");
     await frame();
     setView(S.view);
+    window.__boot.assistant = Math.round(performance.now());
   }
   applyFocus(true);
 }
