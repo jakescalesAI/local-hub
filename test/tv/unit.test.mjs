@@ -57,7 +57,7 @@ test('panel controls and the TV state are cleaned', () => {
   for (const c of [{ type: 'brightness', value: 101 }, { type: 'volume' }, { type: 'volume', value: '5' }, { type: 'media', action: 'eject' }]) assert.equal(cleanCommand(c), null)
   assert.deepEqual(cleanCommand({ type: 'media', action: 'next' }), { type: 'media', action: 'next' })
   const s = cleanState({ brightness: 250, volume: null, media: { title: 'A', playing: 1, art: 'javascript:x' } })
-  assert.deepEqual(s, { inputs: [], brightness: 100, volume: null, media: { title: 'A', artist: '', app: '', playing: false, art: '' } })
+  assert.deepEqual(s, { inputs: [], brightness: 100, volume: null, media: { title: 'A', artist: '', app: '', playing: false, art: '', pos: null, dur: null, seek: false } })
 })
 
 test('a computer can only press the remote’s own keys', () => {

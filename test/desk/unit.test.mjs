@@ -87,3 +87,26 @@ test('the entry code over its routes: set, wrong, right, locked out, changed onl
   let w; await again(new URL('http://localhost/api/lock'), { method: 'GET', headers: {} }, {}, { send: (r, c, b) => { w = b.wait } })
   assert.ok(w > 0)
 })
+
+test('the player: no position in what is drawn, so it is not drawn again every second', async () => {
+  const P = await import('../../tv/ui/panel.js')
+  const m = { title: 'A <b>', artist: 'B', playing: true, art: '/api/music/art/0123456789abcdef.jpg', from: 'pc', app: 'Apple Music', pos: 10, dur: 100, seek: false }
+  assert.equal(P.player(m, true), P.player({ ...m, pos: 55 }, true))
+  assert.ok(!P.player(m).includes('<b>A') && P.player(m).includes('A &lt;b&gt;'))
+  assert.ok(P.player({ ...m, seek: true }).includes('mp-bar seek') && !P.player(m).includes('mp-bar seek'))
+  const { cleanState, cleanCommand } = await import('../../tv.mjs')
+  assert.deepEqual([cleanState({ media: { pos: 12.34, dur: 200, seek: true } }).media.pos, cleanState({ media: { pos: -1, dur: 'x' } }).media.dur], [12.3, null])
+  assert.deepEqual(cleanCommand({ type: 'media', action: 'seek', value: 30 }), { type: 'media', action: 'seek', value: 30 })
+  assert.equal(cleanCommand({ type: 'media', action: 'seek', value: -1 }), null)
+})
+
+test('the TV screen: only known keys, taps on the screen and plain text, and video cut into its pieces', async () => {
+  const { eventLine, nalCutter, nalType } = await import('../../tv-screen.mjs')
+  assert.deepEqual([{ key: 'left' }, { key: 'home' }, { key: 'toString' }, { key: 'k 26' }, { tap: [0.5, 1] }, { tap: [2, 0] }, { tap: ['0', 0] }, { text: 'a b\n' }, { text: '\n' }, null].map(eventLine), ['k 21', 'h', '', '', 't 0.5000 1.0000', '', '', `x ${Buffer.from('a b').toString('base64')}`, '', ''])
+  const got = [], c = nalCutter(n => got.push([nalType(n), n.length]))
+  const all = Buffer.from([0, 0, 0, 1, 0x67, 9, 9, 0, 0, 0, 1, 0x68, 7, 0, 0, 1, 0x65, 1, 2, 3, 0, 0, 0, 1, 0x61, 5])
+  for (const b of all) c.push(Buffer.from([b]))
+  assert.deepEqual(got, [[7, 7], [8, 6], [5, 7]])
+  c.flush()
+  assert.deepEqual(got.at(-1), [1, 6])
+})

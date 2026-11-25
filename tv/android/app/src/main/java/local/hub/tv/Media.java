@@ -38,10 +38,17 @@ final class Media {
             o.put("playing", am.isMusicActive());
             MediaController m = session(c);
             if (m == null) return o.toString();
+            if (action.startsWith("seek:")) m.getTransportControls().seekTo((long) (Double.parseDouble(action.substring(5)) * 1000));
             PlaybackState s = m.getPlaybackState();
             if (s != null) o.put("playing", s.getState() == PlaybackState.STATE_PLAYING);
             MediaMetadata d = m.getMetadata();
             if (d == null) return o.toString();
+            long dur = d.getLong(MediaMetadata.METADATA_KEY_DURATION);
+            if (s != null && dur > 0 && s.getPosition() >= 0) {
+                long pos = s.getPosition();
+                if (s.getState() == PlaybackState.STATE_PLAYING && s.getLastPositionUpdateTime() > 0) pos += (long) ((android.os.SystemClock.elapsedRealtime() - s.getLastPositionUpdateTime()) * s.getPlaybackSpeed());
+                o.put("pos", Math.max(0, Math.min(dur, pos)) / 1000.0).put("dur", dur / 1000.0).put("seek", (s.getActions() & PlaybackState.ACTION_SEEK_TO) != 0);
+            }
             String title = d.getString(MediaMetadata.METADATA_KEY_TITLE);
             String artist = d.getString(MediaMetadata.METADATA_KEY_ARTIST);
             if (title != null) o.put("title", title);

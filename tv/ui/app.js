@@ -15,11 +15,11 @@
 // ============================================================================
 
 import * as Stream from "./stream.js?v=4";
-import * as Panel from "./panel.js?v=6";
+import * as Panel from "./panel.js?v=7";
 import * as Files from "./files.js?v=1";
 import { createLock } from "./lock.js?v=2";
 import * as Remote from "./remote.js?v=3";
-import * as Mirror from "./mirror.js?v=2";
+import * as Mirror from "./mirror.js?v=3";
 // The TV's own assistant screen (assistant.js): the hub's agent and conversation, without the hub's chat UI.
 let Assistant = null;
 
@@ -240,9 +240,10 @@ function fitStyle(fit, ar) {
   if (!Array.isArray(fit) || fit.length !== 4) return "";
   const [x0, y0, x1, y1] = fit, bw = Math.max(0.05, x1 - x0), bh = Math.max(0.05, y1 - y0);
   const TA = 276 / 172, BA = ar > 0 ? ar : 9 / 16; // the banner's own shape (height over width): never squished
-  const wf = Math.max(1, Math.min(2.6, Math.min(0.8 / bw, (0.62 / TA) / (BA * bh)))); // the picture's width, in tile widths
+  const wf = Math.max(1, 1 / (BA * TA), Math.min(2.6, Math.min(0.8 / bw, (0.62 / TA) / (BA * bh)))); // the picture's width, in tile widths
   const hf = wf * BA * TA; // its height, in tile heights
-  const left = 50 - (x0 + bw / 2) * wf * 100, top = 50 - (y0 + bh / 2) * hf * 100;
+  // Always the whole tile: centred on the logo, but never so far that an edge shows.
+  const left = Math.max(100 - wf * 100, Math.min(0, 50 - (x0 + bw / 2) * wf * 100)), top = Math.max(100 - hf * 100, Math.min(0, 50 - (y0 + bh / 2) * hf * 100));
   return `inset:auto;left:${left.toFixed(2)}%;top:${top.toFixed(2)}%;width:${(wf * 100).toFixed(2)}%;height:${(hf * 100).toFixed(2)}%;object-fit:fill`;
 }
 const wordmarkFor = (name) => WEB_APPS.find((w) => nameKey(w.name) === nameKey(name))?.wordmark || null;
@@ -292,7 +293,7 @@ function loadItems() {
     APPS = safeJson(native("apps") || "[]", []).map((a) => ({
       id: a.id, pkg: a.id, name: a.name, banner: a.banner || null, img: a.icon || null, edge: a.edge || null, mark: a.mark || null, fit: a.fit || null, ar: a.ar || null,
       ...(TILE_ART[a.id] || {}),
-      bg: a.color || "#2c2c2e", fg: "#ffffff", recentAt: a.recent || 0, wordmark: wordmarkFor(a.name),
+      bg: a.color || "#2c2c2e", fg: "#ffffff", recentAt: a.recent || 0, updatedAt: a.updated || 0, wordmark: wordmarkFor(a.name),
     }));
     if (IN_HUB) APPS.push(...Stream.STREAM_APPS.map((a) => ({ ...a, note: Stream.noteFor(a) })), ...siteApps());
     // More apps: the streaming services this TV doesn't have installed, opened in the laptop's Chrome on the TV.
@@ -344,12 +345,20 @@ function defaultOrder() {
   const top = byRecent.slice(0, COLS);
   return [...top, ...APPS.filter((a) => !top.includes(a)).sort((a, b) => a.name.localeCompare(b.name))];
 }
+// What an app is, from its name: watching, live TV and sport, music, games, the web, then the rest.
+const APP_TYPES = [/netflix|disney|prime video|hulu|\bmax\b|hbo|apple ?tv|peacock|paramount|crunchyroll|youtube$|plex|tubi|pluto|freevee|vudu|fandango|starz|showtime|hallmark|kodi|jellyfin|emby|kanopy|roku/i, /youtube tv|sling|fubo|directv|philo|espn|fox|nbc|\bcbs|\babc|b1g|news|weather|dazn|nfl|nba|mlb|live|twitch|pbs|cnn/i, /music|spotify|pandora|tidal|deezer|iheart|radio|audible|podcast|soundcloud/i, /game|luna|steam|xbox|playstation|geforce|arcade/i, /browser|silk|chrom|firefox|downloader|photos|files/i];
+const appType = (a) => { const i = APP_TYPES.findIndex((r) => r.test(a.name)); return i < 0 ? APP_TYPES.length : i; };
+const isFavApp = (a) => (Array.isArray(SETTINGS?.tv?.favorites) ? SETTINGS.tv.favorites.includes(a.id) : 0) ? 1 : 0;
 function tvApps() {
   const order = Array.isArray(SETTINGS?.tv?.apps) ? SETTINGS.tv.apps : [];
   const hidden = new Set(Array.isArray(SETTINGS?.tv?.hidden) ? SETTINGS.tv.hidden : []);
   const base = defaultOrder();
-  const listed = sortMode() === "custom" ? order.map((id) => APPS.find((a) => a.id === id)).filter(Boolean) : [];
-  let list = sortMode() === "az" ? [...APPS].sort((a, b) => a.name.localeCompare(b.name)) : [...listed, ...base.filter((a) => !listed.includes(a))];
+  const mode = sortMode(), az = (a, b) => a.name.localeCompare(b.name), by = (v) => (a, b) => v(b) - v(a) || az(a, b);
+  const listed = mode === "custom" ? order.map((id) => APPS.find((a) => a.id === id)).filter(Boolean) : [];
+  let list = mode === "az" ? [...APPS].sort(az) : mode === "za" ? [...APPS].sort((a, b) => az(b, a))
+    : mode === "most" ? [...APPS].sort(by((a) => prefs.opens?.[a.id] || 0)) : mode === "new" ? [...APPS].sort(by((a) => a.updatedAt || 0))
+    : mode === "type" ? [...APPS].sort((a, b) => appType(a) - appType(b) || az(a, b)) : mode === "fav" ? [...base].sort((a, b) => isFavApp(b) - isFavApp(a))
+    : [...listed, ...base.filter((a) => !listed.includes(a))];
   list = list.filter((a) => !hidden.has(a.id));
   // Search (the row's search button): only the apps whose name has what was typed.
   const q = (S.search || "").toLowerCase();
@@ -373,7 +382,7 @@ function iconHTML(it) {
   const fill = '<i class="fill"></i>';
   // A banner that won't load (an app can hand Android an empty one) falls back to its icon, or its colour.
   const fallback = it.img ? `this.onerror=null;this.className='square';this.src='${esc(it.img)}'` : "this.remove()";
-  // The whole banner, never cropped: a 16:9 banner on a slightly taller tile, the strips above and below in its own edge colour.
+  // The banner fills its tile (a 16:9 one loses a sliver at its sides), so no strip shows above or below it.
   if (it.banner) return `<div class="icon" style="--a-bg:${it.edge || it.bg};--a-fg:${it.fg}"><i class="fill flat"></i><img class="banner" src="${esc(it.banner)}" alt="" decoding="async"${it.fit ? ` style="${fitStyle(it.fit, it.ar)}"` : ""} onerror="${fallback}"></div>`;
   if (it.img) return `<div class="icon" style="${colors}">${fill}<img class="square" src="${esc(it.img)}" alt="" decoding="async"></div>`;
   if (it.icon) return `<div class="icon" style="${colors}">${fill}<i class="glyph${it.wide ? " wide" : ""}" style="--glyph:url('./brands/${it.icon}.svg')"></i>${it.note ? `<span class="sub">${esc(it.note)}</span>` : ""}</div>`;
@@ -897,8 +906,14 @@ function remember(app) {
   try { localStorage.setItem("localhub.tv.opened", JSON.stringify(opened)); } catch { /* storage off */ }
 }
 
+function tileOnScreen(it) {
+  const all = [...document.querySelectorAll(`.app[data-i="${ITEMS.indexOf(it)}"] .icon`)], seen = all.filter((n) => { const r = n.getBoundingClientRect(); return r.width && r.top >= 0 && r.bottom <= innerHeight; });
+  return seen.find((n) => n.closest(".is-focused")) || seen[0] || null;
+}
 function launch(it, go, note) {
-  const node = $(`.app[data-i="${ITEMS.indexOf(it)}"] .icon`) || $(".app.is-focused .icon");
+  if (it?.id) { prefs.opens = { ...prefs.opens, [it.id]: Math.min(99999, (prefs.opens?.[it.id] || 0) + 1) }; savePrefs(); }
+  // Grows out of its own tile; asked for from elsewhere (a computer, a voice), out of the middle, with no scrolling first.
+  const node = tileOnScreen(it);
   const stage = $("#stage").getBoundingClientRect();
   const k = stage.width / 1920;
   const r = node ? node.getBoundingClientRect() : { left: stage.left + 810 * k, top: stage.top + 450 * k, width: 300 * k, height: 180 * k };
@@ -920,6 +935,7 @@ function launch(it, go, note) {
   requestAnimationFrame(() => requestAnimationFrame(() => { icon.style.transition = ""; icon.style.transform = `translate(${(1920 - W) / 2}px, ${(1080 - H) / 2}px)`; layer.classList.add("full"); }));
   setTimeout(() => {
     const ok = go();
+    if (NATIVE && ok !== false) native("veil"); // home as it looks, ready for the way back
     if (NATIVE && ok !== false) return; // haven.resumed() tidies up when we're back
     if (ok === false && it.url === undefined && it.kind !== "input" && !NATIVE) { setTimeout(endLaunch, 1100); return; }
     if (ok === false) toast(`${it.name} didn't start`);
@@ -933,11 +949,14 @@ function endLaunch() {
   if (!layer.classList.contains("on") || layer._ending) return;
   layer._ending = true;
   if (S.overlay === "launch") setOverlay(null);
+  const away = document.hidden || away_.now;
   const keep = ITEMS[S.i]?.id;
   loadItems();
   S.i = Math.max(0, ITEMS.findIndex((x) => x.id === keep));
   S.shelfId = null;
   renderGrid();
+  // Behind the app already: home is put back now, unseen, so the way back is the TV's own fade and nothing moves under it.
+  if (NATIVE && away) { layer.classList.remove("on", "full", "back"); layer.querySelector(".icon")?.remove(); layer._ending = false; return; }
   // The fade waits for the home screen to be drawn again (the TV drops its drawing while an app is up: 700-800 ms
   // frames on a Fire TV Stick), so it plays at full speed instead of stalling halfway.
   steadyFrames(1600).then(() => {
@@ -952,6 +971,7 @@ function endLaunch() {
     }, 380);
   });
 }
+const away_ = { now: false };
 // Resolves once four frames in a row come quickly (the screen is drawn), or after max ms whatever happens.
 function steadyFrames(max) {
   return new Promise((done) => {
@@ -969,7 +989,7 @@ function steadyFrames(max) {
 // Another app in front: the screensaver's timer stops (it used to start the screensaver behind the app, loading
 // photos while you watched, and Home then landed on it). Back in front, it starts counting again.
 document.addEventListener("visibilitychange", () => {
-  if (document.hidden) { clearTimeout(saverTimer); if (S.overlay === "saver") stopSaver(); return; }
+  if (document.hidden) { clearTimeout(saverTimer); if (S.overlay === "saver") stopSaver(); endLaunch(); return; }
   endLaunch();
   armSaver();
 });
@@ -1151,7 +1171,7 @@ function paintHomeWidgets() {
   box.querySelectorAll(".mp-b").forEach((n) => n.classList.toggle("sel", S.zone === "player" && !S.overlay && S.view === "home" && n.dataset.w === S.mp));
 }
 // What is playing, kept fresh while Home is what you see.
-setInterval(() => { if (!NATIVE || document.hidden || S.overlay || S.view !== "home") return; const was = JSON.stringify(MEDIA); readMedia(); if (JSON.stringify(MEDIA) !== was) paintHomeWidgets(); }, 5000);
+setInterval(() => { if (!NATIVE || document.hidden || S.overlay || S.view !== "home") return; const was = songKey(MEDIA); readMedia(); if (songKey(MEDIA) !== was) paintHomeWidgets(); }, 5000);
 const WP_IC = Panel.IC;
 // Some TVs take the volume keys themselves and the stick's own level never moves: then there's no slider to offer.
 let volStuck = false;
@@ -1179,24 +1199,27 @@ function setBrightness(v) {
 // What's playing on the TV (Spotify, Amazon Music, a video): its buttons work with the same keys a remote sends. The
 // title and picture need "notification access", granted once; without it the player still plays, pauses and skips.
 let MEDIA = {};
+const songKey = (m) => JSON.stringify({ ...m, pos: 0, got: 0 });
 let mediaTimer = null;
 // With nothing on the TV itself, it's what the computer (or your Spotify) is playing, and the buttons work that.
 let HUB_MEDIA = null, SYS = null, sysAt = 0;
 async function readHubMusic() {
   if (!IN_HUB || document.hidden || (S.overlay && S.overlay !== "wpanel") || S.view !== "home") return;
-  try { const r = await fetch("/api/music", { cache: "no-store" }); const n = r.ok ? (await r.json()).now : null; HUB_MEDIA = n && n.from !== "tv" && n.title ? n : null; } catch { HUB_MEDIA = null; }
+  try { const r = await fetch("/api/music", { cache: "no-store" }); const n = r.ok ? (await r.json()).now : null; HUB_MEDIA = n && n.from !== "tv" && n.title ? Panel.noted(n) : null; } catch { HUB_MEDIA = null; }
   // The computer's card, a few times a minute: the TV has better things to do.
   let sysNew = false;
   if (prefs.homeSys !== false && Date.now() - sysAt > 20_000) { sysAt = Date.now(); try { const r = await fetch("/api/desk/system", { cache: "no-store" }); SYS = r.ok ? await r.json() : null; sysNew = true; } catch { SYS = null; } }
-  const was = JSON.stringify(MEDIA);
+  const was = songKey(MEDIA);
   readMedia();
-  if (sysNew || JSON.stringify(MEDIA) !== was) { paintHomeWidgets(); if (S.overlay === "wpanel") paintWpanel(); }
+  if (sysNew || songKey(MEDIA) !== was) { paintHomeWidgets(); if (S.overlay === "wpanel") paintWpanel(); }
 }
 setInterval(readHubMusic, 5000);
+// The position moves on by itself between asks.
+setInterval(() => { if (document.hidden || (S.overlay && S.overlay !== "wpanel") || S.view !== "home") return; Panel.syncPlayer($("#homeW"), MEDIA); if (S.overlay === "wpanel") Panel.syncPlayer($("#wpList"), MEDIA); }, 1000);
 setTimeout(readHubMusic, 2500);
 function readMedia() {
   const own = NATIVE ? safeJson(native("media", "state"), {}) || {} : {};
-  MEDIA = own.playing || own.title || !HUB_MEDIA ? own : { ...HUB_MEDIA, hub: true };
+  MEDIA = own.playing || own.title || !HUB_MEDIA ? Panel.noted(own) : { ...HUB_MEDIA, hub: true };
 }
 function mediaDo(act) {
   if (MEDIA.hub) {
@@ -1974,9 +1997,6 @@ function runIntent(intent) {
   if (intent.type === "launch") {
     say(`Opening ${intent.app.name}.`);
     if (IN_HUB && (intent.app.stream || intent.app.kind === "site") && Stream.engineFor(intent.app)) return openInStream(intent.app);
-    S.zone = "grid";
-    S.i = ITEMS.indexOf(intent.app);
-    applyFocus();
     return launch(intent.app, () => openApp(intent.app));
   }
   if (intent.type === "input") {
@@ -2015,7 +2035,7 @@ function say(text) {
 let reported = "";
 function reportApps() {
   if (!NATIVE || !IN_HUB || PREVIEW) return;
-  const body = JSON.stringify({ apps: APPS.map((a) => a.name) });
+  const body = JSON.stringify({ apps: APPS.map((a) => a.name), names: Object.fromEntries(APPS.filter((a) => a.pkg).map((a) => [a.pkg, a.name])) });
   if (body === reported) return;
   reported = body;
   fetch("/api/tv/apps", { method: "POST", headers: { "content-type": "application/json", "x-hub": "1" }, body }).then((r) => { if (!r.ok) reported = ""; }).catch(() => { reported = ""; });
@@ -2059,6 +2079,7 @@ function runCommand(cmd) {
   if (cmd.type === "key") { cmd.name === "home" && document.hidden ? (native("toFront"), window.haven.home()) : handleKey(cmd.name); return Mirror.soon(); }
   if (cmd.type === "tap") { Mirror.tap(cmd.x, cmd.y); return Mirror.soon(); }
   if (cmd.type === "type") { if (!Mirror.type(cmd.text)) toast("Open a text box first"); return Mirror.soon(); }
+  if (cmd.type === "media" && cmd.action === "seek") { native("media", `seek:${Number(cmd.value) || 0}`); return setTimeout(() => { readMedia(); reportState(); }, 500); }
   if (cmd.type === "media") { mediaDo(cmd.action); return void setTimeout(reportState, 700); }
   if (cmd.type === "brightness") { setBrightness(cmd.value); if (S.overlay === "wpanel") paintWpanel(); return reportState(); }
   if (cmd.type === "volume") { setVolume(cmd.value); if (S.overlay === "wpanel") paintWpanel(); return reportState(); }
@@ -2183,7 +2204,7 @@ window.haven = {
     paintHomeWidgets();
   },
   closeHub: () => closeHub(),
-  resumed: () => { endLaunch(); whenDrawn(); },
+  resumed: () => { away_.now = true; endLaunch(); away_.now = false; whenDrawn(); },
   // A remote button pressed while another app was open (or one Fire TV would have taken): what it does is already chosen.
   button: (action) => {
     S.touched = true;
@@ -2799,7 +2820,7 @@ async function pickFavorite(it) {
   await saveTv({ favorites: [...favs, it.id] }, `Added ${it.name} to Favorites`);
 }
 // How the apps are sorted: recent first (tvOS), A to Z, or your own order (Move, on a tile).
-const SORTS = { recent: "Recent first", az: "A to Z", custom: "Your order" };
+const SORTS = { recent: "Recent first", most: "Most opened", fav: "Favorites first", type: "By type", new: "New and updated", az: "A to Z", za: "Z to A", custom: "Your order" };
 const sortMode = () => prefs.sort || (Array.isArray(SETTINGS?.tv?.apps) && SETTINGS.tv.apps.length ? "custom" : "recent");
 function openSortMenu() {
   S.menu = Object.entries(SORTS).map(([id, label]) => ({ id: `sort:${id}`, label: label + (sortMode() === id ? "  ✓" : ""), ic: SYM.sort }));

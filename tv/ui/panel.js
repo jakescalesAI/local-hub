@@ -25,12 +25,40 @@ export const IC = {
   input: sym('<rect x="3" y="5" width="18" height="11" rx="2"/><path d="M8 20h8M12 16v4M10 8.5l3.5 2-3.5 2z"/>', 2),
   home: sym('<path d="M3.5 11 12 4l8.5 7"/><path d="M5.5 9.5V20h4.5v-5.5h4V20h4.5V9.5"/>'),
 };
+const clockOf = (n) => { n = Math.max(0, Math.floor(n)); return `${Math.floor(n / 60)}:${String(n % 60).padStart(2, "0")}`; };
+// Where it is in the song isn't in here: that changes every second, and syncPlayer() moves it without drawing this again.
 export function player(m = {}, wide = false) {
   const t = m.title || (m.playing ? "Playing" : "Not playing");
   const sub = m.title ? m.artist || m.app || "" : "";
-  const art = m.art ? `<img src="${esc(m.art)}" alt="">` : IC.note;
+  const art = m.art ? `<img src="${esc(m.art)}" alt="" draggable="false">` : IC.note;
   const b = (id, ic, label) => `<button class="mp-b" data-w="${id}" aria-label="${label}" tabindex="-1">${ic}</button>`;
-  return `<div class="mp${wide ? " wide" : ""}${m.art ? " art" : ""}"${m.art ? ` style="--art:url(&quot;${esc(m.art)}&quot;)"` : ""}><div class="mp-art">${art}</div><div class="mp-t">${esc(t)}</div><div class="mp-s">${esc(sub)}</div><div class="mp-row">${b("prev", IC.prev, "Previous")}${b("play", m.playing ? IC.pause : IC.play, m.playing ? "Pause" : "Play")}${b("next", IC.next, "Next")}</div></div>`;
+  const bar = `<div class="mp-bar${m.seek ? " seek" : ""}" hidden><em class="mp-at">0:00</em><div class="mp-line"><i></i></div><em class="mp-end">0:00</em></div>`;
+  return `<div class="mp${wide ? " wide" : ""}${m.art ? " art" : ""}${m.playing ? " on" : ""}${m.title ? " has" : ""}"${m.art ? ` style="--art:url(&quot;${esc(m.art)}&quot;)"` : ""}><div class="mp-art"${m.from === "pc" && m.title ? ` data-open="1" title="Open ${esc(m.app || "the player")}"` : ""}>${art}</div><div class="mp-t"><span>${esc(t)}</span></div><div class="mp-s"><span>${esc(sub)}</span></div>${bar}<div class="mp-row">${b("prev", IC.prev, "Previous")}${b("play", m.playing ? IC.pause : IC.play, m.playing ? "Pause" : "Play")}${b("next", IC.next, "Next")}</div></div>`;
+}
+// How far into the song every player on the page is. m.pos is where it was when m.got (this page's clock) was noted.
+export const noted = (m) => (m && Number.isFinite(m.pos) ? Object.assign(m, { got: performance.now() }) : m);
+export function syncPlayer(root, m) {
+  for (const p of root?.querySelectorAll?.(".mp") || []) {
+    const bar = p.querySelector(".mp-bar");
+    if (!bar) continue;
+    const ok = !!(m && m.dur > 0 && Number.isFinite(m.pos));
+    if (bar.hidden === ok) bar.hidden = !ok;
+    p.classList.toggle("timed", ok);
+    if (!ok || bar._drag) continue;
+    const at = Math.min(m.dur, m.pos + (m.playing ? (performance.now() - (m.got || performance.now())) / 1000 : 0));
+    bar._dur = m.dur;
+    bar.querySelector("i").style.transform = `scaleX(${(at / m.dur).toFixed(4)})`;
+    bar.style.setProperty("--at", `${((at / m.dur) * 100).toFixed(2)}%`);
+    const a = clockOf(at), z = `-${clockOf(m.dur - at)}`, ea = bar.querySelector(".mp-at"), ez = bar.querySelector(".mp-end");
+    if (ea.textContent !== a) ea.textContent = a;
+    if (ez.textContent !== z) ez.textContent = z;
+  }
+  // A name too long for its space slides along under the pointer.
+  for (const n of root?.querySelectorAll?.(".mp-t, .mp-s") || []) {
+    const over = n.firstElementChild ? n.firstElementChild.scrollWidth - n.clientWidth : 0;
+    n.classList.toggle("long", over > 4);
+    if (over > 4) n.style.setProperty("--over", `-${over + 8}px`);
+  }
 }
 export const slider = (id, val, ic, label, off) => `<div class="wps${off ? " off" : ""}" data-w="${id}" aria-label="${label}"><i style="height:${off ? 0 : val}%"></i><span>${ic}</span></div>`;
 export const round = (id, ic, label, on) => `<div class="wpr${on ? " on" : ""}" data-w="${id}"><b>${ic}</b><em>${esc(label)}</em></div>`;

@@ -19,12 +19,16 @@ export function watch(yes) {
   if (fresh) { last = ""; soon(); }
 }
 function stop() { until = 0; clearTimeout(timer); timer = 0; obs?.disconnect(); obs = null; }
+// Typing changes nothing the observer sees.
+document.addEventListener("input", () => soon());
 export function soon() { if (!on() || timer) return; timer = setTimeout(() => { timer = 0; send(); }, 160); }
 async function send() {
   if (!on()) return;
   if (busy) { again = true; return; }
   busy = true;
   try {
+    // What is typed in a box is not in its HTML.
+    for (const n of document.querySelectorAll("#stage input:not([type=password])")) if (n.getAttribute("value") !== n.value) n.setAttribute("value", n.value);
     const bits = ["stage", "toast", "saver"].map((id) => document.getElementById(id)?.outerHTML || "").join("");
     const apps = new Map();
     const html = bits.replace(ART, (m, pkg, what) => { apps.set(`${pkg}/${what}`, m); return `/api/tv/art/${pkg}/${what}.png`; });

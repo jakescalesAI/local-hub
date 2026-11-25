@@ -46,7 +46,7 @@ ${R} #tvrail button span { display: none; }
 #tvback2 { display: none; } ${R} #tvback2 { display: block; position: fixed; z-index: 11; left: 0; top: 0; bottom: 0; width: calc(var(--tvrail) + 40px); background: var(--chat-bg); opacity: 0; pointer-events: none; } ${R}[data-cover] #tvback2 { opacity: 1; }
 ${R}[data-cover]:not(:has(#tvpanel.on)) { overflow: hidden !important; scrollbar-width: none; }
 ${R}[data-cover] #tvrail { background: #111216; }
-${R} .bw-scrim { left: var(--tvrail) !important; }
+${R} .bw-scrim { left: var(--tvrail) !important; box-shadow: none !important; }
 #tvtip { display: none; } ${R} #tvtip { display: block; position: fixed; z-index: 190; left: calc(var(--tvrail) + 12px); padding: 9px 16px; border-radius: 99px; background: var(--ui-sel); color: #000; font-size: 15px; font-weight: 600; white-space: nowrap; pointer-events: none; opacity: 0; transform: translate(-6px, -50%); transition: opacity .12s, transform .12s; box-shadow: 0 10px 30px rgba(0, 0, 0, .45); } ${R} #tvtip.on { opacity: 1; transform: translate(0, -50%); }
 ${R} #tvrail button b.old { position: absolute; left: 66px; padding: 7px 14px; border-radius: 99px; background: var(--ui-panel); box-shadow: var(--ui-edge); font-size: 14px; font-weight: 600; white-space: nowrap; opacity: 0; pointer-events: none; transform: translateX(-4px); transition: opacity .15s, transform .15s; }
 ${R} #seg-scroll { display: none; }
@@ -110,6 +110,7 @@ ${R} .tvm-b:hover { background: var(--ui-sel); color: #000; } ${R} .tvm-b svg { 
 ${R} .tvm-fit { flex: 1; min-height: 0; display: grid; place-items: center; }
 ${R} .tvm-screen { position: relative; overflow: hidden; border-radius: 18px; background: #000; box-shadow: 0 0 0 1px rgba(255, 255, 255, .14), 0 30px 80px rgba(0, 0, 0, .5); }
 ${R} .tvm-screen iframe { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; border: 0; transform-origin: 0 0; pointer-events: none; }
+${R} .tvm-screen canvas { position: absolute; inset: 0; width: 100%; height: 100%; } ${R} .tvm-screen canvas[hidden] { display: none; }
 ${R} .tvm-cover { position: absolute; inset: 0; cursor: pointer; }
 ${R} .tvm-note { position: absolute; inset: 0; display: grid; place-items: center; padding: 40px; text-align: center; font-size: 20px; font-weight: 600; background: rgba(0, 0, 0, .72); pointer-events: none; }
 ${R} .tvm-note[hidden] { display: none; }
@@ -169,6 +170,16 @@ ${A} .hw-card .hw-track { height: 8px; border-radius: 4px; background: rgba(255,
 ${A} #tvside .tvp-card .mp { position: relative; overflow: hidden; }
 ${A} .mp.art::before { content: ""; position: absolute; inset: -40px; background: var(--art) center / cover; filter: blur(40px) saturate(1.5); opacity: .5; }
 ${A} .mp.art > * { position: relative; }
+${A} .mp-art { transition: transform .3s var(--ease), box-shadow .3s var(--ease); } 
+${A} .tvp-card .mp { transition: transform .3s var(--ease), box-shadow .3s var(--ease); } ${A} .tvp-card .mp.has:hover { transform: scale(1.02); box-shadow: var(--ui-edge), 0 26px 60px rgba(0, 0, 0, .55); }
+${A} .mp.art::before { transition: opacity .4s; } ${A} .mp.art:hover::before { opacity: .75; }
+${A} .mp:hover .mp-art[data-open] { box-shadow: 0 10px 26px rgba(0, 0, 0, .5); } ${A} .mp-art[data-open] { cursor: pointer; } ${A} .mp-art[data-open]:hover { transform: scale(1.06); } 
+${A} .mp-b { transition: transform .18s var(--ease), background .15s, color .15s; } ${A} .mp-b:active { transform: scale(.9); } ${A} #tvside .mp-b:hover { transform: scale(1.08); }
+${A} .mp-line { transition: height .2s var(--ease); } ${A} .mp-line i { transition: transform .5s linear; } ${A} .mp-bar em { transition: opacity .25s; }
+${A} .tvp-card .mp:not(:hover) .mp-bar em { opacity: .7; }
+${A} .mp-bar.seek { cursor: pointer; padding: 8px 0; margin-top: 2px !important; margin-bottom: -8px; } ${A} .mp-bar.seek .mp-line::after { content: ""; position: absolute; left: var(--at, 0%); top: 50%; width: 20px; height: 20px; margin: -10px 0 0 -10px; border-radius: 50%; background: #fff; box-shadow: 0 2px 8px rgba(0, 0, 0, .5); transform: scale(0); transition: transform .2s var(--ease); } ${A} .mp-bar.seek:hover .mp-line { height: 10px; } ${A} .mp-bar.seek:hover .mp-line::after { transform: scale(1); }
+${A} .mp:hover .long span { animation: mplong 7s ease-in-out .4s infinite alternate; } @keyframes mplong { 0%, 12% { transform: none; } 88%, 100% { transform: translateX(var(--over)); } }
+@media (prefers-reduced-motion: reduce) { ${A} .mp *, ${A} .mp { animation: none !important; transition: none !important; } }
 /* The Overlay on a computer: all of it, its own scroll, and headings. */
 ${A} #tvpanel .wpanel-list { max-height: none; overflow: visible; }
 ${A} #tvpanel .wph { grid-column: 1 / -1; margin: 8px 8px -6px; font: 600 24px/1 var(--display); color: rgba(255, 255, 255, .56); }
@@ -184,6 +195,7 @@ ${R} .hw-dots { display: none; }
 #tvset { display: none; }
 ${A} #tvset.on { position: fixed; z-index: 55; left: var(--tvrail); right: 0; top: 0; bottom: 0; display: grid; grid-template-columns: minmax(220px, 34%) minmax(0, 1fr); background: var(--chat-bg); color: #fff; }
 ${A} .tvs-art { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; text-align: center; }
+${R} .tvs-title.top button { display: none; }
 ${A} .tvs-art img { width: 170px; height: 170px; border-radius: 38px; box-shadow: 0 25px 55px rgba(0, 0, 0, .55); }
 ${A} .tvs-art p { margin: 0; font-size: 14px; line-height: 1.5; color: rgba(255, 255, 255, .6); }
 ${A} .tvs-list { overflow-y: auto; scrollbar-width: none; padding: 48px 64px 90px 8px; }
@@ -345,7 +357,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   document.body.append(menu)
   function paintMenu() {
     const it = (k, v, label) => `<button type="button" data-f="${k}:${v}"><span>${label}</span><span>${(look[k] || (k === 'show' ? 'all' : 'mine')) === v ? '✓' : ''}</span></button>`
-    menu.innerHTML = '<h4>Show</h4>' + it('show', 'all', 'Apps and widgets') + it('show', 'apps', 'Apps') + it('show', 'widgets', 'Widgets') + '<h4>Sort apps</h4>' + it('sort', 'mine', 'My order') + it('sort', 'az', 'A to Z')
+    menu.innerHTML = '<h4>Show</h4>' + it('show', 'all', 'Apps and widgets') + it('show', 'apps', 'Apps') + it('show', 'widgets', 'Widgets') + '<h4>Sort apps</h4>' + [['mine', 'My order'], ['recent', 'Recently opened'], ['most', 'Most opened'], ['fav', 'Favorites first'], ['type', 'By type'], ['web', 'Websites first'], ['pc', 'Programs first'], ['az', 'A to Z'], ['za', 'Z to A']].map(([v, l]) => it('sort', v, l)).join('')
   }
   const closeMenu = () => { menu.classList.remove('on'); filter.classList.remove('on') }
   filter.addEventListener('click', () => {
@@ -353,12 +365,16 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     paintMenu()
     const r = filter.getBoundingClientRect()
     menu.style.left = `${r.left}px`
-    menu.style.top = `${r.bottom + 10}px`
     menu.classList.add('on')
+    menu.style.maxHeight = `${innerHeight - 40}px`
+    menu.style.overflowY = 'auto'
+    menu.style.top = `${Math.max(20, Math.min(r.bottom + 10, innerHeight - menu.offsetHeight - 20))}px`
+    menu.style.left = `${menu.offsetTop < r.bottom ? r.right + 10 : r.left}px`
     filter.classList.add('on')
     menu.querySelector('button').focus()
   })
-  menu.addEventListener('click', e => { const f = e.target.closest('[data-f]')?.dataset.f; if (!f) return; const [k, v] = f.split(':'); look[k] = v; saveLook(); arrange(); paintMenu() })
+  menu.addEventListener('click', e => { const f = e.target.closest('[data-f]')?.dataset.f; if (!f) return; const [k, v] = f.split(':'); look[k] = v; saveLook(); arrange(); paintMenu(); window.HubDesk?.paint() })
+  document.addEventListener('hub-sort-mine', () => { look.sort = 'mine'; saveLook() })
   document.addEventListener('pointerdown', e => { if (!menu.contains(e.target) && !filter.contains(e.target)) closeMenu() })
   document.addEventListener('keydown', e => {
     if (e.key !== 'Escape') return
@@ -370,10 +386,17 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   let MU = null, SYS = null, KEYS = { on: false, state: 'off', why: '' }
   const gauge = (label, v, sub = '') => { const p = Math.max(0, Math.min(100, Number(v) || 0)), c = p > 90 ? '#ff453a' : p > 75 ? '#ff9f0a' : '#30d158'; return `<div><svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="26" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="7"/><circle cx="32" cy="32" r="26" fill="none" stroke="${c}" stroke-width="7" stroke-linecap="round" stroke-dasharray="${(p * 1.634).toFixed(1)} 164" transform="rotate(-90 32 32)"/></svg><b>${Math.round(p)}<i>%</i></b><span>${label}</span><em>${sub}</em></div>` }
   async function readPc() {
-    try { const [m, y] = await Promise.all([fetch('/api/music', { cache: 'no-store' }), fetch('/api/desk/system', { cache: 'no-store' })]); MU = m.ok ? await m.json() : null; SYS = y.ok ? await y.json() : null } catch { MU = null }
+    try { const [m, y] = await Promise.all([fetch('/api/music', { cache: 'no-store' }), fetch('/api/desk/system', { cache: 'no-store' })]); MU = m.ok ? await m.json() : null; P?.noted(MU?.now); SYS = y.ok ? await y.json() : null } catch { MU = null }
     if (!dragging) paintPanel()
     paintSide()
+    moveTime()
   }
+  function moveTime() {
+    if (!P || document.hidden) return
+    P.syncPlayer(side, MU?.now)
+    if (panel.classList.contains('on')) P.syncPlayer(panel, TV?.on && look.target === 'tv' ? TV.state?.media : MU?.now)
+  }
+  setInterval(moveTime, 500)
   let onScreen = [] // the widgets the Overlay can show or hide
   let side = null, sideWatch = null, sideRoot = null
   function paintSide() {
@@ -408,8 +431,13 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     const html = pl + wx + sysCard + cells.map(c => c.outerHTML).join('')
     if (side._html === html) return
     const y = side.scrollTop
+    // The player is kept while the song is the same: drawn again, its cover would blink.
+    const was = side.querySelector('.tvp-card')
     side._html = html
     side.innerHTML = html
+    const now = side.querySelector('.tvp-card')
+    if (was && now && was._pl === pl) now.replaceWith(was)
+    else if (now) now._pl = pl
     side.scrollTop = y
     document.documentElement.toggleAttribute('data-noside', !html)
   }
@@ -451,7 +479,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   const post = c => fetch('/api/tv/command', { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: JSON.stringify(c) }).catch(() => {})
   const soon = () => { setTimeout(readTv, 900); setTimeout(readTv, 2000) }
   async function readTv() {
-    try { const r = await fetch('/api/tv/status', { cache: 'no-store' }); TV = r.ok ? (await r.json()).tv : null } catch { TV = null }
+    try { const r = await fetch('/api/tv/status', { cache: 'no-store' }); TV = r.ok ? (await r.json()).tv : null; P?.noted(TV?.state?.media) } catch { TV = null }
     if (!dragging) paintPanel()
     paintSide()
   }
@@ -483,7 +511,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     if (had) list.querySelector(`[data-w="${had}"]`)?.focus()
   }
   async function openPanel() {
-    try { P ??= await import('/tv/panel.js?v=6') } catch { return }
+    try { P ??= await import('/tv/panel.js?v=7') } catch { return }
     paintPanel()
     panel.classList.add('on')
     readPc()
@@ -493,13 +521,39 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     clearInterval(poll)
     poll = setInterval(() => { if (document.hidden) return; if (TV?.on) post({ type: 'state' }); setTimeout(readTv, 800); readPc() }, 4000)
   }
+  // Seek on the bar, where the player allows it; the cover brings the player forward.
+  document.addEventListener('pointerdown', e => {
+    const bar = e.target.closest?.('.mp-bar.seek')
+    if (!bar || !bar._dur || !bar.closest('#tvside, #tvpanel')) return
+    e.preventDefault()
+    e.stopPropagation()
+    const line = bar.querySelector('.mp-line'), tv = !!bar.closest('#tvpanel') && TV?.on && look.target === 'tv'
+    const where = ev => { const r = line.getBoundingClientRect(); return Math.max(0, Math.min(1, (ev.clientX - r.left) / r.width)) }
+    const show = k => { bar._drag = true; line.querySelector('i').style.transform = `scaleX(${k})`; bar.style.setProperty('--at', `${k * 100}%`); const n = Math.floor(k * bar._dur); bar.querySelector('.mp-at').textContent = `${Math.floor(n / 60)}:${String(n % 60).padStart(2, '0')}` }
+    show(where(e))
+    const move = ev => show(where(ev))
+    const up = ev => {
+      removeEventListener('pointermove', move); removeEventListener('pointerup', up); removeEventListener('pointercancel', up)
+      bar._drag = false
+      if (ev.type === 'pointercancel') return
+      const to = where(ev) * bar._dur, m = tv ? TV.state?.media : MU?.now
+      if (m) { m.pos = to; P.noted(m) }
+      fetch('/api/music/do', { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: JSON.stringify({ action: 'seek', to, ...(tv ? { from: 'tv' } : {}) }) }).then(r => r.json()).then(r => { if (!r.ok) say(r.error || 'That player doesn’t allow it.'); setTimeout(readPc, 900) }, () => {})
+    }
+    addEventListener('pointermove', move); addEventListener('pointerup', up); addEventListener('pointercancel', up)
+  }, true)
+  document.addEventListener('click', e => {
+    if (!e.target.closest?.('#tvside .mp-art[data-open], #tvpanel .mp-art[data-open]')) return
+    e.stopPropagation()
+    fetch('/api/music/open', { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: '{}' }).then(r => r.json()).then(r => { if (!r.ok) say(r.error || 'That didn’t open.') }, () => {})
+  }, true)
   // The player at the top right of Home is your TV's.
   document.addEventListener('click', e => { const b = e.target.closest('#tvside .mp-b'); if (b) { e.stopPropagation(); press(b.dataset.w) } }, true)
   let sideAt = 0
   async function keepTv() {
     if (document.hidden || !document.documentElement.hasAttribute('data-tvlook') || !document.querySelector('.hw-root') || Date.now() - sideAt < 4000) return
     sideAt = Date.now()
-    try { P ??= await import('/tv/panel.js?v=6') } catch { return }
+    try { P ??= await import('/tv/panel.js?v=7') } catch { return }
     if (TV?.on) post({ type: 'state' })
     await Promise.all([readTv(), readPc()])
   }
@@ -569,7 +623,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   mirror.tabIndex = -1
   mirror.setAttribute('aria-label', 'Your TV')
   const mb = (k, label, d) => `<button type="button" class="tvm-b" data-key="${k}" title="${label}" aria-label="${label}">${svg(d)}</button>`
-  mirror.innerHTML = `<div class="tvm-head">${mb('leave', 'Back to LocalHub', '<path d="M15 5l-7 7 7 7"/>')}Your TV<span>Arrow keys move · Enter opens · Esc goes back · click anything · type in a text box</span>${mb('back', 'Back on the TV', '<path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/>')}${mb('home', 'TV home', IC.home)}${mb('power', 'Turn the TV on or off', '<path d="M12 3v8"/><path d="M6.4 6.6a8 8 0 1 0 11.2 0"/>')}</div><div class="tvm-fit"><div class="tvm-screen"><iframe title="Your TV" sandbox="allow-same-origin" tabindex="-1"></iframe><div class="tvm-cover"></div><div class="tvm-note">Connecting to your TV…</div></div></div>`
+  mirror.innerHTML = `<div class="tvm-head">${mb('leave', 'Back to LocalHub', '<path d="M15 5l-7 7 7 7"/>')}<b class="tvm-name">Your TV</b><span>Arrow keys move · Enter opens · Esc goes back · click anything · type in a text box</span>${mb('back', 'Back on the TV', '<path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/>')}${mb('home', 'TV home', IC.home)}${mb('power', 'Turn the TV on or off', '<path d="M12 3v8"/><path d="M6.4 6.6a8 8 0 1 0 11.2 0"/>')}</div><div class="tvm-fit"><div class="tvm-screen"><iframe title="Your TV" sandbox="allow-same-origin" tabindex="-1"></iframe><canvas width="1280" height="720" hidden></canvas><div class="tvm-cover"></div><div class="tvm-note">Connecting to your TV…</div></div></div>`
   document.body.append(mirror)
   const mFrame = mirror.querySelector('iframe'), mNote = mirror.querySelector('.tvm-note'), mScreen = mirror.querySelector('.tvm-screen')
   let mBeat = 0, mRun = 0, mSeen = 0, mTimer = 0
@@ -604,9 +658,92 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
         d.body.className = bc || ''
         d.body.innerHTML = `<div id="hub-wall"></div>${m.html.replace(/ on[a-z]+="[^"]*"/g, '')}`
         if (m.wall) d.getElementById('hub-wall').style.backgroundImage = `url("${m.wall.replace(/["\\\n]/g, '')}")`
+        if (isLive()) continue
         note(m.away ? 'Another app is open on the TV. Press TV home to come back to LocalHub.' : m.stream ? 'The TV’s browser is open. The arrow keys still work in it.' : '')
       } catch { await new Promise(w => setTimeout(w, 1500)) }
     }
+  }
+  // The TV's real screen (tv-screen.mjs), in any app: H.264, drawn as it arrives. Without it, LocalHub's own page as before.
+  const mCanvas = mirror.querySelector('canvas'), mName = mirror.querySelector('.tvm-name')
+  let live = null
+  const bytes = (...l) => { const o = new Uint8Array(l.reduce((n, x) => n + x.length, 0)); let i = 0; for (const x of l) { o.set(x, i); i += x.length } return o }
+  async function watchScreen(run) {
+    if (!('VideoDecoder' in window)) return false // an address that isn't https or this computer
+    const stop = new AbortController(), g = mCanvas.getContext('2d', { alpha: false, desynchronized: true })
+    let dec = null, head = [], got = false
+    const reset = () => { try { dec?.close() } catch {} dec = null; head = [] }
+    let r
+    try { r = await fetch('/api/tv/screen', { cache: 'no-store', signal: stop.signal }) } catch { return false }
+    if (run !== mRun || !r.ok) { stop.abort(); return false }
+    live = { stop, state: null }
+    const me = live
+    const frame = f => { try { g.drawImage(f, 0, 0, 1280, 720) } finally { f.close() } if (!got) { got = true; mSeen = Date.now(); mCanvas.hidden = false; clearInterval(mBeat); post({ type: 'mirror', on: false }); screenNote() } }
+    const nal = n => {
+      const type = n[n[2] === 1 ? 3 : 4] & 31, at = performance.now() * 1000
+      if (type === 7) { reset(); head = [n]; const o = n[2] === 1 ? 4 : 5; dec = new VideoDecoder({ output: frame, error: () => reset() }); dec.configure({ codec: `avc1.${[n[o], n[o + 1], n[o + 2]].map(v => v.toString(16).padStart(2, '0')).join('')}`, optimizeForLatency: true }) }
+      else if (type === 8) head.push(n)
+      else if (!dec || dec.state !== 'configured') return
+      else if (type === 5) { dec.decode(new EncodedVideoChunk({ type: 'key', timestamp: at, data: bytes(...head, n) })); dec._key = true }
+      else if (type === 1 && dec._key) dec.decode(new EncodedVideoChunk({ type: 'delta', timestamp: at, data: n }))
+    }
+    ;(async () => {
+      const rd = r.body.getReader()
+      let buf = new Uint8Array(0)
+      try {
+        for (;;) {
+          const { done, value } = await rd.read()
+          if (done || run !== mRun) break
+          buf = buf.length ? bytes(buf, value) : value
+          let i = 0
+          while (buf.length - i >= 5) {
+            const len = new DataView(buf.buffer, buf.byteOffset + i + 1, 4).getUint32(0)
+            if (buf.length - i < 5 + len) break
+            const body = buf.slice(i + 5, i + 5 + len), kind = buf[i]
+            i += 5 + len
+            if (kind === 1) { try { nal(body) } catch { reset() } } else if (kind === 2) { me.state = JSON.parse(new TextDecoder().decode(body)); screenNote() }
+          }
+          buf = buf.subarray(i)
+        }
+      } catch {}
+      reset()
+      stop.abort()
+      if (live === me) live = null
+      if (run !== mRun) return
+      // The TV went off the network, or the hub restarted: try again.
+      note('Reconnecting to your TV…')
+      setTimeout(async () => { while (run === mRun && !live && !(await watchScreen(run))) await new Promise(w => setTimeout(w, 4000)) }, 1500)
+    })()
+    return true
+  }
+  function screenNote() {
+    const st = live?.state
+    if (!st) return
+    const here = st.app === 'local.hub.tv', name = TV?.names?.[st.app]
+    mName.textContent = st.awake && !here && name ? name : 'Your TV'
+    if (st.awake && mCanvas.hidden) return
+    note(st.awake ? '' : 'The TV is off. Press the power button to turn it on.')
+    tvPower = st.awake
+  }
+  // Keys and clicks: straight to whatever is on the TV while its screen is live, else to LocalHub's page there.
+  let sending = null
+  const queue = []
+  async function toScreen(ev) {
+    queue.push(ev)
+    if (sending) return
+    while (queue.length) {
+      sending = fetch('/api/tv/screen/input', { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: JSON.stringify({ events: queue.splice(0, 50) }) }).catch(() => {})
+      const r = await sending
+      if (r && !r.ok && r.status === 409) say('One moment. The TV is still connecting.')
+    }
+    sending = null
+  }
+  const isLive = () => !!live?.state && !mCanvas.hidden
+  function drive(c) {
+    if (!isLive()) return post(c)
+    const inHub = live.state.app === 'local.hub.tv'
+    if (c.type === 'tap') return inHub ? post(c) : toScreen({ tap: [c.x / 1920, c.y / 1080].map(v => Math.max(0, Math.min(1, v))) })
+    if (c.type === 'type') return inHub ? post(c) : toScreen(c.text === '\b' ? { key: 'del' } : { text: c.text })
+    return toScreen({ key: c.name }) // as the remote's own, so the TV's keyboard gets them too
   }
   async function openMirror() {
     if (mirror.classList.contains('on')) return
@@ -626,8 +763,13 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
       note('Your TV isn’t connected. Open LocalHub on it, and it shows here.')
       fetch('/api/tv/power', { cache: 'no-store' }).then(r => r.json()).then(r => { if (run === mRun && !mSeen && r.known) note(r.on ? 'The TV is on. Press TV home to open LocalHub on it.' : 'The TV is off. Press the power button to turn it on.') }, () => {})
     }
+    mCanvas.hidden = true
+    mName.textContent = 'Your TV'
+    const real = watchScreen(run)
     try { await frameCss() } catch { return note('The TV’s page didn’t load') }
-    if (run !== mRun) return
+    if (run !== mRun || isLive()) return
+    await Promise.race([real, new Promise(w => setTimeout(w, 1200))])
+    if (run !== mRun || isLive()) return
     const beat = () => post({ type: 'mirror', on: true })
     beat()
     mBeat = setInterval(() => { if (!document.hidden) beat() }, 4000)
@@ -639,6 +781,8 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     mRun++
     clearInterval(mBeat)
     clearInterval(mTimer)
+    live?.stop.abort()
+    live = null
     post({ type: 'mirror', on: false })
     mirror.classList.remove('on')
     setTimeout(paintRail, 60)
@@ -668,12 +812,12 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     const k = e.target.closest('[data-key]')?.dataset.key
     if (k === 'leave') return closeMirror()
     if (k === 'power') return void power()
-    else if (k === 'home' && !TV?.on) return void power(true)
-    else if (k) post({ type: 'key', name: k })
-    else if (e.target.closest('.tvm-cover')) { const r = mScreen.getBoundingClientRect(); post({ type: 'tap', x: (e.clientX - r.left) / r.width * 1920, y: (e.clientY - r.top) / r.height * 1080 }) }
+    else if (k === 'home' && !TV?.on && !isLive()) return void power(true)
+    else if (k) drive({ type: 'key', name: k })
+    else if (e.target.closest('.tvm-cover')) { const r = mScreen.getBoundingClientRect(); drive({ type: 'tap', x: (e.clientX - r.left) / r.width * 1920, y: (e.clientY - r.top) / r.height * 1080 }) }
     mirror.focus()
   })
-  mirror.addEventListener('wheel', e => { e.preventDefault(); const now = Date.now(); if (now - (mirror._w || 0) < 160) return; mirror._w = now; post({ type: 'key', name: e.deltaY > 0 ? 'down' : 'up' }) }, { passive: false })
+  mirror.addEventListener('wheel', e => { e.preventDefault(); const now = Date.now(); if (now - (mirror._w || 0) < 160) return; mirror._w = now; drive({ type: 'key', name: e.deltaY > 0 ? 'down' : 'up' }) }, { passive: false })
   document.addEventListener('keydown', e => {
     if (!mirror.classList.contains('on') || e.ctrlKey || e.metaKey || e.altKey || panel.classList.contains('on') || document.querySelector('#dkadd.on')) return
     if (e.target.closest?.('.tvm-b') && (e.key === 'Enter' || e.key === ' ')) return
@@ -681,7 +825,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     if (!name && e.key !== 'Backspace' && e.key.length !== 1) return
     e.preventDefault()
     e.stopPropagation()
-    post(name ? { type: 'key', name } : { type: 'type', text: e.key === 'Backspace' ? '\b' : e.key })
+    drive(name ? { type: 'key', name } : { type: 'type', text: e.key === 'Backspace' ? '\b' : e.key })
   }, true)
   addEventListener('resize', () => { if (mirror.classList.contains('on')) fitMirror() })
   document.addEventListener('click', e => { if (e.target.closest('[data-hw-takeover]')) { e.stopPropagation(); openMirror() } }, true)
@@ -794,7 +938,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     if (picking === 'devices') {
       const a = document.activeElement
       if (a && set.contains(a) && a.matches('input')) return
-      const html = `<div class="tvs-art"><img src="/icons/hub.svg" alt=""><p>${esc(H()?.name || 'LocalHub')} on this computer</p></div><div class="tvs-list">${devicesHtml(backB)}</div>`
+      const html = `<div class="tvs-art"><img src="/icons/hub.svg" alt=""></div><div class="tvs-list">${devicesHtml(backB)}</div>`
       if (setHtml === html) return
       const y3 = set.querySelector('.tvs-list')?.scrollTop || 0
       setHtml = html
@@ -814,8 +958,8 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     }
     const list = picking
       ? `<div class="tvs-title">${backB}${DEVS[picking]} background</div><div class="tvs-walls">${walls().map(w => `<button type="button" class="tvs-wall${devLook(picking).wallpaper === w.id ? ' on' : ''}" data-wall="${esc(w.id)}"><i style="background-image:${esc(w.css)}"></i><span>${esc(w.name)}</span></button>`).join('')}</div>`
-      : `<div class="tvs-title">${backB}Settings</div>` + rows().map(r => r.group ? `<div class="tvs-group">${esc(r.group)}</div>` : `<${r.info ? 'div' : 'button type="button"'} class="tvs-row"${r.id ? ` data-set="${esc(r.id)}"` : ''}><div class="txt"><div class="t1">${esc(r.t1)}</div><div class="t2">${esc(r.t2)}</div></div><div class="v${r.on ? ' on' : ''}">${esc(r.v)}</div></${r.info ? 'div' : 'button'}>`).join('')
-    const html = `<div class="tvs-art"><img src="/icons/hub.svg" alt=""><p>LocalHub on this computer</p></div><div class="tvs-list">${list}</div>`
+      : `<div class="tvs-title top">${backB}Settings</div>` + rows().map(r => r.group ? `<div class="tvs-group">${esc(r.group)}</div>` : `<${r.info ? 'div' : 'button type="button"'} class="tvs-row"${r.id ? ` data-set="${esc(r.id)}"` : ''}><div class="txt"><div class="t1">${esc(r.t1)}</div><div class="t2">${esc(r.t2)}</div></div><div class="v${r.on ? ' on' : ''}">${esc(r.v)}</div></${r.info ? 'div' : 'button'}>`).join('')
+    const html = `<div class="tvs-art"><img src="/icons/hub.svg" alt=""></div><div class="tvs-list">${list}</div>`
     if (setHtml === html) return
     const y = set.querySelector('.tvs-list')?.scrollTop || 0, f = document.activeElement?.dataset?.set
     setHtml = html

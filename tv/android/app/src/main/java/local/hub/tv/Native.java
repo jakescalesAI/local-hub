@@ -55,6 +55,12 @@ final class Native {
         return true;
     }
 
+    /** Leaving Home for an app: its picture waits in front, so coming back never shows a half-drawn page. */
+    @JavascriptInterface
+    public void veil() {
+        if (activity.pageTrusted) activity.raiseVeil();
+    }
+
     @JavascriptInterface
     public boolean switchInput(String id) {
         if (!activity.pageTrusted) return false;
@@ -367,6 +373,7 @@ final class Native {
     @JavascriptInterface
     public void drawn() {
         HomeWatchService.drawn();
+        activity.dropVeil();
         activity.doButton();
     }
 

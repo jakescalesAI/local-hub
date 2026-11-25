@@ -216,6 +216,8 @@ public class HomeWatchService extends Service {
         try {
             ((WindowManager) getSystemService(WINDOW_SERVICE)).addView(box, lp);
             cover = box;
+            box.setAlpha(0f);
+            box.animate().alpha(1f).setDuration(140).start(); // in over the app, not a cut
             main.postDelayed(this::hideCover, 15000); // never longer than this, whatever happens
         } catch (Exception ignored) { }
     }

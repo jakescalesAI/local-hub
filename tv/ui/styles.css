@@ -197,7 +197,7 @@ body.shelf-hub .shelf-fade { background: linear-gradient(180deg, transparent 60%
 .icon .glyph.wide { width: 200px; height: 84px; -webkit-mask-size: cover; mask-size: cover; }
 .icon .letter { font: 800 84px/1 var(--display); letter-spacing: -0.04em; }
 .icon img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.icon img.banner { object-fit: contain; }
+.icon img.banner { object-fit: cover; }
 .icon > .fill.flat { background: var(--a-bg, #2c2c2e); opacity: 1; }
 .icon img.square { position: static; width: 120px; height: 120px; object-fit: contain; border-radius: 26px; }
 .icon .sym { width: 84px; height: 84px; }

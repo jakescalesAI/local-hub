@@ -128,6 +128,18 @@ ${A} #dkadd.on { display: grid; position: fixed; z-index: 72; inset: 0; place-it
   const plus = label => `<button type="button" class="dk-t add" data-dk="add" title="${label}" aria-label="${label}"><span class="dk-a">${PLUS}</span><span class="dk-n">${label}</span></button>`
   const set = (n, html) => { if (n._html !== html) { n._html = html; n.innerHTML = html } }
 
+  // What an app is, from its name: work, assistants, watching, music, games, then the rest.
+  const TYPES = [/mail|gmail|outlook|calendar|drive|docs|sheets|slides|notion|slack|teams|zoom|word|excel|powerpoint|onenote|office|meet|trello|linear|figma|canva/i, /claude|chatgpt|gemini|copilot|perplexity/i, /netflix|youtube|disney|prime video|hulu|\bmax\b|hbo|apple ?tv|peacock|paramount|crunchyroll|twitch|plex|tubi|vlc/i, /music|spotify|soundcloud|tidal|pandora|audible/i, /steam|xbox|epic|game|minecraft|roblox|battle/i, /github|code|studio|terminal|docker|git|cursor/i, /instagram|facebook|\bx\b|twitter|reddit|tiktok|discord|whatsapp|messenger|linkedin/i]
+  const typeOf = a => { const i = TYPES.findIndex(r => r.test(a.name)); return i < 0 ? TYPES.length : i }
+  const opens = () => { try { return JSON.parse(localStorage.getItem('localhub.opens') || '{}') || {} } catch { return {} } }
+  function opened(id) { const o = opens(); o[id] = [(o[id]?.[0] || 0) + 1, Date.now()]; try { localStorage.setItem('localhub.opens', JSON.stringify(o)) } catch {} }
+  let shown = []
+  // Dragging while sorted: what's on screen becomes your own order.
+  function ownOrder() {
+    if (shown.length !== visible().length || q) return
+    S.apps = [...shown, ...S.apps.filter(a => !shown.includes(a))]
+    document.dispatchEvent(new Event('hub-sort-mine'))
+  }
   let grid = null, fav = null
   function paint() {
     if (!document.documentElement.matches('[data-tvlook], [data-tvtouch]')) return
@@ -140,7 +152,17 @@ ${A} #dkadd.on { display: grid; position: fixed; z-index: 72; inset: 0; place-it
     let sort = 'mine'
     try { sort = JSON.parse(localStorage.getItem('localhub.look') || '{}').sort || 'mine' } catch {}
     let list = visible()
-    if (sort === 'az') list = [...list].sort((a, b) => a.name.localeCompare(b.name))
+    const az = (a, b) => a.name.localeCompare(b.name), use = opens()
+    const by = v => (list = [...list].sort((a, b) => v(b) - v(a)))
+    if (sort === 'az') list = [...list].sort(az)
+    else if (sort === 'za') list = [...list].sort((a, b) => az(b, a))
+    else if (sort === 'recent') by(a => use[a.id]?.[1] || 0)
+    else if (sort === 'most') by(a => use[a.id]?.[0] || 0)
+    else if (sort === 'fav') by(a => (isFav(a.id) ? 1 : 0))
+    else if (sort === 'web') by(a => (isPc(a) ? 0 : 1))
+    else if (sort === 'pc') by(a => (isPc(a) ? 1 : 0))
+    else if (sort === 'type') list = [...list].sort((a, b) => typeOf(a) - typeOf(b) || az(a, b))
+    shown = list
     if (q) list = list.filter(a => a.name.toLowerCase().includes(q))
     set(grid, q ? list.map(a => tile(a)).join('') || '<div class="dk-none" style="grid-column:1/-1">No apps by that name. Press Enter to search the web.</div>' : list.map(a => tile(a)).join('') + plus('Add'))
     set(fav, S.favorites.map(find).filter(a => a && (LOCAL || !isPc(a))).map(a => tile(a, 'fav')).join('') + `<button type="button" class="dk-t add" data-dk="addfav" title="Add a favorite" aria-label="Add a favorite"><span class="dk-a">${PLUS}</span></button>`)
@@ -149,6 +171,7 @@ ${A} #dkadd.on { display: grid; position: fixed; z-index: 72; inset: 0; place-it
   async function open(id, web) {
     const a = find(id)
     if (!a) return
+    opened(id)
     const page = () => window.open(a.url, '_blank', 'noopener,noreferrer')
     if (!LOCAL) return isPc(a) ? window.hud?.('Programs open on the computer the hub runs on.') : page()
     // On the hub's own computer it's the program if it's installed, else the website in a window of its own.
@@ -182,7 +205,7 @@ ${A} #dkadd.on { display: grid; position: fixed; z-index: 72; inset: 0; place-it
     if (m === 'open') open(id)
     else if (m === 'web') open(id, true)
     else if (m === 'fav') toggleFav(id)
-    else if (m === 'first') { const a = S.apps.find(x => x.id === id); S.apps = [a, ...S.apps.filter(x => x !== a)]; if (isFav(id)) S.favorites = [id, ...S.favorites.filter(x => x !== id)]; save() }
+    else if (m === 'first') { ownOrder(); const a = S.apps.find(x => x.id === id); S.apps = [a, ...S.apps.filter(x => x !== a)]; if (isFav(id)) S.favorites = [id, ...S.favorites.filter(x => x !== id)]; save() }
     else if (m === 'remove') { S.apps = S.apps.filter(x => x.id !== id); S.favorites = S.favorites.filter(x => x !== id); save() }
   })
   document.addEventListener('pointerdown', e => { if (!menu.contains(e.target)) closeMenu() })
@@ -268,7 +291,7 @@ ${A} #dkadd.on { display: grid; position: fixed; z-index: 72; inset: 0; place-it
     const to = t && !t.classList.contains('add') ? t.dataset.dk : null
     if (to === id) return
     if (inFav) { const l = S.favorites.filter(x => x !== id), i = to ? l.indexOf(to) : l.length; l.splice(i < 0 ? l.length : i, 0, id); S.favorites = l }
-    else { const a = S.apps.find(x => x.id === id), l = S.apps.filter(x => x !== a), i = to ? l.findIndex(x => x.id === to) : l.length; if (!a) return; l.splice(i < 0 ? l.length : i, 0, a); S.apps = l }
+    else { ownOrder(); const a = S.apps.find(x => x.id === id), l = S.apps.filter(x => x !== a), i = to ? l.findIndex(x => x.id === to) : l.length; if (!a) return; l.splice(i < 0 ? l.length : i, 0, a); S.apps = l }
     save()
   })
   document.addEventListener('dragend', () => { drag = ''; document.querySelectorAll('.dk-t.over, .dk-t.drag').forEach(n => n.classList.remove('over', 'drag')) })

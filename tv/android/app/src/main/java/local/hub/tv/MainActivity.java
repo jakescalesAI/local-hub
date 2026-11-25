@@ -84,6 +84,42 @@ public class MainActivity extends Activity {
             } catch (Exception ignored) { }
         });
     }
+    private android.widget.ImageView veil;
+    private boolean veilWanted, stopped;
+
+    /** Home's last picture, put in front once the app covers LocalHub (onStop), and faded off when the page is drawn again. */
+    void raiseVeil() {
+        io.execute(() -> {
+            java.io.File f = HomeWatchService.homeFile(this);
+            android.graphics.Bitmap b = f.length() > 0 && System.currentTimeMillis() - f.lastModified() < 12 * 3600_000L ? android.graphics.BitmapFactory.decodeFile(f.getPath()) : null;
+            if (b == null) return;
+            ui.post(() -> { veil.setImageBitmap(b); veilWanted = true; if (stopped) showVeil(); });
+        });
+    }
+
+    private void showVeil() {
+        if (!veilWanted) return;
+        veilWanted = false;
+        veil.animate().cancel();
+        veil.setAlpha(1f);
+        veil.setVisibility(android.view.View.VISIBLE);
+    }
+
+    void dropVeil() {
+        ui.post(() -> {
+            veilWanted = false;
+            if (veil.getVisibility() != android.view.View.VISIBLE) return;
+            veil.animate().alpha(0f).setDuration(260).withEndAction(() -> { veil.setVisibility(android.view.View.GONE); veil.setImageDrawable(null); }).start();
+        });
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        stopped = true;
+        showVeil();
+    }
+
     final Handler ui = new Handler(Looper.getMainLooper());
     private volatile long keyLoadAt;
     boolean resumed; // in front (Native.toFront reads it)
@@ -166,6 +202,10 @@ public class MainActivity extends Activity {
         android.widget.FrameLayout root = new android.widget.FrameLayout(this);
         root.setBackgroundColor(Color.BLACK);
         root.addView(web);
+        veil = new android.widget.ImageView(this);
+        veil.setScaleType(android.widget.ImageView.ScaleType.FIT_XY);
+        veil.setVisibility(android.view.View.GONE);
+        root.addView(veil, new android.widget.FrameLayout.LayoutParams(-1, -1));
         // A fresh start plays the opening over the page; a return just shows it.
         if (!quickStart) root.addView(intro = new Intro(this));
         setContentView(root);
@@ -440,9 +480,11 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         resumed = true;
+        stopped = false;
         prefs.setInFront(true);
         if (hub.paired() && web != null && web.getUrl() != null && !onHubPage()) ui.post(retryHub);
         js("window.haven&&haven.resumed()");
+        ui.postDelayed(this::dropVeil, 2600); // whatever the page does
         HomeWatchService.localHubShown();
     }
 

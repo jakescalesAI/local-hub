@@ -2,7 +2,7 @@
 # Reads one JSON command per line and answers each with one JSON line. Uses only what Windows offers every app.
 $ErrorActionPreference = 'Stop'
 [Console]::InputEncoding = [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding $false
-Add-Type -AssemblyName System.Runtime.WindowsRuntime
+Add-Type -AssemblyName System.Runtime.WindowsRuntime, System.Drawing
 $asTask = ([System.WindowsRuntimeSystemExtensions].GetMethods() | ? { $_.Name -eq 'AsTask' -and $_.GetParameters().Count -eq 1 -and $_.GetParameters()[0].ParameterType.Name -eq 'IAsyncOperation`1' })[0]
 function Wait-Op($op, $type) { $t = $asTask.MakeGenericMethod($type).Invoke($null, @($op)); if (-not $t.Wait(3000)) { throw 'timed out' }; $t.Result }
 $null = [Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager, Windows.Media.Control, ContentType = WindowsRuntime]
@@ -52,7 +52,7 @@ public class HubIcon {
 '@
   $hasIcons = $true
 } catch {}
-$artKey = ''; $artData = ''
+$artKey = ''; $artData = ''; $artTries = 0
 function Get-Media {
   $s = $mgr.GetCurrentSession()
   # The one that's playing, if another app holds the current place.
@@ -60,20 +60,41 @@ function Get-Media {
   if (-not $s) { return @{ on = $false } }
   $p = Wait-Op ($s.TryGetMediaPropertiesAsync()) ([Windows.Media.Control.GlobalSystemMediaTransportControlsSessionMediaProperties])
   $key = "$($s.SourceAppUserModelId)|$($p.Title)|$($p.Artist)"
-  if ($key -ne $script:artKey) {
-    $script:artKey = $key; $script:artData = ''
+  # A player often sends the picture a moment after the title: ask a few times.
+  if ($key -ne $script:artKey) { $script:artKey = $key; $script:artData = ''; $script:artTries = 6 }
+  if (-not $script:artData -and $script:artTries -gt 0) {
+    $script:artTries--
     try {
       if ($p.Thumbnail) {
         $st = Wait-Op ($p.Thumbnail.OpenReadAsync()) ([Windows.Storage.Streams.IRandomAccessStreamWithContentType])
-        if ($st.Size -gt 0 -and $st.Size -lt 1500000) {
-          $net = [System.IO.WindowsRuntimeStreamExtensions]::AsStreamForRead($st)
-          $ms = New-Object IO.MemoryStream; $net.CopyTo($ms)
-          $script:artData = "data:$(if ($st.ContentType) { $st.ContentType } else { 'image/jpeg' });base64," + [Convert]::ToBase64String($ms.ToArray())
+        # Windows hands back a bare COM object here; reflection asks it for the stream it is.
+        $net = [System.IO.WindowsRuntimeStreamExtensions].GetMethod('AsStreamForRead', [Type[]]@([Windows.Storage.Streams.IInputStream])).Invoke($null, @($st))
+        $ms = New-Object IO.MemoryStream; $net.CopyTo($ms); $net.Dispose()
+        if ($ms.Length -gt 0 -and $ms.Length -lt 8000000) {
+          # 400 across is plenty, and small enough to send about.
+          $ms.Position = 0
+          $img = [System.Drawing.Image]::FromStream($ms)
+          $k = [Math]::Min(1.0, 400 / [Math]::Max($img.Width, $img.Height))
+          $w = [Math]::Max(1, [int]($img.Width * $k)); $h = [Math]::Max(1, [int]($img.Height * $k))
+          $bmp = New-Object System.Drawing.Bitmap $w, $h
+          $g = [System.Drawing.Graphics]::FromImage($bmp); $g.InterpolationMode = 'HighQualityBicubic'; $g.DrawImage($img, 0, 0, $w, $h); $g.Dispose()
+          $o = New-Object IO.MemoryStream; $bmp.Save($o, [System.Drawing.Imaging.ImageFormat]::Jpeg); $bmp.Dispose(); $img.Dispose()
+          $script:artData = [Convert]::ToBase64String($o.ToArray())
         }
       }
     } catch {}
   }
-  @{ on = $true; app = "$($s.SourceAppUserModelId)"; title = "$($p.Title)"; artist = "$($p.Artist)"; playing = ("$($s.GetPlaybackInfo().PlaybackStatus)" -eq 'Playing'); art = $script:artData; session = $s }
+  $i = $s.GetPlaybackInfo(); $playing = "$($i.PlaybackStatus)" -eq 'Playing'
+  $pos = $null; $dur = $null; $seek = $false
+  try {
+    $t = $s.GetTimelineProperties()
+    $dur = ($t.EndTime - $t.StartTime).TotalSeconds
+    $pos = ($t.Position - $t.StartTime).TotalSeconds
+    # The player says where it was, and when: the rest is the clock's.
+    if ($playing -and $t.LastUpdatedTime.Year -gt 2000) { $pos += ([DateTimeOffset]::Now - $t.LastUpdatedTime).TotalSeconds * $(if ($i.PlaybackRate) { [double]$i.PlaybackRate } else { 1 }) }
+    if ($dur -gt 0) { $pos = [Math]::Max(0, [Math]::Min($dur, $pos)); $seek = [bool]$i.Controls.IsPlaybackPositionEnabled } else { $dur = $null; $pos = $null }
+  } catch {}
+  @{ on = $true; pos = $pos; dur = $dur; seek = $seek; album = "$($p.AlbumTitle)"; app = "$($s.SourceAppUserModelId)"; title = "$($p.Title)"; artist = "$($p.Artist)"; playing = $playing; art = $script:artData; session = $s }
 }
 function Get-Brightness { try { [int](Get-CimInstance -Namespace root/WMI -ClassName WmiMonitorBrightness -ErrorAction Stop | Select-Object -First 1).CurrentBrightness } catch { $null } }
 $bright = Get-Brightness; $brightAt = Get-Date
@@ -91,7 +112,9 @@ while ($null -ne ($line = [Console]::In.ReadLine())) {
       }
       'media' {
         $m = Get-Media
-        if ($m.on) {
+        if ($m.on -and "$($c.arg)" -like 'seek:*') {
+          $r = @{ ok = (Wait-Op ($m.session.TryChangePlaybackPositionAsync([long]([double]::Parse("$($c.arg)".Substring(5), [Globalization.CultureInfo]::InvariantCulture) * 10000000))) ([bool])) }
+        } elseif ($m.on) {
           $op = switch ($c.arg) { 'toggle' { $m.session.TryTogglePlayPauseAsync() } 'next' { $m.session.TrySkipNextAsync() } 'prev' { $m.session.TrySkipPreviousAsync() } }
           $r = @{ ok = (Wait-Op $op ([bool])) }
         } else { $r = @{ ok = $false } }

@@ -204,6 +204,7 @@ final class Apps {
                 if (a.hasBanner && a.ar > 0) o.put("ar", a.ar);
                 long at = prefs.openedAt(a.packageName);
                 if (at > 0) o.put("recent", at);
+                if (a.stamp > 0) o.put("updated", a.stamp);
                 arr.put(o);
             } catch (Exception ignored) {
                 // One bad app never empties the shelf.
@@ -217,11 +218,16 @@ final class Apps {
         return null;
     }
 
+    /** The app fades in over its grown tile; Android draws it, so it stays smooth while the app loads. */
+    private android.os.Bundle opening() {
+        return android.app.ActivityOptions.makeCustomAnimation(context, R.anim.app_in, R.anim.stay).toBundle();
+    }
+
     boolean launch(String packageName) {
         App app = find(packageName);
         if (app != null) {
             try {
-                context.startActivity(app.intent());
+                context.startActivity(app.intent(), opening());
                 return true;
             } catch (Exception ignored) {
                 // Fall through to the intents the app itself publishes.
@@ -236,7 +242,7 @@ final class Apps {
         if (fallback == null) return false;
         fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         try {
-            context.startActivity(fallback);
+            context.startActivity(fallback, opening());
             return true;
         } catch (Exception e) {
             return false;

@@ -203,7 +203,7 @@ export function create({ here }) {
       let body
       try { body = JSON.parse((await readRaw(req, 64 * 1024)).toString('utf8') || '{}') } catch { return send(res, 400, { error: 'body is not valid JSON' }), true }
       if (!Array.isArray(body?.apps)) return send(res, 400, { error: 'apps must be a list of names' }), true
-      known.save(cleanApps(body.apps))
+      known.save(cleanApps(body.apps), cleanNames(body.names))
       return send(res, 200, { ok: true }), true
     }
 
@@ -275,7 +275,7 @@ export function create({ here }) {
         whisper: whisper.state(),
         alexa: { on: !!alexa.listening(), port: a.port || 3109, configured: !!a.skillId },
         tvs: tvsOnline(),
-        tv: { on: tvOn(), setUp: tvOn() || !!known.get(), apps: known.get()?.apps || [], state: tvOn() ? tvState : null },
+        tv: { on: tvOn(), setUp: tvOn() || !!known.get(), apps: known.get()?.apps || [], names: known.get()?.names || {}, state: tvOn() ? tvState : null },
         listen: listener.status(),
         version: hubVersion(here),
       }), true
@@ -343,10 +343,11 @@ const str = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '')
 
 export function cleanState(raw) {
   const pct = v => (Number.isFinite(v) ? Math.max(0, Math.min(100, Math.round(v))) : null)
+  const sec = v => (Number.isFinite(v) && v >= 0 && v < 1e6 ? Math.round(v * 10) / 10 : null)
   const m = raw?.media && typeof raw.media === 'object' ? raw.media : {}
   const art = typeof m.art === 'string' && m.art.length < 200_000 && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(m.art) ? m.art : ''
   const inputs = (Array.isArray(raw?.inputs) ? raw.inputs : []).slice(0, 8).map(i => ({ id: str(i?.id, 120), name: str(i?.name, 60), sub: str(i?.sub, 40) })).filter(i => i.name)
-  return { inputs, brightness: pct(raw?.brightness), volume: pct(raw?.volume), media: { title: str(m.title, 200), artist: str(m.artist, 200), app: str(m.app, 80), playing: m.playing === true, art } }
+  return { inputs, brightness: pct(raw?.brightness), volume: pct(raw?.volume), media: { title: str(m.title, 200), artist: str(m.artist, 200), app: str(m.app, 80), playing: m.playing === true, art, pos: sec(m.pos), dur: sec(m.dur), seek: m.seek === true } }
 }
 
 // Names only, as they go into a menu: printable, short, each once, in order.
@@ -356,6 +357,8 @@ export function cleanApps(list) {
 }
 
 // The TV this hub has met and the apps it has, kept so they're known while the TV is off.
+// What each app is called, by its package, so a computer watching the TV can say what is open.
+export const cleanNames = raw => Object.fromEntries(Object.entries(raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}).filter(([k, v]) => /^[A-Za-z][\w.]{1,120}$/.test(k) && typeof v === 'string' && v).slice(0, 300).map(([k, v]) => [k, str(v, 80)]))
 function knownTv(here) {
   const file = path.join(here, 'data', 'tv-apps.json')
   let tv
@@ -367,9 +370,10 @@ function knownTv(here) {
   }
   return {
     get,
-    save(apps) {
-      if (get() && get().apps.join('\n') === apps.join('\n')) return
-      tv = { apps }
+    save(apps, names = {}) {
+      const next = { apps, names }
+      if (get() && JSON.stringify(get()) === JSON.stringify(next)) return
+      tv = next
       try { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, JSON.stringify(tv)) } catch {}
     },
   }
@@ -392,7 +396,8 @@ export function cleanCommand(raw) {
     case 'key': return KEYS.has(raw.name) ? { type: 'key', name: raw.name } : null
     case 'tap': return [raw.x, raw.y].every(v => Number.isFinite(v) && v >= 0 && v <= 1920) ? { type: 'tap', x: Math.round(raw.x), y: Math.round(raw.y) } : null
     case 'type': return typeof raw.text === 'string' && raw.text.length <= 200 && raw.text ? { type: 'type', text: raw.text.replace(/[\u0000-\u0007\u0009-\u001f\u007f]/g, '') } : null
-    case 'media': return ['toggle', 'next', 'prev'].includes(raw.action) ? { type: 'media', action: raw.action } : null
+    case 'media': if (raw.action === 'seek') return Number.isFinite(raw.value) && raw.value >= 0 && raw.value < 1e6 ? { type: 'media', action: 'seek', value: raw.value } : null
+      return ['toggle', 'next', 'prev'].includes(raw.action) ? { type: 'media', action: raw.action } : null
     case 'brightness': case 'volume': { const v = raw.value; return Number.isFinite(v) && v >= 0 && v <= 100 ? { type: raw.type, value: Math.round(v) } : null }
     case 'open': { const url = webUrl(raw.url); return url ? { type: 'open', url } : null }
     case 'say': { const text = str(raw.text, 2000); return text ? { type: 'say', text } : null }
