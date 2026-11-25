@@ -116,7 +116,7 @@ ${R}[data-editing][data-editon="side"] .hw-root > #tvside { width: min(460px, 38
 ${R}:is([data-editon="saver"], [data-editon="phone"], [data-editon="side"]) .hw-bar :is([data-hw-act="tabs"], [data-hw-act="style"], [data-hw-act="prefs"]) { display: none; }
 ${T}[data-editing] :is(.hw-stage, .hw-frame, #dk, #dkfav, .hw-bar [data-hw-act="tabs"], .hw-bar [data-hw-act="style"]) { display: none !important; } ${T}[data-editing] .hw-root > #tvside { display: block !important; padding: 14px 0 190px; }
 ${T}[data-editing] #tvebar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; position: fixed; z-index: 61; left: 10px; right: 10px; bottom: calc(env(safe-area-inset-bottom, 0px) + 10px); padding: 10px; border-radius: 26px; background: #26262c; color: rgba(255, 255, 255, .7); font-size: 13px; box-shadow: 0 10px 40px rgba(0, 0, 0, .6); } ${T} #tvebar p { display: none; } ${T} #tvebar .ex-tool { max-width: 100%; overflow-x: auto; }
-#wepop { display: none; position: fixed; z-index: 90; flex-direction: column; min-width: 170px; padding: 8px; border-radius: 20px; background: #2a2a31; box-shadow: 0 0 0 1px rgba(255, 255, 255, .14), 0 20px 50px rgba(0, 0, 0, .6); } #wepop.on { display: flex; } #wepop button { display: flex; justify-content: space-between; gap: 24px; padding: 11px 14px; border-radius: 13px; color: #fff; font-size: 15px; font-weight: 600; text-align: left; } #wepop button:hover { background: rgba(255, 255, 255, .12); } #wepop button[disabled] { opacity: .35; pointer-events: none; } #wepop em { font-style: normal; font-weight: 500; color: rgba(255, 255, 255, .6); }
+#wepop { display: none; position: fixed; flex-direction: column; } #wepop.on { display: flex; } #wepop button[disabled] { opacity: .35; pointer-events: none; } #wepop em { font-style: normal; font-weight: 500; color: rgba(255, 255, 255, .6); }
 ${R}[data-editing] .hw-bar .hw-btn, ${R}[data-editing] .hw-bar .hw-btn.red { height: 46px; padding: 0 20px; border-radius: 99px; background: var(--ui-fill) !important; box-shadow: var(--ui-edge); color: #fff !important; font-size: 15px; font-weight: 600; } ${R}[data-editing] .hw-bar .hw-btn:hover, ${R}[data-editing] .hw-bar .hw-btn[data-hw-act="edit"] { background: var(--ui-sel) !important; color: #000 !important; }
 ${R}[data-editing] .hw-root > .hw-stage { visibility: hidden; }
 ${R} .tve { position: relative; min-width: 0; } ${R} .tve > :not(button) { pointer-events: none; } ${R} .tve .tvs-card, ${R} .tve .tvt-wx { margin: 0; }
@@ -183,10 +183,14 @@ ${A}:not(:has(.hw-edit)) #tvback.tvround { display: none; }
 ${R} #tvlayout.tvround { display: none !important; }
 ${A}:has(.hw-edit) :is(#tvlayout, #tvfilter, #tvgear).tvround { display: none; }
 #tvmenu { display: none; }
-${R}:not(:has(#tvset.on)) #tvmenu.on { display: block; position: fixed; z-index: 70; min-width: 220px; padding: 8px; border-radius: 24px; background: var(--ui-panel); box-shadow: var(--ui-edge), 0 24px 60px rgba(0, 0, 0, .5); color: #fff; }
-${R} #tvmenu h4 { margin: 8px 16px 6px; font-size: 13px; font-weight: 600; color: rgba(255, 255, 255, .56); }
-${R} #tvmenu button { display: flex; justify-content: space-between; gap: 20px; width: 100%; padding: 11px 16px; border-radius: 16px; font-size: 15px; font-weight: 600; text-align: left; }
-${R} #tvmenu button:is(:hover, :focus-visible) { background: var(--ui-sel); color: #000; outline: 0; }
+${R}:not(:has(#tvset.on)) #tvmenu.on { display: block; position: fixed; }
+/* Every menu: right-click, sort, sizes. */
+${A} :is(.menu, #tvmenu, #wepop) { z-index: 2147483000 !important; min-width: 236px; max-width: min(340px, calc(100vw - 24px)); max-height: calc(100vh - 24px); overflow-y: auto; scrollbar-width: none; box-sizing: border-box; padding: 8px; border-radius: 22px; background: #1f2026 !important; box-shadow: 0 0 0 1px rgba(255, 255, 255, .1), 0 24px 60px rgba(0, 0, 0, .55) !important; color: #fff; font-family: var(--font); }
+${A} .menu { animation: menuin .16s cubic-bezier(.2, .8, .2, 1); } @keyframes menuin { from { opacity: 0; transform: scale(.96); } }
+${A} :is(.menu .m-title, #tvmenu h4) { margin: 0; padding: 9px 14px 7px; font: 600 13px/1.2 var(--font); color: rgba(255, 255, 255, .5); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+${A} :is(.menu, #tvmenu, #wepop) button { display: flex; align-items: center; justify-content: space-between; gap: 22px; width: 100%; min-height: 42px; padding: 9px 14px; border: 0; border-radius: 14px; background: none; color: #fff; font: 600 15px/1.25 var(--font); letter-spacing: -.01em; text-align: left; outline: 0; cursor: pointer; }
+${A} :is(.menu, #tvmenu, #wepop) button svg { flex: none; width: 19px; height: 19px; color: rgba(255, 255, 255, .62); } ${A} :is(.menu, #tvmenu, #wepop) button:is(:hover, :focus-visible) { background: var(--ui-sel) !important; color: #000 !important; } ${A} :is(.menu, #tvmenu, #wepop) button:is(:hover, :focus-visible) :is(svg, em) { color: #000 !important; }
+${A} .menu button.danger:not(:hover, :focus-visible), ${A} .menu button.danger:not(:hover, :focus-visible) svg { color: #ff6961 !important; } ${A} .menu hr { border: 0; border-top: 1px solid rgba(255, 255, 255, .1); margin: 6px 12px; } ${A} .menu button em { font: 500 13px var(--font); font-style: normal; color: rgba(255, 255, 255, .5); }
 
 /* Apps: the TV's tiles, all one shape, in rows that fit the window. */
 ${R} .hw-root[data-view="desktop"] .hw-grid { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; grid-auto-rows: auto !important; gap: 26px clamp(18px, 2.3vw, 44px) !important; padding: 10px 4px 120px; align-items: start; }
@@ -489,7 +493,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   const boards = {}
   const board = (which = myScreen()) => WG && (boards[which] ??= WG.createBoard({ screen: which, changed: () => { cancelAnimationFrame(board.raf); board.raf = requestAnimationFrame(() => { paintSide(); drawWid(); tick() }) }, music: () => MU?.now }))
   let CK = null, SB = null, PC = null
-  ;(async () => { try { WG = await import('/tv/widgets.js?v=12'); CK = await import('/tv/clock.js?v=1'); SB = await import('/tv/side.js?v=4'); P ??= await import('/tv/panel.js?v=15'); board()?.refresh(); paintSide(); tick() } catch {} })()
+  ;(async () => { try { WG = await import('/tv/widgets.js?v=13'); CK = await import('/tv/clock.js?v=1'); SB = await import('/tv/side.js?v=4'); P ??= await import('/tv/panel.js?v=15'); board()?.refresh(); paintSide(); tick() } catch {} })()
   setInterval(() => {
     if (!WG || document.hidden || !document.querySelector('.hw-root')) return
     const b = board(editOn || undefined)
@@ -635,6 +639,106 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     if (e.target.closest('[data-ckreset]') && draft) { draft.c = CK.of(null); draft.kept = null; ckBody(); ckSave() }
   })
   document.addEventListener('click', e => { if (e.target.closest?.('[data-clockedit], .tvt-clock .hc')) { e.stopPropagation(); editClock() } }, true)
+  // ── Right-click (or a long press): what can be done with the thing under it, and something for everything else ──
+  const MI = {
+    open: '<path d="M14 4h6v6M20 4l-8 8M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>', full: '<path d="M4 9V5a1 1 0 0 1 1-1h4M15 4h4a1 1 0 0 1 1 1v4M20 15v4a1 1 0 0 1-1 1h-4M9 20H5a1 1 0 0 1-1-1v-4"/>', size: '<rect x="4" y="4" width="7" height="7" rx="2"/><path d="M15 4h5v16H4v-5"/>', check: '<path d="m5 12.5 4.5 4.5L19 7.5"/>', trash: '<path d="M5 7h14M10 7V4.5h4V7M7 7l1 12.5h8L17 7M10.5 10.5v5.5M13.5 10.5v5.5"/>', edit: '<path d="m4 20 1-4.5L16.5 4a2.1 2.1 0 0 1 3 3L8 18.5z"/>', plus: '<path d="M12 5v14M5 12h14"/>', apps: '<rect x="4" y="4" width="6.5" height="6.5" rx="2"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="2"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="2"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="2"/>', image: '<rect x="4" y="5" width="16" height="14" rx="2.5"/><path d="M4 16l4.5-4.5 4 4 2.5-2.5 5 5"/>', style: '<path d="M12 3.5a8.5 8.5 0 1 0 0 17c1.6 0 1.8-1.3 1.2-2.3-.7-1.2.1-2.7 1.6-2.7H17a3.5 3.5 0 0 0 3.5-3.5c0-4.7-3.8-8.5-8.5-8.5z"/><path d="M8 11h.01M11 7.5h.01M15.5 9h.01"/>', gear: '<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>', moon: '<path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5z"/>', side: '<rect x="3" y="4" width="18" height="16" rx="4"/><path d="M15 4v16"/>', reload: '<path d="M20 5v5h-5M19.5 10A8 8 0 1 0 20 14"/>', copy: '<rect x="8.5" y="8.5" width="11" height="11" rx="2.5"/><path d="M5.5 15.5h-1v-11h11v1"/>', cut: '<circle cx="6.5" cy="17.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/><path d="M8.3 15.8 17 4M15.7 15.8 7 4"/>', paste: '<path d="M9 5H6.5A1.5 1.5 0 0 0 5 6.5v13A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5v-13A1.5 1.5 0 0 0 17.5 5H15"/><rect x="9" y="3" width="6" height="4" rx="1.5"/>', all: '<path d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2M8 12h8"/>', x: '<path d="M6 6l12 12M18 6 6 18"/>', play: '<path d="M7 4.5v15l13-7.5z"/>', next: '<path d="M5 5.5v13l9-6.5zM18 5.5v13"/>', prev: '<path d="M19 5.5v13L10 12zM6 5.5v13"/>', words: '<path d="M4 6h16M4 11h11M4 16h14"/>', link: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>', search: '<circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/>', clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>', star: '<path d="m12 4 2.4 5 5.6.8-4 3.9.9 5.5-4.9-2.6-4.9 2.6.9-5.5-4-3.9 5.6-.8z"/>', front: '<path d="M12 19V5M6 11l6-6 6 6"/>', vol: '<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4zM16 9.5l5 5M21 9.5l-5 5"/>', remote: '<rect x="7" y="2" width="10" height="20" rx="4"/><circle cx="12" cy="8.5" r="2.6"/>', power: '<path d="M12 3v8.5M6.4 6.6a8 8 0 1 0 11.2 0"/>',
+  }
+  const mi = k => svg(MI[k] || MI.open)
+  const it_ = (label, icon, run, danger) => ({ label, icon: mi(icon), run, danger })
+  window.HubMenuIcon = mi
+  const homeThen = (f, ms = 700) => { closePanel(); closeSettings(); closeMirror(); window.HubChat?.close(); goHome('.hw-root'); setTimeout(f, ms) }
+  const general = () => [
+    it_('Add an app…', 'apps', () => { closePanel(); window.HubDesk?.open() }),
+    it_('Add a widget…', 'plus', () => press('addwidget')),
+    it_('Edit Home', 'edit', () => press('pcedit')),
+    '-',
+    it_('Customize the clock…', 'clock', () => homeThen(() => editClock())),
+    it_('Change the wallpaper…', 'image', () => homeThen(() => window.HUB?.openStyle?.('wallpaper'), 400)),
+    it_('Edit style…', 'style', () => homeThen(() => window.HUB?.openStyle?.(), 400)),
+    '-',
+    it_(panel.classList.contains('on') ? 'Close the Sidebar' : 'Open the Sidebar', 'side', () => (panel.classList.contains('on') ? closePanel() : openPanel())),
+    ...(TV?.setUp ? [it_('TV remote', 'remote', () => openTool('remote', side || panel))] : []),
+    it_('Start the screensaver', 'moon', () => setTimeout(() => window.HubSaver.start(), 200)),
+    it_('Settings…', 'gear', () => { closePanel(); openSettings() }),
+    it_('Reload', 'reload', () => location.reload()),
+  ]
+  const songItems = () => { const m = MU?.now; return [
+    it_(m?.playing ? 'Pause' : 'Play', 'play', () => music('toggle')), it_('Next song', 'next', () => music('next')), it_('Previous song', 'prev', () => music('prev')), '-',
+    ...(m?.title ? [it_('Open full screen', 'full', () => openMusic(document.querySelector('#tvside .mp-art, #tvpanel .mp-art'))), it_(look.words === false ? 'Show lyrics' : 'Hide lyrics', 'words', () => { look.words = look.words === false; try { localStorage.setItem(PREF, JSON.stringify(look)) } catch {} drawMusic() }), ...(m.from === 'pc' ? [it_(`Open ${m.app || 'the player'}`, 'open', () => press('openapp'))] : []), it_('Copy song name', 'copy', () => copyText(`${m.title}${m.artist ? ` by ${m.artist.split(' — ')[0]}` : ''}`))] : []),
+    it_('Music settings…', 'gear', () => press('musicset')),
+  ] }
+  const copyText = s => navigator.clipboard.writeText(s).then(() => say('Copied'), () => say('Copying isn’t allowed here'))
+  const widgetItems = (n, which) => {
+    const b = board(which), k = n.dataset.k, it = b?.items().find(x => x.k === k), w = it && WG.W[it.id]
+    if (!w) return null
+    const ok = WG.fitting(b.list(), it, which || myScreen()), sizes = w.sizes.length > 1 ? w.sizes.filter(z => ok.includes(z)).map(z => it_(WG.SIZE_NAMES[z], z === it.size ? 'check' : 'size', () => { const l = WG.place(b.items(), which || myScreen(), k, { size: z }); l ? b.set(l) : say('No room for that') })) : []
+    return [w.label, [
+      ...(it.id === 'music' ? [...songItems(), '-'] : [it_('Open', 'full', () => openWid(n))]),
+      ...(w.form ? [it_(w.form === 'clock' ? 'Customize…' : 'Options…', 'gear', () => { editOn = which || ''; options(k) })] : []),
+      ...(sizes.length ? ['-', ...sizes] : []), '-',
+      it_('Add a widget…', 'plus', () => press(which === 'side' ? 'sidewidgets' : 'addwidget')),
+      it_(which === 'side' ? 'Edit these widgets' : 'Edit Home', 'edit', () => press(which === 'side' ? 'sidewidgets' : 'pcedit')),
+      it_('Remove', 'trash', () => { const was = b.items(); b.set(was.filter(x => x.k !== k)); say(`${w.label} removed`) }, true),
+    ]]
+  }
+  const RELATED = { 'q:wifi': ['Network settings…', () => askPc({ what: 'open', value: 'settings' })], 'q:bt': ['Bluetooth settings…', () => askPc({ what: 'open', value: 'bluetooth' })], 'q:mic': ['Sound settings…', () => askPc({ what: 'open', value: 'sound' })], 'q:battery': ['Power settings…', () => askPc({ what: 'open', value: 'battery' })], out: ['Sound settings…', () => askPc({ what: 'open', value: 'sound' })], snd: ['Sound settings…', () => askPc({ what: 'open', value: 'sound' })], mon: ['Display settings…', () => askPc({ what: 'open', value: 'display' })] }
+  // -> [title, items] for what's under the pointer, or null when what is already there has its own.
+  function itemsFor(el) {
+    const field = el.closest('input, textarea, [contenteditable="true"]')
+    if (field && !/range|color|checkbox|radio/.test(field.type || '')) {
+      const pick = String(field.value ?? '').slice(field.selectionStart ?? 0, field.selectionEnd ?? 0), put = s => { field.focus(); if (!document.execCommand('insertText', false, s)) field.setRangeText?.(s); field.dispatchEvent(new Event('input', { bubbles: true })) }
+      return ['Text', [...(pick ? [it_('Cut', 'cut', () => { copyText(pick); put('') }), it_('Copy', 'copy', () => copyText(pick))] : []), it_('Paste', 'paste', () => navigator.clipboard.readText().then(put, () => { field.focus(); say('Press Ctrl+V to paste') })), ...(field.value ? [it_('Select all', 'all', () => { field.focus(); field.select?.() }), it_('Clear', 'x', () => { field.focus(); field.select?.(); put('') })] : [])]]
+    }
+    const sel = String(getSelection()).trim()
+    if (sel && getSelection().containsNode?.(el, true)) return ['Selection', [it_('Copy', 'copy', () => copyText(sel)), it_('Search the web', 'search', () => openSync(`https://www.google.com/search?q=${encodeURIComponent(sel.slice(0, 200))}`))]]
+    const a = el.closest('a[href]')
+    if (a && /^https?:/.test(a.href)) return ['Link', [it_('Open', 'open', () => window.open(a.href, '_blank', 'noopener')), it_('Open in the browser', 'link', () => openSync(a.href)), it_('Copy link', 'copy', () => copyText(a.href))]]
+    if (el.closest('.tvt-clock')) return ['Clock', [it_('Customize…', 'edit', () => editClock()), '-', ...CLOCKS.map(c => it_(c === 'Off' ? 'Hide' : c, look.clock === c ? 'check' : 'clock', () => { look.clock = c; saveLook() })), '-', it_('Edit Home', 'edit', () => press('pcedit'))]]
+    const card = el.closest('#tvside .wg-i:not(.hub), #tvpanel .wg-i')
+    if (card && !document.documentElement.hasAttribute('data-editing')) { const r = widgetItems(card, card.closest('#tvpanel') ? 'side' : undefined); if (r) return r }
+    if (card) return ['Widget', [it_('Change size…', 'size', () => card.querySelector('[data-we^="z:"]')?.click()), it_('Options…', 'gear', () => card.querySelector('[data-we^="f:"]')?.click()), it_('Remove', 'trash', () => card.querySelector('[data-we^="x:"]')?.click(), true)].filter((x, i) => card.querySelector(['[data-we^="z:"]', '[data-we^="f:"]', '[data-we^="x:"]'][i]))]
+    if (el.closest('.wg-ghost, .we-add')) return ['Empty slot', [it_('Add a widget here…', 'plus', () => el.closest('button').click())]]
+    const line = el.closest('.mpf-ly p[data-l]')
+    if (line) return ['Lyrics', [...(MU?.now?.seek && words?.lines?.length ? [it_('Play from here', 'play', () => line.click())] : []), it_('Copy line', 'copy', () => copyText(line.textContent)), it_('Hide lyrics', 'words', () => { look.words = false; saveLook(); drawMusic() })]]
+    if (el.closest('.mp')) return ['Music', songItems()]
+    const app = el.closest('.sb-app')
+    if (app) { const id = app.querySelector('.sb-sl').dataset.sl.slice(4), x = PC?.mix?.find(y => y.id === id); const to = v => { const n = app.querySelector('.sb-sl'); if (n.isConnected) setSl(n, v, true) }; return [x?.name || 'App', [it_(x?.muted ? 'Unmute' : 'Mute', 'vol', () => press(`mute:${id}`)), '-', ...[100, 75, 50, 25].map(v => it_(`${v}%`, x?.level === v ? 'check' : 'size', () => to(v)))]] }
+    const sl = el.closest('.sb-sl')
+    if (sl) return [sl.querySelector('span').textContent, [100, 75, 50, 25].map(v => it_(`${v}%`, Number(sl.getAttribute('aria-valuenow')) === v ? 'check' : 'size', () => setSl(sl, v, true)))]
+    const wps = el.closest('.wps')
+    if (wps) return [wps.getAttribute('aria-label'), [...[100, 75, 50, 25, 0].filter(v => v || wps.dataset.w === 'volume').map(v => it_(v ? `${v}%` : 'Mute', 'size', () => setSlide(wps, v, true))), '-', ...(wps.dataset.w === 'volume' ? [it_('Sound mixer', 'gear', () => openTool('mixer', wps))] : [it_('Display settings…', 'gear', () => press('displays'))])]]
+    const rail = el.closest('#tvrail [data-rail]')
+    if (rail) { const k = rail.dataset.rail, name = rail.getAttribute('aria-label') || rail.title || 'This'; return [name, [it_('Open', 'open', () => rail.click()), ...(k === 'browser' ? [it_('Open in its own window', 'full', () => window.open('/tv/browser.html', '_blank')), it_('Show on the TV', 'remote', () => post({ type: 'launch', app: 'Browser' }))] : []), ...(k === 'overlay' ? [it_('Edit its widgets', 'edit', () => press('sidewidgets')), it_('Edit its buttons', 'gear', () => { openPanel(); editB = true; paintPanel() })] : []), '-', it_('Edit tabs…', 'edit', () => homeThen(() => window.HUB?.openTabs?.() ?? (openSettings(), onSet('tabs')), 400)), it_('Settings…', 'gear', () => openSettings())]] }
+    const w = el.closest('#tvpanel [data-w], #tvwid [data-w]')
+    if (w) { const id = w.dataset.w, name = (w.getAttribute('aria-label') || w.querySelector('strong, em')?.textContent || w.textContent || 'This').trim(), rel = RELATED[id] || RELATED[id.split(':')[0]]; return [name, [it_(/^(q:(wifi|snip|tasks|battery))|^tool:|^app:|^(mirror|settings|pcbrowser|pcfiles|ask|musicset|displays|remotes)/.test(id) ? 'Open' : w.classList.contains('on') ? 'Turn off' : 'Press', 'open', () => press(id, w)), ...(rel ? [it_(rel[0], 'gear', rel[1])] : []), ...(BTN.some(x => x[0] === id) ? ['-', it_('Remove this button', 'trash', () => press(`eb:${id}`), true)] : []), ...(w.closest('.sb-rnd') ? [it_(editB ? 'Done editing' : 'Edit buttons', 'edit', () => press('editb'))] : [])]] }
+    if (el.closest('#tvpanel')) return ['Sidebar', [it_('Edit widgets', 'edit', () => press('sidewidgets')), it_(editB ? 'Done editing' : 'Edit buttons', 'gear', () => press('editb')), ...(TV?.setUp ? [it_(look.target === 'tv' ? 'Show this PC' : 'Show your TV', 'remote', () => press(look.target === 'tv' ? 'to:pc' : 'to:tv'))] : []), '-', it_('Close', 'x', closePanel)]]
+    if (el.closest('#tvwid')) return [widBox.getAttribute('aria-label') || 'Widget', [it_('Close', 'x', closeWid)]]
+    if (el.closest('#tvmirror')) return ['Your TV', [it_('TV remote', 'remote', () => openTool('remote', mirror)), it_(SB?.powerText(pw) || 'Turn On', 'power', () => press('power')), '-', it_('Close', 'x', closeMirror)]]
+    // Around Home's things: Home.
+    if (document.querySelector('.hw-root') && (el === document.body || el === document.documentElement || el.closest('.page, #tvtop')) && !el.closest('button, [role="button"]')) return ['Home', general()]
+    if (el.closest('#wggal, #wepop, .menu, .scrim')) return ['', [it_('Close', 'x', () => { gal.classList.remove('on'); pop.classList.remove('on'); closeMenu() })]]
+    return null
+  }
+  const ownMenu = el => el.closest('#dk .dk-t, #dkfav .dk-t:not(.add), [data-menu], .hw-app, canvas, .bw-stage, iframe')
+  addEventListener('contextmenu', e => {
+    const el = e.target
+    if (!(el instanceof Element) || typeof showMenu !== 'function') return
+    // Held to repeat, or dragged: a long press there isn't asking for a menu.
+    if (el.closest('.trm-pad, .trm-row, .mp-bar')) return e.preventDefault()
+    if (el.closest('#tvset') || ownMenu(el)) return
+    const r = itemsFor(el)
+    if (!r || !r[1].length) return
+    e.preventDefault()
+    e.stopImmediatePropagation()
+    showMenu(e.clientX, e.clientY, r[0], r[1])
+  }, true)
+  // Last: nothing had one.
+  addEventListener('contextmenu', e => {
+    if (e.defaultPrevented || !(e.target instanceof Element) || typeof showMenu !== 'function' || e.target.closest('iframe')) return
+    e.preventDefault()
+    const b = e.target.closest('button, [role="button"]'), name = b && (b.getAttribute('aria-label') || b.title || b.textContent || '').trim().slice(0, 40)
+    showMenu(e.clientX, e.clientY, name || (document.getElementById('tvset')?.classList.contains('on') ? 'Settings' : 'LocalHub'), [...(b && name ? [it_('Press', 'open', () => b.click()), '-'] : []), ...general()])
+  })
   let wdrag = ''
   document.addEventListener('click', e => {
     // The bar's Add and Reset are for these widgets.
@@ -1134,6 +1238,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   function press(id, from) {
     if (id.startsWith('tool:')) { const n = from || panel.querySelector(`[data-w="${id}"]`); return openTool(id.slice(5), n) }
     if (id === 'power') return void power(pw.on !== true)
+    if (id === 'openapp') return void fetch('/api/music/open', { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: '{}' }).then(r => r.json()).then(r => { if (!r.ok) say(r.error || 'That didn’t open.') }, () => {})
     if (id.startsWith('app:')) { post({ type: 'launch', app: id.slice(4) }); return say(`Opening ${id.slice(4)} on the TV`) }
     if (id.startsWith('mute:')) { const x = PC?.mix?.find(y => y.id === id.slice(5)); if (!x) return; x.muted = !x.muted; paintPanel(); drawTool(); return void askPc({ what: 'mix', id: x.id, mute: x.muted }) }
     if (id === 'sidewidgets') { closePanel(); closeSettings(); closeMirror(); window.HubChat?.close(); editOn = 'side'; goHome('.hw-root:not(.hw-edit) [data-hw-act="edit"]'); return void setTimeout(() => { editOn = 'side'; paintSide() }, 700) }

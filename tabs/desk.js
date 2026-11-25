@@ -63,10 +63,6 @@ ${T}:has(.hw-root) #dkfav { flex: 1 0 100%; overflow-x: auto; scrollbar-width: n
 #dkfav .dk-a b { font-size: 20px; } #dkfav .add .dk-a > svg { width: 24px; height: 24px; }
 @media (max-width: 1250px) { ${D} .hw-root:not(.hw-edit) > #dk { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 @media (max-width: 700px) { ${T} .hw-root:not(.hw-edit) > #dk { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px 12px; padding: 4px 0 24px; } .dk-n { font-size: 12.5px; margin-top: 7px; } #dkfav .dk-t { width: 84px; } }
-${A} #dkmenu.on { display: block; position: fixed; z-index: 70; min-width: 210px; padding: 8px; border-radius: 22px; background: var(--ui-panel); box-shadow: var(--ui-edge), 0 24px 60px rgba(0, 0, 0, .5); color: #fff; }
-#dkmenu button { display: block; width: 100%; padding: 10px 16px; border-radius: 14px; font-size: 15px; font-weight: 600; text-align: left; }
-#dkmenu button:is(:hover, :focus-visible) { background: var(--ui-sel); color: #000; outline: 0; }
-#dkmenu button.red { color: #ff6961; }
 ${A} #dkadd.on { display: grid; position: fixed; z-index: 72; inset: 0; place-items: center; padding: 24px; background: rgba(0, 0, 0, .5); color: #fff; }
 .dk-sheet { display: flex; flex-direction: column; width: min(760px, 100%); max-height: min(680px, 88vh); border-radius: 30px; background: var(--ui-panel); box-shadow: var(--ui-edge), 0 40px 100px rgba(0, 0, 0, .6); overflow: hidden; }
 .dk-sheet header { display: flex; align-items: center; gap: 14px; padding: 24px 26px 14px; font: 700 26px/1 var(--display); }
@@ -210,23 +206,19 @@ ${A} #dkadd.on { display: grid; position: fixed; z-index: 72; inset: 0; place-it
   let menuId = ''
   const closeMenu = () => menu.classList.remove('on')
   function openMenu(id, x, y) {
-    menuId = id
-    menu.innerHTML = `<button data-m="open">Open</button>${LOCAL && find(id)?.url ? '<button data-m="web">Open in the browser</button>' : ''}<button data-m="fav">${isFav(id) ? 'Remove from favorites' : 'Add to favorites'}</button><button data-m="first">Move to the front</button><button class="red" data-m="remove">Remove</button>`
-    menu.classList.add('on')
-    const r = menu.getBoundingClientRect()
-    menu.style.left = `${Math.min(x, innerWidth - r.width - 12)}px`
-    menu.style.top = `${Math.min(y, innerHeight - r.height - 12)}px`
-    menu.querySelector('button').focus()
+    const a = find(id), ic = window.HubMenuIcon || (() => ''), it = (label, icon, run, danger) => ({ label, icon: ic(icon), run, danger })
+    showMenu(x, y, a?.name || 'App', [
+      it('Open', 'open', () => open(id)),
+      ...(LOCAL && a?.url ? [it('Open in the browser', 'link', () => open(id, true))] : []),
+      ...(a?.url ? [it('Copy link', 'copy', () => navigator.clipboard.writeText(a.url).catch(() => {}))] : []),
+      '-',
+      it(isFav(id) ? 'Remove from favorites' : 'Add to favorites', 'star', () => toggleFav(id)),
+      it('Move to the front', 'front', () => { ownOrder(); const a = S.apps.find(x => x.id === id); S.apps = [a, ...S.apps.filter(x => x !== a)]; if (isFav(id)) S.favorites = [id, ...S.favorites.filter(x => x !== id)]; save() }),
+      it('Add an app…', 'plus', () => openAdd(false)),
+      '-',
+      it('Remove from Home', 'trash', () => { S.apps = S.apps.filter(x => x.id !== id); S.favorites = S.favorites.filter(x => x !== id); save() }, true),
+    ])
   }
-  menu.addEventListener('click', e => {
-    const m = e.target.closest('[data-m]')?.dataset.m, id = menuId
-    closeMenu()
-    if (m === 'open') open(id)
-    else if (m === 'web') open(id, true)
-    else if (m === 'fav') toggleFav(id)
-    else if (m === 'first') { ownOrder(); const a = S.apps.find(x => x.id === id); S.apps = [a, ...S.apps.filter(x => x !== a)]; if (isFav(id)) S.favorites = [id, ...S.favorites.filter(x => x !== id)]; save() }
-    else if (m === 'remove') { S.apps = S.apps.filter(x => x.id !== id); S.favorites = S.favorites.filter(x => x !== id); save() }
-  })
   document.addEventListener('pointerdown', e => { if (!menu.contains(e.target)) closeMenu() })
 
   // ── add: websites, this PC's programs, or any address ──
@@ -292,7 +284,7 @@ ${A} #dkadd.on { display: grid; position: fixed; z-index: 72; inset: 0; place-it
     else open(id)
   })
   // First, and alone: Home's own menu is for what's around the tiles.
-  addEventListener('contextmenu', e => { const t = onHome(e); closeMenu(); if (!t) return; e.preventDefault(); e.stopImmediatePropagation(); if (!t.classList.contains('add')) openMenu(t.dataset.dk, e.clientX, e.clientY) }, true)
+  addEventListener('contextmenu', e => { const t = onHome(e); closeMenu(); if (!t || t.classList.contains('add')) return; e.preventDefault(); e.stopImmediatePropagation(); openMenu(t.dataset.dk, e.clientX, e.clientY) }, true)
   document.addEventListener('pointerdown', e => { const t = onHome(e); if (!t || e.pointerType !== 'touch' || t.classList.contains('add')) return; pressed = false; clearTimeout(pressT); pressT = setTimeout(() => { pressed = true; openMenu(t.dataset.dk, e.clientX, e.clientY) }, 550) })
   for (const ev of ['pointerup', 'pointercancel', 'scroll']) addEventListener(ev, () => clearTimeout(pressT), true)
   // Drag to reorder, or a tile onto the favorites.
@@ -323,5 +315,5 @@ ${A} #dkadd.on { display: grid; position: fixed; z-index: 72; inset: 0; place-it
   load()
   setInterval(() => { if (!document.hidden) { if (!box.value) q = ''; paint() } }, 1000)
   addEventListener('focus', load)
-  window.HubDesk = { open: openAdd, paint, launch: id => open(id) }
+  window.HubDesk = { art: id => { const a = find(id); return a ? art(a) : "" }, open: openAdd, paint, launch: id => open(id) }
 })()

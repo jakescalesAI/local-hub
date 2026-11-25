@@ -17,7 +17,7 @@
 import * as Stream from "./stream.js?v=8";
 import * as Panel from "./panel.js?v=15";
 import * as Clock from "./clock.js?v=1";
-import * as Wg from "./widgets.js?v=12";
+import * as Wg from "./widgets.js?v=13";
 import * as Files from "./files.js?v=2";
 import { createLock } from "./lock.js?v=2";
 import * as Remote from "./remote.js?v=5";
