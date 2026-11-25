@@ -119,6 +119,14 @@ test('the hub’s icon is one of its drawings, and an upload is a picture', asyn
   assert.deepEqual([imageType(Buffer.from('<svg onload=alert(1)>xxxx')), imageType(Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47]), Buffer.alloc(20)]))], ['', 'png'])
 })
 
+test('a paused song keeps its place, and timed words are read', async () => {
+  const { pickNow, readLyrics } = await import('../../music.mjs')
+  const pc = { from: 'pc', title: 'A', playing: false }, tv = { from: 'tv', title: '', playing: true }
+  assert.deepEqual([pickNow('auto', [pc, tv]).from, pickNow('auto', [{ ...pc, title: '' }, tv]).from, pickNow('auto', [pc, { ...tv, title: 'B' }]).from], ['pc', 'tv', 'tv'])
+  assert.deepEqual(readLyrics({ syncedLyrics: '[00:01.50] one\n[01:02.00]\nnot timed' }), { lines: [{ t: 1.5, x: 'one' }, { t: 62, x: '' }], plain: [] })
+  assert.deepEqual(readLyrics(null).lines, [])
+})
+
 test('an icon of your own is a few characters, and only the sound’s places are places', async () => {
   const { cleanIcon, iconSvg, shortText } = await import('../../identity.mjs')
   assert.deepEqual([shortText('👨‍👩‍👧x'), shortText('ABCDE'), shortText('  ')], ['👨‍👩‍👧x', 'ABC', ''])

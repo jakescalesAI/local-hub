@@ -44,7 +44,7 @@ ${D}:has(.hw-root) #dkfav { flex: 1 1 0; overflow-x: auto; overflow-y: hidden; s
 ${D} #dkfav.more-l { --l: 44px !important; } ${D} #dkfav.more-r { --r: 44px !important; } #dkfav::-webkit-scrollbar { display: none; }
 ${T}:has(.hw-root) #dkfav { flex: 1 0 100%; overflow-x: auto; scrollbar-width: none; padding: 6px 2px; }
 .dk-t { position: relative; min-width: 0; padding: 0; text-align: center; border-radius: 18px; outline: 0; }
-.dk-a { position: relative; display: grid; place-items: center; aspect-ratio: 5 / 3; border-radius: 18px; overflow: hidden; background: var(--dk-bg, #22232a); color: var(--dk-fg, #fff); box-shadow: 0 8px 22px -10px rgba(0, 0, 0, .7); transition: transform .25s var(--ease), box-shadow .25s var(--ease); }
+.dk-a { position: relative; display: grid; place-items: center; aspect-ratio: 5 / 3; border-radius: 18px; overflow: hidden; background: var(--dk-bg, #22232a); color: var(--dk-fg, #fff); box-shadow: 0 8px 22px -10px rgba(0, 0, 0, .7); transition: box-shadow .15s; }
 /* A little light along the top edge, as on the TV's tiles. */
 .dk-a::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; background: linear-gradient(180deg, rgba(255, 255, 255, .13), rgba(255, 255, 255, 0) 45%); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .09); }
 .dk-a i { display: block; width: 46%; height: 52%; background: currentColor; -webkit-mask: var(--g) center / contain no-repeat; mask: var(--g) center / contain no-repeat; }
@@ -53,7 +53,8 @@ ${T}:has(.hw-root) #dkfav { flex: 1 0 100%; overflow-x: auto; scrollbar-width: n
 .dk-a img.pc { border-radius: 0; height: 54%; }
 .dk-a b { font: 700 clamp(22px, 2.6vw, 40px)/1 var(--display); letter-spacing: -.02em; }
 .dk-n { display: block; margin-top: 10px; font-size: 14px; font-weight: 600; color: #fff; text-shadow: 0 1px 4px rgba(0, 0, 0, .7); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.dk-t:hover .dk-a, .dk-t:focus-visible .dk-a { transform: scale(1.06); box-shadow: 0 0 0 3px rgba(255, 255, 255, .9), 0 22px 44px -14px rgba(0, 0, 0, .85); }
+/* Only a white border: nothing moves. */
+.dk-t:hover .dk-a, .dk-t:focus-visible .dk-a { box-shadow: 0 0 0 3px rgba(255, 255, 255, .9); }
 .dk-t.add .dk-a { --dk-bg: var(--ui-fill); color: rgba(255, 255, 255, .75); }
 .dk-t.add .dk-a > svg { width: 34px; height: 34px; }
 .dk-t.over .dk-a { box-shadow: -4px 0 0 #0a84ff; } .dk-t.drag { opacity: .35; }
@@ -125,8 +126,8 @@ ${A} #dkadd.on { display: grid; position: fixed; z-index: 72; inset: 0; place-it
     const src = isPc(a) || (a.pc && LOCAL) ? `/api/desk/icon?id=${encodeURIComponent(a.pc || a.id)}` : `/api/hub/site-icon?url=${encodeURIComponent(a.url)}`
     return `<span class="dk-a"${tints[a.id] ? ` style="--dk-bg:${esc(tints[a.id])}"` : ''}><img class="${isPc(a) || a.pc ? 'pc' : ''}" data-dkicon="${esc(a.id)}" src="${esc(src)}" alt="${esc(a.name)}" loading="lazy" draggable="false"></span>`
   }
-  const tile = (a, cls = '', label = a.name) => `<button type="button" class="dk-t ${cls}" data-dk="${esc(a.id)}" draggable="true" title="${esc(a.name)}" aria-label="${esc(a.name)}">${art(a)}<span class="dk-n">${esc(label)}</span></button>`
-  const plus = label => `<button type="button" class="dk-t add" data-dk="add" title="${label}" aria-label="${label}"><span class="dk-a">${PLUS}</span><span class="dk-n">${label}</span></button>`
+  const tile = (a, cls = '', label = a.name) => `<button type="button" class="dk-t ${cls}" data-dk="${esc(a.id)}" draggable="true" aria-label="${esc(a.name)}">${art(a)}<span class="dk-n">${esc(label)}</span></button>`
+  const plus = label => `<button type="button" class="dk-t add" data-dk="add" aria-label="${label}"><span class="dk-a">${PLUS}</span><span class="dk-n">${label}</span></button>`
   const set = (n, html) => { if (n._html !== html) { n._html = html; n.innerHTML = html } }
 
   // What an app is, from its name: work, assistants, watching, music, games, then the rest.
@@ -182,7 +183,7 @@ ${A} #dkadd.on { display: grid; position: fixed; z-index: 72; inset: 0; place-it
     shown = list
     if (q) list = list.filter(a => a.name.toLowerCase().includes(q))
     set(grid, q ? list.map(a => tile(a)).join('') || '<div class="dk-none" style="grid-column:1/-1">No apps by that name. Press Enter to search the web.</div>' : list.map(a => tile(a)).join('') + plus('Add'))
-    set(fav, S.favorites.map(find).filter(a => a && (LOCAL || !isPc(a))).map(a => tile(a, 'fav')).join('') + `<button type="button" class="dk-t add" data-dk="addfav" title="Add a favorite" aria-label="Add a favorite"><span class="dk-a">${PLUS}</span></button>`)
+    set(fav, S.favorites.map(find).filter(a => a && (LOCAL || !isPc(a))).map(a => tile(a, 'fav')).join('') + `<button type="button" class="dk-t add" data-dk="addfav" aria-label="Add a favorite"><span class="dk-a">${PLUS}</span></button>`)
     edges()
   }
 
@@ -296,7 +297,7 @@ ${A} #dkadd.on { display: grid; position: fixed; z-index: 72; inset: 0; place-it
   for (const ev of ['pointerup', 'pointercancel', 'scroll']) addEventListener(ev, () => clearTimeout(pressT), true)
   // Drag to reorder, or a tile onto the favorites.
   let drag = ''
-  document.addEventListener('dragstart', e => { const t = onHome(e); if (!t || t.classList.contains('add')) return; drag = t.dataset.dk; t.classList.add('drag'); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', t.title); e.stopPropagation() }, true)
+  document.addEventListener('dragstart', e => { const t = onHome(e); if (!t || t.classList.contains('add')) return; drag = t.dataset.dk; t.classList.add('drag'); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', t.getAttribute('aria-label') || ''); e.stopPropagation() }, true)
   document.addEventListener('dragover', e => { if (!drag) return; document.querySelectorAll('.dk-t.over').forEach(n => n.classList.remove('over')); const t = onHome(e); if (fav?.contains(e.target)) { const r = fav.getBoundingClientRect(); if (e.clientX > r.right - 60) fav.scrollLeft += 10; else if (e.clientX < r.left + 60) fav.scrollLeft -= 10 } if (t || e.target.closest?.('#dkfav')) { e.preventDefault(); if (t && t.dataset.dk !== drag) t.classList.add('over') } })
   document.addEventListener('drop', e => {
     if (!drag) return

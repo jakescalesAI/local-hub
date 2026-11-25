@@ -176,8 +176,9 @@ body.shelf-hub .shelf-fade { background: linear-gradient(180deg, transparent 60%
 .app .icon.favadd { box-shadow: var(--ui-edge); }
 .app.fav.is-focused .icon.ctl, .app.fav.is-focused .icon.favadd { --a-bg: var(--ui-sel); color: #000; }
 .app.fav.is-focused .icon.ctl > .fill, .app.fav.is-focused .icon.favadd > .fill { background: var(--ui-sel); }
-.app.fav.is-focused .icon.ctl .sb { color: #000; }
-.app.fav.is-focused .icon.ctl .sb::placeholder { color: rgba(0, 0, 0, .5); }
+/* The search bar stays dark with a white border, as on the computer. */
+.app.fav.is-focused .icon.ctl.search { --a-bg: var(--ui-fill); color: #fff; box-shadow: 0 0 0 6px #fff !important; }
+.app.fav.is-focused .icon.ctl.search > .fill { background: var(--ui-fill); }
 
 .app .icon.favhint { --a-bg: #1f2129; --a-fg: #fff; display: grid; place-items: center; }
 .app .icon.favhint .sym { position: relative; width: 64px; height: 64px; }
@@ -693,6 +694,15 @@ html.native #hub-chat { zoom: calc(var(--k, .5) * 1.25); }
 .homew { position: absolute; right: 84px; top: 44px; z-index: 6; display: flex; flex-direction: column; align-items: flex-end; gap: 18px; pointer-events: none; transition: opacity .4s var(--ease); }
 .homew { display: flex; flex-direction: column; align-items: flex-end; gap: 18px; }
 .homew .mp { width: 560px; }
+.homew > * { transition: box-shadow .15s; } .homew > .sel { box-shadow: 0 0 0 5px #fff !important; }
+/* A widget, opened. */
+.wdetail { position: absolute; inset: 0; z-index: 45; display: none; place-items: center; background: rgba(0, 0, 0, .62); } .wdetail.on { display: grid; }
+.wdetail > div { width: 900px; max-height: 920px; overflow-y: auto; scrollbar-width: none; padding: 44px 52px; border-radius: 48px; background: var(--ui-panel); box-shadow: var(--ui-edge), 0 40px 100px rgba(0, 0, 0, .6); color: #fff; }
+.homew .mp-art.sel { box-shadow: 0 0 0 5px #fff; overflow: visible; } .homew .mp-art.sel img { border-radius: 20px; }
+.wdetail { animation: wdin .3s; } .wdetail.going { animation: wdout .26s forwards; } @keyframes wdin { from { background: rgba(0, 0, 0, 0); } } @keyframes wdout { to { background: rgba(0, 0, 0, 0); } }
+html:not(.lite) .wdetail { -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); } .wdetail.music { background: rgba(6, 7, 10, .96); } .wdetail.music > div { box-sizing: border-box; width: 1720px; height: 960px; max-height: none; padding: 40px 70px; background: none; box-shadow: none; }
+.wdetail .w-label { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; font: 600 24px/1 var(--display); color: rgba(255, 255, 255, .6); } .wdetail .w-label .sym { width: 28px; height: 28px; } .wdetail .w-label .dot { display: none; }
+.wdetail .w.card { width: auto !important; height: auto !important; padding: 0; background: none !important; box-shadow: none !important; } .wdetail .wxw { font-size: 26px; } .wdetail .gz { width: auto; padding: 0; background: none; box-shadow: none; }
 .homew .w.card { width: 340px; height: auto; padding: 22px 26px 24px; gap: 14px; border-radius: 30px; background: var(--ui-panel) !important; box-shadow: var(--ui-edge) !important; }
 .homew .w.card.sz-m, .homew .w.card.sz-l { width: 560px; }
 .homew .w.card .w-label { font: 600 20px/1 var(--display); color: rgba(255, 255, 255, .62); }

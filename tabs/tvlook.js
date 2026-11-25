@@ -19,7 +19,8 @@ ${A} #tvpanel { position: fixed; z-index: 60; top: 0; right: 0; bottom: 0; width
 ${A} #tvpanel.on { transform: none; visibility: visible; transition: transform .28s var(--ease); }
 ${A} #tvpanel > div { zoom: .55; padding: 56px 48px; }
 ${A} #tvpanel [data-w] { cursor: pointer; touch-action: none; }
-${A} #tvpanel .wpanel-title { display: flex; align-items: center; justify-content: space-between; } ${A} #tvpanel .wpanel-title button { display: grid; place-items: center; width: 76px; height: 76px; border-radius: 50%; background: var(--ui-fill); box-shadow: var(--ui-edge); } ${A} #tvpanel .wpanel-title button:hover { background: var(--ui-sel); color: #000; } ${A} #tvpanel .wpanel-title svg { width: 34px; height: 34px; }
+${A} #tvpanel .wpanel-title { display: flex; align-items: center; justify-content: space-between; } ${A} #tvpanel .wpanel-title button { display: grid; place-items: center; width: 76px; height: 76px; border-radius: 50%; background: var(--ui-fill); box-shadow: var(--ui-edge); } ${A} #tvpanel .wpanel-title button:hover { background: var(--ui-sel); color: #000; } ${A} #tvpanel .wpanel-title svg { width: 34px; height: 34px; } ${A} #tvpanel .wpanel-title { gap: 18px; font-size: 44px; } ${A} #tvpanel .wpanel-title .wpt { flex: 0 1 320px; margin-left: auto; padding: 6px; } ${A} #tvpanel .wpanel-title .wpt[hidden] { display: none; } ${A} #tvpanel .wpanel-title .wpt button { flex: 1; width: auto; height: 62px; border-radius: 31px; background: none; box-shadow: none; font: 600 23px/1 var(--display); letter-spacing: 0; white-space: nowrap; } ${A} #tvpanel .wpanel-title .wpt button.on, ${A} #tvpanel .wpanel-title .wpt button.on:hover { background: var(--ui-sel); color: #000; } ${A} #tvpanel .wpanel-title > button { flex: none; }
+${A} #tvpanel .mp { position: relative; overflow: hidden; isolation: isolate; } ${A} .mp::before { pointer-events: none; }
 ${A} #tvpanel .mp.wide { grid-column: 1 / -1; position: relative; overflow: hidden; isolation: isolate; background: var(--ui-fill); } ${A} #tvpanel .wps { height: 354px; }
 ${A} #tvpanel .wpp { height: auto; min-height: 112px; padding: 16px 24px; gap: 16px; border-radius: 46px; } ${A} #tvpanel .wpp .grow { overflow: hidden; } ${A} #tvpanel .wpp .t1 { line-height: 1.2; overflow-wrap: anywhere; } ${A} #tvpanel .wpp .t2 { line-height: 1.25; white-space: normal; } ${A} #tvpanel .wpr em { white-space: normal; margin: 10px -6px 0; line-height: 1.15; overflow-wrap: anywhere; } ${A} #tvpanel .wph { margin: 18px 8px -4px; } ${A} #tvpanel .wpn { grid-column: 1 / -1; margin: -8px 10px 0; font-size: 22px; color: rgba(255, 255, 255, .6); }
 ${A} #tvpanel .wpq { grid-column: span 2; display: grid; grid-template-columns: 1fr 1fr; gap: 22px 24px; align-content: space-between; }
@@ -193,6 +194,13 @@ ${R} #tvside .hw-cell { height: 184px; min-width: 0; grid-column: auto !importan
 ${R} #tvside .hw-cell.l { grid-column: 1 / -1 !important; }
 ${R} #tvside .hw-cell.l { height: 380px; }
 ${R} #tvside .tvp-card { grid-column: 1 / -1; } ${R} .tvp-card .mp { zoom: .62; } ${R} .tvp-card .mp-b { cursor: pointer; } ${R} .tvp-card .mp-b:hover { background: var(--ui-sel); color: #000; }
+${R} #tvside > :is(.tvt-wx, .tvs-card, .hw-cell), ${R} #tvside .tvp-card .mp { cursor: pointer; transition: box-shadow .15s; } ${R} #tvside > :is(.tvt-wx, .tvs-card):is(:hover, :focus-visible) { box-shadow: 0 0 0 3px rgba(255, 255, 255, .9); outline: 0; }
+#tvwid { display: none; } ${A} #tvwid.on { display: grid; position: fixed; z-index: 73; inset: 0; place-items: center; padding: 34px; background: rgba(0, 0, 0, .55); -webkit-backdrop-filter: blur(14px) saturate(1.1); backdrop-filter: blur(14px) saturate(1.1); color: #fff; animation: widin .35s; } ${A} #tvwid.going { animation: widout .26s forwards; } @keyframes widin { from { background: rgba(0, 0, 0, 0); -webkit-backdrop-filter: blur(0); backdrop-filter: blur(0); } } @keyframes widout { to { background: rgba(0, 0, 0, 0); -webkit-backdrop-filter: blur(0); backdrop-filter: blur(0); } }
+#tvwid > div { width: min(860px, 100%); max-height: 100%; overflow-y: auto; scrollbar-width: none; box-sizing: border-box; padding: 44px 52px; border-radius: 34px; background: var(--ui-panel); box-shadow: var(--ui-edge), 0 40px 100px rgba(0, 0, 0, .6); } #tvwid .wx .wxw { font-size: 25px; } #tvwid .gz { width: auto; padding: 0; background: none; box-shadow: none; } #tvwid .cell { display: grid; min-height: 420px; } #tvwid .cell > * { width: 100%; height: 100%; }
+#tvwid > .music { width: min(1280px, 100%); height: min(780px, 100%); overflow: hidden; } #tvwid .music .mpf { zoom: min(.82, calc((100vh - 170px) / 860px)); }
+${A} .wid-x { position: fixed; right: 52px; top: 52px; z-index: 2; display: grid; place-items: center; width: 46px; height: 46px; border-radius: 50%; background: var(--ui-fill); box-shadow: var(--ui-edge); color: #fff; } ${A} .wid-x:hover { background: var(--ui-sel); color: #000; } ${A} .wid-x svg { width: 22px; height: 22px; }
+.wid-app { margin-left: 16px; padding: 8px 18px; border-radius: 99px; background: rgba(255, 255, 255, .1); color: #fff; font: 600 20px/1 var(--font); vertical-align: middle; } .wid-app:hover { background: #fff; color: #000; } #tvwid .mp-s { display: flex; align-items: center; } #tvwid .mp-b { cursor: pointer; } #tvwid .mp-b:hover { background: var(--ui-sel); color: #000; } #tvwid .mpf-ly:not(.plain, .off) p { cursor: default; }
+${A} #tvside .mp.has .mp-art, ${A} #tvpanel .mp.has .mp-art { cursor: zoom-in; }
 ${R} #tvside .tvs-g { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; text-align: center; } ${R} #tvside .tvs-g > * { min-width: 0; width: auto; } ${R} #tvside .tvs-g svg { max-width: 100%; height: auto; } @media (max-width: 1420px) { ${R} #tvside .tvs-g > * { zoom: .88; } }
 ${R} #tvside :is(.tvs-card, .tvt-wx) { box-sizing: border-box; min-width: 0; overflow: hidden; } ${R} #tvside .tvs-card { display: flex; flex-direction: column; justify-content: space-between; padding: 18px 20px; border-radius: 26px; background: var(--ui-panel); box-shadow: var(--ui-edge); color: #fff; }
 .tvs-h { font: 600 14px/1 var(--display); color: rgba(255, 255, 255, .6); }
@@ -382,7 +390,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   const panel = document.createElement('aside')
   panel.id = 'tvpanel'
   panel.setAttribute('aria-label', 'Sidebar')
-  panel.innerHTML = `<div><div class="wpanel-title">Sidebar<button type="button" data-tvpx title="Close (Esc)" aria-label="Close sidebar">${svg('<rect x="3" y="4" width="18" height="16" rx="4"/><path d="M15 4v16"/><path d="m7.5 9 3 3-3 3"/>')}</button></div><div class="wpanel-list"></div></div>`
+  panel.innerHTML = `<div><div class="wpanel-title">Sidebar<div class="wpt" hidden></div></div><div class="wpanel-list"></div></div>`
   document.body.append(panel)
   const btn = document.createElement('button')
   btn.id = 'tvlayout'
@@ -440,6 +448,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     if (!dragging) paintPanel()
     paintSide()
     moveTime()
+    drawMusic()
   }
   function moveTime() {
     if (!P || document.hidden) return
@@ -469,7 +478,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     }
     const editing = root.classList.contains('hw-edit')
     onScreen = []
-    const wx = look.weather && wxBody && window.HubWeatherCard ? `<div class="tvt-wx">${window.HubWeatherCard(wxBody, 'm')}</div>` : ''
+    const wx = look.weather && wxBody && window.HubWeatherCard ? `<div class="tvt-wx" role="button" tabindex="0" aria-label="Weather, more">${window.HubWeatherCard(wxBody, 'm')}</div>` : ''
     const cells = [...root.querySelectorAll('.hw-grid > .hw-cell:not(.a)')].filter(c => {
       const id = c.querySelector('[data-hw-widget], [data-hw-wid]')?.dataset.hwWidget || c.dataset.hwKey || ''
       if (/(^|-)(clock|date|weather|world-clock)$/.test(id)) return editing && c.style.display !== 'none'
@@ -478,7 +487,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
       return c.style.display !== 'none' && (editing || !look.off?.includes(key))
     })
     const pl = P && MU && look.player !== false ? `<div class="tvp-card">${P.player(MU.now || {}, true)}</div>` : ''
-    const sysCard = SYS && look.sys !== false ? `<div class="tvs-card"><div class="tvs-h">This PC</div><div class="tvs-g">${gauge('CPU', SYS.cpu)}${gauge('Memory', SYS.mem)}${gauge('Disk', SYS.disk, SYS.diskFree ? `${Math.round(SYS.diskFree / 2 ** 30)} GB free` : '')}</div></div>` : ''
+    const sysCard = SYS && look.sys !== false ? `<div class="tvs-card" role="button" tabindex="0" aria-label="This PC, more"><div class="tvs-h">This PC</div><div class="tvs-g">${gauge('CPU', SYS.cpu)}${gauge('Memory', SYS.mem)}${gauge('Disk', SYS.disk, SYS.diskFree ? `${Math.round(SYS.diskFree / 2 ** 30)} GB free` : '')}</div></div>` : ''
     document.documentElement.toggleAttribute('data-editing', editing)
     // Editing: every card with its − (or a + to bring it back), filling the page.
     const held = (id, name, html2, on) => `<div class="tve${on ? '' : ' gone'}"><button type="button" class="tve-x" data-tve="${id}" aria-label="${on ? 'Remove' : 'Add'} ${name}" title="${on ? 'Remove from Home' : 'Put on Home'}">${svg(on ? '<path d="M6 12h12"/>' : '<path d="M12 6v12M6 12h12"/>')}</button>${on ? html2 : `<div class="tve-off"><b>${name}</b><span>Not on Home</span></div>`}</div>`
@@ -496,6 +505,78 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     side.scrollTop = y
     document.documentElement.toggleAttribute('data-noside', !html)
   }
+  // A widget, full screen: it grows out of its card to the middle, with everything behind it dimmed and soft.
+  const wid = Object.assign(document.createElement('div'), { id: 'tvwid' })
+  wid.innerHTML = `<div role="dialog" aria-modal="true"></div><button type="button" class="wid-x" aria-label="Close">${svg('<path d="M6 6l12 12M18 6 6 18"/>')}</button>`
+  document.body.append(wid)
+  const widBox = wid.firstElementChild
+  let widFrom = null, widMusic = false, words = null, wordsKey = '', widGo = 0
+  async function closeWid() {
+    if (!wid.classList.contains('on')) return
+    const go = ++widGo
+    widMusic = false
+    wid.classList.add('going')
+    const from = widFrom?.isConnected ? widFrom : null
+    await P?.grow(widBox, from, true)
+    if (go !== widGo) return
+    wid.classList.remove('on', 'going')
+    widBox.getAnimations().forEach(a => a.cancel())
+    from?.focus?.()
+  }
+  function showWid(n, cls, label) {
+    widGo++
+    widFrom = n
+    widBox.className = cls
+    widBox._html = ''
+    widBox.setAttribute('aria-label', label)
+    widBox.getAnimations().forEach(a => a.cancel())
+    wid.classList.remove('going')
+    wid.classList.add('on')
+  }
+  async function openWid(n) {
+    if (n.classList.contains('hw-cell')) { showWid(n, 'cell', 'Widget'); widBox.innerHTML = n.innerHTML; return void P.grow(widBox, n) }
+    const pc = n.classList.contains('tvs-card')
+    showWid(n, pc ? 'pc' : 'wx', pc ? 'This PC' : 'Weather')
+    const draw = info => { widBox.innerHTML = pc ? P.pcDetail(SYS || {}, info) : window.HubWeatherCard(wxBody, 'l') }
+    draw(null)
+    P.grow(widBox, n)
+    if (pc) { const info = await fetch('/api/system/info', { cache: 'no-store' }).then(r => (r.ok ? r.json() : {}), () => ({})); if (wid.classList.contains('on') && widBox.className === 'pc') draw(info) }
+  }
+  function openMusic(n) {
+    showWid(n, 'music', 'Music')
+    widMusic = true
+    wordsKey = ''
+    drawMusic()
+    P.grow(widBox, n)
+  }
+  function drawMusic() {
+    if (!widMusic || !P) return
+    const m = MU?.now || {}, key = `${m.title}|${m.artist}`
+    const html = P.fullPlayer(m, wordsKey === key ? words : null)
+    if (widBox._html !== html) { widBox.innerHTML = widBox._html = html; if (m.from === 'pc' && m.app) widBox.querySelector('.mp-s')?.insertAdjacentHTML('beforeend', `<button type="button" class="wid-app" data-open="1">Open ${esc(m.app)}</button>`) }
+    P.syncPlayer(widBox, m)
+    P.syncWords(widBox, m, words)
+    if (wordsKey !== key && m.title) {
+      wordsKey = key
+      words = null
+      fetch(`/api/music/lyrics?${new URLSearchParams({ title: m.title, artist: m.artist || '', dur: String(m.dur || '') })}`, { cache: 'no-store' }).then(r => r.json()).then(w => { if (wordsKey === key) { words = w; drawMusic() } }, () => {})
+    }
+  }
+  setInterval(() => { if (widMusic && !document.hidden) { P.syncPlayer(widBox, MU?.now); P.syncWords(widBox, MU?.now, words) } }, 250)
+  widBox.addEventListener('click', async e => {
+    const w = e.target.closest('[data-w]')?.dataset.w, l = e.target.closest('.mpf-ly:not(.plain, .off) p')
+    if (w === 'lyrics') { await fetch('/api/music/lyrics', { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: '{"on":true}' }).catch(() => {}); wordsKey = ''; return drawMusic() }
+    if (['prev', 'play', 'next'].includes(w)) { music(w === 'play' ? 'toggle' : w); return drawMusic() }
+    if (l && MU?.now?.seek) { const to = words?.lines?.[l.dataset.l]?.t; if (Number.isFinite(to)) { MU.now.pos = to; P.noted(MU.now); fetch('/api/music/do', { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: JSON.stringify({ action: 'seek', to }) }).catch(() => {}) } }
+  })
+  wid.querySelector('.wid-x').addEventListener('click', closeWid)
+  wid.addEventListener('click', e => { if (e.target === wid) closeWid() })
+  addEventListener('keydown', e => {
+    if (e.key === 'Escape' && wid.classList.contains('on')) { e.stopPropagation(); closeWid() }
+    const n = e.target?.closest?.('#tvside > :is(.tvt-wx, .tvs-card)')
+    if (n && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openWid(n) }
+  }, true)
+  document.addEventListener('click', e => { if (document.documentElement.hasAttribute('data-editing')) return; const n = e.target.closest?.('#tvside > :is(.tvt-wx, .tvs-card, .hw-cell)'); if (!n || !P || (n.classList.contains('hw-cell') && e.target.closest('button, a, input, [data-hw-open]'))) return; if (n.classList.contains('hw-cell')) e.stopPropagation(); openWid(n) }, true)
   document.addEventListener('click', e => {
     const id = e.target.closest?.('[data-tve]')?.dataset.tve
     if (!id) return
@@ -559,7 +640,10 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     const sy = d => svg(d).replace('<svg', '<svg class="sym"'), mons = MU?.monitors || [], lit = mons.filter(m => m.on)
     const list = panel.querySelector('.wpanel-list')
     const pill = (id, ic, t1, v) => P.pill(id, ic, t1, v ? 'On screen' : 'Hidden', v)
-    const html = (on ? `<div class="wpt"><button type="button" data-w="to:pc" class="${tvSide ? '' : 'on'}">This PC</button><button type="button" data-w="to:tv" class="${tvSide ? 'on' : ''}">Your TV</button></div>` : '')
+    const sw = panel.querySelector('.wpanel-title .wpt'), swHtml = `<button type="button" data-w="to:pc" class="${tvSide ? '' : 'on'}">This PC</button><button type="button" data-w="to:tv" class="${tvSide ? 'on' : ''}">Your TV</button>`
+    sw.hidden = !on
+    if (sw._html !== swHtml) sw.innerHTML = sw._html = swHtml
+    const html = ''
       + P.player(tvSide ? st.media || {} : MU?.now || {}, true)
       + (tvSide
         ? P.slider('brightness', st.brightness ?? 100, P.IC.sun, 'TV brightness') + P.slider('volume', st.volume ?? 0, P.IC.vol, 'TV volume', st.volume == null)
@@ -570,6 +654,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
           + picked().slice(4).map(id => BTN.find(b => b[0] === id)).filter(Boolean).map(btnOf).join('')
           + (editB ? `<div class="wph">Tap to add or remove a button</div>${BTN.filter(b => !picked().includes(b[0])).map(btnOf).join('')}` : '')
           + (SND?.available && (on || SND.to !== 'pc') ? `<div class="wph">Sound plays on</div><div class="wpt wps3">${[['pc', 'This PC'], ['tv', 'Your TV'], ['both', 'Both']].map(([k, t]) => `<button type="button" data-w="snd:${k}" class="${SND.to === k ? 'on' : ''}">${t}</button>`).join('')}</div>${SND.to !== 'pc' && !SND.tv ? '<div class="wpn">Waiting for the TV…</div>' : ''}` : '')
+          + (MU?.outputs?.length ? `<div class="wph">This PC’s sound comes out of</div>${MU.outputs.map(o => P.pill(`out:${o.id}`, P.IC.vol, outName(o.name)[0], outName(o.name)[1], o.on)).join('')}` : '')
           + (mons.length > 1 ? `<div class="wph">Brightness moves</div>${mons.map(m => P.pill(`mon:${m.id}`, P.IC.sun, m.name, m.on ? `${m.level}%` : 'Left alone', m.on)).join('')}` : ''))
       + (tvSide ? (st.inputs || []).map(i => P.pill(`input:${i.name}`, P.IC.input, i.name, i.sub || 'Input')).join('') : '')
       + '<div class="wph">Music</div>' + P.pill('music', P.IC.note, 'Music from', SRC[MU?.source] || 'Automatic', true) + P.pill('musicset', P.IC.sliders, 'Platforms', MU?.spotify?.connected ? 'Spotify connected' : 'Connect one')
@@ -585,7 +670,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     if (had) list.querySelector(`[data-w="${had}"]`)?.focus()
   }
   async function openPanel() {
-    try { P ??= await import('/tv/panel.js?v=8') } catch { return }
+    try { P ??= await import('/tv/panel.js?v=10') } catch { return }
     paintPanel()
     panel.classList.add('on')
     dock()
@@ -600,7 +685,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   // Seek on the bar, where the player allows it; the cover brings the player forward.
   document.addEventListener('pointerdown', e => {
     const bar = e.target.closest?.('.mp-bar.seek')
-    if (!bar || !bar._dur || !bar.closest('#tvside, #tvpanel')) return
+    if (!bar || !bar._dur || !bar.closest('#tvside, #tvpanel, #tvwid')) return
     e.preventDefault()
     e.stopPropagation()
     const line = bar.querySelector('.mp-line'), tv = !!bar.closest('#tvpanel') && TV?.on && look.target === 'tv'
@@ -618,8 +703,12 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     }
     addEventListener('pointermove', move); addEventListener('pointerup', up); addEventListener('pointercancel', up)
   }, true)
+  // The cover, or the arrows on it: full screen. From there, the player itself.
   document.addEventListener('click', e => {
-    if (!e.target.closest?.('#tvside .mp-art[data-open], #tvpanel .mp-art[data-open]')) return
+    if (document.documentElement.hasAttribute('data-editing')) return
+    const art = e.target.closest?.('#tvside .mp.has .mp-art, #tvpanel .mp.has .mp-art')
+    if (art && !(art.closest('#tvpanel') && TV?.on && look.target === 'tv')) { e.stopPropagation(); return openMusic(art) }
+    if (!e.target.closest?.('#tvwid .wid-app')) return
     e.stopPropagation()
     fetch('/api/music/open', { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: '{}' }).then(r => r.json()).then(r => { if (!r.ok) say(r.error || 'That didn’t open.') }, () => {})
   }, true)
@@ -629,7 +718,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   async function keepTv() {
     if (document.hidden || !document.documentElement.hasAttribute('data-tvlook') || !document.querySelector('.hw-root') || Date.now() - sideAt < 4000) return
     sideAt = Date.now()
-    try { P ??= await import('/tv/panel.js?v=8') } catch { return }
+    try { P ??= await import('/tv/panel.js?v=10') } catch { return }
     if (TV?.on) post({ type: 'state' })
     await Promise.all([readTv(), readPc()])
   }
@@ -639,7 +728,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   const docked = () => document.documentElement.hasAttribute('data-tvlook') && innerWidth >= 980
   const dock = () => { const on = panel.classList.contains('on') && docked(); if (document.documentElement.hasAttribute('data-dock') !== on) { document.documentElement.toggleAttribute('data-dock', on); if (mirror.classList.contains('on')) setTimeout(fitMirror, 300); setTimeout(fitRow, 320) } }
   addEventListener('resize', dock)
-  document.addEventListener('pointerdown', e => { if (panel.classList.contains('on') && !docked() && !panel.contains(e.target) && !btn.contains(e.target) && !e.target.closest?.('[data-rail="overlay"]')) closePanel() })
+  document.addEventListener('click', e => { if (panel.classList.contains('on') && !panel.contains(e.target) && e.target.isConnected && !btn.contains(e.target) && !e.target.closest?.('[data-rail="overlay"], #dkadd, #tvwid')) setTimeout(closePanel) })
   // From any page: Ctrl+. (and the sidebar).
   addEventListener('keydown', e => { if (e.key === '.' && (e.ctrlKey || e.metaKey) && !e.altKey && document.documentElement.matches('[data-tvlook], [data-tvtouch]')) { e.preventDefault(); panel.classList.contains('on') ? closePanel() : openPanel() } })
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && panel.classList.contains('on')) { e.stopPropagation(); closePanel() } }, true)
@@ -649,6 +738,19 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     if (MU?.now) { if (action === 'toggle') MU.now.playing = !MU.now.playing; paintPanel(); paintSide() }
     try { const r = await (await fetch('/api/music/do', { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: JSON.stringify({ action, ...(from ? { from } : {}) }) })).json(); if (!r.ok) say(r.error || 'That didn’t go through.') } catch { say('The hub didn’t answer.') }
     setTimeout(readPc, 700)
+  }
+  // "Headphones (Jake's AirPods)" as Windows says it: what it is, and which.
+  const outName = n => { const m = /^(.*?)\s*\((.*)\)$/.exec(n); if (!m) return [n, '']
+    const kind = m[1].replace(/^\d+- /, ''), maker = m[2].replace(/^\d+- /, '')
+    return /^(speakers?|head(phones?|set)|earphones?|digital (audio|output).*|line out|output)$/i.test(kind) ? [maker, kind] : [kind, maker] }
+  async function setOutput(id) {
+    for (const o of MU?.outputs || []) o.on = o.id === id
+    paintPanel()
+    const r = await fetch('/api/music/output', { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: JSON.stringify({ id }) }).then(r => r.json(), () => ({ error: 'The hub didn’t answer.' }))
+    if (!r.ok) say(r.error || 'That didn’t change.')
+    await readPc()
+    setHtml = ''
+    paintSettings()
   }
   async function setSound(to) {
     const was = SND?.to
@@ -696,6 +798,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     if (id === 'editb') { editB = !editB; return paintPanel() }
     if (id.startsWith('eb:')) { const b = id.slice(3), l = picked(); if (l.includes(b) && l.length <= 4) return say('Keep at least four buttons.'); look.btns = l.includes(b) ? l.filter(x => x !== b) : [...l, b]; return saveLook() }
     if (id.startsWith('snd:')) return setSound(id.slice(4))
+    if (id.startsWith('out:')) return setOutput(id.slice(4))
     if (id === 'pcedit') { leave(); closeSettings(); closeMirror(); window.HubChat?.close(); return goHome('.hw-root:not(.hw-edit) [data-hw-act="edit"]') }
     if (id === 'remotes') { leave(); closeMirror(); openSettings(); return onSet('remotepage') }
     if (id === 'tvpower') return void power()
@@ -708,7 +811,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     else if (['tvback', 'tvmenu'].includes(id)) post({ type: 'key', name: id.slice(2) })
     soon()
   }
-  panel.addEventListener('click', e => { if (e.target.closest('[data-tvpx]')) return closePanel(); const n = e.target.closest('[data-w]'); if (n && !n.classList.contains('wps')) press(n.dataset.w) })
+  panel.addEventListener('click', e => { const n = e.target.closest('[data-w]'); if (n && !n.classList.contains('wps')) press(n.dataset.w) })
   panel.addEventListener('keydown', e => {
     const n = e.target.closest('[data-w]')
     if (!n) return
@@ -1032,7 +1135,8 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
       { id: 'tabs', t1: 'Tabs', t2: 'What’s on the left, under Files', v: '' },
       { group: 'Display and Sound' },
       { id: 'displaypage', t1: 'Brightness', t2: 'Which monitors the slider moves, and each one on its own', v: !MU?.monitors?.length ? '' : MU.monitors.every(m => m.on) ? (MU.monitors.length > 1 ? 'All monitors' : MU.monitors[0].name) : `${MU.monitors.filter(m => m.on).length} of ${MU.monitors.length} monitors` },
-      ...(SND?.available ? [{ id: 'sound', t1: 'Sound plays on', t2: 'This PC’s sound here, on your TV, or both. On both, the TV is a moment behind', v: { pc: 'This PC', tv: 'Your TV', both: 'Both' }[SND.to], on: SND.to !== 'pc' }] : []),
+      { id: 'soundpage', t1: 'Sound', t2: 'Speakers, headphones, your TV, or both', v: SND?.to === 'tv' ? 'Your TV' : SND?.to === 'both' ? 'This PC and your TV' : outName(MU?.outputs?.find(o => o.on)?.name || '')[0] },
+      { id: 'lyr', t1: 'Lyrics', t2: 'Beside the song, full screen. From lrclib.net, which is sent the song’s name, artist and length', v: MU?.lyrics ? 'On' : 'Off', on: !!MU?.lyrics },
       { id: 'panel', t1: 'Sidebar', t2: 'Brightness, volume, music and your TV, beside any page', v: 'Ctrl+.' },
       { group: 'Devices and Connections' },
       { id: 'devpage', t1: 'Devices and connections', t2: 'Phones, iPads and computers, your home network, Tailscale and the passcode', v: DV.summary },
@@ -1083,10 +1187,10 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   function paintSettings() {
     if (!set.classList.contains('on')) return
     const backB = `<button type="button" data-set="back" aria-label="Back">${svg('<path d="M15 5l-7 7 7 7"/>')}</button>`
-    if (['display', 'keys', 'status', 'hub', 'alexa'].includes(picking)) {
+    if (['display', 'keys', 'status', 'hub', 'alexa', 'sound'].includes(picking)) {
       if (sliding || (picking === 'hub' && /^(hubnm|hubtx)$/.test(document.activeElement?.id || '')) || document.activeElement?.id === 'axid') return
-      const art = { display: 'One slider for every screen', keys: 'Everything without the mouse', status: 'How it’s all doing', hub: ID?.name || '', alexa: 'Alexa listens, LocalHub does it' }[picking]
-      const html = `<div class="tvs-art"><img src="${hubIcon}" alt=""><p>${art}</p></div><div class="tvs-list">${picking === 'hub' ? hubHtml(backB) : picking === 'alexa' ? alexaHtml(backB) : picking === 'display' ? displayHtml(backB) : picking === 'keys' ? keysHtml(backB) : statusHtml(backB)}</div>`
+      const art = { display: 'One slider for every screen', keys: 'Everything without the mouse', status: 'How it’s all doing', hub: ID?.name || '', alexa: 'Alexa listens, LocalHub does it', sound: 'Where this PC is heard' }[picking]
+      const html = `<div class="tvs-art"><img src="${hubIcon}" alt=""><p>${art}</p></div><div class="tvs-list">${picking === 'sound' ? soundHtml(backB) : picking === 'hub' ? hubHtml(backB) : picking === 'alexa' ? alexaHtml(backB) : picking === 'display' ? displayHtml(backB) : picking === 'keys' ? keysHtml(backB) : statusHtml(backB)}</div>`
       if (setHtml === html) return
       const y5 = set.querySelector('.tvs-list')?.scrollTop || 0
       setHtml = html
@@ -1325,6 +1429,12 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   })
   set.addEventListener('keydown', e => { if (/^(hubnm|hubtx)$/.test(e.target.id) && e.key === 'Enter') { e.preventDefault(); e.target.blur(); setHtml = ''; paintSettings() } })
   set.addEventListener('focusout', e => { if (/^(hubnm|hubtx)$/.test(e.target.id)) setTimeout(() => { setHtml = ''; paintSettings() }, 700) })
+  function soundHtml(backB) {
+    const outs = MU?.outputs || []
+    return `<div class="tvs-title">${backB}Sound</div>` + (SND?.available ? grp('Sound plays on') + [['pc', 'This PC', ''], ['tv', 'Your TV', 'This PC goes quiet while the TV plays'], ['both', 'Both', 'The TV is a moment behind']].map(([k, t, d]) => plainRow(t, d, SND.to === k ? '✓' : '', `snd:${k}`, SND.to === k)).join('') : '')
+      + grp('This PC’s speakers and headphones') + (outs.length ? outs.map(o => plainRow(outName(o.name)[0], outName(o.name)[1], o.on ? '✓' : '', `out:${o.id}`, o.on)).join('') : plainRow('None found')) + plainRow('Windows sound settings', 'Bluetooth, balance and each app’s volume', '', 'ossound')
+  }
+  setInterval(() => { if (!document.hidden && set.classList.contains('on') && (picking === 'sound' || picking === 'display') && !sliding) readPc().then(paintSettings) }, 4000)
   function alexaHtml(backB) {
     if (!AX) return `<div class="tvs-title">${backB}Alexa</div>` + plainRow('Looking…')
     const step = (n, t, d, btns = '') => `<div class="tvs-row tvs-step"><b>${n}</b><div class="txt"><div class="t1">${t}</div><div class="t2">${d}</div></div>${btns}</div>`
@@ -1473,7 +1583,11 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     if (id === 'displaypage') { picking = 'display'; setHtml = ''; paintSettings(); await readPc(); return paintSettings() }
     if (id === 'keyspage') { picking = 'keys'; setHtml = ''; return paintSettings() }
     if (id === 'statuspage') { picking = 'status'; setHtml = ''; paintSettings(); try { STAT = await (await fetch('/api/desk/status', { cache: 'no-store' })).json() } catch {} return paintSettings() }
-    if (id === 'sound') return setSound({ pc: 'tv', tv: 'both', both: 'pc' }[SND.to])
+    if (id === 'soundpage') { picking = 'sound'; setHtml = ''; paintSettings(); await readPc(); return paintSettings() }
+    if (id === 'lyr') { await fetch('/api/music/lyrics', { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: JSON.stringify({ on: !MU?.lyrics }) }).catch(() => {}); await readPc(); return paintSettings() }
+    if (k === 'snd') return setSound(d)
+    if (k === 'out') return setOutput(id.slice(4))
+    if (id === 'ossound') return void fetch('/api/reach/open', { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: '{"what":"sound"}' }).catch(() => {})
     if (k === 'mon') return setMonitor(id.slice(4))
     if (id === 'osdisplay') { const r = await fetch('/api/reach/open', { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: '{"what":"display"}' }).then(r => r.json(), () => ({})); return r.ok ? undefined : say(r.error || 'Windows settings open on the computer the hub runs on.') }
     if (id === 'export') return void Object.assign(document.createElement('a'), { href: '/api/hub/settings/export', download: 'local-hub-settings.json' }).click()

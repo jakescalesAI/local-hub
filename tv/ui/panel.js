@@ -27,6 +27,34 @@ export const IC = {
   home: sym('<path d="M3.5 11 12 4l8.5 7"/><path d="M5.5 9.5V20h4.5v-5.5h4V20h4.5V9.5"/>'),
 };
 const clockOf = (n) => { n = Math.max(0, Math.floor(n)); return `${Math.floor(n / 60)}:${String(n % 60).padStart(2, "0")}`; };
+// The song, full screen: its cover and buttons, and its words beside them when there are some.
+export function fullPlayer(m = {}, words) {
+  const b = (id, ic, label) => `<button class="mp-b" data-w="${id}" aria-label="${label}" tabindex="-1">${ic}</button>`;
+  const has = words?.lines?.length || words?.plain?.length;
+  const ly = words?.off ? '<div class="mpf-ly off"><p>Lyrics come from lrclib.net, which is sent the song’s name, artist and length.</p><button type="button" class="mpf-on" data-w="lyrics">Show lyrics</button></div>'
+    : has ? `<div class="mpf-ly${words.lines?.length ? "" : " plain"}">${(words.lines?.length ? words.lines.map((l) => l.x) : words.plain).map((x, i) => `<p data-l="${i}">${esc(x) || "♪"}</p>`).join("")}</div>` : "";
+  return `<div class="mp mpf${m.playing ? " on" : ""}${ly ? " words" : ""}"><div class="mpf-l"><div class="mpf-art">${m.art ? `<img src="${esc(m.art)}" alt="">` : IC.note}</div><div class="mp-t"><span>${esc(m.title || "Not playing")}</span></div><div class="mp-s"><span>${esc(m.artist || m.app || "")}</span></div><div class="mp-bar${m.seek ? " seek" : ""}" hidden><em class="mp-at">0:00</em><div class="mp-line"><i></i></div><em class="mp-end">0:00</em></div><div class="mp-row">${b("prev", IC.prev, "Previous")}${b("play", m.playing ? IC.pause : IC.play, m.playing ? "Pause" : "Play")}${b("next", IC.next, "Next")}</div></div>${ly}</div>`;
+}
+// The line being sung, kept in the middle.
+export function syncWords(root, m, words) {
+  const box = root?.querySelector?.(".mpf-ly");
+  if (!box || !words?.lines?.length || !Number.isFinite(m?.pos)) return;
+  const at = m.pos + (m.playing ? (performance.now() - (m.got || performance.now())) / 1000 : 0) + 0.25;
+  let i = -1;
+  while (i + 1 < words.lines.length && words.lines[i + 1].t <= at) i++;
+  if (box._i === i) return;
+  box._i = i;
+  box.querySelectorAll("p").forEach((p, k) => { p.classList.toggle("now", k === i); p.classList.toggle("past", k < i); });
+  const p = box.querySelector(`p[data-l="${Math.max(0, i)}"]`);
+  if (p) box.scrollTo({ top: p.offsetTop - box.clientHeight / 2 + p.clientHeight / 2, behavior: "smooth" });
+}
+// A card grows out of where it was, to the middle, and goes back to it.
+export function grow(box, from, back) {
+  const a = from?.getBoundingClientRect?.(), z = box.getBoundingClientRect(), k = box.offsetWidth ? z.width / box.offsetWidth : 1;
+  if (!a?.width || !z.width || !box.animate || matchMedia("(prefers-reduced-motion: reduce)").matches) return Promise.resolve();
+  const small = { transform: `translate(${(a.left + a.width / 2 - z.left - z.width / 2) / k}px, ${(a.top + a.height / 2 - z.top - z.height / 2) / k}px) scale(${Math.max(0.1, a.width / z.width)})`, opacity: back ? 0 : 0.2 }, full = { transform: "none", opacity: 1 };
+  return box.animate(back ? [full, small] : [small, full], { duration: back ? 260 : 420, easing: "cubic-bezier(.2, .85, .25, 1)", fill: back ? "forwards" : "none" }).finished.catch(() => {});
+}
 // Where it is in the song isn't in here: that changes every second, and syncPlayer() moves it without drawing this again.
 export function player(m = {}, wide = false) {
   const t = m.title || (m.playing ? "Playing" : "Not playing");
@@ -64,6 +92,14 @@ export function syncPlayer(root, m) {
 export const slider = (id, val, ic, label, off) => `<div class="wps${off ? " off" : ""}" data-w="${id}" aria-label="${label}"><i style="height:${off ? 0 : val}%"></i><span>${ic}</span></div>`;
 export const round = (id, ic, label, on) => `<div class="wpr${on ? " on" : ""}" data-w="${id}"><b>${ic}</b><em>${esc(label)}</em></div>`;
 export const pill = (id, ic, t1, t2, on) => `<div class="wpp${on ? " on" : ""}" data-w="${id}"><b>${ic}</b><div class="grow"><div class="t1">${esc(t1)}</div><div class="t2">${esc(t2)}</div></div></div>`;
+// This PC, opened: its rings, how long it has been on, and what is using the memory (programs of one name together).
+export function pcDetail(y, info) {
+  const by = new Map();
+  for (const p of info?.topByMemory || []) by.set(p.name, (by.get(p.name) || 0) + (Number(p.mb) || 0));
+  const top = [...by].sort((a, b) => b[1] - a[1]).slice(0, 6), most = top[0]?.[1] || 1, gb = (mb) => (mb >= 1000 ? `${(mb / 1024).toFixed(1)} GB` : `${Math.round(mb)} MB`);
+  const up = Number(info?.uptimeSeconds) || 0, on = up >= 172800 ? `${Math.floor(up / 86400)} days` : up >= 3600 ? `${Math.floor(up / 3600)} h ${Math.floor((up % 3600) / 60)} min` : `${Math.floor(up / 60)} min`;
+  return gauges(y) + (info ? `<div class="pcd"><div class="pcd-h">Using the most memory</div>${top.map(([n, mb]) => `<div class="pcd-r"><span>${esc(n)}</span><i><b style="width:${Math.round((mb / most) * 100)}%"></b></i><em>${gb(mb)}</em></div>`).join("")}<div class="pcd-f">On for ${on} · ${gb((info.memTotalMb || 0) - (info.memFreeMb || 0))} of ${gb(info.memTotalMb || 0)} in use · ${Number(info.processCount) || 0} processes</div></div>` : '<div class="pcd"><div class="pcd-h">Looking…</div></div>');
+}
 // This PC: how busy, how full.
 export function gauges(y) {
   const g = (label, v, sub = "") => {

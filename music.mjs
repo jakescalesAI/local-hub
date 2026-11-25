@@ -1,10 +1,13 @@
 // Music: what is playing on this PC (any player Windows knows: Spotify, Apple Music, a browser), on Spotify (signed in
 // with your own Spotify app, for any of its devices) or on the TV, as one player, with this PC's volume and brightness.
-//   GET  /api/music                       -> { source, pc, tv, spotify, now: { from, title, artist, app, playing, art, pos, dur, seek }, volume, brightness, monitors: [{ id, name, level, kind, on }] }
+//   GET  /api/music                       -> { source, pc, tv, spotify, now: { from, title, artist, app, playing, art, pos, dur, seek }, volume, brightness, monitors: [{ id, name, level, kind, on }], outputs: [{ id, name, on }], lyrics }
 //   GET  /api/music/art/<key>.jpg            the cover of what's playing on this PC
 //   POST /api/music/open                     brings that player to the front on this PC (from this PC only)
 //   POST /api/music/do { action, from?, to? } toggle | next | prev | seek (to: seconds), on whichever is playing (or the one named)
 //   POST /api/music/level { what, value, id? }  volume | brightness of this PC, 0-100: every monitor that is on, or the one named
+//   POST /api/music/output { id }            which of this PC's sound devices plays (Windows' own choice, so it stays in step with it)
+//   GET  /api/music/lyrics?title&artist&dur   -> { lines: [{ t, x }], plain } when lyrics are on: asked of lrclib.net, kept only in memory
+//   POST /api/music/lyrics { on }            off until turned on: asking sends the song's name, artist and length there
 //   POST /api/music/monitors { id, on }      whether the brightness slider moves that monitor (they all do at first)
 //   POST /api/music/source { source }        auto | pc | spotify | tv
 //   POST /api/music/spotify { clientId }     your Spotify app's Client ID (not a secret); '' disconnects
@@ -24,25 +27,32 @@ import { pcHelper } from './pc-helper.mjs'
 const SOURCES = ['auto', 'pc', 'spotify', 'tv']
 const APP_NAMES = [[/spotify/i, 'Spotify'], [/applemusic|apple.*music/i, 'Apple Music'], [/msedge/i, 'Edge'], [/chrome/i, 'Chrome'], [/firefox/i, 'Firefox'], [/amazon.*music/i, 'Amazon Music'], [/tidal/i, 'TIDAL'], [/deezer/i, 'Deezer'], [/vlc/i, 'VLC'], [/zunemusic/i, 'Media Player']]
 export const appName = id => APP_NAMES.find(([re]) => re.test(String(id)))?.[1] || String(id || '').replace(/!.*$/, '').replace(/\.exe$/i, '').split(/[.\\/]/).pop()
+export function readLyrics(j) {
+  const lines = []
+  for (const l of String(j?.syncedLyrics || '').slice(0, 60_000).split('\n')) { const m = /^\[(\d{1,3}):(\d{2}(?:\.\d{1,3})?)\]\s*(.*)$/.exec(l.trim()); if (m) lines.push({ t: Number(m[1]) * 60 + Number(m[2]), x: m[3].slice(0, 300) }) }
+  return { lines, plain: lines.length ? [] : String(j?.plainLyrics || '').slice(0, 60_000).split('\n').slice(0, 400).map(x => x.slice(0, 300)) }
+}
 export const validClientId = v => /^[0-9a-f]{32}$/i.test(String(v || ''))
 // Whose player the card shows: the one that's playing, else the one last seen with something on.
 export function pickNow(source, list) {
   if (source !== 'auto') return list.find(x => x.from === source) || null
-  return list.find(x => x.playing) || list.find(x => x.title) || list[0] || null
+  // A player that says it plays but not what doesn't take the place of a paused song.
+  return list.find(x => x.playing && x.title) || list.find(x => x.title) || list.find(x => x.playing) || list[0] || null
 }
 
 export function create({ here }) {
   const FILE = path.join(here, 'data', 'music.json')
-  let pref = { source: 'auto', skip: [] }
+  let pref = { source: 'auto', skip: [], lyrics: false }
   const keep = () => { fs.mkdirSync(path.dirname(FILE), { recursive: true }); fs.writeFileSync(FILE, JSON.stringify(pref)) }
-  try { const j = JSON.parse(fs.readFileSync(FILE, 'utf8')); pref = { source: SOURCES.includes(j.source) ? j.source : 'auto', skip: (Array.isArray(j.skip) ? j.skip : []).filter(x => typeof x === 'string' && x.length < 120).slice(0, 20) } } catch {}
+  try { const j = JSON.parse(fs.readFileSync(FILE, 'utf8')); pref = { source: SOURCES.includes(j.source) ? j.source : 'auto', skip: (Array.isArray(j.skip) ? j.skip : []).filter(x => typeof x === 'string' && x.length < 120).slice(0, 20), lyrics: j.lyrics === true } } catch {}
   const helper = pcHelper(here)
   const redirect = () => `http://127.0.0.1:${PORT}/api/music/spotify/callback`
   const box = () => (secrets().spotify && typeof secrets().spotify === 'object' ? secrets().spotify : {})
   let token = null // { value, until }
   let login = null // { state, verifier, at }
   let cache = { at: 0, data: null }
-  let monitors = []
+  let monitors = [], outputs = []
+  const words = new Map()
   let cover = { key: '', body: null }, player = ''
   const secs = v => (Number.isFinite(v) && v >= 0 && v < 1e6 ? Math.round(v * 10) / 10 : null)
 
@@ -94,9 +104,10 @@ export function create({ here }) {
     const now = pickNow(pref.source, [pc, sp, tv].filter(Boolean))
     const mons = (Array.isArray(pcs?.monitors) ? pcs.monitors : []).map(x => ({ id: String(x.id), name: String(x.name).slice(0, 60), level: Number(x.level) || 0, kind: String(x.kind), on: !pref.skip.includes(x.id) }))
     monitors = mons
+    outputs = (Array.isArray(pcs?.outputs) ? pcs.outputs : []).map(x => ({ id: String(x.id), name: String(x.name || 'Speakers').slice(0, 80), on: !!x.on }))
     const lit = mons.filter(x => x.on)
     const b = box()
-    const data = { source: pref.source, now, pc: !!pcs, tv: !!tv, spotify: { clientId: b.clientId || '', connected: !!b.refresh, redirect: redirect() }, volume: pcs?.volume ?? null, brightness: lit.length ? Math.round(lit.reduce((n, x) => n + x.level, 0) / lit.length) : null, monitors: mons }
+    const data = { source: pref.source, now, pc: !!pcs, tv: !!tv, spotify: { clientId: b.clientId || '', connected: !!b.refresh, redirect: redirect() }, volume: pcs?.volume ?? null, brightness: lit.length ? Math.round(lit.reduce((n, x) => n + x.level, 0) / lit.length) : null, monitors: mons, outputs, lyrics: pref.lyrics }
     cache = { at: Date.now(), data }
     return data
   }
@@ -146,6 +157,30 @@ export function create({ here }) {
       cache.at = 0
       const no = r.bad?.length ? `${r.bad.join(' and ')} didn’t take it.` : r.ok ? '' : b.what === 'volume' ? 'The volume didn’t change.' : 'No monitor is set to follow the slider.'
       return send(res, 200, { ok: !!r.ok && !no, ...(no ? { error: no } : {}) }), true
+    }
+    if (p === '/api/music/output' && req.method === 'POST') {
+      if (!outputs.some(x => x.id === b.id)) return send(res, 400, { error: 'That sound device isn’t connected any more.' }), true
+      const r = await helper.ask('output', b.id).catch(e => ({ error: e.message }))
+      cache.at = 0
+      return send(res, 200, { ok: !!r.ok, ...(r.ok ? {} : { error: 'Windows didn’t change the sound device.' }) }), true
+    }
+    if (p === '/api/music/lyrics' && req.method === 'POST') { pref.lyrics = b.on === true; keep(); cache.at = 0; return send(res, 200, { ok: true, on: pref.lyrics }), true }
+    if (p === '/api/music/lyrics' && req.method === 'GET') {
+      if (!pref.lyrics) return send(res, 200, { off: true, lines: [], plain: [] }), true
+      const q = k => String(url.searchParams.get(k) || '').slice(0, 200).trim(), title = q('title'), [artist, album = ''] = q('artist').split(' — ').map(x => x.trim()), dur = Math.round(Number(q('dur')) || 0)
+      if (!title) return send(res, 200, { lines: [], plain: [] }), true
+      const key = JSON.stringify([title, artist, dur])
+      if (!words.has(key)) {
+        let found = { lines: [], plain: [] }
+        try {
+          const ask = async (path, o) => { const r = await fetch(`https://lrclib.net/api/${path}?${new URLSearchParams(o)}`, { headers: { 'user-agent': 'media-player' }, signal: AbortSignal.timeout(9000) }); return r.ok ? r.json() : null }
+          const j = (dur && await ask('get', { track_name: title, artist_name: artist, ...(album ? { album_name: album } : {}), duration: String(dur) })) || (await ask('search', { track_name: title, artist_name: artist }))?.find(x => !dur || Math.abs(x.duration - dur) < 6)
+          found = readLyrics(j)
+        } catch {}
+        words.set(key, found)
+        if (words.size > 20) words.delete(words.keys().next().value)
+      }
+      return send(res, 200, words.get(key)), true
     }
     if (p === '/api/music/monitors' && req.method === 'POST') {
       if (typeof b.id !== 'string' || typeof b.on !== 'boolean' || !monitors.some(x => x.id === b.id)) return send(res, 400, { error: 'id is one of the monitors, on is true or false' }), true

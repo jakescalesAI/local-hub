@@ -15,7 +15,7 @@
 // ============================================================================
 
 import * as Stream from "./stream.js?v=4";
-import * as Panel from "./panel.js?v=8";
+import * as Panel from "./panel.js?v=10";
 import * as Files from "./files.js?v=1";
 import { createLock } from "./lock.js?v=2";
 import * as Remote from "./remote.js?v=5";
@@ -593,9 +593,18 @@ function move(dx, dy) {
   }
   // The player at the top right: Up from the row of buttons, Down back to it.
   if (S.zone === "player") {
-    const row = ["prev", "play", "next"], at = row.indexOf(S.mp);
+    const cards = homeCards(), c = /^c(\d)$/.exec(S.mp || ""), out = () => { S.zone = "favs"; S.f = clamp(S.lastF ?? favStart(), 0, FAVS.length - 1); paintHomeWidgets(); applyFocus(); };
+    if (c) {
+      const k = Math.min(+c[1], cards.length - 1);
+      if (dx < 0) return out();
+      if (dy > 0) { if (k + 1 >= cards.length) return out(); S.mp = `c${k + 1}`; }
+      if (dy < 0) { if (k > 0) S.mp = `c${k - 1}`; else if (prefs.homePlayer !== false) S.mp = "play"; }
+      return paintHomeWidgets();
+    }
+    if (dy > 0 && cards.length) { S.mp = "c0"; return paintHomeWidgets(); }
+    const row = [...(MEDIA.title ? ["art"] : []), "prev", "play", "next"], at = row.indexOf(S.mp);
     if ((dx < 0 && at === 0) || dy > 0) { S.zone = "favs"; S.f = clamp(S.lastF ?? favStart(), 0, FAVS.length - 1); paintHomeWidgets(); return applyFocus(); }
-    if (dx) S.mp = row[clamp(at + dx, 0, 2)];
+    if (dx) S.mp = row[clamp(at + dx, 0, row.length - 1)];
     return paintHomeWidgets();
   }
   if (S.zone === "favs") {
@@ -605,8 +614,9 @@ function move(dx, dy) {
       else if (dx < 0) return openRail();
       else return tilt(dx * 1.6, 0);
     }
-    if (dy < 0 && prefs.homePlayer === false) return tilt(0, -1.6);
-    if (dy < 0) { S.lastF = S.f; S.zone = "player"; S.mp = "play"; applyFocus(); return paintHomeWidgets(); }
+    const up = homeCards().length;
+    if (dy < 0 && prefs.homePlayer === false && !up) return tilt(0, -1.6);
+    if (dy < 0) { S.lastF = S.f; S.zone = "player"; S.mp = up ? `c${up - 1}` : "play"; applyFocus(); return paintHomeWidgets(); }
     if (dy > 0) { S.zone = "grid"; S.i = clamp(S.lastI ?? gridColUnderFav(S.f), 0, Math.min(COLS, ITEMS.length) - 1); }
     applyFocus();
     return tilt(dx, dy);
@@ -1166,13 +1176,79 @@ function paintTiles() {
   paintCC();
 }
 /* ── the home screen's widgets (top right) and the widget panel (the row's widgets button) ── */
+// The widgets under the player, which the remote can go up to and open.
+const homeCards = () => [...($("#homeW")?.children || [])].filter((n) => !n.classList.contains("mp"));
+async function openHomeCard(n) {
+  if (!n) return;
+  const box = $("#wdetail > div"), pc = n.classList.contains("gz"), id = n.dataset.wid;
+  const draw = (info) => { box.innerHTML = pc ? Panel.pcDetail(SYS || {}, info) : widgetCard(id, "l"); };
+  draw(null);
+  box.scrollTop = 0;
+  WD.music = false;
+  WD.from = n;
+  box._html = "";
+  $("#wdetail").classList.remove("music", "going");
+  $("#wdetail").classList.add("on");
+  setOverlay("wdetail");
+  Panel.grow(box, n);
+  if (pc) { const info = await fetch("/api/system/info", { cache: "no-store" }).then((r) => (r.ok ? r.json() : {})).catch(() => ({})); if (S.overlay === "wdetail") draw(info); }
+}
+// The song, full screen: the cover on the player opens it.
+const WD = { music: false, words: null, key: "", sel: "play", from: null };
+function drawFull() {
+  const key = `${MEDIA.title}|${MEDIA.artist}`, box = $("#wdetail > div");
+  const html = Panel.fullPlayer(MEDIA, WD.key === key ? WD.words : null);
+  if (box._html !== html) { box.innerHTML = box._html = html; }
+  if (WD.words?.off && WD.key === key) { const n = box.querySelector(".mpf-on"); if (n) n.textContent = "Show lyrics"; }
+  box.querySelectorAll("[data-w]").forEach((n) => n.classList.toggle("sel", n.dataset.w === WD.sel));
+  Panel.syncPlayer(box, MEDIA);
+  Panel.syncWords(box, MEDIA, WD.words);
+  if (WD.key !== key && MEDIA.title && IN_HUB) {
+    WD.key = key;
+    WD.words = null;
+    fetch(`/api/music/lyrics?${new URLSearchParams({ title: MEDIA.title, artist: MEDIA.artist || "", dur: String(MEDIA.dur || "") })}`, { cache: "no-store" }).then((r) => r.json()).then((w) => { if (WD.key === key) { WD.words = w; if (WD.music) drawFull(); } }).catch(() => {});
+  }
+}
+function openFullMusic() {
+  const box = $("#wdetail > div");
+  WD.music = true;
+  WD.sel = "play";
+  WD.key = "";
+  WD.from = $("#homeW .mp-art");
+  box._html = "";
+  $("#wdetail").classList.add("on", "music");
+  drawFull();
+  setOverlay("wdetail");
+  Panel.grow(box, WD.from);
+}
+function fullKey(name) {
+  const row = [...$("#wdetail").querySelectorAll("[data-w]")].map((n) => n.dataset.w), at = row.indexOf(WD.sel);
+  if (name === "left" || name === "right") { WD.sel = row[clamp(at + (name === "right" ? 1 : -1), 0, row.length - 1)]; return drawFull(); }
+  if (name === "up" || name === "down") return void $("#wdetail .mpf-ly.plain")?.scrollBy({ top: name === "down" ? 220 : -220, behavior: "smooth" });
+  if (name === "enter") {
+    if (WD.sel !== "lyrics") { mediaDo(WD.sel === "play" ? "toggle" : WD.sel); return setTimeout(drawFull, 60); }
+    WD.sel = "play";
+    return void fetch("/api/music/lyrics", { method: "POST", headers: { "content-type": "application/json", "x-hub": "1" }, body: '{"on":true}' }).then(() => { WD.key = ""; drawFull(); }, () => {});
+  }
+  if (name === "back" || name === "menu" || name === "home") closeHomeCard();
+}
+function closeHomeCard() {
+  const box = $("#wdetail > div"), el = $("#wdetail");
+  WD.music = false;
+  setOverlay(null);
+  paintHomeWidgets();
+  el.classList.add("going");
+  Panel.grow(box, WD.from, true).then(() => { el.classList.remove("on", "music", "going"); box.getAnimations?.().forEach((a) => a.cancel()); });
+}
 function paintHomeWidgets() {
   const box = $("#homeW");
   if (!box) return;
   const sizes = {};
   for (const x of SETTINGS?.widgets?.tv || []) { const id = x?.id || x?.[0]; if (id && id !== "clock" && id !== "date" && id !== "world-clock" && WIDGETS[id]) sizes[id] = x?.size || x?.[1] || "s"; }
-  const html = (prefs.homePlayer === false ? "" : Panel.player(MEDIA, true)) + Object.keys(sizes).slice(0, 2).map((id) => widgetCard(id, SYS && prefs.homeSys !== false && sizes[id] === "l" ? "m" : sizes[id])).join("") + (SYS && prefs.homeSys !== false ? Panel.gauges(SYS) : "");
+  const html = (prefs.homePlayer === false ? "" : Panel.player(MEDIA, true)) + Object.keys(sizes).slice(0, 2).map((id) => widgetCard(id, SYS && prefs.homeSys !== false && sizes[id] === "l" ? "m" : sizes[id]).replace('<div class="w card', `<div data-wid="${id}" class="w card`)).join("") + (SYS && prefs.homeSys !== false ? Panel.gauges(SYS) : "");
   if (box._html !== html) { box.innerHTML = html; box._html = html; }
+  homeCards().forEach((n, i) => n.classList.toggle("sel", S.zone === "player" && !S.overlay && S.view === "home" && S.mp === `c${i}`));
+  box.querySelector(".mp-art")?.classList.toggle("sel", S.zone === "player" && !S.overlay && S.view === "home" && S.mp === "art");
   box.querySelectorAll(".mp-b").forEach((n) => n.classList.toggle("sel", S.zone === "player" && !S.overlay && S.view === "home" && n.dataset.w === S.mp));
 }
 // What is playing, kept fresh while Home is what you see.
@@ -1209,22 +1285,23 @@ let mediaTimer = null;
 // With nothing on the TV itself, it's what the computer (or your Spotify) is playing, and the buttons work that.
 let HUB_MEDIA = null, SYS = null, sysAt = 0;
 async function readHubMusic() {
-  if (!IN_HUB || document.hidden || (S.overlay && S.overlay !== "wpanel") || S.view !== "home") return;
-  try { const r = await fetch("/api/music", { cache: "no-store" }); const n = r.ok ? (await r.json()).now : null; HUB_MEDIA = n && n.from !== "tv" && n.title ? Panel.noted(n) : null; } catch { HUB_MEDIA = null; }
+  if (!IN_HUB || document.hidden || (S.overlay && S.overlay !== "wpanel" && S.overlay !== "wdetail") || S.view !== "home") return;
+  try { const r = await fetch("/api/music", { cache: "no-store" }); const n = r.ok ? (await r.json()).now : null; HUB_MEDIA = n && n.from !== "tv" && n.title ? Panel.noted(n) : null; } catch { /* as it was: one missed ask isn't silence */ }
   // The computer's card, a few times a minute: the TV has better things to do.
   let sysNew = false;
   if (prefs.homeSys !== false && Date.now() - sysAt > 20_000) { sysAt = Date.now(); try { const r = await fetch("/api/desk/system", { cache: "no-store" }); SYS = r.ok ? await r.json() : null; sysNew = true; } catch { SYS = null; } }
   const was = songKey(MEDIA);
   readMedia();
-  if (sysNew || songKey(MEDIA) !== was) { paintHomeWidgets(); if (S.overlay === "wpanel") paintWpanel(); }
+  if (sysNew || songKey(MEDIA) !== was) { paintHomeWidgets(); if (S.overlay === "wpanel") paintWpanel(); if (S.overlay === "wdetail" && WD.music) drawFull(); }
 }
 setInterval(readHubMusic, 5000);
 // The position moves on by itself between asks.
-setInterval(() => { if (document.hidden || (S.overlay && S.overlay !== "wpanel") || S.view !== "home") return; Panel.syncPlayer($("#homeW"), MEDIA); if (S.overlay === "wpanel") Panel.syncPlayer($("#wpList"), MEDIA); }, 1000);
+setInterval(() => { if (document.hidden || (S.overlay && S.overlay !== "wpanel" && S.overlay !== "wdetail") || S.view !== "home") return; if (S.overlay === "wdetail") { if (WD.music) { Panel.syncPlayer($("#wdetail"), MEDIA); Panel.syncWords($("#wdetail"), MEDIA, WD.words); } return; } Panel.syncPlayer($("#homeW"), MEDIA); if (S.overlay === "wpanel") Panel.syncPlayer($("#wpList"), MEDIA); }, 1000);
 setTimeout(readHubMusic, 2500);
 function readMedia() {
   const own = NATIVE ? safeJson(native("media", "state"), {}) || {} : {};
-  MEDIA = own.playing || own.title || !HUB_MEDIA ? Panel.noted(own) : { ...HUB_MEDIA, hub: true };
+  // What plays here, if it says what; else the computer's song (paused too); else that something plays here.
+  MEDIA = own.title || !HUB_MEDIA ? Panel.noted(own) : { ...HUB_MEDIA, hub: true };
 }
 function mediaDo(act) {
   if (MEDIA.hub) {
@@ -2535,6 +2612,11 @@ function handleKey(raw) {
     if (name === "menu") { leaveBar(); return openCC(); }
     return;
   }
+  if (S.overlay === "wdetail" && WD.music) return fullKey(name);
+  if (S.overlay === "wdetail") {
+    if (name === "up" || name === "down") return void ($("#wdetail > div").scrollTop += name === "down" ? 160 : -160);
+    return ["back", "enter", "menu", "home"].includes(name) ? closeHomeCard() : undefined;
+  }
   if (S.overlay === "cc") {
     if (name === "back" || name === "menu") return closeCC();
     if (name === "enter") return ccActivate();
@@ -2557,7 +2639,7 @@ function handleKey(raw) {
     case "right": return move(1, 0);
     case "up": return move(0, -1);
     case "down": return move(0, 1);
-    case "enter": if (S.zone === "player") return mediaDo(S.mp === "play" ? "toggle" : S.mp); return press(activate);
+    case "enter": if (S.zone === "player" && /^c\d$/.test(S.mp)) return openHomeCard(homeCards()[+S.mp[1]]); if (S.zone === "player" && S.mp === "art") return openFullMusic(); if (S.zone === "player") return mediaDo(S.mp === "play" ? "toggle" : S.mp); return press(activate);
     case "hold": return S.zone === "player" ? undefined : openTileMenu();
     case "menu": {
       // On one of your websites, ☰ twice removes it (from the hub, so everywhere); anywhere else ☰ opens the sidebar.

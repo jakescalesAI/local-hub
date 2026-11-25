@@ -27,6 +27,35 @@ public class HubVolume {
 '@
   $hasAudio = $true
 } catch {}
+$hasOutputs = $false
+try {
+  Add-Type -TypeDefinition @'
+using System; using System.Collections.Generic; using System.Runtime.InteropServices;
+[StructLayout(LayoutKind.Sequential)] public struct HubKey { public Guid g; public int n; }
+[StructLayout(LayoutKind.Explicit)] public struct HubVar { [FieldOffset(0)] public ushort t; [FieldOffset(8)] public IntPtr p; }
+[Guid("886d8eeb-8cf2-4446-8d02-cdba1dbdcf99"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+interface IHubProps { int a(out int n); int b(int i, out HubKey k); [PreserveSig] int GetValue(ref HubKey k, out HubVar v); }
+[Guid("D666063F-1587-4E43-81F1-B948E807363F"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+interface IHubOut { int a(ref Guid id, int ctx, IntPtr p, [MarshalAs(UnmanagedType.IUnknown)] out object o); int OpenPropertyStore(int m, out IHubProps p); int GetId([MarshalAs(UnmanagedType.LPWStr)] out string id); }
+[Guid("0BD7A1BE-7A1A-44DB-8397-CC5392387B5E"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+interface IHubOuts { int GetCount(out int n); int Item(int i, out IHubOut d); }
+[Guid("A95664D2-9614-4F35-A746-DE8DB63617E6"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+interface IHubOutEnum { int EnumAudioEndpoints(int flow, int state, out IHubOuts c); int GetDefaultAudioEndpoint(int flow, int role, out IHubOut d); }
+[Guid("f8679f50-850a-41cf-9c72-430f290290c8"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+interface IHubPolicy { int a(); int b(); int c(); int d(); int e(); int f(); int g(); int h(); int i(); int j(); [PreserveSig] int SetDefaultEndpoint([MarshalAs(UnmanagedType.LPWStr)] string id, int role); }
+[ComImport, Guid("870af99c-171d-4f9e-af0d-e63df40c2bc9")] class HubPolicy { }
+public class HubOutputs {
+  public static string[] List() {
+    IHubOutEnum en = (IHubOutEnum)Activator.CreateInstance(Type.GetTypeFromCLSID(new Guid("BCDE0395-E52F-467C-8E3D-C4579291692E"))); IHubOut d; string def = ""; try { en.GetDefaultAudioEndpoint(0, 1, out d); d.GetId(out def); } catch {}
+    IHubOuts c; en.EnumAudioEndpoints(0, 1, out c); int n; c.GetCount(out n); List<string> o = new List<string>();
+    for (int i = 0; i < n; i++) { c.Item(i, out d); string id; d.GetId(out id); IHubProps p; d.OpenPropertyStore(0, out p); HubKey k = new HubKey(); k.g = new Guid("a45c254e-df1c-4efd-8020-67d146a850e0"); k.n = 14; HubVar v; string name = ""; if (p.GetValue(ref k, out v) == 0 && v.t == 31) { name = Marshal.PtrToStringUni(v.p); Marshal.FreeCoTaskMem(v.p); } o.Add(id + "\t" + (id == def ? 1 : 0) + "\t" + name); }
+    return o.ToArray();
+  }
+  public static bool Use(string id) { IHubPolicy p = (IHubPolicy)new HubPolicy(); bool ok = true; for (int r = 0; r < 3; r++) if (p.SetDefaultEndpoint(id, r) != 0) ok = false; return ok; }
+}
+'@
+  $hasOutputs = $true
+} catch {}
 $hasMonitors = $false
 try {
   Add-Type -TypeDefinition @'
@@ -125,12 +154,16 @@ public class HubIcon {
 '@
   $hasIcons = $true
 } catch {}
-$artKey = ''; $artData = ''; $artTries = 0
+$lastApp = ''; $artKey = ''; $artData = ''; $artTries = 0
 function Get-Media {
   $s = $mgr.GetCurrentSession()
   # The one that's playing, if another app holds the current place.
-  foreach ($x in $mgr.GetSessions()) { if ("$($x.GetPlaybackInfo().PlaybackStatus)" -eq 'Playing') { $s = $x; break } }
+  $all = @($mgr.GetSessions())
+  $live = $all | ? { "$($_.GetPlaybackInfo().PlaybackStatus)" -eq 'Playing' } | Select-Object -First 1
+  # Paused, it stays the one that was playing.
+  if ($live) { $s = $live } else { $last = $all | ? { $_.SourceAppUserModelId -eq $script:lastApp } | Select-Object -First 1; if ($last) { $s = $last } }
   if (-not $s) { return @{ on = $false } }
+  $script:lastApp = $s.SourceAppUserModelId
   $p = Wait-Op ($s.TryGetMediaPropertiesAsync()) ([Windows.Media.Control.GlobalSystemMediaTransportControlsSessionMediaProperties])
   $key = "$($s.SourceAppUserModelId)|$($p.Title)|$($p.Artist)"
   # A player often sends the picture a moment after the title: ask a few times.
@@ -144,10 +177,10 @@ function Get-Media {
         $net = [System.IO.WindowsRuntimeStreamExtensions].GetMethod('AsStreamForRead', [Type[]]@([Windows.Storage.Streams.IInputStream])).Invoke($null, @($st))
         $ms = New-Object IO.MemoryStream; $net.CopyTo($ms); $net.Dispose()
         if ($ms.Length -gt 0 -and $ms.Length -lt 8000000) {
-          # 400 across is plenty, and small enough to send about.
+          # 600 across is plenty, and small enough to send about.
           $ms.Position = 0
           $img = [System.Drawing.Image]::FromStream($ms)
-          $k = [Math]::Min(1.0, 400 / [Math]::Max($img.Width, $img.Height))
+          $k = [Math]::Min(1.0, 600 / [Math]::Max($img.Width, $img.Height))
           $w = [Math]::Max(1, [int]($img.Width * $k)); $h = [Math]::Max(1, [int]($img.Height * $k))
           $bmp = New-Object System.Drawing.Bitmap $w, $h
           $g = [System.Drawing.Graphics]::FromImage($bmp); $g.InterpolationMode = 'HighQualityBicubic'; $g.DrawImage($img, 0, 0, $w, $h); $g.Dispose()
@@ -180,7 +213,8 @@ while ($null -ne ($line = [Console]::In.ReadLine())) {
         $m = Get-Media; $m.Remove('session')
         if (((Get-Date) - $monsAt).TotalSeconds -gt 25) { try { $mons = Get-Monitors } catch {}; $monsAt = Get-Date }
         $v = $null; if ($hasAudio) { try { $v = [HubVolume]::Get() } catch {} }
-        $r = @{ media = $m; volume = $v; monitors = @($mons) }
+        $o = @(); if ($hasOutputs) { try { $o = @([HubOutputs]::List() | % { $q = $_ -split "`t"; @{ id = $q[0]; on = ($q[1] -eq '1'); name = $q[2] } }) } catch {} }
+        $r = @{ outputs = $o; media = $m; volume = $v; monitors = @($mons) }
       }
       'media' {
         $m = Get-Media
@@ -198,6 +232,7 @@ while ($null -ne ($line = [Console]::In.ReadLine())) {
         foreach ($m in $mons) { if (@($c.arg.ids) -contains $m.id) { $ok = $false; try { $ok = Set-Monitor $m ([int]$c.arg.value) } catch {}; if ($ok) { $n++ } else { $bad += $m.name } } }
         $r = @{ ok = ($n -gt 0); bad = $bad }
       }
+      'output' { $r = @{ ok = [HubOutputs]::Use([string]$c.arg) } }
       'icon' { $r = @{ png = $(if ($hasIcons) { [HubIcon]::Get([string]$c.arg) } else { '' }) } }
       'apps' { $r = @{ apps = @(Get-StartApps | % { @{ name = $_.Name; id = $_.AppID } }) } }
     }
