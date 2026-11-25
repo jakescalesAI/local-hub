@@ -247,7 +247,7 @@ ${A} .mp-art[data-open] { cursor: pointer; }
 ${A} .mp-b { transition: transform .18s var(--ease), background .15s, color .15s; } ${A} .mp-b:active { transform: scale(.9); } ${A} #tvside .mp-b:hover { transform: scale(1.08); }
 ${A} .mp-line { transition: height .2s var(--ease); } ${A} .mp-line i { transition: transform .5s linear; } ${A} .mp-bar em { transition: opacity .25s; }
 ${A} .tvp-card .mp:not(:hover) .mp-bar em { opacity: .7; }
-${A} .mp-bar.seek { cursor: pointer; padding: 8px 0; margin-top: 2px !important; margin-bottom: -8px; } ${A} .mp-bar.seek .mp-line::after { content: ""; position: absolute; left: var(--at, 0%); top: 50%; width: 20px; height: 20px; margin: -10px 0 0 -10px; border-radius: 50%; background: #fff; box-shadow: 0 2px 8px rgba(0, 0, 0, .5); transform: scale(0); transition: transform .2s var(--ease); } ${A} .mp-bar.seek:hover .mp-line { height: 10px; } ${A} .mp-bar.seek:hover .mp-line::after { transform: scale(1); }
+${A} .mp-bar.seek { cursor: pointer; padding: 8px 0; margin-top: 2px !important; margin-bottom: -8px; touch-action: none; user-select: none; } ${A} .mp-bar.seek .mp-line::before { content: ""; position: absolute; inset: -14px -4px; } ${A} .mp-bar.drag .mp-line { height: 10px; } ${A} .mp-bar.drag .mp-line i { transition: none !important; } ${A} .mp-bar.drag .mp-line::after { transform: scale(1) !important; } ${A} .mp-bar.seek .mp-line::after { content: ""; position: absolute; left: var(--at, 0%); top: 50%; width: 20px; height: 20px; margin: -10px 0 0 -10px; border-radius: 50%; background: #fff; box-shadow: 0 2px 8px rgba(0, 0, 0, .5); transform: scale(0); transition: transform .2s var(--ease); } ${A} .mp-bar.seek:hover .mp-line { height: 10px; } ${A} .mp-bar.seek:hover .mp-line::after { transform: scale(1); }
 ${A} .mp:hover .long span { animation: mplong 7s ease-in-out .4s infinite alternate; } @keyframes mplong { 0%, 12% { transform: none; } 88%, 100% { transform: translateX(var(--over)); } }
 @media (prefers-reduced-motion: reduce) { ${A} .mp *, ${A} .mp { animation: none !important; transition: none !important; } }
 /* Controls on a computer: all of it, its own scroll, and headings. */
@@ -465,8 +465,11 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   // and updates work here (the column is inside .hw-root). The clock and date are already at the top left.
   let MU = null, SYS = null, KEYS = { on: false, state: 'off', why: '' }
   const gauge = (label, v, sub = '') => { const p = Math.max(0, Math.min(100, Number(v) || 0)), c = p > 90 ? '#ff453a' : p > 75 ? '#ff9f0a' : '#30d158'; return `<div><svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="26" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="7"/><circle cx="32" cy="32" r="26" fill="none" stroke="${c}" stroke-width="7" stroke-linecap="round" stroke-dasharray="${(p * 1.634).toFixed(1)} 164" transform="rotate(-90 32 32)"/></svg><b>${Math.round(p)}<i>%</i></b><span>${label}</span><em>${sub}</em></div>` }
+  // Just moved by hand: that's where it is until the player has caught up.
+  let sought = null
+  const keepSought = n => { const m = n?.now; if (m && sought && m.title === sought.title && performance.now() - sought.at < 2600) { m.pos = sought.to + (m.playing ? (performance.now() - sought.at) / 1000 : 0); P?.noted(m) } return n }
   async function readPc() {
-    try { const t = performance.now(), sys = fetch('/api/desk/system', { cache: 'no-store' }), m = await fetch('/api/music', { cache: 'no-store' }), n = m.ok ? await m.json() : null; P?.noted(n?.now, (t + performance.now()) / 2); MU = n; const y = await sys; SND = await fetch('/api/tv/audio/state', { cache: 'no-store' }).then(r => r.json(), () => null); SYS = y.ok ? await y.json() : null } catch { MU = null }
+    try { const t = performance.now(), sys = fetch('/api/desk/system', { cache: 'no-store' }), m = await fetch('/api/music', { cache: 'no-store' }), n = m.ok ? await m.json() : null; P?.noted(n?.now, (t + performance.now()) / 2); MU = keepSought(n); const y = await sys; SND = await fetch('/api/tv/audio/state', { cache: 'no-store' }).then(r => r.json(), () => null); SYS = y.ok ? await y.json() : null } catch { MU = null }
     if (!dragging) paintPanel()
     paintSide()
     moveTime()
@@ -485,7 +488,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   const boards = {}
   const board = (which = myScreen()) => WG && (boards[which] ??= WG.createBoard({ screen: which, changed: () => { cancelAnimationFrame(board.raf); board.raf = requestAnimationFrame(() => { paintSide(); drawWid(); tick() }) }, music: () => MU?.now }))
   let CK = null
-  ;(async () => { try { WG = await import('/tv/widgets.js?v=9'); CK = await import('/tv/clock.js?v=1'); P ??= await import('/tv/panel.js?v=13'); board()?.refresh(); paintSide(); tick() } catch {} })()
+  ;(async () => { try { WG = await import('/tv/widgets.js?v=10'); CK = await import('/tv/clock.js?v=1'); P ??= await import('/tv/panel.js?v=14'); board()?.refresh(); paintSide(); tick() } catch {} })()
   setInterval(() => {
     if (!WG || document.hidden || !document.querySelector('.hw-root')) return
     const b = board(editOn || undefined)
@@ -779,7 +782,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     if (muBusy || document.hidden) return
     muBusy = true
     const t = performance.now()
-    try { const r = await fetch('/api/music', { cache: 'no-store' }); if (r.ok) { const was = MU?.now, n = await r.json(); MU = n; P?.noted(n.now, (t + performance.now()) / 2); if (was?.title !== n.now?.title || was?.playing !== n.now?.playing) paintSide() } } catch {}
+    try { const r = await fetch('/api/music', { cache: 'no-store' }); if (r.ok) { const was = MU?.now, n = await r.json(); P?.noted(n.now, (t + performance.now()) / 2); MU = keepSought(n); if (was?.title !== n.now?.title || was?.playing !== n.now?.playing) paintSide() } } catch {}
     muBusy = false
     drawMusic()
   }
@@ -790,9 +793,12 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     if (w === 'open') return void fetch('/api/music/open', { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: '{}' }).then(r => r.json()).then(r => { if (!r.ok) say(r.error || 'That didn’t open.') }, () => {})
     if (w === 'lyrics') { await fetch('/api/music/lyrics', { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: '{"on":true}' }).catch(() => {}); if (MU) MU.lyrics = true; askWords = false; words = null; wordsKey = ''; return drawMusic() }
     if (['prev', 'play', 'next'].includes(w)) { music(w === 'play' ? 'toggle' : w); return drawMusic() }
-    if (l && MU?.now?.seek) { widBox.querySelector('.mpf-ly')?._free?.(); const to = words?.lines?.[l.dataset.l]?.t; if (Number.isFinite(to)) { MU.now.pos = to; P.noted(MU.now); fetch('/api/music/do', { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: JSON.stringify({ action: 'seek', to }) }).catch(() => {}) } }
+    if (l && MU?.now?.seek) { widBox.querySelector('.mpf-ly')?._free?.(); const to = words?.lines?.[l.dataset.l]?.t; if (Number.isFinite(to)) { MU.now.pos = to; P.noted(MU.now); sought = { to, at: performance.now(), title: MU.now.title }; fetch('/api/music/do', { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: JSON.stringify({ action: 'seek', to }) }).catch(() => {}) } }
   })
-  wid.addEventListener('click', e => { if (e.target === wid) closeWid() })
+  // Only a press that began outside closes it: letting go of the timeline out here doesn't.
+  let pressed = null
+  addEventListener('pointerdown', e => { pressed = e.target }, true)
+  wid.addEventListener('click', e => { if (e.target === wid && (pressed === wid || !e.isTrusted)) closeWid() })
   addEventListener('keydown', e => {
     if (e.key === 'Escape' && wid.classList.contains('on')) { e.stopPropagation(); closeWid() }
     const n = e.target?.matches?.('#tvside .wg-i[tabindex]') ? e.target : null
@@ -883,7 +889,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     if (had) list.querySelector(`[data-w="${had}"]`)?.focus()
   }
   async function openPanel() {
-    try { P ??= await import('/tv/panel.js?v=13') } catch { return }
+    try { P ??= await import('/tv/panel.js?v=14') } catch { return }
     paintPanel()
     panel.classList.add('on')
     dock()
@@ -895,6 +901,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     clearInterval(poll)
     poll = setInterval(() => { if (document.hidden) return; if (TV?.on) post({ type: 'state' }); setTimeout(readTv, 800); readPc() }, 4000)
   }
+  let dragged = 0
   // Seek on the bar, where the player allows it; the cover brings the player forward.
   document.addEventListener('pointerdown', e => {
     const bar = e.target.closest?.('.mp-bar.seek')
@@ -903,15 +910,17 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     e.stopPropagation()
     const line = bar.querySelector('.mp-line'), tv = !!bar.closest('#tvpanel') && TV?.on && look.target === 'tv'
     const where = ev => { const r = line.getBoundingClientRect(); return Math.max(0, Math.min(1, (ev.clientX - r.left) / r.width)) }
-    const show = k => { bar._drag = true; line.querySelector('i').style.transform = `scaleX(${k})`; bar.style.setProperty('--at', `${k * 100}%`); const n = Math.floor(k * bar._dur); bar.querySelector('.mp-at').textContent = `${Math.floor(n / 60)}:${String(n % 60).padStart(2, '0')}` }
+    const show = k => { bar._drag = true; bar._k = k; bar.classList.add('drag'); line.querySelector('i').style.transform = `scaleX(${k})`; bar.style.setProperty('--at', `${k * 100}%`); const n = Math.floor(k * bar._dur); bar.querySelector('.mp-at').textContent = `${Math.floor(n / 60)}:${String(n % 60).padStart(2, '0')}` }
     show(where(e))
     const move = ev => show(where(ev))
     const up = ev => {
       removeEventListener('pointermove', move); removeEventListener('pointerup', up); removeEventListener('pointercancel', up)
       bar._drag = false
+      bar.classList.remove('drag')
+      dragged = performance.now()
       if (ev.type === 'pointercancel') return
       const to = where(ev) * bar._dur, m = tv ? TV.state?.media : MU?.now
-      if (m) { m.pos = to; P.noted(m) }
+      if (m) { m.pos = to; P.noted(m); if (!tv) sought = { to, at: performance.now(), title: m.title }; widBox.querySelector('.mpf-ly')?._free?.() }
       fetch('/api/music/do', { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: JSON.stringify({ action: 'seek', to, ...(tv ? { from: 'tv' } : {}) }) }).then(r => r.json()).then(r => { if (!r.ok) say(r.error || 'That player doesn’t allow it.'); setTimeout(readPc, 900) }, () => {})
     }
     addEventListener('pointermove', move); addEventListener('pointerup', up); addEventListener('pointercancel', up)
@@ -928,7 +937,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   async function keepTv() {
     if (document.hidden || !document.documentElement.hasAttribute('data-tvlook') || !document.querySelector('.hw-root') || Date.now() - sideAt < 4000) return
     sideAt = Date.now()
-    try { P ??= await import('/tv/panel.js?v=13') } catch { return }
+    try { P ??= await import('/tv/panel.js?v=14') } catch { return }
     if (TV?.on) post({ type: 'state' })
     await Promise.all([readTv(), readPc()])
   }

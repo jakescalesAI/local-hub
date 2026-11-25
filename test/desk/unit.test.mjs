@@ -201,3 +201,12 @@ test('A song’s place is found from whole seconds, and its words are the ones f
   assert.equal(pickLyrics(L, { title: 'Song (feat. X)', album: 'Alb', dur: 200 }).syncedLyrics, 'near')
   assert.equal(pickLyrics(L, { title: 'Other', dur: 200 }), null)
 })
+
+test('Lyrics: another artist’s song isn’t this one, and the version the others agree with is taken and put right', async () => {
+  const { pickLyrics, readLyrics } = await import('../../music.mjs')
+  const song = (id, off, o = {}) => ({ id, trackName: 'Song', artistName: 'Band', duration: 200, syncedLyrics: [10, 20, 30, 40, 50, 60].map((t, i) => `[00:${(t + off).toFixed(2)}] line number ${i}`).join(String.fromCharCode(10)), ...o })
+  assert.equal(pickLyrics([song(1, 0, { artistName: 'Cover Act' })], { title: 'Song', artist: 'Band', dur: 200 }), null)
+  const b = pickLyrics([song(1, 0.9, { albumName: 'Alb' }), song(2, 0), song(3, 0.1), song(4, -0.1), song(5, 12, { duration: 230 })], { title: 'Song', artist: 'Band', album: 'Alb', dur: 200 })
+  assert.ok(Math.abs(readLyrics(b).lines[0].t - 10) < 0.11, String(readLyrics(b).lines[0].t))
+  assert.equal(readLyrics({ ...song(1, 0.5), fix: -0.5 }).lines[0].t, 10)
+})

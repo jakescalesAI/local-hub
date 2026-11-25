@@ -35,15 +35,41 @@ export function readLyrics(j) {
     const m = /^((?:\[\d{1,3}:\d{2}(?:[.:]\d{1,3})?\]\s*)+)(.*)$/.exec(l.trim())
     if (m) for (const t of m[1].matchAll(/\[(\d{1,3}):(\d{2})(?:[.:](\d{1,3}))?\]/g)) lines.push({ t: Math.max(0, Number(t[1]) * 60 + Number(t[2]) + Number(`0.${t[3] || 0}`) - off), x: m[2].replace(/<\d+:\d+(?:\.\d+)?>/g, '').trim().slice(0, 300) })
   }
+  if (Number.isFinite(j?.fix)) for (const l of lines) l.t = Math.max(0, Math.round((l.t + j.fix) * 1000) / 1000)
   lines.sort((a, b) => a.t - b.t)
   return { lines, plain: lines.length ? [] : String(j?.plainLyrics || '').slice(0, 60_000).split('\n').slice(0, 400).map(x => x.slice(0, 300)) }
 }
 const bare = s => String(s || '').toLowerCase().replace(/\s*[([](feat|ft|with|remaster|deluxe|explicit|bonus)[^)\]]*[)\]]/g, '').replace(/\s+-\s+.*(remaster|version|edit|mix).*$/, '').replace(/[^\p{L}\p{N}]+/gu, ' ').trim()
-/** The one for this recording: its times only fit if it's as long. Timed words first, then the nearest length, then the same album. */
-export function pickLyrics(list, { title, album = '', dur = 0 }) {
-  const ok = (Array.isArray(list) ? list : []).filter(x => x && (x.syncedLyrics || x.plainLyrics) && bare(x.trackName) === bare(title) && (!dur || Math.abs(Number(x.duration) - dur) <= 4))
-  const score = x => (x.syncedLyrics && (!dur || Math.abs(x.duration - dur) <= 2.5) ? 0 : 100) + Math.abs(Number(x.duration) - dur) * 4 + (album && bare(x.albumName) === bare(album) ? 0 : 3)
-  return ok.sort((a, b) => score(a) - score(b))[0] || null
+const lineTimes = x => { const m = new Map(); for (const l of readLyrics(x).lines) { const k = bare(l.x); if (k.length > 3 && !m.has(k)) m.set(k, l.t) } return m }
+const median = l => { const a = [...l].sort((x, y) => x - y); return a.length ? (a.length % 2 ? a[(a.length - 1) / 2] : (a[a.length / 2 - 1] + a[a.length / 2]) / 2) : 0 }
+const people = s => bare(s).split(/ and | x | feat | with /).flatMap(x => x.split(',')).map(x => x.trim()).filter(Boolean)
+/** The one for this recording: the same song, by the same artist, as long. People made these, and several are often there for one
+ * song, some of them off: the one most of the others agree with is taken, and what it's off from them by is put right. */
+export function pickLyrics(list, { title, artist = '', album = '', dur = 0 }) {
+  const seen = new Set(), who = bare(artist)
+  const same = x => !who || !x.artistName || bare(x.artistName).includes(who) || who.includes(bare(x.artistName)) || people(artist).some(p => people(x.artistName).includes(p))
+  const ok = (Array.isArray(list) ? list : []).filter(x => x && (x.syncedLyrics || x.plainLyrics) && bare(x.trackName) === bare(title) && same(x) && (!dur || Math.abs(Number(x.duration) - dur) <= 3) && !seen.has(x.id ?? x) && seen.add(x.id ?? x))
+  const near = x => Math.abs(Number(x.duration) - dur) * 0.4 + (album && bare(x.albumName) === bare(album) ? 0 : 0.2)
+  const timed = ok.filter(x => x.syncedLyrics && readLyrics(x).lines.length > 3).slice(0, 14)
+  if (!timed.length) return ok.sort((a, b) => near(a) - near(b))[0] || null
+  if (timed.length < 3) return timed.sort((a, b) => near(a) - near(b))[0]
+  const times = timed.map(lineTimes)
+  // For each: how far off the others it is, line by line. A copy of the same file isn't another opinion.
+  const prints = times.map(m => [...m.values()].map(v => v.toFixed(1)).join())
+  const rated = timed.map((x, i) => {
+    const offs = [], voted = new Set([prints[i]])
+    times.forEach((m, j) => {
+      if (j === i || voted.has(prints[j])) return
+      const d = [...times[i]].filter(([k]) => m.has(k)).map(([k, t]) => m.get(k) - t)
+      if (d.length < 4 || d.length < times[i].size * 0.4) return
+      voted.add(prints[j])
+      offs.push(median(d))
+    })
+    return { x, off: median(offs), n: offs.length, rough: offs.length ? median(offs.map(v => Math.abs(v))) : 1 }
+  })
+  const best = rated.sort((a, b) => a.rough + near(a.x) * 0.3 - (b.rough + near(b.x) * 0.3) || b.n - a.n)[0]
+  // Only a shift the others agree about: a whole second off is another edit of the song, not a late hand.
+  return best.n >= 2 && Math.abs(best.off) > 0.08 && Math.abs(best.off) < 1 ? { ...best.x, fix: best.off } : best.x
 }
 /** Where a song is, from a player that only says whole seconds, rounded down, and when it said so: each says the song began within
  * one second, and what they all agree on gets narrower. A player that says parts of a second is taken at its word. */
@@ -95,7 +121,8 @@ export function create({ here }) {
 
   const clock = songClock()
   // What was read a moment ago, moved on to now: a song doesn't wait for whoever asks.
-  const fresh = d => { const n = d.now; if (!n?.playing || !Number.isFinite(n.pos)) return d; const ms = Date.now(), exact = n.from === 'pc' ? clock.at(n.song, ms) : null; return { ...d, now: { ...n, pos: secs(Math.min(n.dur || 1e6, (exact ?? n.pos + (ms - (n.read || d.read)) / 1000) + (n.from === 'pc' ? LEAD[n.app] || 0 : 0))) } } }
+  let sought = { at: 0 }
+  const fresh = d => { const n = d.now; if (n && n.title === sought.title && Date.now() - sought.at < 2500 && Number.isFinite(n.pos)) return { ...d, now: { ...n, pos: secs(Math.min(n.dur || 1e6, sought.to + (n.playing ? (Date.now() - sought.at) / 1000 : 0))) } }; if (!n?.playing || !Number.isFinite(n.pos)) return d; const ms = Date.now(), exact = n.from === 'pc' ? clock.at(n.song, ms) : null; return { ...d, now: { ...n, pos: secs(Math.min(n.dur || 1e6, (exact ?? n.pos + (ms - (n.read || d.read)) / 1000) + (n.from === 'pc' ? LEAD[n.app] || 0 : 0))) } } }
   async function spotifyToken() {
     const b = box()
     if (!b.refresh) return null
@@ -186,6 +213,7 @@ export function create({ here }) {
       }
       cache.at = 0
       clock.forget()
+      if (ok && b.action === 'seek') sought = { at: Date.now(), to, title: s.now?.title }
       return send(res, 200, { ok, ...(ok ? {} : { error: from === 'pc' ? 'Nothing is open to play. Start a song in any player on this PC.' : 'That didn’t go through.' }) }), true
     }
     if (p === '/api/music/open' && req.method === 'POST') {
@@ -223,9 +251,8 @@ export function create({ here }) {
           const ask = async (path, o) => { const r = await fetch(`https://lrclib.net/api/${path}?${new URLSearchParams(o)}`, { headers: { 'user-agent': 'media-player' }, signal: AbortSignal.timeout(9000) }); return r.ok ? r.json() : null }
           const plainTitle = title.replace(/\s*[([](feat|ft|with)\b[^)\]]*[)\]]/i, '').trim()
           const one = dur ? await ask('get', { track_name: title, artist_name: artist, ...(album ? { album_name: album } : {}), duration: String(dur) }).catch(() => null) : null
-          // The first one is right when it has times and is exactly as long; otherwise every version there is.
-          const list = one?.syncedLyrics && Math.abs(one.duration - dur) <= 1 ? [one] : [one, ...((await ask('search', { track_name: plainTitle, artist_name: artist })) || [])]
-          found = readLyrics(pickLyrics(list, { title, album, dur }) || (one?.plainLyrics ? { plainLyrics: one.plainLyrics } : null))
+          const more = await Promise.all([ask('search', { track_name: plainTitle, artist_name: artist }), ask('search', { q: `${plainTitle} ${artist}` })].map(p => p.catch(() => [])))
+          found = readLyrics(pickLyrics([one, ...more.flat()], { title, artist, album, dur }) || (one?.plainLyrics ? { plainLyrics: one.plainLyrics } : null))
         } catch {}
         words.set(key, found)
         if (words.size > 20) words.delete(words.keys().next().value)

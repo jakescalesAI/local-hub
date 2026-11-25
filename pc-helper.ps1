@@ -201,9 +201,23 @@ function Get-Media {
     $raw = $pos; if ($t.LastUpdatedTime.Year -gt 2000) { $upd = $t.LastUpdatedTime.ToUnixTimeMilliseconds() }; if ($i.PlaybackRate) { $rate = [double]$i.PlaybackRate }
     # The player says where it was, and when: the rest is the clock's.
     if ($playing -and $t.LastUpdatedTime.Year -gt 2000) { $pos += ([DateTimeOffset]::Now - $t.LastUpdatedTime).TotalSeconds * $(if ($i.PlaybackRate) { [double]$i.PlaybackRate } else { 1 }) }
-    if ($dur -gt 0) { $pos = [Math]::Max(0, [Math]::Min($dur, $pos)); $seek = [bool]$i.Controls.IsPlaybackPositionEnabled } else { $dur = $null; $pos = $null }
+    if ($dur -gt 0) { $pos = [Math]::Max(0, [Math]::Min($dur, $pos)); $seek = [bool]$i.Controls.IsPlaybackPositionEnabled -or ($hasUi -and $s.SourceAppUserModelId -match 'AppleMusic') } else { $dur = $null; $pos = $null }
   } catch {}
   @{ on = $true; raw = $raw; upd = $upd; rate = $rate; site = $script:site; pos = $pos; dur = $dur; seek = $seek; album = "$($p.AlbumTitle)"; app = "$($s.SourceAppUserModelId)"; title = "$($p.Title)"; artist = "$($p.Artist)"; playing = $playing; art = $script:artData; session = $s }
+}
+# Apple Music doesn't take a place in the song from Windows, but its own timeline does: the slider anyone can drag, set through
+# Windows' accessibility, with its window open anywhere (behind others, or minimized).
+$hasUi = $false
+try { Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes; $hasUi = $true } catch {}
+function Get-Scrubber {
+  if (-not $hasUi) { return $null }
+  $A = [System.Windows.Automation.AutomationElement]
+  foreach ($p in @(Get-Process AppleMusic -ErrorAction SilentlyContinue)) {
+    $own = New-Object System.Windows.Automation.PropertyCondition($A::ProcessIdProperty, $p.Id)
+    $is = New-Object System.Windows.Automation.PropertyCondition($A::AutomationIdProperty, 'LCDScrubber')
+    foreach ($w in $A::RootElement.FindAll('Children', $own)) { $s = $w.FindFirst('Descendants', $is); $o = $null; if ($s -and $s.TryGetCurrentPattern([System.Windows.Automation.RangeValuePattern]::Pattern, [ref]$o) -and -not $o.Current.IsReadOnly) { return $o } }
+  }
+  $null
 }
 $mons = @(); $monsAt = [DateTime]::MinValue
 while ($null -ne ($line = [Console]::In.ReadLine())) {
@@ -222,7 +236,10 @@ while ($null -ne ($line = [Console]::In.ReadLine())) {
       'media' {
         $m = Get-Media
         if ($m.on -and "$($c.arg)" -like 'seek:*') {
-          $r = @{ ok = (Wait-Op ($m.session.TryChangePlaybackPositionAsync([long]([double]::Parse("$($c.arg)".Substring(5), [Globalization.CultureInfo]::InvariantCulture) * 10000000))) ([bool])) }
+          $to = [double]::Parse("$($c.arg)".Substring(5), [Globalization.CultureInfo]::InvariantCulture)
+          $bar = if ($m.app -match 'AppleMusic') { Get-Scrubber } else { $null }
+          if ($bar) { $bar.SetValue([Math]::Max($bar.Current.Minimum, [Math]::Min($bar.Current.Maximum, $to))); $r = @{ ok = $true } }
+          else { $r = @{ ok = (Wait-Op ($m.session.TryChangePlaybackPositionAsync([long]($to * 10000000))) ([bool])) } }
         } elseif ($m.on) {
           $op = switch ($c.arg) { 'toggle' { $m.session.TryTogglePlayPauseAsync() } 'next' { $m.session.TrySkipNextAsync() } 'prev' { $m.session.TrySkipPreviousAsync() } }
           $r = @{ ok = (Wait-Op $op ([bool])) }

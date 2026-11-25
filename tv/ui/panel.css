@@ -14,6 +14,7 @@
 .mp-bar { display: flex; align-items: center; gap: 14px; margin: 10px 6px 0; } .mp-bar[hidden] { display: none; }
 .mp-bar em { flex: none; min-width: 44px; font: 500 18px/1 var(--font); font-style: normal; font-variant-numeric: tabular-nums; color: rgba(255, 255, 255, .55); } .mp-end { text-align: right; }
 .mp-line { position: relative; flex: 1; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, .2); }
+.mp-bar.seek.sel .mp-line, .wdetail .mp-bar.sel .mp-line { box-shadow: 0 0 0 4px rgba(255, 255, 255, .35); height: 12px; } .mp-bar.sel { box-shadow: none !important; } .mp-bar.sel em { color: #fff; }
 .mp-line i { position: absolute; inset: 0; border-radius: 3px; background: #fff; transform: scaleX(0); transform-origin: 0 50%; }
 
 .mp-t, .mp-s { margin: 0 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

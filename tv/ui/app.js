@@ -15,9 +15,9 @@
 // ============================================================================
 
 import * as Stream from "./stream.js?v=8";
-import * as Panel from "./panel.js?v=13";
+import * as Panel from "./panel.js?v=14";
 import * as Clock from "./clock.js?v=1";
-import * as Wg from "./widgets.js?v=9";
+import * as Wg from "./widgets.js?v=10";
 import * as Files from "./files.js?v=2";
 import { createLock } from "./lock.js?v=2";
 import * as Remote from "./remote.js?v=5";
@@ -594,6 +594,8 @@ function move(dx, dy) {
     const out = () => { S.zone = "favs"; S.f = clamp(S.lastF ?? favStart(), 0, FAVS.length - 1); paintHomeWidgets(); applyFocus(); };
     const all = wgStops(), cur = all.find((x) => x.key === S.mp) || all[0];
     if (!cur) return out();
+    // On the timeline, left and right go back and forward in the song.
+    if (dx && cur.key.endsWith("|seek")) return mediaSkip(dx * 10);
     const to = wgNext(all, cur, dx, dy);
     if (!to) { if (dy > 0 || dx < 0) out(); return; }
     S.mp = to.key;
@@ -1183,9 +1185,9 @@ setInterval(() => {
 function wgStops() {
   const o = [];
   for (const n of document.querySelectorAll("#homeW .wg-i")) {
-    const k = n.dataset.k, inner = n.dataset.wid === "music" ? [...(MEDIA.title ? n.querySelectorAll(".mp-art") : []), ...n.querySelectorAll(".mp-b")] : [...n.querySelectorAll("button[data-wa]")];
+    const k = n.dataset.k, inner = n.dataset.wid === "music" ? [...(MEDIA.title ? n.querySelectorAll(".mp-art") : []), ...n.querySelectorAll(".mp-bar.seek:not([hidden])"), ...n.querySelectorAll(".mp-b")] : [...n.querySelectorAll("button[data-wa]")];
     const seen = inner.filter((x) => x.offsetWidth);
-    if (seen.length) for (const x of seen) o.push({ key: `${k}|${x.dataset.wa || x.dataset.w || "art"}`, n: x, item: n, r: x.getBoundingClientRect() });
+    if (seen.length) for (const x of seen) o.push({ key: `${k}|${x.dataset.wa || x.dataset.w || (x.classList.contains("mp-bar") ? "seek" : "art")}`, n: x, item: n, r: x.getBoundingClientRect() });
     else o.push({ key: k, n, item: n, r: n.getBoundingClientRect() });
   }
   const box = $("#homeW")?.getBoundingClientRect();
@@ -1209,7 +1211,7 @@ function wgNext(all, cur, dx, dy) {
 function wgEnter() {
   const at = wgStops().find((x) => x.key === S.mp), [k, act] = String(S.mp).split("|");
   if (!at) return;
-  if (at.item.dataset.wid === "music") return !act || act === "art" ? openFullMusic() : mediaDo(act === "play" ? "toggle" : act);
+  if (at.item.dataset.wid === "music") return !act || act === "art" || act === "seek" ? openFullMusic() : mediaDo(act === "play" ? "toggle" : act);
   if (act) { if (act.startsWith("file:")) return toast("Open files in Files"); BOARD.act(act); return; }
   openHomeCard(at.item);
 }
@@ -1295,6 +1297,7 @@ function drawFull() {
   const key = `${MEDIA.title}|${MEDIA.artist}`, box = $("#wdetail > div");
   Panel.paintFull(box, MEDIA, WD.key === key ? WD.words : null, { show: localStorage.getItem("lh-words") !== "0", ask: WD.ask, on: HUB_LYRICS });
   box.querySelectorAll("[data-w]").forEach((n) => n.classList.toggle("sel", n.dataset.w === WD.sel));
+  box.querySelector(".mp-bar")?.classList.toggle("sel", WD.sel === "bar");
   Panel.syncPlayer(box, MEDIA);
   Panel.syncWords(box, MEDIA, WD.words);
   if (WD.key !== key && MEDIA.title && IN_HUB) {
@@ -1320,6 +1323,11 @@ function openFullMusic() {
   readHubMusic();
 }
 function fullKey(name) {
+  const bar = $("#wdetail .mp-bar.seek:not([hidden])");
+  if (WD.sel === "bar" && bar) {
+    if (name === "left" || name === "right") return mediaSkip(name === "right" ? 10 : -10);
+    if (name === "down" || name === "enter") { WD.sel = "play"; return drawFull(); }
+  } else if (name === "up" && bar) { WD.sel = "bar"; return drawFull(); }
   const row = [...$("#wdetail").querySelectorAll("[data-w]")].filter((n) => !n.hidden).map((n) => n.dataset.w), at = row.indexOf(WD.sel);
   if (name === "left" || name === "right") { WD.sel = row[clamp(at + (name === "right" ? 1 : -1), 0, row.length - 1)]; return drawFull(); }
   if (name === "up" || name === "down") return void $("#wdetail .mpf-ly")?.scrollBy({ top: name === "down" ? 220 : -220, behavior: "smooth" });
@@ -1407,6 +1415,24 @@ function readMedia() {
   const own = NATIVE ? safeJson(native("media", "state"), {}) || {} : {};
   // What plays here, if it says what; else the computer's song (paused too); else that something plays here.
   MEDIA = own.title || !HUB_MEDIA ? Panel.noted(own) : { ...HUB_MEDIA, hub: true };
+}
+// Ten seconds a press, and several presses are one move.
+let skipTo = null, skipTimer = 0;
+function mediaSkip(by) {
+  const at = skipTo ?? MEDIA.pos + (MEDIA.playing ? (performance.now() - (MEDIA.got || performance.now())) / 1000 : 0);
+  if (!Number.isFinite(at) || !(MEDIA.dur > 0)) return;
+  skipTo = clamp(at + by, 0, Math.max(0, MEDIA.dur - 1));
+  const put = () => { MEDIA.pos = skipTo; Panel.noted(MEDIA); if (HUB_MEDIA && MEDIA.hub) { HUB_MEDIA.pos = MEDIA.pos; HUB_MEDIA.got = MEDIA.got; } Panel.syncPlayer($("#homeW"), MEDIA); if (S.overlay === "wdetail") { Panel.syncPlayer($("#wdetail"), MEDIA); const b = $("#wdetail .mpf-ly"); b?._free?.(); } };
+  put();
+  toast(`${by > 0 ? "Forward" : "Back"} 10 seconds`);
+  clearTimeout(skipTimer);
+  skipTimer = setTimeout(() => {
+    const to = skipTo;
+    put();
+    skipTo = null;
+    if (!MEDIA.hub) return NATIVE && native("media", `seek:${to}`);
+    fetch("/api/music/do", { method: "POST", headers: { "content-type": "application/json", "x-hub": "1" }, body: JSON.stringify({ action: "seek", to, from: MEDIA.from }) }).then((r) => r.json()).then((r) => { if (!r.ok) toast(r.error || "That player doesn't allow it"); setTimeout(readHubMusic, 900); }, () => toast("LocalHub didn't answer"));
+  }, 450);
 }
 function mediaDo(act) {
   if (MEDIA.hub) {

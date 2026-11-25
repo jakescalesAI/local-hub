@@ -160,7 +160,13 @@ export function syncPlayer(root, m) {
     if (!ok || bar._drag) continue;
     const at = Math.min(m.dur, m.pos + (m.playing ? (performance.now() - (m.got || performance.now())) / 1000 : 0));
     bar._dur = m.dur;
-    bar.querySelector("i").style.transform = `scaleX(${(at / m.dur).toFixed(4)})`;
+    // A new song, or a jump, is there at once: only time passing moves it along.
+    const i = bar.querySelector("i"), k = at / m.dur, jump = bar._k === undefined || k < bar._k - 0.002 || (k - bar._k) * m.dur > 3 || bar._song !== m.title;
+    if (jump) i.style.transition = "none";
+    i.style.transform = `scaleX(${k.toFixed(4)})`;
+    if (jump) { void i.offsetWidth; i.style.transition = ""; }
+    bar._k = k;
+    bar._song = m.title;
     bar.style.setProperty("--at", `${((at / m.dur) * 100).toFixed(2)}%`);
     const a = clockOf(at), z = `-${clockOf(m.dur - at)}`, ea = bar.querySelector(".mp-at"), ez = bar.querySelector(".mp-end");
     if (ea.textContent !== a) ea.textContent = a;
