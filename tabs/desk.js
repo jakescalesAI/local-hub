@@ -39,7 +39,9 @@ ${D} .hw-root:not(.hw-edit) .hw-frame { height: 0 !important; } ${D} .hw-root:no
 ${D}:has(.hw-root:not(.hw-edit)) { overflow-y: auto !important; overflow-x: clip; scrollbar-width: none; }
 ${D} #tvside { transition: opacity .3s; } ${D}[data-down] #tvside { opacity: 0; pointer-events: none; }
 ${A}:has(.hw-root:not(.hw-edit)) #dkfav { display: flex; gap: 14px; min-width: 0; }
-${D}:has(.hw-root) #dkfav { flex: 1; overflow: clip; overflow-clip-margin: 40px; }
+/* More favorites than fit: the row scrolls, fading at the end there is more of. The padding leaves room for a tile's ring. */
+${D}:has(.hw-root) #dkfav { flex: 1 1 0; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; padding: 6px; margin: -6px; --l: 0px; --r: 0px; -webkit-mask: linear-gradient(90deg, transparent, #000 var(--l), #000 calc(100% - var(--r)), transparent); mask: linear-gradient(90deg, transparent, #000 var(--l), #000 calc(100% - var(--r)), transparent); }
+${D} #dkfav.more-l { --l: 44px !important; } ${D} #dkfav.more-r { --r: 44px !important; } #dkfav::-webkit-scrollbar { display: none; }
 ${T}:has(.hw-root) #dkfav { flex: 1 0 100%; overflow-x: auto; scrollbar-width: none; padding: 6px 2px; }
 .dk-t { position: relative; min-width: 0; padding: 0; text-align: center; border-radius: 18px; outline: 0; }
 .dk-a { position: relative; display: grid; place-items: center; aspect-ratio: 5 / 3; border-radius: 18px; overflow: hidden; background: var(--dk-bg, #22232a); color: var(--dk-fg, #fff); box-shadow: 0 8px 22px -10px rgba(0, 0, 0, .7); transition: transform .25s var(--ease), box-shadow .25s var(--ease); }
@@ -70,7 +72,6 @@ ${A} #dkadd.on { display: grid; position: fixed; z-index: 72; inset: 0; place-it
 .dk-sheet header input { flex: 1; height: 46px; padding: 0 20px; border: 0; outline: 0; border-radius: 23px; background: var(--ui-fill); box-shadow: var(--ui-edge); color: #fff; font: 600 16px var(--font); }
 .dk-sheet header input:focus { box-shadow: 0 0 0 2px #fff; }
 .dk-sheet header button { height: 46px; padding: 0 20px; border-radius: 23px; background: var(--ui-sel); color: #000; font-size: 15px; font-weight: 600; }
-.dk-seg { display: flex; gap: 4px; margin: 0 26px 6px; padding: 4px; border-radius: 99px; background: var(--ui-fill); box-shadow: var(--ui-edge); } .dk-seg[hidden] { display: none; } .dk-seg button { flex: 1; height: 40px; border-radius: 99px; font-size: 15px; font-weight: 600; color: rgba(255, 255, 255, .7); } .dk-seg button.on { background: var(--ui-sel); color: #000; }
 .dk-list { overflow-y: auto; scrollbar-width: none; padding: 4px 26px 28px; }
 .dk-list h4 { margin: 18px 4px 12px; font-size: 13px; font-weight: 600; color: rgba(255, 255, 255, .56); }
 .dk-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 18px 14px; padding: 6px 4px; }
@@ -141,11 +142,27 @@ ${A} #dkadd.on { display: grid; position: fixed; z-index: 72; inset: 0; place-it
     document.dispatchEvent(new Event('hub-sort-mine'))
   }
   let grid = null, fav = null
+  function edges() {
+    const max = fav.scrollWidth - fav.clientWidth
+    fav.classList.toggle('more-l', fav.scrollLeft > 2)
+    fav.classList.toggle('more-r', max > 2 && fav.scrollLeft < max - 2)
+  }
   function paint() {
     if (!document.documentElement.matches('[data-tvlook], [data-tvtouch]')) return
     const root = document.querySelector('.hw-root')
     if (!root || !loaded) return
-    if (!fav) { fav = document.createElement('div'); fav.id = 'dkfav'; fav.setAttribute('aria-label', 'Favorites'); document.getElementById('controls').append(fav) }
+    if (!fav) { fav = document.createElement('div'); fav.id = 'dkfav'; fav.setAttribute('aria-label', 'Favorites'); document.getElementById('controls').append(fav)
+      fav.addEventListener('scroll', edges, { passive: true })
+      // A mouse wheel moves the row until its end, then the page. A touchpad's sideways swipe is the browser's own.
+      fav.addEventListener('wheel', e => {
+        if (Math.abs(e.deltaX) >= Math.abs(e.deltaY) || e.ctrlKey) return
+        const max = fav.scrollWidth - fav.clientWidth
+        if (max < 2 || (e.deltaY < 0 ? fav.scrollLeft < 1 : fav.scrollLeft > max - 1)) return
+        e.preventDefault()
+        fav.scrollBy({ left: e.deltaY * (e.deltaMode === 1 ? 32 : 1.4), behavior: Math.abs(e.deltaY) > 40 || e.deltaMode === 1 ? 'smooth' : 'auto' })
+      }, { passive: false })
+      new ResizeObserver(edges).observe(fav)
+    }
     if (grid?.parentElement !== root) { grid ??= Object.assign(document.createElement('div'), { id: 'dk' }); const st = root.querySelector('.hw-stage'); st ? st.before(grid) : root.append(grid) }
     const gear = document.getElementById('tvgear')
     if (gear && document.documentElement.hasAttribute('data-tvtouch') && fav.previousElementSibling !== gear) gear.after(fav)
@@ -166,6 +183,7 @@ ${A} #dkadd.on { display: grid; position: fixed; z-index: 72; inset: 0; place-it
     if (q) list = list.filter(a => a.name.toLowerCase().includes(q))
     set(grid, q ? list.map(a => tile(a)).join('') || '<div class="dk-none" style="grid-column:1/-1">No apps by that name. Press Enter to search the web.</div>' : list.map(a => tile(a)).join('') + plus('Add'))
     set(fav, S.favorites.map(find).filter(a => a && (LOCAL || !isPc(a))).map(a => tile(a, 'fav')).join('') + `<button type="button" class="dk-t add" data-dk="addfav" title="Add a favorite" aria-label="Add a favorite"><span class="dk-a">${PLUS}</span></button>`)
+    edges()
   }
 
   async function open(id, web) {
@@ -212,26 +230,25 @@ ${A} #dkadd.on { display: grid; position: fixed; z-index: 72; inset: 0; place-it
 
   // ── add: websites, this PC's programs, or any address ──
   const sheet = Object.assign(document.createElement('div'), { id: 'dkadd' })
-  sheet.innerHTML = '<div class="dk-sheet" role="dialog" aria-modal="true" aria-label="Add an app or website"><header><span class="ttl"></span><input type="text" placeholder="Search, or type a web address" aria-label="Search, or type a web address"><button type="button" data-dkclose>Done</button></header><div class="dk-seg"><button type="button" data-kind="apps">Apps on this PC</button><button type="button" data-kind="web">Websites</button></div><div class="dk-list"></div></div>'
+  sheet.innerHTML = '<div class="dk-sheet" role="dialog" aria-modal="true" aria-label="Add an app or website"><header><input type="text" placeholder="Search, or type a web address" aria-label="Search, or type a web address"><button type="button" data-dkclose>Done</button></header><div class="dk-list"></div></div>'
   document.body.append(sheet)
   const sq = sheet.querySelector('input'), sl = sheet.querySelector('.dk-list')
-  let forFav = false, kind = LOCAL ? 'apps' : 'web'
+  let forFav = false
   function paintAdd() {
     const t = sq.value.trim().toLowerCase(), hit = a => !t || a.name.toLowerCase().includes(t)
     const have = a => (forFav ? isFav(a.id) : S.apps.some(x => x.id === a.id))
     const sec = (title, list) => (list.length ? `<h4>${title}</h4><div class="dk-grid">${list.map(a => tile(a, have(a) ? 'have' : '')).join('')}</div>` : '')
     const addr = /^(https?:\/\/)?[a-z0-9-]+(\.[a-z0-9-]+)+([/?#]\S*)?$/i.test(t) ? t : ''
     const mine = S.apps.filter(hit), more = S.more.filter(a => hit(a) && !S.apps.some(x => x.id === a.id)), progs = LOCAL ? (pc || []).filter(a => hit(a) && !S.apps.some(x => x.id === a.id)) : []
-    sheet.querySelector('.dk-seg').hidden = !LOCAL
-    sheet.querySelectorAll('[data-kind]').forEach(n => n.classList.toggle('on', n.dataset.kind === kind))
-    const webOn = kind === 'web' || !LOCAL || t, appOn = LOCAL && (kind === 'apps' || t)
     set(sl, (addr ? `<h4>Website</h4><div class="dk-grid"><button type="button" class="dk-t" data-addr="${esc(sq.value.trim())}"><span class="dk-a">${PLUS}</span><span class="dk-n">${esc(addr)}</span></button></div>` : '')
-      + sec('On Home', forFav || t ? mine : []) + (appOn && kind === 'apps' ? sec('On this PC', progs) : '') + (webOn ? (kind === 'web' && !t ? sec('Add any website', [{ id: 'new-site', name: 'Type its address above', url: 'about:blank' }]).replace(/<img[^>]*>/, PLUS) : '') + sec('Websites', more) : '') + (appOn && kind !== 'apps' ? sec('On this PC', progs) : '')
-      + (appOn && !pc ? '<div class="dk-none">Looking at this PC’s programs…</div>' : '') || '<div class="dk-none">Nothing by that name. Type its web address to add it.</div>')
+      // Websites before programs: there are far fewer of them.
+      + sec('On Home', forFav || t ? mine : []) + sec('Websites', more) + sec('On this PC', progs)
+      + (LOCAL && !pc ? '<div class="dk-none">Looking at this PC’s programs…</div>' : '') || '<div class="dk-none">Nothing by that name. Type its web address to add it.</div>')
   }
   async function openAdd(asFav) {
     forFav = !!asFav
-    sheet.querySelector('.ttl').textContent = forFav ? 'Favorites' : 'Add to Home'
+    sheet.querySelector('.dk-sheet').setAttribute('aria-label', forFav ? 'Favorites' : 'Add to Home')
+    sl.scrollTop = 0
     sq.value = ''
     sheet.classList.add('on')
     paintAdd()
@@ -243,9 +260,6 @@ ${A} #dkadd.on { display: grid; position: fixed; z-index: 72; inset: 0; place-it
   sq.addEventListener('keydown', e => { if (e.key === 'Enter') sl.querySelector('.dk-t')?.click() })
   sheet.addEventListener('click', e => {
     if (e.target === sheet || e.target.closest('[data-dkclose]')) return closeAdd()
-    const k = e.target.closest('[data-kind]')?.dataset.kind
-    if (k) { kind = k; sl.scrollTop = 0; return paintAdd() }
-    if (e.target.closest('[data-dk="new-site"]')) { sq.placeholder = 'example.com'; return sq.focus() }
     const ad = e.target.closest('[data-addr]')?.dataset.addr
     let a = null
     if (ad) {
@@ -282,7 +296,7 @@ ${A} #dkadd.on { display: grid; position: fixed; z-index: 72; inset: 0; place-it
   // Drag to reorder, or a tile onto the favorites.
   let drag = ''
   document.addEventListener('dragstart', e => { const t = onHome(e); if (!t || t.classList.contains('add')) return; drag = t.dataset.dk; t.classList.add('drag'); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', t.title); e.stopPropagation() }, true)
-  document.addEventListener('dragover', e => { if (!drag) return; document.querySelectorAll('.dk-t.over').forEach(n => n.classList.remove('over')); const t = onHome(e); if (t || e.target.closest?.('#dkfav')) { e.preventDefault(); if (t && t.dataset.dk !== drag) t.classList.add('over') } })
+  document.addEventListener('dragover', e => { if (!drag) return; document.querySelectorAll('.dk-t.over').forEach(n => n.classList.remove('over')); const t = onHome(e); if (fav?.contains(e.target)) { const r = fav.getBoundingClientRect(); if (e.clientX > r.right - 60) fav.scrollLeft += 10; else if (e.clientX < r.left + 60) fav.scrollLeft -= 10 } if (t || e.target.closest?.('#dkfav')) { e.preventDefault(); if (t && t.dataset.dk !== drag) t.classList.add('over') } })
   document.addEventListener('drop', e => {
     if (!drag) return
     const t = onHome(e), inFav = !!e.target.closest?.('#dkfav'), id = drag
