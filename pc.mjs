@@ -10,7 +10,7 @@ import { isLocal } from './access.mjs'
 import { IS_WIN } from './platform.mjs'
 import { helperFor } from './pc-helper.mjs'
 
-export const OPEN = { wifi: 'ms-availablenetworks:', bluetooth: 'ms-settings:bluetooth', sound: 'ms-settings:sound', display: 'ms-settings:display', snip: 'ms-screenclip:', tasks: 'taskmgr.exe', settings: 'ms-settings:', battery: 'ms-settings:powersleep' }
+export const OPEN = { wifi: 'ms-availablenetworks:', bluetooth: 'ms-settings:bluetooth', sound: 'ms-settings:sound', display: 'ms-settings:display', snip: 'ms-screenclip:', tasks: 'taskmgr.exe', settings: 'ms-settings:', battery: 'ms-settings:powersleep', phone: 'ms-phone:' }
 const SWITCH = ['mic', 'mute', 'bt', 'dark', 'awake'], HERE = new Set(['bt', 'lock', 'screens', 'open', 'dark'])
 /** What may be asked of it -> [command, argument], or null. */
 export function command(b) {

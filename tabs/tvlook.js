@@ -109,6 +109,7 @@ ${R} .hw-root.hw-edit > .hw-bar { left: auto; }
 ${R}[data-editing] .controls { visibility: hidden !important; } ${R}[data-editing] .tvt-name { visibility: hidden; } ${R}[data-editing] .hw-root > .hw-bar { position: fixed; top: max(250px, 59.5vh); right: calc(var(--dock) + 48px); left: auto; z-index: 14; height: 56px; margin: 0; } ${R}[data-editing] .hw-bar [data-hw-act="add"] { display: none; }
 #tvebar { display: none; } ${R}[data-editing] #tvebar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; position: fixed; z-index: 13; top: max(250px, 59.5vh); left: calc(var(--tvrail) + 48px); min-height: 56px; color: rgba(255, 255, 255, .7); font-size: 15px; } #tvebar p { flex: 1 0 100%; margin: 8px 0 0; max-width: 620px; line-height: 1.5; } #tvebar .te-out { display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 14px; border-radius: 17px; background: rgba(255, 159, 10, .2); color: #ffd39b; font-size: 14px; font-weight: 600; }
 ${R}[data-editing] #tvside { overflow: visible !important; z-index: 14; } ${R}[data-editing] :is(#dk, #dkfav, #tvask, .askbar) { opacity: .12 !important; pointer-events: none !important; } ${R}[data-editing] .tvt-clock .hc { outline: 2px dashed rgba(255, 255, 255, .4); outline-offset: 12px; border-radius: 14px; } ${R}[data-editing] .tvt-clock .hc:hover { outline-color: #fff; }
+.wg-land { position: relative; z-index: 6; display: grid; place-items: center; pointer-events: none; border-radius: 2.6em; background: rgba(10, 132, 255, .34); box-shadow: inset 0 0 0 .3em #4aa3ff; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); } .wg-land span { padding: .55em 1.1em; border-radius: 99px; background: rgba(0, 0, 0, .7); color: #fff; font: 600 1.5em/1 var(--font); white-space: nowrap; } .wg-land.no { background: rgba(255, 69, 58, .3); box-shadow: inset 0 0 0 .3em #ff453a; } .wg-land.move { z-index: 5; background: rgba(255, 255, 255, .06); box-shadow: none; border: .2em dashed rgba(255, 255, 255, .75); backdrop-filter: none; -webkit-backdrop-filter: none; } #tvside .wg-i.drag { opacity: .35; }
 .wg-ghost { display: grid; place-items: center; min-width: 0; min-height: 0; padding: 0; border: .2em dashed rgba(255, 255, 255, .28); border-radius: 2.6em; background: rgba(0, 0, 0, .28); color: rgba(255, 255, 255, .6); font: inherit; cursor: pointer; } .wg-ghost:is(:hover, .over) { border-color: #fff; background: rgba(255, 255, 255, .16); color: #fff; }
 ${R}[data-editing][data-editon="saver"] .hw-root > #tvside { top: max(5vh, 36px) !important; right: max(3.5vw, 28px) !important; width: calc(50vw - max(3.5vw, 28px)) !important; max-height: none !important; } ${R}[data-editing][data-editon="saver"] #tvside .wg { font-size: min((50vw - max(3.5vw, 28px)) / 56.2, (100vh - 2 * max(5vh, 36px)) / 70.6); } ${R}[data-editon="saver"] :is(#dk, #dkfav, #tvask, .askbar) { visibility: hidden !important; } ${R}[data-editon="saver"] #tvebar { top: max(5vh, 36px); max-width: calc(50vw - var(--tvrail) - 90px); } ${R}[data-editon="saver"] .hw-root > .hw-bar { top: calc(max(5vh, 36px) + 172px); right: auto; left: calc(var(--tvrail) + 48px); } ${R}[data-editon="saver"] .tvt-clock { position: fixed; left: calc(var(--tvrail) + 48px); bottom: max(6vh, 40px); font-size: clamp(56px, 8vw, 120px); }
 ${R}[data-editing][data-editon="side"] .hw-root > #tvside { width: min(460px, 38vw) !important; right: 4vw !important; max-height: none !important; bottom: 24px; overflow: auto !important; padding: 26px 22px; margin: 0; border-radius: 36px; background: rgba(0, 0, 0, .5); box-shadow: 0 0 0 2px rgba(255, 255, 255, .2); } ${R}[data-editon="side"] #tvside .wg { font-size: min(7.4px, .6vw); justify-content: center; } ${R}[data-editon="side"] :is(#dk, #dkfav, #tvask, .askbar) { visibility: hidden !important; } ${R}[data-editon="side"] #tvebar { max-width: calc(52vw - var(--tvrail) - 60px); } ${R}[data-editon="side"] .hw-root > .hw-bar { top: calc(max(250px, 59.5vh) + 150px); right: auto; left: calc(var(--tvrail) + 48px); } ${R}[data-editing][data-editon="phone"] .hw-root > #tvside { width: 340px !important; right: calc(25vw - 170px) !important; max-height: none !important; bottom: 24px; overflow: auto !important; padding: 26px 22px; margin: 0; border-radius: 44px; background: rgba(0, 0, 0, .5); box-shadow: 0 0 0 2px rgba(255, 255, 255, .2); } ${R}[data-editon="phone"] #tvside .wg { --cols: 2; justify-content: center; font-size: 11.4px; } ${R}[data-editon="phone"] #tvside .we-add { grid-column: span 2; } ${R}[data-editon="phone"] :is(#dk, #dkfav, #tvask, .askbar) { visibility: hidden !important; } ${R}[data-editon="phone"] #tvebar { max-width: calc(60vw - var(--tvrail) - 120px); } ${R}[data-editon="phone"] .hw-root > .hw-bar { top: calc(max(250px, 59.5vh) + 150px); right: auto; left: calc(var(--tvrail) + 48px); }
@@ -150,6 +151,11 @@ ${R} .hw-root.hw-edit .hw-tvbtn { display: none; }
 #tvsync { display: none; } ${A} #tvsync.on { display: flex; flex-direction: column; gap: 14px; position: fixed; z-index: 56; left: var(--tvrail); right: 0; top: 0; bottom: 0; padding: 22px 32px 24px; background: var(--chat-bg); color: #fff; } ${T} #tvsync.on { left: 0; padding: calc(env(safe-area-inset-top, 0px) + 14px) 12px 14px; z-index: 60; }
 .sy-head { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; } .sy-head b { font: 700 24px/1.1 var(--display); letter-spacing: -.02em; } .sy-head em { flex: 1; min-width: 0; margin-left: 6px; font: 500 14px var(--font); font-style: normal; color: rgba(255, 255, 255, .56); } .sy-head button { display: flex; align-items: center; gap: 8px; height: 42px; padding: 0 16px; border-radius: 21px; background: var(--ui-fill); box-shadow: var(--ui-edge); color: #fff; font-size: 14px; font-weight: 600; } .sy-head button:hover { background: var(--ui-sel); color: #000; } .sy-head svg { width: 19px; height: 19px; }
 .sy-fit { position: relative; flex: 1; min-height: 0; border-radius: 18px; overflow: hidden; background: #000; box-shadow: 0 0 0 1px rgba(255, 255, 255, .14); } .sy-fit iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; } @media (max-width: 820px) { .sy-head em, .sy-head button span { display: none; } .sy-head b { flex: 1; } }
+/* ── Your phone: LocalHub as it looks there, and what's connected ── */
+#tvphone { display: none; }
+${R} #tvphone.on { display: grid; grid-template-columns: minmax(300px, 46%) minmax(0, 1fr); position: fixed; z-index: 54; left: var(--tvrail); right: 0; top: 0; bottom: 0; background: var(--chat-bg); color: #fff; transition: right .28s var(--ease); } ${R}[data-dock] #tvphone.on { right: var(--dock); }
+.ph-fit { display: grid; place-items: center; min-width: 0; min-height: 0; padding: 32px 0 32px 32px; } .ph-body { position: relative; border-radius: 58px; padding: 12px; box-sizing: border-box; background: #0b0b0d; box-shadow: 0 0 0 1.5px rgba(255, 255, 255, .2), 0 30px 80px rgba(0, 0, 0, .5); } .ph-scr { position: relative; width: 100%; height: 100%; overflow: hidden; border-radius: 46px; background: #000; } .ph-scr iframe { position: absolute; left: 0; top: 0; width: 393px; height: 852px; border: 0; transform-origin: 0 0; }
+.ph-side { min-height: 0; overflow: auto; scrollbar-width: none; padding: 40px 48px 48px 40px; }
 /* ── Your TV, driven from here ── */
 #tvmirror { display: none; }
 ${R} #tvmirror.on { display: flex; flex-direction: column; position: fixed; z-index: 54; left: var(--tvrail); right: 0; top: 0; bottom: 0; background: var(--chat-bg); color: #fff; padding: 26px 40px 22px; gap: 16px; outline: 0; }
@@ -403,6 +409,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     cloud: '<path d="M7 18.5h10a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.2 11.6 3.5 3.5 0 0 0 7 18.5z"/>',
     connections: '<path d="M9 3v5M15 3v5M6.5 8h11v3.5a5.5 5.5 0 0 1-11 0zM12 17v4"/>',
     mic: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>',
+    phone: '<rect x="6.5" y="2.5" width="11" height="19" rx="3"/><path d="M10.5 18.5h3"/>',
     tv: '<rect x="3" y="4.5" width="18" height="12" rx="2"/><path d="M8 20h8M12 16.5V20"/>',
     gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.8 1.2V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-2.9-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 3.1 14H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.2-2.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 2.9-1.2V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0 1.2 2.9h.1a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.6 1z"/>',
   }
@@ -732,6 +739,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     if (el.closest('#tvpanel')) return ['Sidebar', [it_('Edit widgets', 'edit', () => press('sidewidgets')), it_(editB ? 'Done editing' : 'Edit buttons', 'gear', () => press('editb')), ...(TV?.setUp ? [it_(look.target === 'tv' ? 'Show this PC' : 'Show your TV', 'remote', () => press(look.target === 'tv' ? 'to:pc' : 'to:tv'))] : []), '-', it_('Close', 'x', closePanel)]]
     if (el.closest('#tvwid')) return [widBox.getAttribute('aria-label') || 'Widget', [it_('Close', 'x', closeWid)]]
     if (el.closest('#tvmirror')) return ['Your TV', [it_('TV remote', 'remote', () => openTool('remote', mirror)), it_(SB?.powerText(pw) || 'Turn On', 'power', () => press('power')), '-', it_('Close', 'x', closeMirror)]]
+    if (el.closest('#tvphone')) return ['Phone', [it_('Connect a phone', 'plus', () => phone.querySelector('[data-ph="add"]')?.click()), it_('Edit its widgets', 'edit', () => phone.querySelector('[data-ph="widgets"]')?.click()), '-', it_('Close', 'x', closePhone)]]
     // Around Home's things: Home.
     if (document.querySelector('.hw-root') && (el === document.body || el === document.documentElement || el.closest('.page, #tvtop')) && !el.closest('button, [role="button"]')) return ['Home', general()]
     if (el.closest('#wggal, #wepop, .menu, .scrim')) return ['', [it_('Close', 'x', () => { gal.classList.remove('on'); pop.classList.remove('on'); closeMenu() })]]
@@ -775,23 +783,79 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     else if (a === 'z') sizes(k, e.target.closest('button'))
     else if (a === 'f') options(k)
   }, true)
-  document.addEventListener('dragstart', e => { const n = e.target.closest?.('#tvside .wg-i[draggable]'); if (!n) return; wdrag = n.dataset.k; n.classList.add('drag'); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', n.dataset.k); e.stopPropagation() }, true)
-  document.addEventListener('dragover', e => { if (!wdrag) return; document.querySelectorAll('#tvside .over').forEach(n => n.classList.remove('over')); const n = e.target.closest?.('#tvside :is(.wg-i, .wg-ghost)'); if (n) { e.preventDefault(); if (n.dataset.k !== wdrag) n.classList.add('over') } })
+  // Dragging a widget: the cells it would take are drawn as it moves, and where the ones it pushes would go.
+  let wgrab = [0, 0], wland = null
+  const SIZE_NAME = { s: 'Small', m: 'Medium', l: 'Large', w: 'Wide', xl: 'Extra large', xxl: 'Full' }
+  function landing(e) {
+    const grid = side?.querySelector('.wg')
+    if (!grid) return null
+    const which = editOn || myScreen(), b = board(which), items = b.items(), it = items.find(x => x.k === wdrag), was = b.at?.get(wdrag)
+    if (!it) return null
+    let l = null, want = null
+    if (which === 'phone') {
+      const n = e.target.closest?.('#tvside .wg-i'), to = n ? items.findIndex(x => x.k === n.dataset.k) : -1, from = items.indexOf(it)
+      if (!n || to < 0) return null
+      l = items.filter(x => x !== it)
+      l.splice(to, 0, it)
+      if (to === from) l = items
+    } else {
+      const g = grid.getBoundingClientRect(), fs = parseFloat(getComputedStyle(grid).fontSize), pitch = (WG.CELL + WG.GAP) * fs, [cols, rows] = WG.ROOM[which] || WG.ROOM.desk
+      const left = g.right - WG.across(cols) * fs, over = Math.floor((e.clientX - left + WG.GAP * fs / 2) / pitch), down = Math.floor((e.clientY - g.top + WG.GAP * fs / 2) / pitch)
+      if (over < 0 || over >= cols || down < 0 || down >= rows || e.clientY > g.bottom + pitch) return null
+      const [w, h] = (p => p ? [p[2], p[3]] : WG.SPAN[it.size] || [1, 1])(was)
+      const c = Math.max(1, Math.min(cols - w + 1, over - wgrab[0] + 1)), r = Math.max(1, Math.min(rows - h + 1, down - wgrab[1] + 1))
+      want = [c, r, w, h]
+      const key = want.join()
+      if (wland?.key === key) return wland
+      if (was && was[0] === c && was[1] === r) l = items
+      else {
+        // Onto another: they trade places when that fits, else the others move out of the way.
+        l = WG.place(items, which, wdrag, { at: [c, r] }) || WG.place(items, which, wdrag, { at: [c, r], swap: true })
+        const p = l && WG.pack(l, which).at.get(wdrag)
+        if (!p) l = null
+      }
+      if (!l) return { key, l: null, at: want, moved: [] }
+    }
+    const o = WG.pack(l, which).at, at = o.get(wdrag)
+    if (!at) return null
+    return { key: want ? want.join() : `${at}`, l: l === items ? items : l, same: l === items, at, size: it.size, moved: [...o].filter(([k, p]) => k !== wdrag && b.at?.get(k) && `${b.at.get(k)}` !== `${p}`).map(x => x[1]) }
+  }
+  function showLanding(n) {
+    wland = n
+    const grid = side?.querySelector('.wg')
+    grid?.querySelectorAll('.wg-land').forEach(x => x.remove())
+    if (!n || !grid) return
+    const area = ([c, r, w, h]) => `grid-area:${r}/${c}/span ${h}/span ${w}`
+    grid.insertAdjacentHTML('beforeend', n.moved.map(p => `<div class="wg-land move" style="${area(p)}"></div>`).join('') + `<div class="wg-land${n.l ? '' : ' no'}" style="${area(n.at)}"><span>${n.l ? `${SIZE_NAME[n.size] ? `${SIZE_NAME[n.size]} · ` : ''}${n.at[2]} × ${n.at[3]}` : 'Doesn’t fit here'}</span></div>`)
+  }
+  document.addEventListener('dragstart', e => {
+    const n = e.target.closest?.('#tvside .wg-i[draggable]')
+    if (!n) return
+    wdrag = n.dataset.k
+    // Which of its own cells it's held by, so it lands under the pointer the way it was picked up.
+    const p = board(editOn || undefined).at?.get(wdrag), r = n.getBoundingClientRect()
+    wgrab = p ? [Math.min(p[2] - 1, Math.max(0, Math.floor((e.clientX - r.left) / r.width * p[2]))), Math.min(p[3] - 1, Math.max(0, Math.floor((e.clientY - r.top) / r.height * p[3])))] : [0, 0]
+    setTimeout(() => n.classList.add('drag'))
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', n.dataset.k)
+    e.stopPropagation()
+  }, true)
+  document.addEventListener('dragover', e => {
+    if (!wdrag) return
+    const n = landing(e)
+    if (n) e.preventDefault()
+    if (n?.key !== wland?.key || (n && !side.querySelector('.wg-land'))) showLanding(n)
+  })
   document.addEventListener('drop', e => {
-    const n = wdrag && e.target.closest?.('#tvside :is(.wg-i, .wg-ghost)')
+    if (!wdrag) return
+    const n = landing(e), b = board(editOn || undefined)
     if (!n) return
     e.preventDefault()
-    const which = editOn || myScreen(), b = board(which), k = wdrag
-    if (n.dataset.k === k) return
-    if (which !== 'phone') {
-      const at = n.dataset.we?.startsWith('add:') ? n.dataset.we.slice(4).split(',').map(Number) : b.at.get(n.dataset.k)?.slice(0, 2)
-      const l = at && (WG.place(b.items(), which, k, { at, swap: true }) || WG.place(b.items(), which, k, { at }) || (p => p && WG.place(b.items(), which, k, { at: [p[0], p[1] + p[3] - 1] }))(b.at.get(n.dataset.k)))
-      return l ? void b.set(l) : window.hud?.('That doesn’t fit there')
-    }
-    const l = b.items().filter(x => x.k !== k), it = b.items().find(x => x.k === k), from = b.items().findIndex(x => x.k === k), to = b.items().findIndex(x => x.k === n.dataset.k)
-    if (it) { const i = l.findIndex(x => x.k === n.dataset.k); l.splice(i < 0 ? l.length : from < to ? i + 1 : i, 0, it); b.set(l) }
+    showLanding(null)
+    if (n.l && !n.same) b.set(n.l)
+    else if (!n.l) window.hud?.('That doesn’t fit there')
   })
-  document.addEventListener('dragend', () => { wdrag = ''; document.querySelectorAll('#tvside .wg-i.over, #tvside .wg-i.drag').forEach(n => n.classList.remove('over', 'drag')); document.querySelectorAll('.wg-ghost.over').forEach(n => n.classList.remove('over')) })
+  document.addEventListener('dragend', () => { wdrag = ''; showLanding(null); document.querySelectorAll('#tvside .wg-i.drag').forEach(n => n.classList.remove('drag')) })
   // A widget, full screen: it grows out of its card to the middle, with everything behind it dimmed and soft.
   const wid = Object.assign(document.createElement('div'), { id: 'tvwid' })
   wid.innerHTML = `<div role="dialog" aria-modal="true"></div>`
@@ -1503,6 +1567,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     return toScreen({ key: c.name }) // as the remote's own, so the TV's keyboard gets them too
   }
   async function openMirror() {
+    closePhone()
     if (mirror.classList.contains('on')) return
     closeSettings()
     closePanel()
@@ -1535,6 +1600,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     watch(run)
   }
   function closeMirror() {
+    closePhone()
     if (!mirror.classList.contains('on')) return
     mRun++
     clearInterval(mBeat)
@@ -1597,6 +1663,86 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   }, true)
   addEventListener('resize', () => { if (mirror.classList.contains('on')) fitMirror() })
   document.addEventListener('click', e => { if (e.target.closest('[data-hw-takeover]')) { e.stopPropagation(); openMirror() } }, true)
+  // ── Your phone ──
+  const phone = document.createElement('section')
+  phone.id = 'tvphone'
+  phone.setAttribute('aria-label', 'Phone')
+  phone.innerHTML = '<div class="ph-fit"><div class="ph-body"><div class="ph-scr"></div></div></div><div class="ph-side"></div>'
+  document.body.append(phone)
+  const PH = { code: null, ask: '', msg: '', n: 0, run: 0, html: '' }
+  function fitPhone() {
+    const b = phone.querySelector('.ph-fit'), w = b.clientWidth - 32, h = b.clientHeight - 64, k = Math.max(.3, Math.min(1.1, (w - 24) / 393, (h - 24) / 852)), o = phone.querySelector('.ph-body').style
+    o.width = `${393 * k + 24}px`
+    o.height = `${852 * k + 24}px`
+    const i = phone.querySelector('iframe')
+    if (i) i.style.transform = `scale(${k})`
+  }
+  function paintPhone() {
+    const list = DV.devices.filter(d => d.platform !== 'tv'), P = PH.code, ts = DV.reach?.tailscale
+    const where = [ts?.on && ts.url && ['From anywhere, with Tailscale', ts.url, ts.qrSvg], DV.reach?.home?.url && ['On your Wi-Fi', DV.reach.home.url, DV.reach.home.qrSvg]].filter(Boolean)
+    const steps = P && `<div class="tvs-form tvs-pair"><div class="tvs-qr">${where[0]?.[2] || ''}</div><div><b>${esc(P.code.replace(/(.{4})(?=.)/g, '$1 '))}</b><ol><li>${where.length ? 'On the phone, open:' : 'Turn on your home network or Tailscale in Settings first, then open:'}${where.map(x => `<br><code>${esc(x[1])}/pair</code> <i>${esc(x[0])}</i>`).join('')}</li><li>Type the code. It works once, for five minutes.</li><li>In Safari, Share, then Add to Home Screen, keeps it as an app.</li></ol><button type="button" class="tvs-x" data-ph="stop">Done</button></div></div>`
+    const html = `<div class="tvs-title">Phone</div>${PH.msg ? `<div class="tvs-msg">${esc(PH.msg)}</div>` : ''}`
+      + grp('Connected') + (list.length ? list.map(d => `<div class="tvs-row"><div class="txt"><div class="t1">${esc(d.name)}</div><div class="t2">${Date.now() - d.lastSeen < 120000 ? 'Using LocalHub now' : `Last here ${ago(d.lastSeen)}`}</div></div><button type="button" class="tvs-x" data-ph="rm:${esc(d.id)}">${PH.ask === d.id ? 'Remove it?' : 'Remove'}</button></div>`).join('') : plainRow('No phone yet', 'Connect one below'))
+      + (!DV.local ? '' : P ? steps : '<button type="button" class="tvs-row" data-ph="add"><div class="txt"><div class="t1">Connect a phone</div><div class="t2">Shows a code to type on it once</div></div><div class="v"></div></button>')
+      + grp('LocalHub on the phone') + '<button type="button" class="tvs-row" data-ph="widgets"><div class="txt"><div class="t1">Widgets</div><div class="t2">Choose what its Home shows, apart from this PC’s</div></div><div class="v">Edit</div></button><button type="button" class="tvs-row" data-ph="reload"><div class="txt"><div class="t1">Reload the preview</div><div class="t2">The phone on the left is live: scroll and click it</div></div><div class="v"></div></button>'
+      + grp('The phone itself') + (DV.local ? '<button type="button" class="tvs-row" data-ph="link"><div class="txt"><div class="t1">Calls, messages and notifications</div><div class="t2">In Phone Link, Windows’ own app for an iPhone or Android</div></div><div class="v">Open</div></button>' : '') + '<button type="button" class="tvs-row" data-ph="settings"><div class="txt"><div class="t1">Devices and connections</div><div class="t2">Home network, Tailscale and the passcode</div></div><div class="v">Settings</div></button>'
+    if (PH.html === html) return
+    PH.html = html
+    phone.querySelector('.ph-side').innerHTML = html
+  }
+  async function openPhone() {
+    if (phone.classList.contains('on')) return
+    closeSettings()
+    closeMirror()
+    window.HubChat?.close()
+    phone.classList.add('on')
+    phone.querySelector('.ph-scr').innerHTML = '<iframe src="/" title="LocalHub on a phone"></iframe>'
+    const i = phone.querySelector('iframe')
+    i.addEventListener('load', () => { try { const d = i.contentDocument; d.head.append(Object.assign(d.createElement('style'), { textContent: '*{scrollbar-width:none!important}' })) } catch {} })
+    fitPhone()
+    paintPhone()
+    setTimeout(paintRail, 60)
+    const run = ++PH.run
+    while (run === PH.run) {
+      if (!document.hidden) {
+        await readDevices(!DV.reach)
+        if (run !== PH.run) return
+        const now = DV.devices.filter(d => d.platform !== 'tv')
+        if (PH.code && now.length > PH.n) { PH.code = null; PH.msg = `${now.at(-1).name} is connected.` }
+        else if (PH.code && Date.now() > PH.code.expires) { PH.code = null; PH.msg = 'That code ran out. Make another.' }
+        paintPhone()
+      }
+      await new Promise(w => setTimeout(w, PH.code ? 2500 : 8000))
+    }
+  }
+  function closePhone() {
+    if (!phone.classList.contains('on')) return
+    PH.run++
+    PH.code = null
+    PH.msg = ''
+    phone.classList.remove('on')
+    phone.querySelector('.ph-scr').innerHTML = ''
+    setTimeout(paintRail, 60)
+  }
+  phone.addEventListener('click', async e => {
+    const id = e.target.closest('[data-ph]')?.dataset.ph
+    if (!id) return
+    PH.msg = ''
+    if (id === 'add') { const r = await send('/api/pair/start'); if (r.ok && r.code) { PH.n = DV.devices.filter(d => d.platform !== 'tv').length; PH.code = r } else PH.msg = r.error || 'That didn’t work.' }
+    else if (id === 'stop') PH.code = null
+    else if (id.startsWith('rm:')) {
+      const v = id.slice(3)
+      if (PH.ask !== v) { PH.ask = v; setTimeout(() => { if (PH.ask === v) { PH.ask = ''; paintPhone() } }, 4000) }
+      else { PH.ask = ''; const r = await send(`/api/pair/devices/${encodeURIComponent(v)}/remove`); if (!r.ok) PH.msg = r.error || 'That didn’t work.'; await readDevices() }
+    }
+    else if (id === 'reload') { try { phone.querySelector('iframe').contentWindow.location.reload() } catch {} }
+    else if (id === 'widgets') { closePhone(); editOn = 'phone'; return goHome('.hw-root:not(.hw-edit) [data-hw-act="edit"]') }
+    else if (id === 'link') { const r = await send('/api/pc', { what: 'open', value: 'phone' }); if (!r.ok) PH.msg = r.error || 'Phone Link didn’t open.' }
+    else if (id === 'settings') { closePhone(); openSettings(); return onSet('devpage') }
+    paintPhone()
+  })
+  new ResizeObserver(() => { if (phone.classList.contains('on')) fitPhone() }).observe(phone)
+  addEventListener('keydown', e => { if (e.key === 'Escape' && phone.classList.contains('on') && !panel.classList.contains('on') && !document.querySelector('.menu')) closePhone() })
   // The old TV link (/#tv and the like) and a saved device view come back to Home.
   const toDesktop = () => { const r = document.querySelector('.hw-root'); if (r && document.documentElement.hasAttribute('data-tvlook') && r.dataset.view !== 'desktop' && r.dataset.phone !== '1') r.querySelector('[data-hw-mode="desktop"]')?.click() }
 
@@ -2239,7 +2385,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   // ── The entry code: to get into this page, or a place in it (lock.mjs keeps it; the pad is the TV's, tv/ui/lock.js) ──
   let LK = null, deskOk = false, lkUsed = {}, lkBusy = false, lkAt = Date.now()
   const lkSpan = () => Math.max((LK?.conf().after || 0) * 60_000, 1500)
-  const placeNow = () => (mirror.classList.contains('on') ? ['control', 'Your TV'] : sync.classList.contains('on') ? ['browser', 'Browser'] : set.classList.contains('on') ? ['settings', 'Settings'] : window.HubChat?.isOpen?.() ? ['assistant', 'Assistant'] : window.HubBrowser?.isOpen?.() ? ['browser', 'Browser'] : spotKey() === 'drives' ? ['files', 'Files'] : ['home', 'Home'])
+  const placeNow = () => (mirror.classList.contains('on') ? ['control', 'Your TV'] : phone.classList.contains('on') ? ['settings', 'Phone'] : sync.classList.contains('on') ? ['browser', 'Browser'] : set.classList.contains('on') ? ['settings', 'Settings'] : window.HubChat?.isOpen?.() ? ['assistant', 'Assistant'] : window.HubBrowser?.isOpen?.() ? ['browser', 'Browser'] : spotKey() === 'drives' ? ['files', 'Files'] : ['home', 'Home'])
   async function guard() {
     if (!LK || lkBusy || LK.isOpen()) return
     if (!LK.locked('desk')) deskOk = true
@@ -2286,16 +2432,17 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   document.body.append(behind)
   function paintRail() {
     paintNav()
-    document.documentElement.toggleAttribute('data-cover', set.classList.contains('on') || mirror.classList.contains('on') || sync.classList.contains('on') || !!window.HubChat?.isOpen?.())
+    document.documentElement.toggleAttribute('data-cover', set.classList.contains('on') || mirror.classList.contains('on') || phone.classList.contains('on') || sync.classList.contains('on') || !!window.HubChat?.isOpen?.())
     const chat = !!window.HubChat?.isOpen?.()
     const tabs = [...seg.querySelectorAll('button[data-env]')].filter(b => !b.hidden && b.style.display !== 'none')
     const item = (key, ic, label, on) => `<button type="button" data-rail="${esc(key)}" class="${on ? 'on' : ''}" aria-label="${esc(label)}"${on ? ' aria-current="page"' : ''}>${svg(IC[ic])}<span>${esc(label)}</span></button>`
     const name = b => (b.firstChild?.textContent || b.textContent).trim()
-    const tabItem = b => item(`tab:${b.dataset.env}`, TAB_IC[b.dataset.env] || 'tab', name(b), isOn(b) && !chat && !set.classList.contains('on') && !mirror.classList.contains('on') && !sync.classList.contains('on') && !window.HubBrowser?.isOpen?.())
+    const tabItem = b => item(`tab:${b.dataset.env}`, TAB_IC[b.dataset.env] || 'tab', name(b), isOn(b) && !chat && !set.classList.contains('on') && !mirror.classList.contains('on') && !phone.classList.contains('on') && !sync.classList.contains('on') && !window.HubBrowser?.isOpen?.())
     const at = k => tabs.find(b => b.dataset.env === k), rest = tabs.filter(b => !['home', 'drives'].includes(b.dataset.env))
     const html = `<img src="${hubIcon}" alt=""><div class="mid">`
-      + (at('home') ? tabItem(at('home')) : '') + item('assistant', 'mic', 'Assistant', chat && !set.classList.contains('on'))
-      + (window.HubBrowser ? item('browser', 'globe', 'Browser', sync.classList.contains('on') || !!window.HubBrowser.isOpen?.()) : '') + item('tv', 'tv', 'TV', mirror.classList.contains('on'))
+      + (at('home') ? tabItem(at('home')) : '')
+      + (window.HubBrowser ? item('browser', 'globe', 'Browser', sync.classList.contains('on') || !!window.HubBrowser.isOpen?.()) : '') + item('assistant', 'mic', 'Assistant', chat && !set.classList.contains('on'))
+      + item('phone', 'phone', 'Phone', phone.classList.contains('on')) + item('tv', 'tv', 'TV', mirror.classList.contains('on'))
       + (at('drives') ? tabItem(at('drives')) : '') + rest.map(tabItem).join('')
       + '</div>' + item('overlay', panel.classList.contains('on') ? 'sideclose' : 'sideopen', panel.classList.contains('on') ? 'Close sidebar' : 'Sidebar', false) + item('settings', 'gear', 'Settings', set.classList.contains('on'))
     if (rail._html === html) return
@@ -2321,7 +2468,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     if (key === 'overlay') return panel.classList.contains('on') ? closePanel() : openPanel()
     if (!docked()) closePanel()
     if (key !== 'settings') closeSettings()
-    if (key !== 'tv') closeMirror()
+    if (key !== 'tv' && !(key === 'phone' && phone.classList.contains('on'))) closeMirror()
     if (key !== 'assistant') window.HubChat?.close()
     if (key !== 'browser') { window.HubBrowser?.close?.(); closeSync() }
     if (key === 'browser') openSync()
@@ -2329,6 +2476,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
       seg.querySelector(`[data-env="${CSS.escape(key.slice(4))}"]`)?.click()
       if (key === 'tab:home') document.querySelector('[data-hw-mode="desktop"]')?.click()
     } else if (key === 'assistant') window.HubChat?.open()
+    else if (key === 'phone') openPhone()
     else if (key === 'tv') openMirror()
     else if (key === 'settings') openSettings()
     paintRail()
