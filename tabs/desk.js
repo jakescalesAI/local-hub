@@ -282,7 +282,7 @@ ${A} #dkadd.on { display: grid; position: fixed; z-index: 72; inset: 0; place-it
   async function addProgram(path) {
     if (!path) window.hud?.('Choose it in the window that opens')
     try {
-      const r = await post('/api/desk/file', path ? { path } : {}), a = await r.json()
+      const r = await post('/api/desk/file', path ? { path } : { pick: true }), a = await r.json()
       if (a.none) return
       if (!r.ok) return window.hud?.(a.error || 'That didn’t work.')
       add(a)

@@ -5,7 +5,7 @@
 //   GET  /api/desk/icon?id=pc:…            its icon
 //   POST /api/desk/open { id, pop? }       opens one on this PC (from this PC only): its installed program, or for a website its { url } for the
 //                                          page to open in the default browser (pop: in a window of its own)
-//   POST /api/desk/file { path? }          a program Windows doesn't list: chosen in a file window, or at that path (this PC only) -> { id, name }
+//   POST /api/desk/file { pick } or { path }  a program Windows doesn't list: chosen in a file window, or at that path (this PC only) -> { id, name }
 //   GET  /api/desk/system               -> { cpu, mem, disk, diskFree } of this PC, in percent and bytes
 // Only a program Windows lists in its own Start menu can be started, and only from this computer.
 import fs from 'node:fs'
@@ -139,7 +139,7 @@ export function create({ here }) {
     }
     if (p === '/api/desk/file' && req.method === 'POST') {
       if (!isLocal(req) || !IS_WIN) return send(res, 403, { error: 'Programs are added on the computer the hub runs on.' }), true
-      const b = await readBody(req).catch(() => ({})), file = typeof b?.path === 'string' && b.path ? b.path.replace(/^"|"$/g, '') : await pickFile()
+      const b = await readBody(req).catch(() => ({})), file = typeof b?.path === 'string' && b.path ? b.path.replace(/^"|"$/g, '') : b?.pick === true ? await pickFile() : ''
       if (!file) return send(res, 200, { none: true }), true
       const a = addFile(file)
       return send(res, a ? 200 : 400, a || { error: 'That isn’t a program LocalHub can open.' }), true
