@@ -11,7 +11,7 @@ import path from 'node:path'
 import { hubConfig } from './config.mjs'
 import { isPrivate } from './tv-keys.mjs'
 
-export const KEYS = { left: 21, right: 22, up: 19, down: 20, enter: 23, back: 4, menu: 82, rew: 89, ff: 90, ai: 85, del: 67, volup: 24, voldown: 25, mute: 164 }
+export const KEYS = { left: 21, right: 22, up: 19, down: 20, enter: 23, back: 4, menu: 82, rew: 89, ff: 90, ai: 85, del: 67, submit: 66, volup: 24, voldown: 25, mute: 164 }
 /** One event from the page as the TV's helper reads it, or '' for anything else. */
 export function eventLine(e) {
   if (!e || typeof e !== 'object') return ''

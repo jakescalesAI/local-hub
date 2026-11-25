@@ -760,3 +760,12 @@ html.native #hub-chat { zoom: calc(var(--k, .5) * 1.25); }
 .settings-art { margin: 0 -40px 0 var(--rail-w); }
 
 #tileMenuList { max-height: 860px; overflow-y: auto; scrollbar-width: none; }
+
+/* Talking to LocalHub, over what's on the screen. Flat, for a Fire TV Stick. */
+#hey { position: fixed; z-index: 2147483400; left: 0; right: 0; bottom: 0; padding: 0 0 46px; display: grid; justify-items: center; pointer-events: none; opacity: 0; transform: translateY(40px); transition: opacity .25s, transform .35s cubic-bezier(.2, .8, .2, 1); background: linear-gradient(0deg, rgba(0, 0, 0, .8), transparent); }
+#hey.on { opacity: 1; transform: none; }
+.hey-in { display: flex; align-items: center; gap: 22px; max-width: 72vw; min-width: 380px; padding: 18px 30px; border-radius: 34px; background: #1d1e23; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .14); color: #fff; font-family: var(--font); }
+.hey-in strong { display: block; font-size: 22px; line-height: 1.25; font-weight: 700; } .hey-in p { margin: 6px 0 0; max-height: 5.6em; overflow: hidden; font-size: 19px; line-height: 1.4; color: rgba(255, 255, 255, .84); white-space: pre-wrap; } .hey-in p:empty { display: none; }
+.hey-w { flex: none; display: flex; align-items: center; gap: 5px; height: 44px; } .hey-w b { width: 6px; height: 12px; border-radius: 3px; background: #4aa3ff; animation: hey .9s ease-in-out infinite; } .hey-w b:nth-child(2) { animation-delay: .12s; background: #7a8bff; } .hey-w b:nth-child(3) { animation-delay: .24s; background: #b36bff; } .hey-w b:nth-child(4) { animation-delay: .36s; background: #ff6bb5; } .hey-w b:nth-child(5) { animation-delay: .48s; background: #ff9a6b; }
+#hey[data-s="wait"] .hey-w b { animation-duration: 1.8s; } #hey[data-s="say"] .hey-w b, #hey:not(.on) .hey-w b { animation: none; }
+@keyframes hey { 50% { transform: scaleY(3.2); } }

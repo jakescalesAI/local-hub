@@ -48,7 +48,7 @@ export function cleanData(d, was = { notes: {}, todos: [], timer: null }) {
   if (d?.note && typeof d.note === 'object' && /^[a-z0-9-]{1,20}$/.test(d.note.k || '')) {
     const t = text(d.note.text, 4000)
     if (t) out.notes[d.note.k] = t; else delete out.notes[d.note.k]
-    for (const k of Object.keys(out.notes).slice(0, -40)) delete out.notes[k]
+    for (const k of Object.keys(out.notes).slice(0, -200)) delete out.notes[k]
   }
   if (Array.isArray(d?.todos)) out.todos = d.todos.filter(t => t && typeof t === 'object' && text(t.text, 200).trim()).slice(0, 100).map(t => ({ text: text(t.text, 200).trim(), done: t.done === true }))
   if (d?.timer === null) out.timer = null
@@ -59,12 +59,15 @@ export function cleanData(d, was = { notes: {}, todos: [], timer: null }) {
   return out
 }
 
+const START_DESK = [{ k: 'a', id: 'music', size: 'w' }, { k: 'b', id: 'weather', size: 'l' }, { k: 'c', id: 'pc', size: 's' }, { k: 'd', id: 'calendar', size: 's' }]
 export function create({ here }) {
   const FILE = path.join(here, 'data', 'board.json')
-  let cur = { screens: Object.fromEntries(SCREENS.map(s => [s, s === 'saver' ? START_SAVER : s === 'side' ? START_SIDE : START])), data: { notes: {}, todos: [], timer: null, clock: null } }
+  let cur = { screens: Object.fromEntries(SCREENS.map(s => [s, s === 'desk' ? START_DESK : s === 'saver' ? START_SAVER : s === 'side' ? START_SIDE : START])), data: { notes: {}, todos: [], timer: null, clock: null } }
   try {
     const j = JSON.parse(fs.readFileSync(FILE, 'utf8'))
     for (const s of SCREENS) if (Array.isArray(j.screens?.[s])) cur.screens[s] = cleanItems(j.screens[s])
+    // Places on a computer's Home were kept on four by three squares; it's six by six now.
+    if (!j.grid) cur.screens.desk = cur.screens.desk.map(x => { if (!x.at) return x; const at = x.at.map(n => n * 2 - 1), { at: _, ...rest } = x; return at.every(n => n < 7) ? { ...rest, at } : rest })
     cur.data = cleanData({ todos: j.data?.todos, timer: j.data?.timer, clock: j.data?.clock })
     for (const [k, t] of Object.entries(j.data?.notes || {})) cur.data = cleanData({ note: { k, text: t } }, cur.data)
   } catch {}
@@ -72,7 +75,7 @@ export function create({ here }) {
     fs.mkdirSync(path.dirname(FILE), { recursive: true })
     try { fs.copyFileSync(FILE, FILE.replace('.json', '.prev.json')) } catch {}
     const tmp = `${FILE}.${process.pid}.tmp`
-    fs.writeFileSync(tmp, JSON.stringify(cur))
+    fs.writeFileSync(tmp, JSON.stringify({ grid: 6, ...cur }))
     fs.renameSync(tmp, FILE)
   }
   return async function route(url, req, res, { send, readBody }) {

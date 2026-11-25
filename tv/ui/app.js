@@ -17,11 +17,11 @@
 import * as Stream from "./stream.js?v=8";
 import * as Panel from "./panel.js?v=16";
 import * as Clock from "./clock.js?v=1";
-import * as Wg from "./widgets.js?v=16";
+import * as Wg from "./widgets.js?v=17";
 import * as Files from "./files.js?v=2";
 import { createLock } from "./lock.js?v=2";
 import * as Remote from "./remote.js?v=5";
-import * as Mirror from "./mirror.js?v=3";
+import * as Mirror from "./mirror.js?v=4";
 // The TV's own assistant screen (assistant.js): the hub's agent and conversation, without the hub's chat UI.
 let Assistant = null;
 
@@ -2303,6 +2303,7 @@ async function startCommandLoop() {
     } catch { await wait(5000); }
   }
 }
+const TYPE_WAIT = [];
 function runCommand(cmd) {
   if (!cmd || typeof cmd !== "object") return;
   if (cmd.type === "listen") return heardMic(cmd);
@@ -2312,7 +2313,15 @@ function runCommand(cmd) {
   if (cmd.type === "audio") return native("playAudio", !!cmd.on);
   if (cmd.type === "key") { cmd.name === "home" && document.hidden ? (native("toFront"), window.haven.home()) : handleKey(cmd.name); return Mirror.soon(); }
   if (cmd.type === "tap") { Mirror.tap(cmd.x, cmd.y); return Mirror.soon(); }
-  if (cmd.type === "type") { if (!Mirror.type(cmd.text)) toast("Open a text box first"); return Mirror.soon(); }
+  if (cmd.type === "type") {
+    const bare = !String(cmd.text || "").replace(/[\b\n]/g, "");
+    if (!Mirror.type(cmd.text) && !bare) {
+      if (S.overlay === "saver") stopSaver();
+      if (!S.overlay && S.view === "home") { openSearch(); TYPE_WAIT.push(cmd.text); clearTimeout(TYPE_WAIT.t); TYPE_WAIT.t = setTimeout(() => { const l = TYPE_WAIT.splice(0).join(""); if (!Mirror.type(l)) toast("Open a text box first"); Mirror.soon(); }, 350); }
+      else toast("Open a text box first");
+    }
+    return Mirror.soon();
+  }
   if (cmd.type === "media" && cmd.action === "seek") { native("media", `seek:${Number(cmd.value) || 0}`); return setTimeout(() => { readMedia(); reportState(); }, 500); }
   if (cmd.type === "media") { mediaDo(cmd.action); return void setTimeout(reportState, 700); }
   if (cmd.type === "brightness") { setBrightness(cmd.value); if (S.overlay === "wpanel") paintWpanel(); return reportState(); }
@@ -2358,14 +2367,68 @@ function heardMic(cmd) {
     if (NATIVE && document.hidden) native("toFront");
     VOICE.hush();
     if (S.zone === "rail") closeRail();
-    if (S.view !== "assistant") showView("assistant");
+    if (LOCK.locked("assistant") && Date.now() - (OPENED.assistant || 0) >= lockSpan()) showView("assistant");
+    else Hey.open();
     chime();
     return Assistant.hearing("rec");
   }
-  if (cmd.stage === "working") return Assistant.hearing("wait");
-  if (cmd.stage === "off") return Assistant.hearing("idle");
-  if (cmd.stage === "heard") return Assistant.heard(String(cmd.text || ""));
+  if (cmd.stage === "working") { Hey.stage("wait"); return Assistant.hearing("wait"); }
+  if (cmd.stage === "off") { Hey.close(1200, "Didn’t catch that"); return Assistant.hearing("idle"); }
+  if (cmd.stage === "heard") { Hey.heard(String(cmd.text || "")); return Assistant.heard(String(cmd.text || "")); }
 }
+// Talking to it, over whatever is on the screen: what it hears, then its answer, along the bottom. Back puts it away, OK opens the chat.
+const Hey = {
+  el: null, t: 0, poll: 0, asked: 0, was: null,
+  on: false,
+  open() {
+    if (S.view === "assistant" && !S.overlay) return;
+    this.el ??= document.body.appendChild(Object.assign(document.createElement("div"), { id: "hey" }));
+    clearTimeout(this.t);
+    clearInterval(this.poll);
+    this.on = true;
+    this.el.innerHTML = `<div class="hey-in"><i class="hey-w"><b></b><b></b><b></b><b></b><b></b></i><div><strong>Listening…</strong><p></p></div></div>`;
+    this.stage("rec");
+    requestAnimationFrame(() => this.el.classList.add("on"));
+    this.t = setTimeout(() => this.close(), 20_000);
+  },
+  stage(s) { if (!this.on) return; this.el.dataset.s = s; if (s === "wait") this.el.querySelector("strong").textContent = "One moment…"; },
+  heard(text) {
+    if (!this.on) return;
+    clearTimeout(this.t);
+    if (!text.trim()) return this.close(1500, "Didn’t catch that");
+    this.stage("wait");
+    this.el.querySelector("strong").textContent = `“${text}”`;
+    const p = this.el.querySelector("p"), before = [...document.querySelectorAll("#assistantView .as-bot")].at(-1);
+    this.asked = Date.now();
+    let idle = 0;
+    this.poll = setInterval(() => {
+      const last = [...document.querySelectorAll("#assistantView .as-bot")].at(-1), st = Assistant?.state?.() || {};
+      // It needs a yes: its own screen has the buttons.
+      if (document.querySelector("#assistantView .as-confirm:not(.done) button:not([disabled])") && st.busy) { this.close(); return showView("assistant"); }
+      if (last && last !== before) { const s = last.innerText.trim(); if (p.textContent !== s) { p.textContent = s; p.scrollTop = p.scrollHeight; this.stage("say"); } }
+      idle = st.busy ? 0 : idle + 300;
+      // Long enough to read, or to be read out.
+      const words = p.textContent.split(/\s+/).length;
+      if (!st.busy && (idle > Math.min(45_000, 3500 + words * 340)) && !VOICE.audio) this.close();
+      if (Date.now() - this.asked > 180_000) this.close();
+    }, 300);
+  },
+  close(wait = 0, msg = "") {
+    if (!this.on) return;
+    clearTimeout(this.t);
+    clearInterval(this.poll);
+    if (msg) this.el.querySelector("strong").textContent = msg;
+    if (wait) { this.t = setTimeout(() => this.close(), wait); return; }
+    this.on = false;
+    this.el.classList.remove("on");
+  },
+  key(name) {
+    if (!this.on) return false;
+    if (name === "back") { VOICE.hush(); Assistant?.hearing("idle"); this.close(); return true; }
+    if (name === "enter" && this.el.dataset.s !== "rec") { this.close(); showView("assistant"); return true; }
+    return false;
+  },
+};
 let chimeCtx = null;
 function chime() {
   try {
@@ -2716,6 +2779,7 @@ function handleKey(raw) {
   if (S.overlay === "remote") return remoteKey(raw);
   const name = buttonAction(raw);
   if (name === "none") return;
+  if (Hey.key(name)) return;
   if (runButton(name)) return;
   // Typing in the search bar: Back closes it (keeping what's typed) and stays on it.
   const sb = document.activeElement?.classList?.contains("sb") ? document.activeElement : null;
@@ -2946,13 +3010,18 @@ async function micNow() {
   if (IN_HUB) {
     const r = await fetch("/api/tv/listen/now", { method: "POST", headers: { "x-hub": "1" } }).then((x) => x.json()).catch(() => null);
     if (r?.ok) return;
+    // The microphone isn't listening yet: started, and asked again when it is.
+    toast("Starting the microphone…");
+    if (!r?.on) await fetch("/api/tv/listen", { method: "POST", headers: { "content-type": "application/json", "x-hub": "1" }, body: JSON.stringify({ on: true }) }).catch(() => null);
+    for (let i = 0; i < 12; i++) {
+      await wait(1000);
+      const again = await fetch("/api/tv/listen/now", { method: "POST", headers: { "x-hub": "1" } }).then((x) => x.json()).catch(() => null);
+      if (again?.ok) return;
+      if (again?.error) return toast(again.error);
+    }
+    return toast("The computer’s microphone isn’t answering");
   }
-  if (S.overlay === "settings") closeSettings();
-  closeRail();
-  if (S.overlay === "stream") Stream.close();
-  showView("assistant");
-  if (IN_HUB) toast("Turn on Settings › Hey LocalHub to talk through the laptop's mic");
-  return Assistant?.voice();
+  toast("Connect to LocalHub on your computer to talk to it");
 }
 
 /* ── Settings › LocalHub: search again, the address, pairing, forgetting ── */

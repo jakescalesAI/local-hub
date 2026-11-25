@@ -37,7 +37,7 @@ ${D} .page:has(.hw-root:not(.hw-edit)) .search { flex: 0 1 300px !important; }
 /* Home scrolls as one page, the widgets stepping aside, as on the TV. */
 ${D} .hw-root:not(.hw-edit) .hw-frame { height: 0 !important; } ${D} .hw-root:not(.hw-edit) .hw-pager { overflow: visible; }
 ${D}:has(.hw-root:not(.hw-edit)) { overflow-y: auto !important; overflow-x: clip; scrollbar-width: none; }
-${D} #tvside { transition: opacity .3s; } ${D}[data-down] #tvside { opacity: 0; pointer-events: none; }
+
 ${A}:has(.hw-root:not(.hw-edit)) #dkfav { display: flex; gap: 14px; min-width: 0; }
 /* More favorites than fit: the row scrolls, fading at the end there is more of. The padding leaves room for a tile's ring. */
 ${D}:has(.hw-root) #dkfav { flex: 1 1 0; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; padding: 6px; margin: -6px; --l: 0px; --r: 0px; -webkit-mask: linear-gradient(90deg, transparent, #000 var(--l), #000 calc(100% - var(--r)), transparent); mask: linear-gradient(90deg, transparent, #000 var(--l), #000 calc(100% - var(--r)), transparent); }
@@ -189,11 +189,11 @@ ${A} #dkadd.on { display: grid; position: fixed; z-index: 72; inset: 0; place-it
     opened(id)
     const page = () => window.open(a.url, '_blank', 'noopener,noreferrer')
     if (!LOCAL) return isPc(a) ? window.hud?.('Programs open on the computer the hub runs on.') : page()
-    // On the hub's own computer it's the program if it's installed, else the website in a window of its own.
+    // On the hub's own computer it's the program if it's installed, else the website, where Settings › Websites open in says.
     try {
-      const r = await post('/api/desk/open', { id, ...(web ? { web: true } : {}) }), j = await r.json()
+      const mode = window.HubWeb?.() || 'default', r = await post('/api/desk/open', { id, ...(web ? { web: true } : {}), ...(mode === 'window' ? { pop: true } : {}) }), j = await r.json()
       if (!r.ok) return a.url ? page() : window.hud?.(j.error || 'That didn’t open.')
-      if (j.url) page()
+      if (j.url) mode === 'hub' && !web && window.HubOpenSync ? window.HubOpenSync(j.url) : page()
     } catch { a.url ? page() : window.hud?.('The hub didn’t answer.') }
   }
   const isFav = id => S.favorites.includes(id)
@@ -230,12 +230,14 @@ ${A} #dkadd.on { display: grid; position: fixed; z-index: 72; inset: 0; place-it
   function paintAdd() {
     const t = sq.value.trim().toLowerCase(), hit = a => !t || a.name.toLowerCase().includes(t)
     const have = a => (forFav ? isFav(a.id) : S.apps.some(x => x.id === a.id))
-    const sec = (title, list) => (list.length ? `<h4>${title}</h4><div class="dk-grid">${list.map(a => tile(a, have(a) ? 'have' : '')).join('')}</div>` : '')
+    const sec = (title, list, end = '') => (list.length || end ? `<h4>${title}</h4><div class="dk-grid">${list.map(a => tile(a, have(a) ? 'have' : '')).join('')}${end}</div>` : '')
+    const own = (act, name) => `<button type="button" class="dk-t add" data-own="${act}" aria-label="${name}"><span class="dk-a">${PLUS}</span><span class="dk-n">${name}</span></button>`
+    const file = LOCAL && /^"?[a-z]:\\.+\.(exe|lnk|url|bat|cmd|appref-ms|msc)"?$/i.test(sq.value.trim()) ? sq.value.trim() : ''
     const addr = /^(https?:\/\/)?[a-z0-9-]+(\.[a-z0-9-]+)+([/?#]\S*)?$/i.test(t) ? t : ''
     const mine = S.apps.filter(hit), more = S.more.filter(a => hit(a) && !S.apps.some(x => x.id === a.id)), progs = LOCAL ? (pc || []).filter(a => hit(a) && !S.apps.some(x => x.id === a.id)) : []
-    set(sl, (addr ? `<h4>Website</h4><div class="dk-grid"><button type="button" class="dk-t" data-addr="${esc(sq.value.trim())}"><span class="dk-a">${PLUS}</span><span class="dk-n">${esc(addr)}</span></button></div>` : '')
+    set(sl, (file ? `<h4>Program</h4><div class="dk-grid">${own('path', esc(file.replace(/"/g, '').split('\\').pop()))}</div>` : '') + (addr ? `<h4>Website</h4><div class="dk-grid"><button type="button" class="dk-t" data-addr="${esc(sq.value.trim())}"><span class="dk-a">${PLUS}</span><span class="dk-n">${esc(addr)}</span></button></div>` : '')
       // Websites before programs: there are far fewer of them.
-      + sec('On Home', forFav || t ? mine : []) + sec('Websites', more) + sec('On this PC', progs)
+      + sec('On Home', forFav || t ? mine : []) + sec('Websites', more, own('web', 'Add a website')) + sec('On this PC', progs, LOCAL ? own('exe', 'Add a program…') : '')
       + (LOCAL && !pc ? '<div class="dk-none">Looking at this PC’s programs…</div>' : '') || '<div class="dk-none">Nothing by that name. Type its web address to add it.</div>')
   }
   async function openAdd(asFav) {
@@ -249,17 +251,59 @@ ${A} #dkadd.on { display: grid; position: fixed; z-index: 72; inset: 0; place-it
     if (LOCAL && !pc) { try { pc = (await (await fetch('/api/desk/pc')).json()).apps || [] } catch { pc = [] } paintAdd() }
   }
   const closeAdd = () => sheet.classList.remove('on')
+  // Any website: its address and, if you like, its name.
+  function askWeb() {
+    const box = Object.assign(document.createElement('form'), { className: 'dk-ask' })
+    box.innerHTML = '<div><h3>Add a website</h3><input name="u" type="text" inputmode="url" autocapitalize="none" spellcheck="false" placeholder="Address, like example.com" aria-label="Address" required><input name="n" type="text" maxlength="60" placeholder="Name (optional)" aria-label="Name"><em></em><footer><button type="button" data-x>Cancel</button><button type="submit">Add</button></footer></div>'
+    sheet.append(box)
+    box.querySelector('input').focus()
+    const bye = () => box.remove()
+    box.addEventListener('click', e => { e.stopPropagation(); if (e.target === box || e.target.closest('[data-x]')) bye() })
+    box.addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); bye() } })
+    box.addEventListener('submit', e => {
+      e.preventDefault()
+      const d = new FormData(box), raw = String(d.get('u')).trim()
+      let u
+      try { u = new URL(/^https?:/i.test(raw) ? raw : `https://${raw}`); if (!u.hostname.includes('.') && u.hostname !== 'localhost') throw 0 } catch { box.querySelector('em').textContent = 'That isn’t a web address.'; return }
+      const a = webApp(u)
+      a.name = String(d.get('n')).trim() || a.name
+      add(a)
+      if (forFav && !isFav(a.id)) S.favorites = [...S.favorites, a.id]
+      save()
+      bye()
+      paintAdd()
+      window.hud?.(`${a.name} is on Home`)
+    })
+  }
+  // A program Windows doesn't list: chosen in a file window on this computer.
+  async function addProgram(path) {
+    if (!path) window.hud?.('Choose it in the window that opens')
+    try {
+      const r = await post('/api/desk/file', path ? { path } : {}), a = await r.json()
+      if (a.none) return
+      if (!r.ok) return window.hud?.(a.error || 'That didn’t work.')
+      add(a)
+      if (forFav && !isFav(a.id)) S.favorites = [...S.favorites, a.id]
+      sq.value = ''
+      save()
+      paintAdd()
+      window.hud?.(`${a.name} is on Home`)
+    } catch { window.hud?.('The hub didn’t answer.') }
+  }
+  const webApp = u => { const base = u.hostname.replace(/^www\./, '').split('.')[0]; return { id: `w-${u.hostname.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}-${(u.pathname.length * 7 + u.search.length).toString(36)}`.slice(0, 46), name: base.charAt(0).toUpperCase() + base.slice(1), url: u.href } }
   sq.addEventListener('input', paintAdd)
   sq.addEventListener('keydown', e => { if (e.key === 'Enter') sl.querySelector('.dk-t')?.click() })
   sheet.addEventListener('click', e => {
     if (e.target === sheet || e.target.closest('[data-dkclose]')) return closeAdd()
+    const own = e.target.closest('[data-own]')?.dataset.own
+    if (own === 'web') return askWeb()
+    if (own) return void addProgram(own === 'path' ? sq.value.trim() : '')
     const ad = e.target.closest('[data-addr]')?.dataset.addr
     let a = null
     if (ad) {
       let u
       try { u = new URL(/^https?:/i.test(ad) ? ad : `https://${ad}`) } catch { return }
-      const base = u.hostname.replace(/^www\./, '').split('.')[0]
-      a = { id: `w-${u.hostname.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}-${(u.pathname.length * 7 + u.search.length).toString(36)}`.slice(0, 46), name: base.charAt(0).toUpperCase() + base.slice(1), url: u.href }
+      a = webApp(u)
       sq.value = ''
     } else { const id = e.target.closest('[data-dk]')?.dataset.dk; a = id && find(id) }
     if (!a) return
@@ -268,7 +312,7 @@ ${A} #dkadd.on { display: grid; position: fixed; z-index: 72; inset: 0; place-it
     save()
     paintAdd()
   })
-  addEventListener('keydown', e => { if (e.key !== 'Escape') return; if (menu.classList.contains('on')) { e.stopPropagation(); closeMenu() } else if (sheet.classList.contains('on')) { e.stopPropagation(); closeAdd() } }, true)
+  addEventListener('keydown', e => { if (e.key !== 'Escape' || sheet.querySelector('.dk-ask')) return; if (menu.classList.contains('on')) { e.stopPropagation(); closeMenu() } else if (sheet.classList.contains('on')) { e.stopPropagation(); closeAdd() } }, true)
 
   addEventListener('scroll', () => document.documentElement.toggleAttribute('data-down', scrollY > 60), { passive: true })
   // ── the tiles ──

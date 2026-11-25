@@ -142,7 +142,7 @@ public class HubIcon {
   [DllImport("gdi32")] static extern int GetObject(IntPtr h, int n, out HubBitmap b);
   [DllImport("gdi32")] static extern bool DeleteObject(IntPtr h);
   public static string Get(string id) {
-    Guid g = typeof(IShellItemImageFactory).GUID; IShellItemImageFactory f; SHCreateItemFromParsingName("shell:AppsFolder\\" + id, IntPtr.Zero, ref g, out f);
+    Guid g = typeof(IShellItemImageFactory).GUID; IShellItemImageFactory f; SHCreateItemFromParsingName(id.StartsWith("file:") ? id.Substring(5) : "shell:AppsFolder\\" + id, IntPtr.Zero, ref g, out f);
     HubSize s; s.cx = s.cy = 192; IntPtr h; Marshal.ThrowExceptionForHR(f.GetImage(s, 4, out h));
     try { HubBitmap b; GetObject(h, Marshal.SizeOf(typeof(HubBitmap)), out b);
       using (Bitmap o = new Bitmap(b.w, b.h, PixelFormat.Format32bppArgb)) {

@@ -1,7 +1,8 @@
 // Paired devices: how a phone (or a browser on your private network) signs in to the hub.
 //
 //   GET  /pair/new                    this computer only: page with the QR code and pairing code
-//   POST /api/pair/start              this computer or a paired device -> { code, expires, address, link, qrSvg }
+//   POST /api/pair/start { urls? }    this computer or a paired device -> { code, expires, address, link, qrSvg, links: [{ url, qrSvg }] }
+//                                      each of urls (where this hub answers) as a page to open with the code already in it
 //   POST /api/pair/claim              { code, name?, platform? } -> { token, deviceId, hub: { id, name } }
 //   GET  /api/pair/me                 paired device -> { deviceId, name, hub: { id, name } }, or 401
 //   GET  /api/pair/devices            this computer or a paired device -> { devices: [...] }
@@ -122,7 +123,7 @@ export function createDeviceAuth({ here, hubName = () => 'Hub', hubUrl = () => '
     return { device, viaBearer: !!(device && bearer), token: bearer }
   }
 
-  function startPairing() {
+  function startPairing(urls) {
     const bytes = crypto.randomBytes(CODE_LENGTH)
     const code = Array.from(bytes, b => CODE_ALPHABET[b % CODE_ALPHABET.length]).join('')
     pending = { code, expires: Date.now() + CODE_TTL_MS, guesses: 0 }
@@ -136,7 +137,14 @@ export function createDeviceAuth({ here, hubName = () => 'Hub', hubUrl = () => '
       qr.make()
       qrSvg = qr.createSvgTag({ cellSize: 6, margin: 12, scalable: true })
     }
-    return { code, expires: pending.expires, address: usable ? address : '', link, qrSvg }
+    // The code travels after the #, which no server or log sees.
+    const links = (Array.isArray(urls) ? urls : [address]).filter(u => typeof u === 'string' && u.length < 200 && /^https?:\/\/[\w.:[\]-]+$/i.test(u)).slice(0, 4).map(u => {
+      const q = qrcode(0, 'M')
+      q.addData(`${u}/pair#${code}`)
+      q.make()
+      return { url: u, qrSvg: q.createSvgTag({ cellSize: 6, margin: 12, scalable: true }) }
+    })
+    return { code, expires: pending.expires, address: usable ? address : '', link, qrSvg, links }
   }
 
   // Wrong guesses count against the code, not against the caller: five and it is gone, so a
@@ -204,7 +212,7 @@ export function createDeviceAuth({ here, hubName = () => 'Hub', hubUrl = () => '
       return send(res, 200, { deviceId: req.hubDevice.id, name: req.hubDevice.name, hub: hubInfo() }), true
     }
     if (!trusted) return send(res, 401, { error: 'Pair this device first.' }), true
-    if (p === '/api/pair/start' && req.method === 'POST') return send(res, 200, startPairing()), true
+    if (p === '/api/pair/start' && req.method === 'POST') return send(res, 200, startPairing((await readClaim(req)).urls)), true
     if (p === '/api/pair/devices' && req.method === 'GET') return send(res, 200, { devices: load().devices.map(publicDevice) }), true
     const remove = /^\/api\/pair\/devices\/([0-9a-f-]{36})\/remove$/.exec(p)
     if (remove && req.method === 'POST') {
@@ -230,13 +238,25 @@ button{width:100%;font:inherit;font-weight:600;padding:12px;border:0;border-radi
 .err{color:var(--red);min-height:1.4em}.code{font:600 30px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;letter-spacing:.14em;text-align:center;margin:16px 0}
 .qr{background:#fff;border-radius:10px;padding:4px;margin:16px 0}.qr svg{display:block;width:100%;height:auto}.addr{word-break:break-all;text-align:center}`
 
-function signInPage(name) {
-  return `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${esc(name)}</title><style>${PAGE_CSS}</style>
-<main><h1>${esc(name)}</h1><p>On the computer running this hub, open <b>/pair/new</b> and enter the code here.</p>
-<form id="f"><input id="c" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" maxlength="10" aria-label="Pairing code" required><p class="err" id="e" role="alert"></p><button>Sign in</button></form></main>
-<script>f.onsubmit=async ev=>{ev.preventDefault();e.textContent='';
-const r=await fetch('/api/pair/claim',{method:'POST',headers:{'x-hub':'1','x-hub-browser':'1','content-type':'application/json'},body:JSON.stringify({code:c.value,name:navigator.platform||'Browser',platform:'browser'})}).catch(()=>null);
-if(r&&r.ok)return location.replace('/');const b=r?await r.json().catch(()=>({})):{};e.textContent=b.error||'Could not reach the hub.'}</script></html>`
+export function signInPage(name) {
+  return `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="theme-color" content="#0b0c10"><meta name="apple-mobile-web-app-capable" content="yes"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><title>${esc(name)}</title><style>
+*{box-sizing:border-box}html{background:#0b0c10;color-scheme:dark}body{margin:0;min-height:100dvh;display:flex;flex-direction:column;justify-content:center;padding:calc(28px + env(safe-area-inset-top)) 24px calc(28px + env(safe-area-inset-bottom));max-width:480px;margin-inline:auto;color:#fff;font:17px/1.45 -apple-system,BlinkMacSystemFont,"SF Pro Text",Inter,"Segoe UI",system-ui,sans-serif;background:radial-gradient(120% 60% at 50% 0,#1b2a52,transparent 70%)}
+.ic{width:76px;height:76px;border-radius:19px;display:block}h1{margin:22px 0 8px;font-size:34px;line-height:1.1;letter-spacing:-.03em}p{margin:0 0 22px;color:rgba(255,255,255,.64)}
+input{width:100%;height:66px;border:0;outline:0;border-radius:22px;background:rgba(255,255,255,.09);color:#fff;font:700 28px ui-monospace,"SF Mono",Menlo,monospace;letter-spacing:.16em;text-align:center;text-transform:uppercase}input:focus{box-shadow:0 0 0 2px #fff}input::placeholder{color:rgba(255,255,255,.25)}
+button{width:100%;height:58px;margin-top:12px;border:0;border-radius:29px;background:#f2f2f5;color:#000;font:600 18px inherit;font-family:inherit}button:disabled{opacity:.5}.err{color:#ff8f89;min-height:1.5em;margin:10px 4px 0}
+details{margin-top:14px;border-radius:20px;background:rgba(255,255,255,.06);padding:0 18px}summary{padding:15px 0;font-weight:600;list-style:none}summary::-webkit-details-marker{display:none}summary::after{content:"+";float:right;opacity:.5;font-weight:400}details[open] summary::after{content:"–"}ol{margin:0 0 16px;padding-left:20px;color:rgba(255,255,255,.72)}li{margin:6px 0}code{padding:2px 7px;border-radius:7px;background:rgba(255,255,255,.12);font-size:14px}a{display:block;margin-top:20px;text-align:center;color:rgba(255,255,255,.56);font-size:15px}</style>
+<main id="m"><img class="ic" src="/icons/icon-192.png" alt=""><h1>Pair with ${esc(name)}</h1><p>LocalHub runs on a computer of yours. Pair this device with it once, and it stays signed in.</p>
+<form id="f"><input id="c" autocomplete="one-time-code" autocapitalize="characters" autocorrect="off" spellcheck="false" maxlength="10" placeholder="XXXX XXXX" aria-label="Pairing code" required><p class="err" id="e" role="alert"></p><button id="b">Pair this device</button></form>
+<details open><summary>It runs on a laptop or computer</summary><ol><li>Open LocalHub on it, then <b>Phone</b> on the left.</li><li>Press <b>Connect a phone</b>.</li><li>Scan the code with this phone’s camera, or type it above.</li></ol></details>
+<details><summary>It runs on a VM, server or container</summary><ol><li>In its LocalHub folder run <code>npm run pair</code>. In a container: <code>docker exec -it localhub npm run pair</code>.</li><li>Scan what it prints, or type the code above.</li></ol></details>
+<a href="/?passcode">Use the passcode instead</a></main>
+<script>const ua=navigator.userAgent,ipad=/iPad/.test(ua)||(/Macintosh/.test(ua)&&navigator.maxTouchPoints>1),kind=/iPhone/.test(ua)?['iPhone','ios']:ipad?['iPad','ios']:/Android/.test(ua)?['Android','android']:/Windows/.test(ua)?['Windows PC','windows']:/Mac/.test(ua)?['Mac','macos']:['Browser','web'];
+const show=()=>{const v=c.value.toUpperCase().replace(/[^0-9A-Z]/g,'').slice(0,8);c.value=v.length>4?v.slice(0,4)+' '+v.slice(4):v};c.oninput=show;
+if(location.hash.length>4){c.value=decodeURIComponent(location.hash.slice(1));show();history.replaceState(null,'','/pair')}
+f.onsubmit=async ev=>{ev.preventDefault();e.textContent='';b.disabled=true;
+const r=await fetch('/api/pair/claim',{method:'POST',headers:{'x-hub':'1','x-hub-browser':'1','content-type':'application/json'},body:JSON.stringify({code:c.value,name:kind[0],platform:kind[1]})}).catch(()=>null);
+b.disabled=false;if(r&&r.ok){if(kind[1]!=='ios'||navigator.standalone)return location.replace('/');m.innerHTML='<img class="ic" src="/icons/icon-192.png" alt=""><h1>Paired</h1><p>Keep it like an app: press Share, then Add to Home Screen. It opens full screen from there.</p><button onclick="location.replace(\\'/\\')">Open LocalHub</button>';return}
+const d=r?await r.json().catch(()=>({})):{};e.textContent=d.error||'Could not reach the hub.'}</script></html>`
 }
 
 function newCodePage(name) {

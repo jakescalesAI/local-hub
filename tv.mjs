@@ -412,7 +412,7 @@ export function cleanCommand(raw) {
     case 'audio': return { type: 'audio', on: raw.on === true }
     case 'key': return KEYS.has(raw.name) ? { type: 'key', name: raw.name } : null
     case 'tap': return [raw.x, raw.y].every(v => Number.isFinite(v) && v >= 0 && v <= 1920) ? { type: 'tap', x: Math.round(raw.x), y: Math.round(raw.y) } : null
-    case 'type': return typeof raw.text === 'string' && raw.text.length <= 200 && raw.text ? { type: 'type', text: raw.text.replace(/[\u0000-\u0007\u0009-\u001f\u007f]/g, '') } : null
+    case 'type': return typeof raw.text === 'string' && raw.text.length <= 200 && raw.text ? { type: 'type', text: raw.text.replace(/[\u0000-\u0007\u0009\u000b-\u001f\u007f]/g, '') } : null
     case 'media': if (raw.action === 'seek') return Number.isFinite(raw.value) && raw.value >= 0 && raw.value < 1e6 ? { type: 'media', action: 'seek', value: raw.value } : null
       return ['toggle', 'next', 'prev'].includes(raw.action) ? { type: 'media', action: raw.action } : null
     case 'brightness': case 'volume': { const v = raw.value; return Number.isFinite(v) && v >= 0 && v <= 100 ? { type: raw.type, value: Math.round(v) } : null }

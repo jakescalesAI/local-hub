@@ -3,13 +3,16 @@
 //   POST /api/desk { apps?, favorites? }   saves them, whole (data/desk.json)
 //   GET  /api/desk/pc                   -> { apps: [{ id, name }] } what's installed on this PC
 //   GET  /api/desk/icon?id=pc:…            its icon
-//   POST /api/desk/open { id }             opens one on this PC (from this PC only): its installed program, or a website in a window of its own
+//   POST /api/desk/open { id, pop? }       opens one on this PC (from this PC only): its installed program, or for a website its { url } for the
+//                                          page to open in the default browser (pop: in a window of its own)
+//   POST /api/desk/file { path? }          a program Windows doesn't list: chosen in a file window, or at that path (this PC only) -> { id, name }
 //   GET  /api/desk/system               -> { cpu, mem, disk, diskFree } of this PC, in percent and bytes
 // Only a program Windows lists in its own Start menu can be started, and only from this computer.
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { spawn } from 'node:child_process'
+import { spawn, execFile } from 'node:child_process'
+import crypto from 'node:crypto'
 import { webUrl } from './hub-settings.mjs'
 import { isLocal } from './access.mjs'
 import { IS_WIN } from './platform.mjs'
@@ -69,6 +72,22 @@ export function create({ here }) {
     try { cur = cleanDesk(JSON.parse(fs.readFileSync(FILE, 'utf8'))) } catch { cur = cleanDesk({ apps: START, favorites: ['youtube', 'gmail', 'spotify'] }) }
     return cur
   }
+  // Programs added by hand: where each one is stays here, so a page can only open what was added on this computer.
+  const ADDED = path.join(here, 'data', 'desk-files.json'), RUNS = /\.(exe|lnk|url|bat|cmd|appref-ms|msc)$/i
+  let added = {}
+  try { added = JSON.parse(fs.readFileSync(ADDED, 'utf8')) } catch {}
+  const addFile = p => {
+    const file = path.resolve(String(p))
+    if (!RUNS.test(file) || !fs.statSync(file, { throwIfNoEntry: false })?.isFile()) return null
+    const id = `pc:file:${crypto.createHash('sha256').update(file.toLowerCase()).digest('hex').slice(0, 16)}`
+    added[id] = { path: file, name: path.basename(file).replace(RUNS, '').replace(/ - Shortcut$/i, '').slice(0, 60) }
+    fs.mkdirSync(path.dirname(ADDED), { recursive: true })
+    fs.writeFileSync(ADDED, JSON.stringify(added))
+    return { id, name: added[id].name }
+  }
+  let picking = null
+  const PICK = "Add-Type -AssemblyName System.Windows.Forms; $f = New-Object Windows.Forms.Form -Property @{ TopMost = $true; ShowInTaskbar = $false; Opacity = 0; StartPosition = 'CenterScreen' }; $f.Show(); $f.Activate(); $d = New-Object Windows.Forms.OpenFileDialog -Property @{ Title = 'Add a program to LocalHub'; Filter = 'Programs and shortcuts|*.exe;*.lnk;*.url;*.bat;*.cmd;*.appref-ms;*.msc'; DereferenceLinks = $false; InitialDirectory = [Environment]::GetFolderPath('ProgramFiles') }; if ($d.ShowDialog($f) -eq 'OK') { [Console]::OutputEncoding = [Text.Encoding]::UTF8; [Console]::Out.Write($d.FileName) }; $f.Close()"
+  const pickFile = () => (picking ??= new Promise(ok => execFile('powershell.exe', ['-NoProfile', '-STA', '-ExecutionPolicy', 'Bypass', '-Command', PICK], { windowsHide: true, timeout: 300_000, encoding: 'utf8' }, (e, out) => ok(String(out || '').trim())).on('error', () => ok(''))).finally(() => { picking = null }))
   let pc = { at: 0, list: [] }
   async function pcApps() {
     if (pc.list.length && Date.now() - pc.at < 600_000) return pc.list
@@ -109,14 +128,21 @@ export function create({ here }) {
       const id = url.searchParams.get('id') || ''
       try {
         if (!icons.has(id)) {
-          if (!(await pcApps()).some(a => a.id === id)) throw new Error('unknown')
-          icons.set(id, Buffer.from(String((await helper.ask('icon', id.slice(3))).png || ''), 'base64'))
+          if (!added[id] && !(await pcApps()).some(a => a.id === id)) throw new Error('unknown')
+          icons.set(id, Buffer.from(String((await helper.ask('icon', added[id] ? `file:${added[id].path}` : id.slice(3))).png || ''), 'base64'))
         }
         const png = icons.get(id)
         if (!png.length) throw new Error('none')
         res.writeHead(200, { 'content-type': 'image/png', 'content-length': png.length, 'cache-control': 'private, max-age=86400', 'x-content-type-options': 'nosniff' })
         return res.end(png), true
       } catch { return send(res, 404, { error: 'not found' }), true }
+    }
+    if (p === '/api/desk/file' && req.method === 'POST') {
+      if (!isLocal(req) || !IS_WIN) return send(res, 403, { error: 'Programs are added on the computer the hub runs on.' }), true
+      const b = await readBody(req).catch(() => ({})), file = typeof b?.path === 'string' && b.path ? b.path.replace(/^"|"$/g, '') : await pickFile()
+      if (!file) return send(res, 200, { none: true }), true
+      const a = addFile(file)
+      return send(res, a ? 200 : 400, a || { error: 'That isn’t a program LocalHub can open.' }), true
     }
     if (p === '/api/desk/open' && req.method === 'POST') {
       if (!isLocal(req)) return send(res, 403, { error: 'Programs open on the computer the hub runs on.' }), true
@@ -126,9 +152,15 @@ export function create({ here }) {
       if (web) {
         const prog = b.web === true ? null : programFor(web), exe = BROWSERS()
         if (prog) start('explorer.exe', [`shell:AppsFolder\\${prog.id.slice(3)}`])
-        else if (b.web !== true && exe) start(exe, [`--app=${web.url}`])
+        else if (b.pop === true && b.web !== true && exe) start(exe, [`--app=${web.url}`])
         else return send(res, 200, { ok: true, url: web.url }), true
         return send(res, 200, { ok: true, as: prog ? 'program' : 'window' }), true
+      }
+      const own = Object.hasOwn(added, b?.id ?? '') && added[b.id]
+      if (own) {
+        if (!fs.existsSync(own.path)) return send(res, 404, { error: 'That program isn’t where it was. Remove it and add it again.' }), true
+        spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', 'Start-Process -FilePath $env:LH_FILE -WorkingDirectory $env:LH_DIR'], { env: { ...process.env, LH_FILE: own.path, LH_DIR: path.dirname(own.path) }, windowsHide: true, stdio: 'ignore' }).on('error', () => {}).unref()
+        return send(res, 200, { ok: true }), true
       }
       const app = list.find(a => a.id === b?.id)
       if (!app) return send(res, 404, { error: 'That isn’t installed on this PC any more.' }), true

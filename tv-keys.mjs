@@ -2,8 +2,9 @@
 // was allowed when LocalHub was put on it. Fire OS doesn't let an app on the TV do this for itself. Once started it runs
 // on the TV by itself; after the TV restarts, the hub starts it again when the TV next talks to it.
 //   GET  /api/tv/keys                -> { on, state: off | starting | on | error, why }
-//   GET  /api/tv/power               -> { known, on } is the TV awake (asked of the TV itself)
-//   POST /api/tv/power { on }          wakes it (on LocalHub), or puts it to sleep. on: 'toggle' is the other one
+//   GET  /api/tv/power               -> { known, on, hub } is the TV awake, and is LocalHub what's on it (asked of the TV itself)
+//   POST /api/tv/power { on }          true wakes it on LocalHub, false puts it to sleep, 'firetv' leaves LocalHub for Fire TV's Home,
+//                                      'toggle' is LocalHub on or off
 //   POST /api/tv/keys { on?, map? }     on/off; map is what each button does, by key name (the TV page sends it)
 // adb is config tv.adb, or the adb on this computer's PATH. Nothing is sent to the TV but the one fixed command.
 import { execFile } from 'node:child_process'
@@ -45,14 +46,32 @@ export function create({ here }) {
   }
   const awake = async () => /mWakefulness=(Awake|Dreaming)/.test(await shell('dumpsys power | grep mWakefulness='))
   const until = async (want, tries) => { for (let i = 0; i < tries; i++) { if ((await awake().catch(() => null)) === want) return true; await new Promise(r => setTimeout(r, 450)) } return false }
+  // What's in front, and Fire TV's own Home.
+  const front = async () => (/ResumedActivity[^\n]*? ([\w.]+)\//.exec(await shell('dumpsys activity activities | grep -E "ResumedActivity" | head -1').catch(() => '')) || [])[1] || ''
+  const HUB = 'local.hub.tv'
+  async function toFireTv() {
+    await shell('input keyevent 3; am start -a android.intent.action.MAIN -c android.intent.category.HOME >/dev/null 2>&1; true').catch(() => {})
+    for (let i = 0; i < 8; i++) {
+      await new Promise(r => setTimeout(r, 350))
+      if ((await front()) !== HUB) return true
+      if (i === 2) await shell('am start -n com.amazon.tv.launcher/.ui.HomeActivity_vNext >/dev/null 2>&1; true').catch(() => {})
+    }
+    return false
+  }
   // One at a time, in the order they were asked; a change is done when the TV itself says so.
   let line = Promise.resolve(), known = { at: 0, on: null }
   const power = want => (line = line.catch(() => {}).then(async () => {
-    if (want === undefined && Date.now() - known.at < 2500) return { known: true, on: known.on }
+    if (want === undefined && Date.now() - known.at < 2500) return { known: true, on: known.on, hub: known.hub }
     await link()
     let on = await awake()
     if (want !== undefined) {
-      const to = want === 'toggle' ? !on : want
+      // LocalHub off leaves the TV on, at Fire TV's Home. The other way is LocalHub on it, awake.
+      if (want === 'firetv' || (want === 'toggle' && on && (await front()) === HUB)) {
+        const done = !on || await toFireTv()
+        known = { at: Date.now(), on, hub: !done }
+        return { known: true, on, hub: !done, ...(done ? {} : { error: 'LocalHub didn’t close on the TV.' }) }
+      }
+      const to = want === 'toggle' ? true : want
       // Wake and Sleep say which; Power, the other way, is for when one of them didn't take.
       for (const key of to ? [224, 26, 224] : [223, 26, 223]) {
         if (on === to) break
@@ -61,11 +80,11 @@ export function create({ here }) {
         else { await link(); on = await awake() }
       }
       if (on && to) await shell('am start -n local.hub.tv/.MainActivity >/dev/null 2>&1; true').catch(() => {})
-      known = { at: Date.now(), on }
-      if (on !== to) return { known: true, on, error: to ? 'The TV didn’t turn on.' : 'The TV didn’t turn off.' }
+      known = { at: Date.now(), on, hub: on && to }
+      if (on !== to) return { known: true, on, hub: false, error: to ? 'The TV didn’t turn on.' : 'The TV didn’t turn off.' }
     }
-    known = { at: Date.now(), on }
-    return { known: true, on }
+    if (want === undefined) known = { at: Date.now(), on, hub: on && (await front()) === HUB }
+    return { known: true, on, hub: known.hub }
   }))
   async function apply() {
     if (busy) { apply.again = true; return }
@@ -107,7 +126,7 @@ export function create({ here }) {
         if (!saved.host) throw new Error('The TV hasn’t talked to this hub yet. Open LocalHub on it.')
         if (req.method === 'GET') return send(res, 200, await power()), true
         const b = await readBody(req).catch(() => ({})) || {}
-        if (b.on !== 'toggle' && typeof b.on !== 'boolean') return send(res, 400, { error: 'on is true, false or "toggle"' }), true
+        if (b.on !== 'toggle' && b.on !== 'firetv' && typeof b.on !== 'boolean') return send(res, 400, { error: 'on is true, false, "toggle" or "firetv"' }), true
         return send(res, 200, await power(b.on)), true
       } catch (e) {
         return send(res, 200, { known: false, on: null, error: /adb isn/.test(e.message) || /hasn/.test(e.message) ? e.message : 'The TV isn’t answering on the network. It may be unplugged, or its ADB debugging is off.' }), true

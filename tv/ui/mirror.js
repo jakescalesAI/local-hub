@@ -63,10 +63,14 @@ export function type(text) {
   let a = document.activeElement;
   while (a?.shadowRoot?.activeElement) a = a.shadowRoot.activeElement;
   if (!a || !/^(INPUT|TEXTAREA)$/.test(a.tagName)) return false;
+  let go = false;
   for (const c of text) {
     if (c === "\b") a.value = a.value.slice(0, -1);
+    else if (c === "\n") go = true;
     else a.value += c;
   }
   a.dispatchEvent(new Event("input", { bubbles: true }));
+  // Sent: the same as Enter in that box.
+  if (go && a.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", keyCode: 13, bubbles: true, cancelable: true, composed: true })) && a.form) a.form.requestSubmit();
   return true;
 }

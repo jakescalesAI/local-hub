@@ -106,7 +106,7 @@ const loginPage = name => page(name, `<h1>${esc(name)}</h1><p>Enter the passcode
 <form id="f"><input id="p" type="password" autocomplete="current-password" aria-label="Passcode" autofocus><button>Open</button><div id="err" role="alert"></div></form>
 <script>document.getElementById('f').onsubmit = async e => { e.preventDefault(); const err = document.getElementById('err'); err.textContent = ''
   try { const r = await fetch('/api/hub/login', { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: JSON.stringify({ passcode: document.getElementById('p').value }) })
-    if (r.ok) return location.reload(); err.textContent = (await r.json()).error || 'That didn’t work' } catch { err.textContent = 'The hub didn’t answer' } }</script>`)
+    if (r.ok) return location.replace('/'); err.textContent = (await r.json()).error || 'That didn’t work' } catch { err.textContent = 'The hub didn’t answer' } }</script>`)
 
 const noPasscodePage = name => page(name, `<h1>${esc(name)}</h1><p>This hub is set to take visits from other devices, but it has no passcode yet, so it stays closed to them. On the hub’s own computer, run <code>npm run passcode</code> in its folder, then come back.</p>`)
 
@@ -149,6 +149,11 @@ export async function gate(req, res, url, send) {
   }
   if (/^\/icons\//.test(url.pathname) && req.method === 'GET') return false
   res.setHeader('cache-control', 'no-store')
+  if ((url.pathname === '/' || url.pathname === '/index.html') && hasPasscode() && !url.searchParams.has('passcode')) {
+    // Pairing is how a device gets in; the passcode is the other way.
+    res.writeHead(302, { location: '/pair' })
+    return res.end(), true
+  }
   if (url.pathname === '/' || url.pathname === '/index.html') {
     return send(res, hasPasscode() ? 200 : 403, hasPasscode() ? loginPage(name) : noPasscodePage(name), 'text/html; charset=utf-8'), true
   }

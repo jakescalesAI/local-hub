@@ -9,20 +9,20 @@
 <link rel="stylesheet" href="./theme.css?v=1">
 <script>/* What Home’s widgets show, asked for while the rest is still loading. */ if (location.pathname.indexOf("/tv") === 0) { window.__early = {}; ["/api/board", "/api/tv/weather", "/api/desk/system", "/api/system/info", "/api/music"].forEach(function (u) { window.__early[u] = fetch(u, { cache: "no-store" }); window.__early[u].catch(function () {}); }); }</script>
 <link rel="preload" href="./intro.mp4?v=2" as="fetch" crossorigin>
-<link rel="stylesheet" href="./styles.css?v=87">
+<link rel="stylesheet" href="./styles.css?v=88">
 <link rel="stylesheet" href="./splash.css?v=3">
 <link rel="stylesheet" href="./panel.css?v=19">
-<link rel="stylesheet" href="./widgets.css?v=13">
+<link rel="stylesheet" href="./widgets.css?v=14">
 <link rel="stylesheet" href="./assistant.css?v=13">
 <link rel="stylesheet" href="./files.css?v=1">
 <!-- Fetched alongside app.js instead of after it has been parsed: ~0.9 s sooner to a home screen on a Fire TV Stick. -->
-<link rel="modulepreload" href="./app.js?v=166">
+<link rel="modulepreload" href="./app.js?v=167">
 <link rel="modulepreload" href="./stream.js?v=8">
 <link rel="modulepreload" href="./panel.js?v=16">
 <link rel="modulepreload" href="./remote.js?v=5">
 <link rel="modulepreload" href="./lock.js?v=2">
 <link rel="modulepreload" href="./files.js?v=1">
-<link rel="modulepreload" href="./mirror.js?v=2">
+<link rel="modulepreload" href="./mirror.js?v=4">
 <!-- Served by the hub: its config and settings are asked for now, while the page's own files load, instead of
      after app.js has run (~0.6 s later on a Fire TV Stick). app.js picks them up. -->
 <script>
@@ -118,6 +118,6 @@ if (location.pathname.startsWith("/tv")) {
   /* The hub page defines hubFetch for chat.js (it waits out hub restarts); the TV only needs plain fetch. */
   if (typeof window.hubFetch !== "function") window.hubFetch = function (url, init) { return fetch(url, init); };
 </script>
-<script type="module" src="./app.js?v=166"></script>
+<script type="module" src="./app.js?v=167"></script>
 </body>
 </html>

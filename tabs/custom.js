@@ -548,6 +548,7 @@ html[data-wall] .hw-bar .hw-btn:not(.solid) { background: color-mix(in srgb, var
     const href = file ? `/api/hub/custom/${encodeURIComponent(file)}` : webUrl(url)
     if (!href) { hud?.('That isn’t a web address'); return false }
     // A website opens in the hub browser's pop-up, where a site's frame rules don't matter. A file of yours stays sandboxed here.
+    if (!file && window.HubWeb && window.HubWeb() !== 'window') { window.HubWeb() === 'hub' ? window.HubOpenSync(href) : window.open(href, '_blank', 'noopener,noreferrer'); return true }
     if (!file && window.HubBrowser) { window.HubBrowser.open(href, { name, icon: src }); return true }
     const focus = document.activeElement
     closeSite()

@@ -94,8 +94,8 @@ ${R} { --side: calc((min(100vw, 1500px) - var(--tvrail)) / 2); --sidegap: 32px; 
 ${R}:has(.hw-root) .page { position: relative; padding-right: 48px; }
 ${R}:has(.hw-root:is([data-view="tv"], [data-view="ipad"], [data-view="mobile"])) .page, ${R}[data-noside]:has(.hw-root) .page { padding-right: 48px; }
 /* The TV's own proportions: the clock at the top, the name of what you're on above the row, the row three fifths down. */
-${R}:has(.hw-root) #tvtop { display: flex; flex-direction: column; box-sizing: border-box; height: max(250px, 59.5vh); padding: 36px 0 14px; margin: 0; color: #fff; pointer-events: none; position: relative; z-index: 1; }
-${R} .tvt-name { margin-top: auto; max-width: calc(100% - var(--side) - 20px); font: 700 clamp(44px, 5.4vw, 92px)/1.05 var(--display); padding: .06em .06em .2em 0; margin-bottom: -.2em; min-height: 1.31em; box-sizing: border-box; letter-spacing: -.035em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 2px 14px rgba(0, 0, 0, .35); }
+${R}:has(.hw-root) #tvtop { display: flex; flex-direction: column; box-sizing: border-box; height: max(250px, 62vh); padding: max(36px, 5.4vh) 0 0; margin: 0; color: #fff; pointer-events: none; position: relative; z-index: 1; }
+${R} .tvt-name { margin-top: auto; max-width: calc(100% - var(--side) - 20px); font: 700 clamp(44px, 5.4vw, 92px)/1.05 var(--display); padding: .06em .06em .2em 0; margin-bottom: -.12em; min-height: 1.31em; box-sizing: border-box; letter-spacing: -.035em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 2px 14px rgba(0, 0, 0, .35); }
 @media (max-height: 620px) { ${R} .tvt-name { display: none; } }
 ${R} .controls { margin-bottom: 26px; top: 12px; }
 ${R}:has(.hw-root) .controls { position: relative; top: 0; z-index: 12; min-height: 56px; padding-right: var(--barw, 0px); gap: 12px; }
@@ -106,14 +106,14 @@ ${R} .hw-root:is([data-view="tv"], [data-view="ipad"], [data-view="mobile"]) > .
 ${R} .hw-root.hw-edit > .hw-bar { left: auto; }
 /* Edit Home: a page of its own. */
 /* Editing happens on Home itself: the widgets stay in their corner, the free cells show, and the tools take the row's place. */
-${R}[data-editing] .controls { visibility: hidden !important; } ${R}[data-editing] .tvt-name { visibility: hidden; } ${R}[data-editing] .hw-root > .hw-bar { position: fixed; top: max(250px, 59.5vh); right: calc(var(--dock) + 48px); left: auto; z-index: 14; height: 56px; margin: 0; } ${R}[data-editing] .hw-bar [data-hw-act="add"] { display: none; }
-#tvebar { display: none; } ${R}[data-editing] #tvebar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; position: fixed; z-index: 13; top: max(250px, 59.5vh); left: calc(var(--tvrail) + 48px); min-height: 56px; color: rgba(255, 255, 255, .7); font-size: 15px; } #tvebar p { flex: 1 0 100%; margin: 8px 0 0; max-width: 620px; line-height: 1.5; } #tvebar .te-out { display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 14px; border-radius: 17px; background: rgba(255, 159, 10, .2); color: #ffd39b; font-size: 14px; font-weight: 600; }
+${R}[data-editing] .controls { visibility: hidden !important; } ${R}[data-editing] .tvt-name { visibility: hidden; } ${R}[data-editing] .hw-root > .hw-bar { position: fixed; top: max(250px, 62vh); right: calc(var(--dock) + 48px); left: auto; z-index: 14; height: 56px; margin: 0; } ${R}[data-editing] .hw-bar [data-hw-act="add"] { display: none; }
+#tvebar { display: none; } ${R}[data-editing] #tvebar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; position: fixed; z-index: 13; top: max(250px, 62vh); left: calc(var(--tvrail) + 48px); min-height: 56px; color: rgba(255, 255, 255, .7); font-size: 15px; } #tvebar p { flex: 1 0 100%; margin: 8px 0 0; max-width: 620px; line-height: 1.5; } #tvebar .te-out { display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 14px; border-radius: 17px; background: rgba(255, 159, 10, .2); color: #ffd39b; font-size: 14px; font-weight: 600; }
 ${R}[data-editing] #tvside { overflow: visible !important; z-index: 14; } ${R}[data-editing] :is(#dk, #dkfav, #tvask, .askbar) { opacity: .12 !important; pointer-events: none !important; } ${R}[data-editing] .tvt-clock .hc { outline: 2px dashed rgba(255, 255, 255, .4); outline-offset: 12px; border-radius: 14px; } ${R}[data-editing] .tvt-clock .hc:hover { outline-color: #fff; }
 .wg-land { position: relative; z-index: 6; display: grid; place-items: center; pointer-events: none; border-radius: 2.6em; background: rgba(10, 132, 255, .34); box-shadow: inset 0 0 0 .3em #4aa3ff; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); } .wg-land span { padding: .55em 1.1em; border-radius: 99px; background: rgba(0, 0, 0, .7); color: #fff; font: 600 1.5em/1 var(--font); white-space: nowrap; } .wg-land.no { background: rgba(255, 69, 58, .3); box-shadow: inset 0 0 0 .3em #ff453a; } .wg-land.move { z-index: 5; background: rgba(255, 255, 255, .06); box-shadow: none; border: .2em dashed rgba(255, 255, 255, .75); backdrop-filter: none; -webkit-backdrop-filter: none; } #tvside .wg-i.drag { opacity: .35; }
 .wg-ghost { display: grid; place-items: center; min-width: 0; min-height: 0; padding: 0; border: .2em dashed rgba(255, 255, 255, .28); border-radius: 2.6em; background: rgba(0, 0, 0, .28); color: rgba(255, 255, 255, .6); font: inherit; cursor: pointer; } .wg-ghost:is(:hover, .over) { border-color: #fff; background: rgba(255, 255, 255, .16); color: #fff; }
 ${R}[data-editing][data-editon="saver"] .hw-root > #tvside { top: max(5vh, 36px) !important; right: max(3.5vw, 28px) !important; width: calc(50vw - max(3.5vw, 28px)) !important; max-height: none !important; } ${R}[data-editing][data-editon="saver"] #tvside .wg { font-size: min((50vw - max(3.5vw, 28px)) / 56.2, (100vh - 2 * max(5vh, 36px)) / 70.6); } ${R}[data-editon="saver"] :is(#dk, #dkfav, #tvask, .askbar) { visibility: hidden !important; } ${R}[data-editon="saver"] #tvebar { top: max(5vh, 36px); max-width: calc(50vw - var(--tvrail) - 90px); } ${R}[data-editon="saver"] .hw-root > .hw-bar { top: calc(max(5vh, 36px) + 172px); right: auto; left: calc(var(--tvrail) + 48px); } ${R}[data-editon="saver"] .tvt-clock { position: fixed; left: calc(var(--tvrail) + 48px); bottom: max(6vh, 40px); font-size: clamp(56px, 8vw, 120px); }
-${R}[data-editing][data-editon="side"] .hw-root > #tvside { width: min(460px, 38vw) !important; right: 4vw !important; max-height: none !important; bottom: 24px; overflow: auto !important; padding: 26px 22px; margin: 0; border-radius: 36px; background: rgba(0, 0, 0, .5); box-shadow: 0 0 0 2px rgba(255, 255, 255, .2); } ${R}[data-editon="side"] #tvside .wg { font-size: min(7.4px, .6vw); justify-content: center; } ${R}[data-editon="side"] :is(#dk, #dkfav, #tvask, .askbar) { visibility: hidden !important; } ${R}[data-editon="side"] #tvebar { max-width: calc(52vw - var(--tvrail) - 60px); } ${R}[data-editon="side"] .hw-root > .hw-bar { top: calc(max(250px, 59.5vh) + 150px); right: auto; left: calc(var(--tvrail) + 48px); } ${R}[data-editing][data-editon="phone"] .hw-root > #tvside { width: 340px !important; right: calc(25vw - 170px) !important; max-height: none !important; bottom: 24px; overflow: auto !important; padding: 26px 22px; margin: 0; border-radius: 44px; background: rgba(0, 0, 0, .5); box-shadow: 0 0 0 2px rgba(255, 255, 255, .2); } ${R}[data-editon="phone"] #tvside .wg { --cols: 2; justify-content: center; font-size: 11.4px; } ${R}[data-editon="phone"] #tvside .we-add { grid-column: span 2; } ${R}[data-editon="phone"] :is(#dk, #dkfav, #tvask, .askbar) { visibility: hidden !important; } ${R}[data-editon="phone"] #tvebar { max-width: calc(60vw - var(--tvrail) - 120px); } ${R}[data-editon="phone"] .hw-root > .hw-bar { top: calc(max(250px, 59.5vh) + 150px); right: auto; left: calc(var(--tvrail) + 48px); }
-@media (max-width: 1240px) { ${R}[data-editing]:not([data-editon="saver"], [data-editon="phone"], [data-editon="side"]) .hw-root > .hw-bar { top: calc(max(250px, 59.5vh) + 66px); right: auto; left: calc(var(--tvrail) + 48px); } ${R}[data-editing]:not([data-editon="saver"]) #tvebar p { padding-top: 60px; } }
+${R}[data-editing][data-editon="side"] .hw-root > #tvside { width: min(460px, 38vw) !important; right: 4vw !important; max-height: none !important; bottom: 24px; overflow: auto !important; padding: 26px 22px; margin: 0; border-radius: 36px; background: rgba(0, 0, 0, .5); box-shadow: 0 0 0 2px rgba(255, 255, 255, .2); } ${R}[data-editon="side"] #tvside .wg { font-size: min(7.4px, .6vw); justify-content: center; } ${R}[data-editon="side"] :is(#dk, #dkfav, #tvask, .askbar) { visibility: hidden !important; } ${R}[data-editon="side"] #tvebar { max-width: calc(52vw - var(--tvrail) - 60px); } ${R}[data-editon="side"] .hw-root > .hw-bar { top: calc(max(250px, 62vh) + 150px); right: auto; left: calc(var(--tvrail) + 48px); } ${R}[data-editing][data-editon="phone"] .hw-root > #tvside { width: 340px !important; right: calc(25vw - 170px) !important; max-height: none !important; bottom: 24px; overflow: auto !important; padding: 26px 22px; margin: 0; border-radius: 44px; background: rgba(0, 0, 0, .5); box-shadow: 0 0 0 2px rgba(255, 255, 255, .2); } ${R}[data-editon="phone"] #tvside .wg { --cols: 2; justify-content: center; font-size: 11.4px; } ${R}[data-editon="phone"] #tvside .we-add { grid-column: span 2; } ${R}[data-editon="phone"] :is(#dk, #dkfav, #tvask, .askbar) { visibility: hidden !important; } ${R}[data-editon="phone"] #tvebar { max-width: calc(60vw - var(--tvrail) - 120px); } ${R}[data-editon="phone"] .hw-root > .hw-bar { top: calc(max(250px, 62vh) + 150px); right: auto; left: calc(var(--tvrail) + 48px); }
+@media (max-width: 1240px) { ${R}[data-editing]:not([data-editon="saver"], [data-editon="phone"], [data-editon="side"]) .hw-root > .hw-bar { top: calc(max(250px, 62vh) + 66px); right: auto; left: calc(var(--tvrail) + 48px); } ${R}[data-editing]:not([data-editon="saver"]) #tvebar p { padding-top: 60px; } }
 ${R}:is([data-editon="saver"], [data-editon="phone"], [data-editon="side"]) .hw-bar :is([data-hw-act="tabs"], [data-hw-act="style"], [data-hw-act="prefs"]) { display: none; }
 ${T}[data-editing] :is(.hw-stage, .hw-frame, #dk, #dkfav, .hw-bar [data-hw-act="tabs"], .hw-bar [data-hw-act="style"]) { display: none !important; } ${T}[data-editing] .hw-root > #tvside { display: block !important; padding: 14px 0 190px; }
 ${T}[data-editing] #tvebar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; position: fixed; z-index: 61; left: 10px; right: 10px; bottom: calc(env(safe-area-inset-bottom, 0px) + 10px); padding: 10px; border-radius: 26px; background: #26262c; color: rgba(255, 255, 255, .7); font-size: 13px; box-shadow: 0 10px 40px rgba(0, 0, 0, .6); } ${T} #tvebar p { display: none; } ${T} #tvebar .ex-tool { max-width: 100%; overflow-x: auto; }
@@ -151,6 +151,7 @@ ${R} .hw-root.hw-edit .hw-tvbtn { display: none; }
 #tvsync { display: none; } ${A} #tvsync.on { display: flex; flex-direction: column; gap: 14px; position: fixed; z-index: 56; left: var(--tvrail); right: 0; top: 0; bottom: 0; padding: 22px 32px 24px; background: var(--chat-bg); color: #fff; } ${T} #tvsync.on { left: 0; padding: calc(env(safe-area-inset-top, 0px) + 14px) 12px 14px; z-index: 60; }
 .sy-head { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; } .sy-head b { font: 700 24px/1.1 var(--display); letter-spacing: -.02em; } .sy-head em { flex: 1; min-width: 0; margin-left: 6px; font: 500 14px var(--font); font-style: normal; color: rgba(255, 255, 255, .56); } .sy-head button { display: flex; align-items: center; gap: 8px; height: 42px; padding: 0 16px; border-radius: 21px; background: var(--ui-fill); box-shadow: var(--ui-edge); color: #fff; font-size: 14px; font-weight: 600; } .sy-head button:hover { background: var(--ui-sel); color: #000; } .sy-head svg { width: 19px; height: 19px; }
 .sy-fit { position: relative; flex: 1; min-height: 0; border-radius: 18px; overflow: hidden; background: #000; box-shadow: 0 0 0 1px rgba(255, 255, 255, .14); } .sy-fit iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; } @media (max-width: 820px) { .sy-head em, .sy-head button span { display: none; } .sy-head b { flex: 1; } }
+.dk-ask { position: fixed; inset: 0; z-index: 3; display: grid; place-items: center; background: rgba(0, 0, 0, .5); } .dk-ask > div { display: flex; flex-direction: column; gap: 12px; width: min(440px, 90vw); padding: 28px; border-radius: 28px; background: var(--ui-panel, #1d1e23); box-shadow: var(--ui-edge), 0 30px 80px rgba(0, 0, 0, .6); color: #fff; } .dk-ask h3 { margin: 0 0 4px; font: 700 24px/1.1 var(--display); letter-spacing: -.02em; } .dk-ask input { height: 48px; padding: 0 18px; border: 0; outline: 0; border-radius: 24px; background: rgba(255, 255, 255, .09); color: #fff; font: 500 16px var(--font); } .dk-ask input:focus { box-shadow: 0 0 0 2px #fff; } .dk-ask em { min-height: 18px; font: 500 14px var(--font); font-style: normal; color: #ff9f9a; } .dk-ask footer { display: flex; justify-content: flex-end; gap: 10px; } .dk-ask footer button { height: 44px; padding: 0 24px; border: 0; border-radius: 22px; background: rgba(255, 255, 255, .12); color: #fff; font: 600 15px var(--font); } .dk-ask footer button[type="submit"] { background: #f2f2f5; color: #000; }
 /* ── Your phone: LocalHub as it looks there, and what's connected ── */
 #tvphone { display: none; }
 ${R} #tvphone.on { display: grid; grid-template-columns: minmax(300px, 46%) minmax(0, 1fr); position: fixed; z-index: 54; left: var(--tvrail); right: 0; top: 0; bottom: 0; background: var(--chat-bg); color: #fff; transition: right .28s var(--ease); } ${R}[data-dock] #tvphone.on { right: var(--dock); }
@@ -211,7 +212,7 @@ ${R} .hw-root[data-view="desktop"] .hw-grid > .hw-cell:not(.a) { position: absol
 ${R} .hw-root[data-view="desktop"] .hw-grid > .hw-cell.m:not(.a) { width: var(--side); }
 ${R} .hw-root[data-view="desktop"] .hw-grid > .hw-cell.l:not(.a) { width: var(--side); height: 380px; }
 #tvside { display: none; }
-${R} .hw-root[data-view="desktop"] > #tvside { display: grid; position: fixed; z-index: 11; top: 30px; right: max(48px, calc((100vw - 1500px) / 2 + 48px)); width: var(--side); max-height: max(190px, calc(59.5vh - 38px)); overflow: hidden; scrollbar-width: none; grid-template-columns: repeat(auto-fit, minmax(min(100%, 232px), 1fr)); gap: 14px; align-content: start; padding: 8px; margin: -8px; box-sizing: content-box; }
+${R} .hw-root[data-view="desktop"] > #tvside { display: grid; position: absolute; z-index: 11; top: max(30px, 5vh); right: 48px; width: var(--side); max-height: none; overflow: visible; scrollbar-width: none; grid-template-columns: repeat(auto-fit, minmax(min(100%, 232px), 1fr)); gap: 14px; align-content: start; padding: 8px; margin: -8px; box-sizing: content-box; }
 ${R} #tvside::-webkit-scrollbar { display: none; }
 ${R} #tvside .hw-cell { height: 184px; min-width: 0; grid-column: auto !important; grid-row: auto !important; }
 ${R} #tvside .hw-cell.l { grid-column: 1 / -1 !important; }
@@ -513,7 +514,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   const boards = {}
   const board = (which = myScreen()) => WG && (boards[which] ??= WG.createBoard({ screen: which, changed: () => { cancelAnimationFrame(board.raf); board.raf = requestAnimationFrame(() => { paintSide(); drawWid(); tick() }) }, music: () => MU?.now }))
   let CK = null, SB = null, PC = null
-  ;(async () => { try { WG = await import('/tv/widgets.js?v=16'); CK = await import('/tv/clock.js?v=1'); SB = await import('/tv/side.js?v=4'); P ??= await import('/tv/panel.js?v=16'); board()?.refresh(); paintSide(); tick() } catch {} })()
+  ;(async () => { try { WG = await import('/tv/widgets.js?v=17'); CK = await import('/tv/clock.js?v=1'); SB = await import('/tv/side.js?v=5'); P ??= await import('/tv/panel.js?v=16'); board()?.refresh(); paintSide(); tick() } catch {} })()
   setInterval(() => {
     if (!WG || document.hidden || !document.querySelector('.hw-root')) return
     const b = board(editOn || undefined)
@@ -546,9 +547,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     if (!WG) return
     const b = board(editOn || undefined)
     if (document.documentElement.hasAttribute('data-tvlook') && side.offsetWidth && !['saver', 'side', 'phone'].includes(editOn)) {
-      const g = WG.fitGrid(parseFloat(getComputedStyle(side).width), Math.max(250, innerHeight * .595) - 44)
-      side.style.setProperty('--wgf', `${g.font.toFixed(2)}px`)
-      WG.ROOM.desk = [4, g.rows]
+      side.style.setProperty('--wgf', `${WG.fitGrid(parseFloat(getComputedStyle(side).width), Math.max(230, innerHeight * .53)).toFixed(2)}px`)
     }
     onScreen = []
     // Widgets of the hub's own, from its older gallery, stay under these.
@@ -560,6 +559,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     if (bar._html !== barHtml) bar.innerHTML = bar._html = barHtml
     const grid = side.querySelector('.wg') || side.appendChild(Object.assign(document.createElement('div'), { className: 'wg' }))
     grid.dataset.screen = editing ? editOn || myScreen() : ''
+    grid.toggleAttribute('data-fine', !!WG.FINE[which] && !(which === 'desk' && document.documentElement.hasAttribute('data-tvtouch')))
     const more = cells.map(c => ({ k: `hub-${c.dataset.hwKey}`, id: 'hub', size: c.classList.contains('l') ? 'l' : c.classList.contains('m') ? 'm' : 's' }))
     const html = b.html(editing, more) + cells.filter(c => b.at.has(`hub-${c.dataset.hwKey}`)).map(c => `<div class="wg-i z-${c.classList.contains('l') ? 'l' : c.classList.contains('m') ? 'm' : 's'} bare hub"${(p => p ? ` style="grid-area:${p[1]}/${p[0]}/span ${p[3]}/span ${p[2]}"` : '')(b.at.get(`hub-${c.dataset.hwKey}`))} data-k="hub-${esc(c.dataset.hwKey)}" data-wid="hub">${c.outerHTML}</div>`).join('') + (editing && which === 'phone' ? `<button type="button" class="wg-i z-m we-add" data-k="add" data-we="add">${svg('<path d="M12 5v14M5 12h14"/>')}<span>Add a widget</span></button>` : '')
     WG.put(grid, html)
@@ -738,7 +738,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     if (w) { const id = w.dataset.w, name = (w.getAttribute('aria-label') || w.querySelector('strong, em')?.textContent || w.textContent || 'This').trim(), rel = RELATED[id] || RELATED[id.split(':')[0]]; return [name, [it_(/^(q:(wifi|snip|tasks|battery))|^tool:|^app:|^(mirror|settings|pcbrowser|pcfiles|ask|musicset|displays|remotes)/.test(id) ? 'Open' : w.classList.contains('on') ? 'Turn off' : 'Press', 'open', () => press(id, w)), ...(rel ? [it_(rel[0], 'gear', rel[1])] : []), ...(BTN.some(x => x[0] === id) ? ['-', it_('Remove this button', 'trash', () => press(`eb:${id}`), true)] : []), ...(w.closest('.sb-rnd') ? [it_(editB ? 'Done editing' : 'Edit buttons', 'edit', () => press('editb'))] : [])]] }
     if (el.closest('#tvpanel')) return ['Sidebar', [it_('Edit widgets', 'edit', () => press('sidewidgets')), it_(editB ? 'Done editing' : 'Edit buttons', 'gear', () => press('editb')), ...(TV?.setUp ? [it_(look.target === 'tv' ? 'Show this PC' : 'Show your TV', 'remote', () => press(look.target === 'tv' ? 'to:pc' : 'to:tv'))] : []), '-', it_('Close', 'x', closePanel)]]
     if (el.closest('#tvwid')) return [widBox.getAttribute('aria-label') || 'Widget', [it_('Close', 'x', closeWid)]]
-    if (el.closest('#tvmirror')) return ['Your TV', [it_('TV remote', 'remote', () => openTool('remote', mirror)), it_(SB?.powerText(pw) || 'Turn On', 'power', () => press('power')), '-', it_('Close', 'x', closeMirror)]]
+    if (el.closest('#tvmirror')) return ['Your TV', [it_('TV remote', 'remote', () => openTool('remote', mirror)), it_(SB?.powerText(pw) || 'Turn On', 'power', () => press('power')), ...(pw.on ? [it_('Put the TV to sleep', 'power', () => press('tvsleep'))] : []), '-', it_('Close', 'x', closeMirror)]]
     if (el.closest('#tvphone')) return ['Phone', [it_('Connect a phone', 'plus', () => phone.querySelector('[data-ph="add"]')?.click()), it_('Edit its widgets', 'edit', () => phone.querySelector('[data-ph="widgets"]')?.click()), '-', it_('Close', 'x', closePhone)]]
     // Around Home's things: Home.
     if (document.querySelector('.hw-root') && (el === document.body || el === document.documentElement || el.closest('.page, #tvtop')) && !el.closest('button, [role="button"]')) return ['Home', general()]
@@ -770,7 +770,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     // The bar's Add and Reset are for these widgets.
     const act = document.documentElement.hasAttribute('data-editing') && e.target.closest?.('.hw-root > .hw-bar [data-hw-act]')?.dataset.hwAct
     if (act === 'add') { e.stopPropagation(); galAt = null; return openGal() }
-    if (act === 'reset') { e.stopPropagation(); if (confirm('Put this screen’s widgets back as they first were?')) { const b = board(editOn || undefined); b.set([['music', 'w'], ['weather', 'l'], ['pc', 'l'], ...(editOn === 'saver' ? [['calendar', 'xl']] : [])].map(([id, size], i) => ({ k: `r${i}`, id, size }))) } return }
+    if (act === 'reset') { e.stopPropagation(); if (confirm('Put this screen’s widgets back as they first were?')) { const b = board(editOn || undefined); b.set([['music', 'w'], ['weather', 'l'], ...((editOn || myScreen()) === 'desk' ? [['pc', 's'], ['calendar', 's']] : [['pc', 'l']]), ...(editOn === 'saver' ? [['calendar', 'xl']] : [])].map(([id, size], i) => ({ k: `r${i}`, id, size }))) } return }
     const lost = e.target.closest?.('#tvebar [data-lost]')?.dataset.lost
     if (lost) { e.stopPropagation(); const b = board(editOn || undefined); return b.set(b.items().filter(x => x.k !== lost)) }
     const ws = e.target.closest?.('#tvebar [data-ws]')?.dataset.ws, we = e.target.closest?.('#tvside [data-we]')?.dataset.we
@@ -799,10 +799,10 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
       l.splice(to, 0, it)
       if (to === from) l = items
     } else {
-      const g = grid.getBoundingClientRect(), fs = parseFloat(getComputedStyle(grid).fontSize), pitch = (WG.CELL + WG.GAP) * fs, [cols, rows] = WG.ROOM[which] || WG.ROOM.desk
-      const left = g.right - WG.across(cols) * fs, over = Math.floor((e.clientX - left + WG.GAP * fs / 2) / pitch), down = Math.floor((e.clientY - g.top + WG.GAP * fs / 2) / pitch)
+      const g = grid.getBoundingClientRect(), fs = parseFloat(getComputedStyle(grid).fontSize), pitch = (WG.cellOf(which) + WG.GAP) * fs, [cols, rows] = WG.ROOM[which] || WG.ROOM.desk
+      const left = g.right - WG.acrossOn(which, cols) * fs, over = Math.floor((e.clientX - left + WG.GAP * fs / 2) / pitch), down = Math.floor((e.clientY - g.top + WG.GAP * fs / 2) / pitch)
       if (over < 0 || over >= cols || down < 0 || down >= rows || e.clientY > g.bottom + pitch) return null
-      const [w, h] = (p => p ? [p[2], p[3]] : WG.SPAN[it.size] || [1, 1])(was)
+      const [w, h] = (p => p ? [p[2], p[3]] : WG.spanOn(which, it.size))(was)
       const c = Math.max(1, Math.min(cols - w + 1, over - wgrab[0] + 1)), r = Math.max(1, Math.min(rows - h + 1, down - wgrab[1] + 1))
       want = [c, r, w, h]
       const key = want.join()
@@ -890,7 +890,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   }
   let widK = '', widId = '', widIn, widIt = null
   function drawWid() {
-    if (!widK || !wid.classList.contains('on')) return
+    if (!widK || !wid.classList.contains('on') || heldDown) return
     const b = board(widIn), it = widIt || b?.items().find(x => x.k === widK), w = it && WG.W[it.id]
     if (!w) return
     const a = document.activeElement
@@ -1054,7 +1054,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   const tvMedia = () => { const m = TV?.state?.media; return !m?.title || m.title === MU?.now?.title ? MU?.now : m }
   // On or off, as the TV itself says: asked when it's looked at, and every few seconds while it is.
   let pw = { on: null, busy: false }
-  async function readPower() { if (pw.busy || !TV?.setUp) return; try { const r = await (await fetch('/api/tv/power', { cache: 'no-store' })).json(); if (!pw.busy) pw = { on: r.known ? r.on : TV?.on ? true : null, busy: false } } catch {} paintPanel(); drawTool() }
+  async function readPower() { if (pw.busy || !TV?.setUp) return; try { const r = await (await fetch('/api/tv/power', { cache: 'no-store' })).json(); if (!pw.busy) pw = { on: r.known ? r.on : TV?.on ? true : null, hub: r.hub, busy: false } } catch {} paintPanel(); drawTool() }
   async function readQuick() { try { const r = await fetch('/api/pc', { cache: 'no-store' }); PC = r.ok ? await r.json() : null } catch { PC = null } if (!sliding2) { paintPanel(); drawTool() } }
   const askPc = (body, ok) => fetch('/api/pc', { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: JSON.stringify(body) }).then(r => r.json()).then(r => { if (!r.ok) say(r.error || 'That didn’t go through.'); else ok?.(); setTimeout(readQuick, 500) }, () => say('The hub didn’t answer.'))
   let sliding2 = null, slT = 0
@@ -1080,20 +1080,51 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   for (const x of ['pointerup', 'pointercancel']) addEventListener(x, e => { if (slAt) { const a = slAt; slAt = null; if (x === 'pointerup' && Math.abs(e.clientX - a.x) < 7) setSl(a.n, atX(a.n, e), true) } if (!sliding2) return; const n = sliding2; sliding2 = null; if (x === 'pointerup') setSl(n, atX(n, e), true) })
   addEventListener('keydown', e => { const n = e.target.closest?.('.sb-sl'), d = { ArrowRight: 5, ArrowUp: 5, ArrowLeft: -5, ArrowDown: -5 }[e.key]; if (n && d) { e.preventDefault(); e.stopPropagation(); setSl(n, Number(n.getAttribute('aria-valuenow')) + d, true) } }, true)
   // ── Tools, full screen: the TV's remote, the mixer, a stopwatch, a calculator… ──
+  // A button redrawn between the press and the release loses its click: nothing in here is redrawn while it's held.
+  let heldDown = false
+  for (const n of [widBox, panel]) n.addEventListener('pointerdown', () => { heldDown = true }, true)
+  for (const x of ['pointerup', 'pointercancel', 'dragend']) addEventListener(x, () => { if (heldDown) setTimeout(() => { heldDown = false; drawTool(); drawWid(); paintPanel() }, 30) }, true)
   let tool = '', toolT = 0, calc = null, watchT = { at: 0, from: 0, laps: [] }, unit = { kind: 'Length', v: '1', a: 'mi', b: 'km' }
+  // Notes: every one written, here or in a Note widget, newest first.
+  let noteOn = '', noteNew = ''
+  const homeNotes = () => new Set(['desk', 'side', 'saver', 'tv', 'phone'].flatMap(s => (board().D.board?.screens?.[s] || []).filter(x => x.id === 'notes').map(x => x.k)))
+  function noteList() {
+    const home = homeNotes(), l = Object.entries(board().D.board?.data?.notes || {}).map(([k, text]) => ({ k, text, home: home.has(k) })).reverse()
+    if (noteNew && !l.some(n => n.k === noteNew)) l.unshift({ k: noteNew, text: '' })
+    if (!l.some(n => n.k === noteOn)) noteOn = l[0]?.k || (noteNew = noteKey())
+    return l.length ? l : [{ k: noteNew, text: '' }]
+  }
+  const noteKey = () => `q${Date.now().toString(36)}`
+  async function onNote(v) {
+    const ta = widBox.querySelector('[data-note]'), data = board().D.board?.data
+    if (v === 'copy') return copyText(ta.value)
+    // What was being typed is kept first.
+    clearTimeout(noteT)
+    if (ta && ta.value !== (data?.notes?.[noteOn] || '')) await board().data({ note: { k: noteOn, text: ta.value } })
+    if (v === 'new') { if (ta?.value.trim() || noteOn !== noteNew) noteOn = noteNew = noteKey() }
+    else if (v === 'del') { if (noteOn === noteNew) noteNew = ''; await board().data({ note: { k: noteOn, text: '' } }); noteOn = '' }
+    else noteOn = v
+    drawTool(true)
+    widBox.querySelector('[data-note]')?.focus()
+  }
   function drawTool(force) {
-    if (!tool || !wid.classList.contains('on') || !SB) return
+    if (!tool || !wid.classList.contains('on') || !SB || (heldDown && !force)) return
     const a = document.activeElement
     if (!force && a && widBox.contains(a) && a.matches('input, select, textarea')) return
-    const html = tool === 'remote' || tool === 'type' ? SB.remoteHTML({ TV, pw }) : tool === 'mixer' ? SB.mixerHTML({ PC, MU }) : tool === 'watch' ? SB.watchHTML(watchT) : tool === 'calc' ? SB.calcHTML(calc ??= SB.newCalc()) : SB.convertHTML(unit)
+    const html = tool === 'remote' || tool === 'type' ? SB.remoteHTML({ TV, pw }) : tool === 'mixer' ? SB.mixerHTML({ PC, MU }) : tool === 'watch' ? SB.watchHTML(watchT) : tool === 'notes' ? SB.notesHTML(noteList(), noteOn) : tool === 'calc' ? SB.calcHTML(calc ??= SB.newCalc()) : SB.convertHTML(unit)
     if (widBox._html === html || sliding2) return
+    const was = widBox.querySelector('.trm-type input'), typed = was?.value
+    // A ticking clock changes only its digits.
+    const t = widBox.querySelector('.wt-t'), tick = html.match(/<div class="wt-t">(.*?)<\/div>/)
+    if (!force && tool === 'watch' && t && tick) { t.innerHTML = tick[1]; return }
     widBox.innerHTML = widBox._html = html
+    if (typed) { const n = widBox.querySelector('.trm-type input'); if (n) n.value = typed }
   }
   function openTool(id, from) {
     if (!SB || !WG) return
-    if (['timer', 'notes', 'todo', 'calendar', 'weather', 'world', 'files'].includes(id)) {
+    if (['timer', 'todo', 'calendar', 'weather', 'world', 'files'].includes(id)) {
       // These are widgets: opened from here as they are from Home.
-      const k = id === 'notes' ? 'quicknote' : `tool-${id}`, n = Object.assign(document.createElement('div'), { className: 'wg-i' })
+      const k = `tool-${id}`, n = Object.assign(document.createElement('div'), { className: 'wg-i' })
       n.dataset.wid = id
       n.dataset.k = k
       n._it = { k, id, size: 'l' }
@@ -1101,20 +1132,24 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
       return openWid(n)
     }
     showWid(from || panel, 'tool-w', SB.TOOLS[id]?.[0] || 'Type on the TV')
+    typedTv = ''
     widK = ''
     widMusic = false
     tool = id
     if (id === 'remote' || id === 'type') { readTv(); readPower(); sendKeys([]) }
     if (id === 'mixer') readQuick()
+    if (id === 'notes') { noteOn = noteNew = noteKey(); board().refresh(['board']); setTimeout(() => { const n = widBox.querySelector('[data-note]'); if (tool === 'notes' && n && !n.value) { drawTool(true); widBox.querySelector('[data-note]').focus() } }, 700) }
     drawTool(true)
     P.grow(widBox, from)
+    if (id === 'notes') setTimeout(() => widBox.querySelector('[data-note]')?.focus(), 450)
     if (id === 'type') setTimeout(() => widBox.querySelector('.trm-type input')?.focus(), 450)
     clearInterval(toolT)
-    toolT = setInterval(() => { if (!tool || !wid.classList.contains('on')) return clearInterval(toolT); if (tool === 'watch' && watchT.from) drawTool(); else if (tool === 'mixer' && Date.now() % 2000 < 100) readQuick(); else if (tool === 'remote' && Date.now() % 6000 < 100) readPower() }, 100)
+    toolT = setInterval(() => { if (!tool || !wid.classList.contains('on')) return clearInterval(toolT); if (tool === 'watch' && watchT.from) drawTool(); else if (tool === 'mixer' && Date.now() % 2000 < 36) readQuick(); else if (tool === 'remote' && Date.now() % 6000 < 40) readPower() }, 33)
   }
   // Keys go to the TV itself, whatever app is on it; its own page is the way when that isn't there.
   let keyQ = [], keyBusy = false, tvApp = ''
   async function sendKeys(events) {
+    if (events.length && pw.on === false) return say('The TV is off. Turn it on first.')
     keyQ.push(...events)
     if (keyBusy || (!keyQ.length && events.length)) return
     keyBusy = true
@@ -1166,19 +1201,45 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   widBox.addEventListener('submit', e => {
     if (!e.target.matches('[data-rmtype]')) return
     e.preventDefault()
-    const i = e.target.querySelector('input'), text = i.value
-    if (!text) return sendKeys([{ key: 'enter' }])
-    i.value = ''
-    if (tvApp === 'local.hub.tv' || !tvApp) post({ type: 'type', text }); else sendKeys([{ text }])
+    const i = e.target.querySelector('input')
+    if (!i.value) return i.focus()
+    // Send: it goes in, on the TV.
+    typeTv('\n')
+    i.value = typedTv = ''
+    i.focus()
+    say('Sent to the TV')
   })
+  // One after another, so letters land in the order they were typed.
+  let typedTv = '', typeLine = Promise.resolve()
+  function typeTv(text) {
+    if (pw.on === false) return say('The TV is off. Turn it on first.')
+    typeLine = typeLine.then(async () => {
+      if (tvApp === 'local.hub.tv' || !tvApp) return post({ type: 'type', text })
+      const ev = []
+      for (const part of text.match(/\x08|\n|[^\x08\n]+/g) || []) ev.push(part === '\b' ? { key: 'del' } : part === '\n' ? { key: 'submit' } : { text: part })
+      await sendKeys(ev)
+    }).catch(() => {})
+  }
+  widBox.addEventListener('focusin', e => { if (e.target.matches?.('.trm-type input')) sendKeys([]) })
+  widBox.addEventListener('input', e => {
+    if (!e.target.matches?.('.trm-type input')) return
+    const now = e.target.value
+    let k = 0
+    while (k < now.length && k < typedTv.length && now[k] === typedTv[k]) k++
+    const out = '\b'.repeat(typedTv.length - k) + now.slice(k)
+    typedTv = now
+    if (out) typeTv(out)
+  })
+  widBox.addEventListener('keydown', e => { if (e.key === 'Backspace' && e.target.matches?.('.trm-type input') && !e.target.value) typeTv('\b') })
   widBox.addEventListener('input', e => { if (!('uv' in e.target.dataset)) return; unit.v = e.target.value; widBox.querySelector('[data-uo]').textContent = SB.converted(unit) })
   widBox.addEventListener('change', e => { const d = e.target.dataset; if ('ua' in d) unit.a = e.target.value; else if ('ub' in d) unit.b = e.target.value; else return; widBox.querySelector('[data-uo]').textContent = SB.converted(unit) })
   widBox.addEventListener('click', e => {
     if (!tool) return
     const n = e.target.closest('button'), d = n?.dataset
     if (!d) return
-    if (d.rk === 'del') return void sendKeys([{ key: 'del' }])
+    if (d.rk === 'del') { const i = widBox.querySelector('.trm-type input'); if (i.value) typedTv = i.value = i.value.slice(0, -1); typeTv('\b'); return i.focus() }
     if (d.ck) { SB.calcKey(calc, d.ck); return drawTool(true) }
+    if (d.nt) return void onNote(d.nt)
     if (d.uk) { const k = Object.keys(SB.UNITS[d.uk]); unit = { kind: d.uk, v: unit.v, a: k[0], b: k[1] }; return drawTool(true) }
     if ('us' in d) { [unit.a, unit.b] = [unit.b, unit.a]; return drawTool(true) }
     if (d.st === 'go') { watchT = watchT.from ? { ...watchT, at: watchT.at + Date.now() - watchT.from, from: 0 } : { ...watchT, from: Date.now() }; return drawTool(true) }
@@ -1186,7 +1247,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     if (d.w) press(d.w, n)
   })
   function paintPanel() {
-    if (!P) return
+    if (!P || heldDown) return
     const on = !!TV?.on, st = (on && TV.state) || {}
     const tvSide = !!TV?.setUp && look.target === 'tv'
     const list = panel.querySelector('.wpanel-list')
@@ -1321,7 +1382,8 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   let asked = ''
   function press(id, from) {
     if (id.startsWith('tool:')) { const n = from || panel.querySelector(`[data-w="${id}"]`); return openTool(id.slice(5), n) }
-    if (id === 'power') return void power(pw.on !== true)
+    if (id === 'power') return void power('toggle')
+    if (id === 'tvsleep') return void power(false)
     if (id === 'openapp') return void fetch('/api/music/open', { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: '{}' }).then(r => r.json()).then(r => { if (!r.ok) say(r.error || 'That didn’t open.') }, () => {})
     if (id.startsWith('app:')) { post({ type: 'launch', app: id.slice(4) }); return say(`Opening ${id.slice(4)} on the TV`) }
     if (id.startsWith('mute:')) { const x = PC?.mix?.find(y => y.id === id.slice(5)); if (!x) return; x.muted = !x.muted; paintPanel(); drawTool(); return void askPc({ what: 'mix', id: x.id, mute: x.muted }) }
@@ -1542,7 +1604,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     if (st.awake && mCanvas.hidden) return
     note(st.awake ? '' : 'The TV is off. Press the power button to turn it on.')
     tvPower = st.awake
-    if (!pw.busy) pw = { on: st.awake, busy: false }
+    if (!pw.busy) pw = { on: st.awake, hub: here, busy: false }
     paintPower()
   }
   // Keys and clicks: straight to whatever is on the TV while its screen is live, else to LocalHub's page there.
@@ -1616,21 +1678,23 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   async function power(on = 'toggle') {
     if (powering) return
     powering = true
-    const want = on === 'toggle' ? (pw.on === null ? 'toggle' : !pw.on) : on
-    pw = { on: pw.on, busy: true, want }
-    on = want
+    // Off is back to Fire TV; Sleep (false) is the TV's own.
+    const up = pw.on === true && pw.hub !== false
+    if (on === 'toggle') on = pw.on === null ? 'toggle' : up ? 'firetv' : true
+    pw = { on: pw.on, hub: pw.hub, busy: true, want: on === true }
     paintPanel()
     drawTool()
     const b = mirror.querySelector('[data-key="power"]')
     b?.classList.add('busy')
-    note(on === false ? 'Turning the TV off…' : on ? 'One moment…' : '')
+    note(on === false ? 'Putting the TV to sleep…' : on === 'firetv' ? 'Back to Fire TV…' : 'One moment…')
     try {
       const r = await (await fetch('/api/tv/power', { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: JSON.stringify({ on }) })).json()
       if (r.error) { note(r.error); say(r.error) }
+      else if (r.on && r.hub === false) note('The TV is on Fire TV. Press Turn On for LocalHub.')
       else if (r.on) { note('The TV is on. Opening LocalHub on it…'); mSeen = 0; setTimeout(() => { if (mirror.classList.contains('on')) post({ type: 'mirror', on: true }) }, 6000) }
       else note('The TV is off. Press Turn On to turn it on.')
       tvPower = r.known ? r.on : null
-      pw = { on: r.known ? r.on : null, busy: false }
+      pw = { on: r.known ? r.on : null, hub: r.hub, busy: false }
     } catch { note('The hub didn’t answer.'); say('The hub didn’t answer.'); pw = { on: null, busy: false } }
     b?.classList.remove('busy')
     powering = false
@@ -1640,7 +1704,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     soon()
   }
   let tvPower = null
-  function paintPower() { const b = mirror.querySelector('[data-key="power"]'); if (!b) return; const s = SB?.powerText(pw.busy ? pw : { on: tvPower ?? pw.on }) || 'Turn On'; b.title = s; b.setAttribute('aria-label', s); let l = b.querySelector('em'); if (!l) b.append(l = document.createElement('em')); l.textContent = s }
+  function paintPower() { const b = mirror.querySelector('[data-key="power"]'); if (!b) return; const s = SB?.powerText(pw.busy ? pw : { on: tvPower ?? pw.on, hub: pw.hub }) || 'Turn On'; b.title = s; b.setAttribute('aria-label', s); let l = b.querySelector('em'); if (!l) b.append(l = document.createElement('em')); l.textContent = s }
   const MKEY = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down', Enter: 'enter', Escape: 'back', BrowserBack: 'back', ContextMenu: 'menu', PageUp: 'rew', PageDown: 'ff', MediaPlayPause: 'ai' }
   mirror.addEventListener('click', e => {
     const k = e.target.closest('[data-key]')?.dataset.key
@@ -1663,12 +1727,23 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   }, true)
   addEventListener('resize', () => { if (mirror.classList.contains('on')) fitMirror() })
   document.addEventListener('click', e => { if (e.target.closest('[data-hw-takeover]')) { e.stopPropagation(); openMirror() } }, true)
+  addEventListener('wheel', e => {
+    const own = e.target.closest?.('#tvpanel, #tvrail, #tvwid, #wggal, #tvset, #tvphone, #tvsync, .hc-panel, #tvstyle, #dkadd')
+    if (!own || e.ctrlKey) return
+    for (let n = e.target; n; n = n.parentElement) {
+      const st = getComputedStyle(n)
+      if (Math.abs(e.deltaX) > Math.abs(e.deltaY) ? n.scrollWidth > n.clientWidth + 1 && /auto|scroll/.test(st.overflowX) : n.scrollHeight > n.clientHeight + 1 && /auto|scroll/.test(st.overflowY) && (e.deltaY > 0 ? n.scrollTop + n.clientHeight < n.scrollHeight - 1 : n.scrollTop > 0)) return
+      if (n === own) break
+    }
+    if (e.cancelable) e.preventDefault()
+  }, { passive: false, capture: true })
   // ── Your phone ──
   const phone = document.createElement('section')
   phone.id = 'tvphone'
   phone.setAttribute('aria-label', 'Phone')
   phone.innerHTML = '<div class="ph-fit"><div class="ph-body"><div class="ph-scr"></div></div></div><div class="ph-side"></div>'
   document.body.append(phone)
+  const pairUrls = () => { const ts = DV.reach?.tailscale; return [DV.tsUrl || (ts?.on && ts.url), DV.reach?.home?.url].filter(Boolean).map(u => new URL(u).origin) }
   const PH = { code: null, ask: '', msg: '', n: 0, run: 0, html: '' }
   function fitPhone() {
     const b = phone.querySelector('.ph-fit'), w = b.clientWidth - 32, h = b.clientHeight - 64, k = Math.max(.3, Math.min(1.1, (w - 24) / 393, (h - 24) / 852)), o = phone.querySelector('.ph-body').style
@@ -1679,11 +1754,11 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   }
   function paintPhone() {
     const list = DV.devices.filter(d => d.platform !== 'tv'), P = PH.code, ts = DV.reach?.tailscale
-    const where = [ts?.on && ts.url && ['From anywhere, with Tailscale', ts.url, ts.qrSvg], DV.reach?.home?.url && ['On your Wi-Fi', DV.reach.home.url, DV.reach.home.qrSvg]].filter(Boolean)
-    const steps = P && `<div class="tvs-form tvs-pair"><div class="tvs-qr">${where[0]?.[2] || ''}</div><div><b>${esc(P.code.replace(/(.{4})(?=.)/g, '$1 '))}</b><ol><li>${where.length ? 'On the phone, open:' : 'Turn on your home network or Tailscale in Settings first, then open:'}${where.map(x => `<br><code>${esc(x[1])}/pair</code> <i>${esc(x[0])}</i>`).join('')}</li><li>Type the code. It works once, for five minutes.</li><li>In Safari, Share, then Add to Home Screen, keeps it as an app.</li></ol><button type="button" class="tvs-x" data-ph="stop">Done</button></div></div>`
+    const where = (P?.links || []).map(x => [/^https:|\/\/100\./.test(x.url) ? 'From anywhere, with Tailscale on the phone' : 'On your Wi-Fi', x.url, x.qrSvg])
+    const steps = P && `<div class="tvs-form tvs-pair"><div class="tvs-qr">${where[0]?.[2] || ''}</div><div><b>${esc(P.code.replace(/(.{4})(?=.)/g, '$1 '))}</b><ol>${where.length ? `<li>Scan this with the phone’s camera. ${esc(where[0][0])}.</li>${where[1] ? `<li>${esc(where[1][0])}: <code>${esc(where[1][1])}/pair</code></li>` : ''}<li>Press <b>Pair this device</b>. The code works once, for five minutes.</li><li>Then Share, and Add to Home Screen, to keep it as an app.</li>` : '<li>Turn on your home network or Tailscale in Devices and connections first, so the phone can reach this computer.</li>'}</ol><button type="button" class="tvs-x" data-ph="stop">Done</button></div></div>`
     const html = `<div class="tvs-title">Phone</div>${PH.msg ? `<div class="tvs-msg">${esc(PH.msg)}</div>` : ''}`
-      + grp('Connected') + (list.length ? list.map(d => `<div class="tvs-row"><div class="txt"><div class="t1">${esc(d.name)}</div><div class="t2">${Date.now() - d.lastSeen < 120000 ? 'Using LocalHub now' : `Last here ${ago(d.lastSeen)}`}</div></div><button type="button" class="tvs-x" data-ph="rm:${esc(d.id)}">${PH.ask === d.id ? 'Remove it?' : 'Remove'}</button></div>`).join('') : plainRow('No phone yet', 'Connect one below'))
-      + (!DV.local ? '' : P ? steps : '<button type="button" class="tvs-row" data-ph="add"><div class="txt"><div class="t1">Connect a phone</div><div class="t2">Shows a code to type on it once</div></div><div class="v"></div></button>')
+      + grp(list.length ? 'Paired' : 'Set up your phone') + (list.length ? list.map(d => `<div class="tvs-row"><div class="txt"><div class="t1">${esc(d.name)}</div><div class="t2">${Date.now() - d.lastSeen < 120000 ? 'Using LocalHub now' : `Last here ${ago(d.lastSeen)}`}</div></div><button type="button" class="tvs-x" data-ph="rm:${esc(d.id)}">${PH.ask === d.id ? 'Remove it?' : 'Remove'}</button></div>`).join('') : plainRow('LocalHub runs on this computer', 'Pair a phone with it once, and it stays signed in. A hub on a VM or in a container is paired the same way: npm run pair'))
+      + (!DV.local ? '' : P ? steps : `<button type="button" class="tvs-row" data-ph="add"><div class="txt"><div class="t1">${list.length ? 'Connect another phone' : 'Connect a phone'}</div><div class="t2">Shows a code to scan with its camera</div></div><div class="v">Pair</div></button>`)
       + grp('LocalHub on the phone') + '<button type="button" class="tvs-row" data-ph="widgets"><div class="txt"><div class="t1">Widgets</div><div class="t2">Choose what its Home shows, apart from this PC’s</div></div><div class="v">Edit</div></button><button type="button" class="tvs-row" data-ph="reload"><div class="txt"><div class="t1">Reload the preview</div><div class="t2">The phone on the left is live: scroll and click it</div></div><div class="v"></div></button>'
       + grp('The phone itself') + (DV.local ? '<button type="button" class="tvs-row" data-ph="link"><div class="txt"><div class="t1">Calls, messages and notifications</div><div class="t2">In Phone Link, Windows’ own app for an iPhone or Android</div></div><div class="v">Open</div></button>' : '') + '<button type="button" class="tvs-row" data-ph="settings"><div class="txt"><div class="t1">Devices and connections</div><div class="t2">Home network, Tailscale and the passcode</div></div><div class="v">Settings</div></button>'
     if (PH.html === html) return
@@ -1728,7 +1803,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     const id = e.target.closest('[data-ph]')?.dataset.ph
     if (!id) return
     PH.msg = ''
-    if (id === 'add') { const r = await send('/api/pair/start'); if (r.ok && r.code) { PH.n = DV.devices.filter(d => d.platform !== 'tv').length; PH.code = r } else PH.msg = r.error || 'That didn’t work.' }
+    if (id === 'add') { const r = await send('/api/pair/start', { urls: pairUrls() }); if (r.ok && r.code) { PH.n = DV.devices.filter(d => d.platform !== 'tv').length; PH.code = r } else PH.msg = r.error || 'That didn’t work.' }
     else if (id === 'stop') PH.code = null
     else if (id.startsWith('rm:')) {
       const v = id.slice(3)
@@ -1802,6 +1877,9 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     ]
   }
   const wallName = d => { const id = devLook(d).wallpaper; return id ? walls().find(w => w.id === id)?.name || 'Shared' : 'Shared' }
+  const WEBS = { default: 'Default browser', window: 'A pop-up window', hub: 'LocalHub’s Browser' }
+  window.HubWeb = () => (WEBS[look.web] ? look.web : 'default')
+  window.HubOpenSync = u => openSync(u)
   const MIN = [0, 2, 5, 10, 15], mins = n => (n ? `${n} min` : 'Off')
   const DEVS = { desktop: 'Desktop', mobile: 'Mobile' }
   const THEMES = { auto: 'Dark', dark: 'Dark', light: 'Light' }
@@ -1823,6 +1901,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
       { id: 'clock', t1: 'Home clock', t2: 'What the top left of Home shows', v: look.clock, on: look.clock !== 'Off' },
       { id: 'clockedit', t1: 'Clock style', t2: 'Size, font, colors and more, on every screen', v: CK ? CK.STYLES[clockLook().style] : '' },
       { id: 'sortapps', t1: 'Sort apps', t2: 'The order of the tiles on Home', v: SORT_NAMES[look.sort] || 'My order' },
+      { id: 'webopen', t1: 'Websites open in', t2: 'Apps on this PC always open as themselves', v: WEBS[look.web] || WEBS.default },
       { id: 'addapps', t1: 'Apps and websites', t2: 'What is on Home', v: '' },
       { id: 'edit', t1: 'Widgets', t2: 'Add, size and arrange them, for this computer, your phone and the TV', v: board()?.ready() ? `${board().list().length} here` : '' },
       { id: 'tabs', t1: 'Tabs', t2: 'What’s on the left, under Files', v: '' },
@@ -2016,7 +2095,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     if (!DV.local) return title + g('Paired with this hub') + devs + g('More') + row('Do the rest on the hub’s own computer', 'Adding devices, the home network, Tailscale and the passcode are set there')
     const P = DV.pair
     const where = [R?.home?.url && ['Home network', R.home.url, R.home.qrSvg], ts?.on && ts.url && ['Tailscale, from anywhere', ts.url, ts.qrSvg]].filter(Boolean)
-    const pairing = P ? `<div class="tvs-form tvs-pair"><div class="tvs-qr">${where[0] ? where[0][2] : ''}</div><div><b>${esc(P.code.replace(/(.{4})(?=.)/g, '$1 '))}</b><ol><li>On the phone, iPad or computer, ${where.length ? 'scan this or open' : 'turn on your home network below, then open'}:${where.map(x => `<br><code>${esc(x[1])}/pair</code> <i>${esc(x[0])}</i>`).join('')}</li><li>Type the code. It works once, for five minutes.</li></ol><button type="button" data-set="pairstop">Done</button></div></div>` : ''
+    const pairing = P ? `<div class="tvs-form tvs-pair"><div class="tvs-qr">${P.links?.[0]?.qrSvg || (where[0] ? where[0][2] : '')}</div><div><b>${esc(P.code.replace(/(.{4})(?=.)/g, '$1 '))}</b><ol><li>On the phone, iPad or computer, ${where.length ? 'scan this or open' : 'turn on your home network below, then open'}:${where.map(x => `<br><code>${esc(x[1])}/pair</code> <i>${esc(x[0])}</i>`).join('')}</li><li>The code is in what you scan; else type it. It works once, for five minutes.</li></ol><button type="button" data-set="pairstop">Done</button></div></div>` : ''
     return title
       + g('Phones, iPads and computers') + (P ? pairing : row('Add a device', 'Shows a code to type on it once', '', 'pairstart')) + devs
       + g('Where LocalHub answers')
@@ -2033,7 +2112,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   async function onDevice(id) {
     const [k, v] = [id.split(':')[0], id.slice(id.indexOf(':') + 1)]
     DV.msg = ''
-    if (k === 'pairstart') { const r = await send('/api/pair/start'); if (r.ok && r.code) { DV.pair = r; const n = DV.devices.length; const wait = async () => { if (!DV.pair || picking !== 'devices') return; if (Date.now() > DV.pair.expires) { DV.pair = null; DV.msg = 'That code ran out. Make another.'; return paintSettings() } await readDevices(); if (DV.devices.length > n) { DV.pair = null; DV.msg = `${DV.devices.at(-1).name} is paired.`; return paintSettings() } setTimeout(wait, 2500) }; setTimeout(wait, 2500) } else DV.msg = r.error || 'That didn’t work.' }
+    if (k === 'pairstart') { const r = await send('/api/pair/start', { urls: pairUrls() }); if (r.ok && r.code) { DV.pair = r; const n = DV.devices.length; const wait = async () => { if (!DV.pair || picking !== 'devices') return; if (Date.now() > DV.pair.expires) { DV.pair = null; DV.msg = 'That code ran out. Make another.'; return paintSettings() } await readDevices(); if (DV.devices.length > n) { DV.pair = null; DV.msg = `${DV.devices.at(-1).name} is paired.`; return paintSettings() } setTimeout(wait, 2500) }; setTimeout(wait, 2500) } else DV.msg = r.error || 'That didn’t work.' }
     else if (k === 'pairstop') DV.pair = null
     else if (k === 'unpair') {
       if (DV.ask !== v) { DV.ask = v; setTimeout(() => { if (DV.ask === v) { DV.ask = ''; paintSettings() } }, 4000) }
@@ -2289,6 +2368,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     if (id === 'forget') { localStorage.removeItem('localhub.opens'); forgot = true; window.HubDesk?.paint(); return paintSettings() }
     if (id === 'plr') { press('homeplayer'); return paintSettings() }
     if (id === 'syscard') { press('homesys'); return paintSettings() }
+    if (id === 'webopen') { const l = Object.keys(WEBS); look.web = l[(l.indexOf(window.HubWeb()) + 1) % l.length]; saveLook(); return paintSettings() }
     if (id === 'sortapps') { const i = SORTS.findIndex(x => x[0] === (look.sort || 'mine')); look.sort = SORTS[(i + 1) % SORTS.length][0]; saveLook(); arrange(); window.HubDesk?.paint(); return paintSettings() }
     if (id === 'clockedit') { closeSettings(); return editClock() }
     if (id === 'browserpage') { closeSettings(); return openSync() }

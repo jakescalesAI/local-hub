@@ -6,5 +6,5 @@
   "private": true,
   "type": "module",
   "engines": { "node": ">=20" },
-  "scripts": { "start": "node server.mjs", "passcode": "node set-passcode.mjs", "tv": "node tv/open.mjs" }
+  "scripts": { "start": "node server.mjs", "pair": "node pair.mjs", "passcode": "node set-passcode.mjs", "tv": "node tv/open.mjs" }
 }

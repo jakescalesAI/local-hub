@@ -20,7 +20,7 @@ const G = {
   minus: sym('<path d="M6 12h12"/>'), plus: sym('<path d="M12 6v12M6 12h12"/>'), check: sym('<path d="m5 12.5 4.5 4.5L19 7.5"/>', 2.4),
   dots: sym('<path d="M6 12h.01M12 12h.01M18 12h.01"/>', 3), up: sym('<path d="m6 15 6-6 6 6"/>'), down: sym('<path d="m6 9 6 6 6-6"/>'), left: sym('<path d="m15 6-6 6 6 6"/>'), right: sym('<path d="m9 6 6 6-6 6"/>'), back: sym('<path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/>'),
   dir: sym('<path d="M4 7a2 2 0 0 1 2-2h4l2 2.5h6a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/>'), file: sym('<path d="M7 3.5h7l4 4V20a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1z"/><path d="M14 3.5V8h4"/>'), disk: sym('<path d="M4 13l3-8h10l3 8v5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18z"/><path d="M4 13h16M8 16.5h.01"/>'),
-  cal: sym('<rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M8.5 3v4M15.5 3v4"/>'), note: sym('<path d="M5 4.5h14v10l-5 5H5z"/><path d="M14 19.5v-5h5M8.5 9h7M8.5 13h3"/>'), todo: sym('<path d="m4 6.5 1.5 1.5L8.5 5M4 13.5 5.5 15l3-3M12 7h8M12 14h8M4 20h16"/>'), globe: sym('<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>'), img: sym('<rect x="4" y="5" width="16" height="14" rx="2.5"/><path d="M4 16l4.5-4.5 4 4 2.5-2.5 5 5"/>'), flag: sym('<path d="M6 21V4M6 5h11l-2.5 4L17 13H6"/>'), grid: sym('<rect x="4" y="4" width="6.5" height="6.5" rx="1.8"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.8"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.8"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.8"/>'),
+  cal: sym('<rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M8.5 3v4M15.5 3v4"/>'), note: sym('<path d="M12.5 4H7.2A3.2 3.2 0 0 0 4 7.2v9.6A3.2 3.2 0 0 0 7.2 20h9.6a3.2 3.2 0 0 0 3.2-3.2v-5.3"/><path d="M18.3 3.7a1.9 1.9 0 0 1 2.7 2.7l-8.3 8.3-3.5.8.8-3.5z"/>'), todo: sym('<path d="m4 6.5 1.5 1.5L8.5 5M4 13.5 5.5 15l3-3M12 7h8M12 14h8M4 20h16"/>'), globe: sym('<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>'), img: sym('<rect x="4" y="5" width="16" height="14" rx="2.5"/><path d="M4 16l4.5-4.5 4 4 2.5-2.5 5 5"/>'), flag: sym('<path d="M6 21V4M6 5h11l-2.5 4L17 13H6"/>'), grid: sym('<rect x="4" y="4" width="6.5" height="6.5" rx="1.8"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.8"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.8"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.8"/>'),
 };
 const wxIcon = (code, day = true) => (code <= 1 ? (day ? G.sun : G.moon) : code === 2 ? (day ? G.part : G.cloud) : code === 3 ? G.cloud : code === 45 || code === 48 ? G.fog : (code >= 71 && code <= 77) || code === 85 || code === 86 ? G.snow : code >= 95 ? G.storm : G.rain);
 const ring = (label, v, size = "") => { const p = Math.max(0, Math.min(100, Number(v) || 0)), c = p > 90 ? "#ff453a" : p > 75 ? "#ff9f0a" : "#30d158"; return `<div class="wr ${size}"><svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="26" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="7"/><circle cx="32" cy="32" r="26" fill="none" stroke="${c}" stroke-width="7" stroke-linecap="round" stroke-dasharray="${(p * 1.634).toFixed(1)} 164" transform="rotate(-90 32 32)"/></svg><b>${Math.round(p)}<i>%</i></b><span>${label}</span></div>`; };
@@ -102,21 +102,22 @@ export const W = {
 };
 /** How many cells each size takes, and how many a screen has: Home's is its top right corner, the screensaver's its right half. */
 export const SPAN = { s: [1, 1], m: [2, 1], l: [2, 2], w: [4, 1], xl: [4, 2], xxl: [4, 3] };
-export const ROOM = { desk: [4, 3], tv: [4, 3], saver: [4, 5], side: [4, 40], phone: [2, 200] };
+/** A computer's Home is six by six smaller squares: a small card takes two by two of them. Everywhere else a square is a small card. */
+export const FINE = { desk: 2 };
+export const ROOM = { desk: [6, 6], tv: [4, 3], saver: [4, 5], side: [4, 40], phone: [2, 200] };
 // What is inside a card's edges, in em: the clock is drawn to fill it.
 const BOX = { s: [10.6, 10.4], m: [23.6, 10.2], l: [23.6, 23.6], w: [52.4, 10.2], xl: [52.4, 23.6], xxl: [52.4, 38] };
 /** A cell is square: 13em, with 1.4em between. How many rows there is height for is the screen's to say (3 to 5 on a computer). */
 export const CELL = 13, GAP = 1.4, across = (n) => n * CELL + (n - 1) * GAP;
-export function fitGrid(width, height, least = 3, most = 5) {
-  const f = width / across(4), rows = Math.max(least, Math.min(most, Math.floor((height / f + GAP) / (CELL + GAP))));
-  return { rows, font: Math.max(4, Math.min(f, height / across(rows))) };
-}
+export const cellOf = (screen) => (FINE[screen] ? (CELL - GAP) / 2 : CELL), acrossOn = (screen, n) => n * cellOf(screen) + (n - 1) * GAP;
+export const spanOn = (screen, size) => (SPAN[size] || SPAN.m).map((n, i) => Math.min((ROOM[screen] || ROOM.desk)[i], n * (FINE[screen] || 1)));
+export const fitGrid = (width, height) => Math.max(4, Math.min(width / acrossOn("desk", ROOM.desk[0]), height / acrossOn("desk", ROOM.desk[1])));
 const sized = (it, phone) => { const w = W[it.id], own = !w || w.sizes.includes(it.size) ? it.size : w.def; return phone ? onPhone({ ...it, size: own }) : own; };
 /** Places a list on a screen's grid: the ones that were put somewhere first, then the rest in order, each in the first gap that takes
  * it. A phone's is only an order. -> { at: Map(k -> [col, row, w, h]), out: Set(k) } */
 export function pack(list, screen) {
   const [cols, rows] = ROOM[screen] || ROOM.desk, used = [], at = new Map(), out = new Set();
-  const span = (it) => { const [w, h] = SPAN[sized(it, screen === "phone")] || SPAN.m; return [Math.min(cols, w), h]; };
+  const span = (it) => { const [w, h] = SPAN[sized(it, screen === "phone")] || SPAN.m, n = FINE[screen] || 1; return [Math.min(cols, w * n), n > 1 ? Math.min(rows, h * n) : h]; };
   const free = (c, r, w, h) => { for (let y = r; y < r + h; y++) for (let x = c; x < c + w; x++) if (used[y]?.[x]) return false; return true; };
   const take = (it, c, r, w, h) => { for (let y = r; y < r + h; y++) { used[y] ??= []; for (let x = c; x < c + w; x++) used[y][x] = 1; } at.set(it.k, [c + 1, r + 1, w, h]); };
   if (screen !== "phone") for (const it of list) if (it.at) {
