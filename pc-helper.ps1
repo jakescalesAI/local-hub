@@ -193,7 +193,7 @@ function Get-Media {
   $i = $s.GetPlaybackInfo(); $playing = "$($i.PlaybackStatus)" -eq 'Playing'
   $pos = $null; $dur = $null; $seek = $false; $raw = $null; $upd = $null; $rate = 1
   # A song in a browser: which site, from that browser's window title.
-  if ($script:siteKey -ne $key) { $script:siteKey = $key; $script:site = ''; if ($s.SourceAppUserModelId -match 'chrome|msedge|firefox|brave|opera|vivaldi') { try { $tt = (Get-Process | ? { $_.MainWindowTitle } | % { $_.MainWindowTitle }) -join [char]10; foreach ($n in 'YouTube Music', 'SoundCloud', 'Spotify', 'Apple Music', 'Amazon Music', 'TIDAL', 'Deezer', 'Bandcamp', 'YouTube') { if ($tt -match [regex]::Escape($n)) { $script:site = $n; break } } } catch {} } }
+  if ($script:siteKey -ne $key) { $script:siteKey = $key; $script:site = ''; if ($s.SourceAppUserModelId -match 'chrome|msedge|firefox|brave|opera|vivaldi') { try { $mine = @(Get-Process | ? { $_.MainWindowTitle -and $s.SourceAppUserModelId -match $_.ProcessName } | % { $_.MainWindowTitle }); $song = @($mine | ? { $p.Title -and $_ -like "*$([Management.Automation.WildcardPattern]::Escape($p.Title))*" }); $tt = $(if ($song.Count) { $song } else { $mine }) -join [char]10; foreach ($n in 'YouTube Music', 'SoundCloud', 'Spotify', 'Apple Music', 'Amazon Music', 'TIDAL', 'Deezer', 'Bandcamp', 'YouTube') { if ($tt -match [regex]::Escape($n)) { $script:site = $n; break } } } catch {} } }
   try {
     $t = $s.GetTimelineProperties()
     $dur = ($t.EndTime - $t.StartTime).TotalSeconds

@@ -225,7 +225,7 @@ ${T} .hw-root[data-view] > #tvside { display: block; padding: 0 0 140px; } ${T} 
 ${R} #tvside > :is(.tvt-wx, .tvs-card, .hw-cell), ${R} #tvside .tvp-card .mp { cursor: pointer; transition: box-shadow .15s; } ${R} #tvside > :is(.tvt-wx, .tvs-card):is(:hover, :focus-visible) { box-shadow: 0 0 0 3px rgba(255, 255, 255, .9); outline: 0; }
 #tvwid { display: none; } ${A} #tvwid.on { display: grid; position: fixed; z-index: 73; inset: 0; place-items: center; padding: 34px; color: #fff; cursor: default; } #tvwid::before { content: ""; position: absolute; inset: 0; background: rgba(4, 5, 8, .74); animation: widin .42s ease both; pointer-events: none; } #tvwid.going::before { animation: widout .34s ease both; } #tvwid.going { pointer-events: none; } @keyframes widin { from { opacity: 0; } } @keyframes widout { to { opacity: 0; } }
 #tvwid > div { position: relative; width: min(800px, 82vw); max-height: 80vh; overflow-y: auto; scrollbar-width: none; box-sizing: border-box; padding: clamp(20px, 3vw, 44px); border-radius: 34px; background: var(--ui-panel); box-shadow: var(--ui-edge), 0 40px 100px rgba(0, 0, 0, .6); } #tvwid .wx .wxw { font-size: 25px; } #tvwid .gz { width: auto; padding: 0; background: none; box-shadow: none; } #tvwid .cell { display: grid; min-height: 420px; } #tvwid .cell > * { width: 100%; height: 100%; }
-#tvwid > .music { width: min(1180px, 84vw); height: min(700px, 80vh); overflow: hidden; } #tvwid .music .mpf { zoom: min(.74, calc((80vh - 88px) / 850px), calc((84vw - 104px) / 1120px)); } @media (max-width: 700px) { #tvwid > .music { width: 92vw; height: 82vh; } #tvwid .music .mpf { zoom: calc((92vw - 48px) / 570px); } .mpf.words .mpf-l { transform: translateX(calc(50cqw - 280px)) translateY(-100%); } .mpf-r { left: 0; } }
+#tvwid > .music { width: min(1520px, 84vw); height: min(930px, 80vh); overflow: hidden; } #tvwid .music .mpf { zoom: min(1, calc((80vh - 88px) / 850px), calc((84vw - 104px) / 1120px)); } @media (max-width: 700px) { #tvwid > .music { width: 92vw; height: 82vh; } #tvwid .music .mpf { zoom: calc((92vw - 48px) / 570px); } .mpf.words .mpf-l { transform: translateX(calc(50cqw - 280px)) translateY(-100%); } .mpf-r { left: 0; } }
 #tvwid .mp-s { display: flex; align-items: center; } #tvwid .mp-b { cursor: pointer; } #tvwid .mp-b:hover { background: var(--ui-sel); color: #000; } #tvwid .mpf-ly:not(.plain, .off) p { cursor: default; }
 ${A} #tvside .mp.has .mp-art, ${A} #tvpanel .mp.has .mp-art { cursor: pointer; }
 ${R} #tvside .tvs-g { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; text-align: center; } ${R} #tvside .tvs-g > * { min-width: 0; width: auto; } ${R} #tvside .tvs-g svg { max-width: 100%; height: auto; } @media (max-width: 1420px) { ${R} #tvside .tvs-g > * { zoom: .88; } }
@@ -493,7 +493,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   const boards = {}
   const board = (which = myScreen()) => WG && (boards[which] ??= WG.createBoard({ screen: which, changed: () => { cancelAnimationFrame(board.raf); board.raf = requestAnimationFrame(() => { paintSide(); drawWid(); tick() }) }, music: () => MU?.now }))
   let CK = null, SB = null, PC = null
-  ;(async () => { try { WG = await import('/tv/widgets.js?v=13'); CK = await import('/tv/clock.js?v=1'); SB = await import('/tv/side.js?v=4'); P ??= await import('/tv/panel.js?v=15'); board()?.refresh(); paintSide(); tick() } catch {} })()
+  ;(async () => { try { WG = await import('/tv/widgets.js?v=14'); CK = await import('/tv/clock.js?v=1'); SB = await import('/tv/side.js?v=4'); P ??= await import('/tv/panel.js?v=16'); board()?.refresh(); paintSide(); tick() } catch {} })()
   setInterval(() => {
     if (!WG || document.hidden || !document.querySelector('.hw-root')) return
     const b = board(editOn || undefined)
@@ -531,7 +531,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     const which = editOn || myScreen(), bar = document.getElementById('tvebar') || document.body.appendChild(Object.assign(document.createElement('div'), { id: 'tvebar' }))
     editing ? (document.documentElement.dataset.editon = which) : delete document.documentElement.dataset.editon
     const lost = editing ? [...b.pack().out].map(k => b.items().find(x => x.k === k)).filter(Boolean) : []
-    const barHtml = editing ? `<div class="ex-tool">${[['desk', 'This computer'], ['tv', 'Your TV'], ['phone', 'Phone'], ['saver', 'Screensaver'], ['side', 'Sidebar']].map(([k, t]) => `<button type="button" data-ws="${k}" class="${which === k ? 'on' : ''}">${t}</button>`).join('')}</div><button type="button" class="gal-add plain" data-clockedit>Clock</button>${lost.map(x => `<span class="te-out">No room for ${esc(WG.W[x.id].label)} <button type="button" data-lost="${x.k}">Remove</button></span>`).join('')}<p>${which === 'phone' || which === 'side' ? 'Drag a widget onto another to change the order.' : 'Drag a widget to any slot, or press + on a free one.'} ${which === 'side' ? 'These are in the Sidebar, under its controls.' : which === 'saver' ? 'The screensaver has the whole right half, on this computer and the TV.' : which === 'tv' ? 'This is the corner your TV’s Home has.' : ''}</p>` : ''
+    const barHtml = editing ? `<div class="ex-tool">${[['desk', 'This computer'], ['tv', 'Your TV'], ['phone', 'Phone'], ['saver', 'Screensaver'], ['side', 'Sidebar']].map(([k, t]) => `<button type="button" data-ws="${k}" class="${which === k ? 'on' : ''}">${t}</button>`).join('')}</div><button type="button" class="gal-add plain" data-clockedit>Clock</button>${lost.map(x => `<span class="te-out">No room for ${esc(WG.W[x.id].label)} <button type="button" data-lost="${x.k}">Remove</button></span>`).join('')}<p>${which === 'phone' ? 'Drag a widget onto another to change the order.' : 'Drag a widget to any slot, or press + on a free one.'} ${which === 'side' ? 'These are in the Sidebar, under its controls.' : which === 'saver' ? 'The screensaver has the whole right half, on this computer and the TV.' : which === 'tv' ? 'This is the corner your TV’s Home has.' : ''}</p>` : ''
     if (bar._html !== barHtml) bar.innerHTML = bar._html = barHtml
     const grid = side.querySelector('.wg') || side.appendChild(Object.assign(document.createElement('div'), { className: 'wg' }))
     grid.dataset.screen = editing ? editOn || myScreen() : ''
@@ -1128,7 +1128,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     if (had) list.querySelector(`[data-w="${had}"]`)?.focus()
   }
   async function openPanel() {
-    try { P ??= await import('/tv/panel.js?v=15') } catch { return }
+    try { P ??= await import('/tv/panel.js?v=16') } catch { return }
     paintPanel()
     panel.classList.add('on')
     dock()
@@ -1179,7 +1179,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   async function keepTv() {
     if (document.hidden || !document.documentElement.hasAttribute('data-tvlook') || !document.querySelector('.hw-root') || Date.now() - sideAt < 4000) return
     sideAt = Date.now()
-    try { P ??= await import('/tv/panel.js?v=15') } catch { return }
+    try { P ??= await import('/tv/panel.js?v=16') } catch { return }
     if (TV?.on) post({ type: 'state' })
     await Promise.all([readTv(), readPc()])
   }

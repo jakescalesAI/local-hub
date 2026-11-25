@@ -37,7 +37,9 @@ export function readLyrics(j) {
   }
   if (Number.isFinite(j?.fix)) for (const l of lines) l.t = Math.max(0, Math.round((l.t + j.fix) * 1000) / 1000)
   lines.sort((a, b) => a.t - b.t)
-  return { lines, plain: lines.length ? [] : String(j?.plainLyrics || '').slice(0, 60_000).split('\n').slice(0, 400).map(x => x.slice(0, 300)) }
+  // Nothing but blank lines is no words: an instrumental, or a video.
+  const plain = lines.length ? [] : String(j?.plainLyrics || '').slice(0, 60_000).split('\n').slice(0, 400).map(x => x.slice(0, 300))
+  return { lines: lines.some(l => l.x) ? lines : [], plain: plain.some(x => x.trim()) ? plain : [] }
 }
 const bare = s => String(s || '').toLowerCase().replace(/\s*[([](feat|ft|with|remaster|deluxe|explicit|bonus)[^)\]]*[)\]]/g, '').replace(/\s+-\s+.*(remaster|version|edit|mix).*$/, '').replace(/[^\p{L}\p{N}]+/gu, ' ').trim()
 const lineTimes = x => { const m = new Map(); for (const l of readLyrics(x).lines) { const k = bare(l.x); if (k.length > 3 && !m.has(k)) m.set(k, l.t) } return m }
