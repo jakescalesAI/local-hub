@@ -2,7 +2,7 @@
 // these. board.mjs keeps which ones, their sizes and what's in them. A widget is HTML from data; every length in widgets.css is in
 // em, so one drawing fits every screen. Sizes, on a grid four across (two on a phone): SPAN. What doesn’t fit the room a screen has
 // (ROOM) isn’t drawn there, and can’t be added to it.
-import { IC, player, pcDetail } from "./panel.js?v=10";
+import { IC, player } from "./panel.js?v=11";
 import * as Clock from "./clock.js?v=1";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -84,7 +84,7 @@ export const SOURCES = {
 export const W = {
   music: { label: "Music", what: "What’s playing, with its cover and buttons", ic: IC.note, sizes: ["s", "m", "l", "w", "xl"], def: "w", needs: () => [], draw: (z, D) => player(D.music || {}, z === "w" || z === "xl" || z === "m"), bare: true },
   weather: { label: "Weather", what: "Now, the hours ahead and the coming days", ic: G.sun, sizes: ["s", "m", "l", "w", "xl", "xxl"], def: "l", needs: () => ["wx"], draw: (z, D) => { const w = D.wx; if (!w?.now) return none("Finding the weather…"); return z === "s" ? `<div class="wc">${wxIcon(w.now.code, w.now.day)}<b class="big">${w.now.temp}°</b><span>${w.high}° / ${w.low}°</span></div>` : z === "m" ? wnow(w) : z === "l" ? wnow(w) + whours(w, 5) + wdays(w, 3) : z === "w" ? `<div class="wrow">${wnow(w)}${whours(w, 7)}</div>` : z === "xl" ? `<div class="wtwo"><div>${wnow(w)}${whours(w, 6)}</div>${wdays(w, 6)}</div>` : wnow(w) + whours(w, 12) + `<div class="wrule"></div>` + wdays(w, 7); }, full: (D) => (D.wx?.now ? wnow(D.wx) + whours(D.wx, 12) + wdays(D.wx, 7) : none("Finding the weather…")) },
-  pc: { label: "This PC", what: "Processor, memory, disk and what’s using them", ic: IC.gauge, sizes: ["s", "m", "l", "w", "xl"], def: "l", needs: (z) => (z === "xl" ? ["sys", "info"] : ["sys"]), draw: (z, D) => { const y = D.sys; if (!y) return none("Looking…"); const three = ring("CPU", y.cpu) + ring("Memory", y.mem) + ring("Disk", y.disk); return z === "s" ? `<div class="wc">${ring("CPU", y.cpu)}</div>` : z === "m" ? `<div class="wrings">${three}</div>` : z === "l" ? `${head("This PC")}<div class="wrings">${three}</div><div class="wfoot">${y.diskFree ? `${bytes(y.diskFree)} free` : ""}</div>` : z === "w" ? `<div class="wrow">${head("This PC")}<div class="wrings">${three}</div><div class="wfoot">${y.diskFree ? `${bytes(y.diskFree)} free` : ""}</div></div>` : `<div class="wtwo"><div>${head("This PC")}<div class="wrings">${three}</div></div>${tops(D.info)}</div>`; }, fullNeeds: ["info"], full: (D) => pcDetail(D.sys || {}, D.info) },
+  pc: { label: "This PC", what: "Processor, memory, disk and what’s using them", ic: IC.gauge, sizes: ["s", "m", "l", "w", "xl"], def: "l", needs: (z) => (z === "xl" ? ["sys", "info"] : ["sys"]), draw: (z, D) => { const y = D.sys; if (!y) return none("Looking…"); const three = ring("CPU", y.cpu) + ring("Memory", y.mem) + ring("Disk", y.disk); return z === "s" ? `<div class="wc">${ring("CPU", y.cpu)}</div>` : z === "m" ? `<div class="wrings">${three}</div>` : z === "l" ? `${head("This PC")}<div class="wrings">${three}</div><div class="wfoot">${y.diskFree ? `${bytes(y.diskFree)} free` : ""}</div>` : z === "w" ? `<div class="wrow">${head("This PC")}<div class="wrings">${three}</div><div class="wfoot">${y.diskFree ? `${bytes(y.diskFree)} free` : ""}</div></div>` : `<div class="wtwo"><div>${head("This PC")}<div class="wrings">${three}</div></div>${tops(D.info)}</div>`; }, fullNeeds: ["info"], full: (D) => { const y = D.sys || {}, i = D.info, up = Number(i?.uptimeSeconds) || 0; return `${head("This PC")}<div class="wrings">${ring("CPU", y.cpu) + ring("Memory", y.mem) + ring("Disk", y.disk)}</div><div class="wrule"></div>${tops(i)}<div class="wfoot">${y.diskFree ? `${bytes(y.diskFree)} free` : ""}${up ? ` · On for ${up >= 172800 ? `${Math.floor(up / 86400)} days` : `${Math.floor(up / 3600)} h ${Math.floor((up % 3600) / 60)} min`}` : ""}</div>`; } },
   clock: { label: "Clock", what: "Any style, font and color you like", ic: IC.clock, sizes: ["s", "m", "l", "xl", "xxl"], def: "m", needs: () => ["board"], tick: 1, form: "clock", draw: (z, D, it) => { const c = Clock.of({ ...(D.board?.data?.clock || {}), align: "center", ...(it.opts?.clock || {}) }); if (z === "s") c.date = it.opts?.clock?.date && it.opts.clock.date !== "full" ? it.opts.clock.date : c.style === "digital" ? "day" : "off"; const [bw, bh] = BOX[z], [w, h] = Clock.extent(c, Clock.parts(new Date(), c, false)); return `<div class="wclock">${Clock.clockHTML(c, { scale: (Math.min(bw / w, bh / h) * Math.min(1, (it.opts?.clock?.size || 100) / 100)).toFixed(2) })}</div>`; } },
   world: { label: "World clock", what: "The time in other places", ic: G.globe, sizes: ["m", "l", "w"], def: "m", needs: () => [], tick: 1, form: "zones", draw: (z, D, it) => { const d = new Date(), l = (it.opts?.zones?.length ? it.opts.zones : ["America/New_York", "Europe/London", "Asia/Tokyo", "Australia/Sydney"]).slice(0, z === "m" ? 2 : 4); return `<div class="wworld ${z}">${l.map((t) => `<div><span>${esc(t.split("/").pop().replace(/_/g, " "))}</span><b>${clockParts(d, t)}</b></div>`).join("")}</div>`; } },
   calendar: { label: "Calendar", what: "Today, the month, and what’s coming up", ic: G.cal, sizes: ["s", "m", "l", "xl", "xxl"], def: "l", needs: () => ["cal"], tick: 60, open: () => { Object.assign(CAL, { ym: 0, sel: "", del: "", err: "" }); }, draw: (z, D) => { const d = new Date(), ev = events(D), next = coming(ev), today = next.filter((e) => onDay(e, keyOf(d))), title = d.toLocaleDateString([], { month: "long", year: "numeric" }), day = (more = "") => `<div class="wday"><em>${d.toLocaleDateString([], { weekday: "long" })}</em><b>${d.getDate()}</b>${more}</div>`, rows = (n) => next.slice(0, n).map(eventRow).join("") || calNone(D); return z === "s" ? `<div class="wc">${day(today.length ? `<span>${esc(today[0].title)}${today.length > 1 ? ` +${today.length - 1}` : ""}</span>` : "")}</div>` : z === "m" ? `<div class="wrow">${day()}<div class="wevs">${rows(2)}</div></div>` : z === "l" ? head(title) + month(d, marksOf(ev, d)) : z === "xxl" ? head(title) + monthBig(d, ev) : `<div class="wtwo"><div>${head(title)}${month(d, marksOf(ev, d))}</div><div class="wevs">${head("Coming up")}${rows(4)}</div></div>`; }, full: (D, it, screen) => calFull(D, screen) },
@@ -254,6 +254,23 @@ export function createBoard({ screen, changed, music }) {
   };
 }
 
+/** A widget, opened: the same shape as its card, so it grows straight out of it, and what it says fills that. */
+const shape = (from) => Math.min(2.45, Math.max(0.95, from?.offsetWidth ? from.offsetWidth / from.offsetHeight : 1.2));
+export function fullHTML(it, D, screen, from) {
+  const w = W[it.id];
+  try { return `<div class="wfull">${shape(from) > 1.9 && w.sizes.includes("xl") && !["calendar", "notes", "todo"].includes(it.id) ? w.draw("xl", D, it) : w.full ? w.full(D, it, screen) : w.draw(w.sizes.includes("xl") && shape(from) > 1.5 ? "xl" : w.sizes.includes("l") ? "l" : w.sizes.at(-1), D, it)}</div>`; } catch { return `<div class="wfull">${none("Not available right now")}</div>`; }
+}
+export function fitFull(box, from, maxW, maxH, bare) {
+  const r = shape(from), w = Math.round(Math.min(maxW, maxH * r)), el = box.firstElementChild;
+  box.style.width = `${w}px`;
+  box.style.height = `${Math.round(w / r)}px`;
+  if (!el || bare) return;
+  let lo = 6, hi = 34;
+  const ok = (px) => { el.style.fontSize = `${px}px`; return el.scrollHeight <= el.clientHeight + 1 && el.scrollWidth <= el.clientWidth + 1 && [...el.querySelectorAll(".wcfull, .wtwo, .wrings, .whours, .wcnav, .wevs, .wclock")].every((n) => n.scrollWidth <= n.clientWidth + 2); };
+  for (let i = 0; i < 8; i++) { const m = (lo + hi) / 2; if (ok(m)) lo = m; else hi = m; }
+  ok(lo);
+}
+
 /** Puts a board's widgets in place, touching only the ones that changed, so a cover doesn't blink and a picture isn't loaded again. */
 export function put(grid, html) {
   if (!grid || grid._html === html) return;
@@ -267,7 +284,7 @@ export function put(grid, html) {
     have.delete(key);
     let use = n;
     if (old) {
-      if (old._src !== n.outerHTML) { old._src = n.outerHTML; if (old.className.replace(/ ?sel/, "") !== n.className) old.className = n.className; for (const a of ["draggable", "role", "tabindex", "aria-label", "style"]) n.hasAttribute(a) ? old.setAttribute(a, n.getAttribute(a)) : old.removeAttribute(a); const img = old.querySelector(".wphoto"), img2 = n.querySelector(".wphoto"); if (!(img && img2 && img.src === img2.src && old.children.length === n.children.length)) old.innerHTML = n.innerHTML; }
+      if (old._src !== n.outerHTML) { old._src = n.outerHTML; const hid = old.style.visibility; if (old.className.replace(/ ?sel/, "") !== n.className) old.className = n.className; for (const a of ["draggable", "role", "tabindex", "aria-label", "style"]) n.hasAttribute(a) ? old.setAttribute(a, n.getAttribute(a)) : old.removeAttribute(a); if (hid) old.style.visibility = hid; const img = old.querySelector(".wphoto"), img2 = n.querySelector(".wphoto"); if (!(img && img2 && img.src === img2.src && old.children.length === n.children.length)) old.innerHTML = n.innerHTML; }
       use = old;
     } else n._src = n.outerHTML;
     if (at === use) at = at.nextElementSibling;

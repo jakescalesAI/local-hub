@@ -184,3 +184,20 @@ test('Widgets: what doesn’t fit a screen isn’t placed, the rest stay where t
   for (const style of Object.keys(STYLES)) for (const font of Object.keys(FONTS)) assert.ok(clockHTML({ style, font, color: '"><img>', secs: true }).startsWith('<div class="hc') && !clockHTML({ style, font, color: '"><img>' }).includes('<img'))
   assert.deepEqual([words(new Date(2026, 0, 1, 21, 5)), words(new Date(2026, 0, 1, 11, 45)), words(new Date(2026, 0, 1, 0, 0))], ['five past nine', 'quarter to twelve', 'twelve o’clock'])
 })
+
+test('A song’s place is found from whole seconds, and its words are the ones for that recording', async () => {
+  const { songClock, readLyrics, pickLyrics } = await import('../../music.mjs')
+  // Began at 1000.4; the player says floor(position), a little over a second apart.
+  const k = songClock(); let worst = 0
+  for (let i = 0, t = 1003; i < 60; i++, t += 1.023) { k.see('a', Math.floor(t - 1000.4), t * 1000, true); if (i > 45) worst = Math.max(worst, Math.abs(k.at('a', t * 1000) - (t - 1000.4))) }
+  assert.ok(worst < 0.1, String(worst))
+  k.see('a', 200, 1100_000, true) // moved along by hand
+  assert.ok(Math.abs(k.at('a', 1100_000) - 200.5) < 0.01)
+  assert.equal(k.at('b', 1), null)
+  k.see('a', 20, 1100_000, false); assert.equal(k.at('a', 1100_000), null)
+  k.see('c', 12.345, 2000_000, true); assert.ok(Math.abs(k.at('c', 2001_000) - 13.345) < 0.001)
+  assert.deepEqual(readLyrics({ syncedLyrics: ['[offset:+500]', '[00:20.00][00:10.50] b', '[00:05:25] a', 'nope'].join(String.fromCharCode(10)) }).lines, [{ t: 4.75, x: 'a' }, { t: 10, x: 'b' }, { t: 19.5, x: 'b' }])
+  const L = [{ trackName: 'Song (Live)', duration: 200, syncedLyrics: 'l' }, { trackName: 'Song', duration: 260, syncedLyrics: 'far' }, { trackName: 'Song (feat. X)', albumName: 'Other', duration: 201, syncedLyrics: 'near' }, { trackName: 'Song', albumName: 'Alb', duration: 200, plainLyrics: 'p' }]
+  assert.equal(pickLyrics(L, { title: 'Song (feat. X)', album: 'Alb', dur: 200 }).syncedLyrics, 'near')
+  assert.equal(pickLyrics(L, { title: 'Other', dur: 200 }), null)
+})

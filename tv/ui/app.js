@@ -15,9 +15,9 @@
 // ============================================================================
 
 import * as Stream from "./stream.js?v=8";
-import * as Panel from "./panel.js?v=10";
+import * as Panel from "./panel.js?v=11";
 import * as Clock from "./clock.js?v=1";
-import * as Wg from "./widgets.js?v=5";
+import * as Wg from "./widgets.js?v=6";
 import * as Files from "./files.js?v=2";
 import { createLock } from "./lock.js?v=2";
 import * as Remote from "./remote.js?v=5";
@@ -1250,8 +1250,12 @@ function widgetPick(a) {
 function drawWidget() {
   const it = BOARD.items().find((x) => x.k === WD.k), w = it && Wg.W[it.id];
   if (!w) return closeHomeCard();
-  const box = $("#wdetail > div"), html = `<div class="wfull">${w.full ? w.full(BOARD.D, it, "tv") : w.draw(w.sizes.includes("xl") ? "xl" : w.sizes.includes("l") ? "l" : w.sizes.at(-1), BOARD.D, it)}</div>`;
-  if (box._html !== html) box.innerHTML = box._html = html;
+  const box = $("#wdetail > div"), html = Wg.fullHTML(it, BOARD.D, "tv", WD.from);
+  if (box._html !== html) {
+    const was = box.firstElementChild?.style.fontSize, len = box._html?.length;
+    box.innerHTML = box._html = html;
+    if (was && Math.abs(len - html.length) < 12) box.firstElementChild.style.fontSize = was; else if ($("#wdetail").classList.contains("on")) Wg.fitFull(box, WD.from, 1480, 850);
+  }
   const stops = [...box.querySelectorAll("button[data-wa]")];
   stops.forEach((n, i) => n.classList.toggle("sel", i === Math.min(WD.at || 0, stops.length - 1)));
 }
@@ -1272,6 +1276,7 @@ function openHomeCard(n) {
   drawWidget();
   $("#wdetail").classList.remove("music", "going");
   $("#wdetail").classList.add("on");
+  Wg.fitFull(box, n, 1480, 850);
   setOverlay("wdetail");
   Panel.grow(box, n);
 }
@@ -1292,16 +1297,14 @@ function widgetKey(name) {
 const WD = { music: false, words: null, key: "", sel: "play", from: null };
 function drawFull() {
   const key = `${MEDIA.title}|${MEDIA.artist}`, box = $("#wdetail > div");
-  const html = Panel.fullPlayer(MEDIA, WD.key === key ? WD.words : null);
-  if (box._html !== html) { box.innerHTML = box._html = html; }
-  if (WD.words?.off && WD.key === key) { const n = box.querySelector(".mpf-on"); if (n) n.textContent = "Show lyrics"; }
+  Panel.paintFull(box, MEDIA, WD.key === key ? WD.words : null, { show: localStorage.getItem("lh-words") !== "0", ask: WD.ask, on: HUB_LYRICS });
   box.querySelectorAll("[data-w]").forEach((n) => n.classList.toggle("sel", n.dataset.w === WD.sel));
   Panel.syncPlayer(box, MEDIA);
   Panel.syncWords(box, MEDIA, WD.words);
   if (WD.key !== key && MEDIA.title && IN_HUB) {
     WD.key = key;
     WD.words = null;
-    fetch(`/api/music/lyrics?${new URLSearchParams({ title: MEDIA.title, artist: MEDIA.artist || "", dur: String(MEDIA.dur || "") })}`, { cache: "no-store" }).then((r) => r.json()).then((w) => { if (WD.key === key) { WD.words = w; if (WD.music) drawFull(); } }).catch(() => {});
+    fetch(`/api/music/lyrics?${new URLSearchParams({ title: MEDIA.title, artist: MEDIA.artist || "", dur: String(MEDIA.dur || ""), album: MEDIA.album || "" })}`, { cache: "no-store" }).then((r) => r.json()).catch(() => ({ lines: [], plain: [] })).then((w) => { if (WD.key === key) { WD.words = w; if (WD.music) drawFull(); } });
   }
 }
 function openFullMusic() {
@@ -1309,32 +1312,38 @@ function openFullMusic() {
   WD.music = true;
   WD.k = "";
   WD.sel = "play";
-  WD.key = "";
+  WD.ask = false;
+  box.style.width = box.style.height = "";
   WD.from = $("#homeW .mp-art");
   box._html = "";
+  box.innerHTML = "";
   $("#wdetail").classList.add("on", "music");
   drawFull();
   setOverlay("wdetail");
-  Panel.grow(box, WD.from);
+  Panel.growSong(box, WD.from);
+  readHubMusic();
 }
 function fullKey(name) {
-  const row = [...$("#wdetail").querySelectorAll("[data-w]")].map((n) => n.dataset.w), at = row.indexOf(WD.sel);
+  const row = [...$("#wdetail").querySelectorAll("[data-w]")].filter((n) => !n.hidden).map((n) => n.dataset.w), at = row.indexOf(WD.sel);
   if (name === "left" || name === "right") { WD.sel = row[clamp(at + (name === "right" ? 1 : -1), 0, row.length - 1)]; return drawFull(); }
   if (name === "up" || name === "down") return void $("#wdetail .mpf-ly.plain")?.scrollBy({ top: name === "down" ? 220 : -220, behavior: "smooth" });
   if (name === "enter") {
+    if (WD.sel === "open") return toast(`Playing in ${MEDIA.app || "an app"} on your computer`);
+    if (WD.sel === "words") { if (HUB_LYRICS === false) WD.ask = !WD.ask; else localStorage.setItem("lh-words", localStorage.getItem("lh-words") === "0" ? "1" : "0"); return drawFull(); }
     if (WD.sel !== "lyrics") { mediaDo(WD.sel === "play" ? "toggle" : WD.sel); return setTimeout(drawFull, 60); }
     WD.sel = "play";
-    return void fetch("/api/music/lyrics", { method: "POST", headers: { "content-type": "application/json", "x-hub": "1" }, body: '{"on":true}' }).then(() => { WD.key = ""; drawFull(); }, () => {});
+    return void fetch("/api/music/lyrics", { method: "POST", headers: { "content-type": "application/json", "x-hub": "1" }, body: '{"on":true}' }).then(() => { HUB_LYRICS = true; WD.ask = false; WD.words = null; WD.key = ""; drawFull(); }, () => {});
   }
   if (name === "back" || name === "menu" || name === "home") closeHomeCard();
 }
 function closeHomeCard() {
   const box = $("#wdetail > div"), el = $("#wdetail");
+  const song = WD.music;
   WD.music = false;
   setOverlay(null);
   paintHomeWidgets();
   el.classList.add("going");
-  Panel.grow(box, WD.from, true).then(() => { el.classList.remove("on", "music", "going"); box.getAnimations?.().forEach((a) => a.cancel()); });
+  (song ? Panel.growSong(box, WD.from?.isConnected ? WD.from : $("#homeW .mp-art"), true) : Panel.grow(box, WD.from, true)).then(() => { el.classList.remove("on", "music", "going"); box.getAnimations?.().forEach((a) => a.cancel()); });
 }
 function paintHomeWidgets() {
   const box = $("#homeW");
@@ -1379,10 +1388,10 @@ let MEDIA = {};
 const songKey = (m) => JSON.stringify({ ...m, pos: 0, got: 0 });
 let mediaTimer = null;
 // With nothing on the TV itself, it's what the computer (or your Spotify) is playing, and the buttons work that.
-let HUB_MEDIA = null, SYS = null, sysAt = 0;
+let HUB_MEDIA = null, HUB_LYRICS, SYS = null, sysAt = 0;
 async function readHubMusic() {
   if (!IN_HUB || document.hidden || (S.overlay && S.overlay !== "wpanel" && S.overlay !== "wdetail" && S.overlay !== "saver") || (S.view !== "home" && S.overlay !== "saver")) return;
-  try { const r = await fetch("/api/music", { cache: "no-store" }); const n = r.ok ? (await r.json()).now : null; HUB_MEDIA = n && n.from !== "tv" && n.title ? Panel.noted(n) : null; } catch { /* as it was: one missed ask isn't silence */ }
+  try { const t = performance.now(), r = await fetch("/api/music", { cache: "no-store" }), j = r.ok ? await r.json() : null, n = j?.now; if (j) HUB_LYRICS = !!j.lyrics; HUB_MEDIA = n && n.from !== "tv" && n.title ? Panel.noted(n, (t + performance.now()) / 2) : null; } catch { /* as it was: one missed ask isn't silence */ }
   // The computer's card, a few times a minute: the TV has better things to do.
   let sysNew = false;
   if (false) { sysAt = Date.now(); try { const r = await fetch("/api/desk/system", { cache: "no-store" }); SYS = r.ok ? await r.json() : null; sysNew = true; } catch { SYS = null; } }
@@ -1391,6 +1400,9 @@ async function readHubMusic() {
   if (sysNew || songKey(MEDIA) !== was) { paintHomeWidgets(); if (S.overlay === "saver") paintSaverHud(); if (S.overlay === "wpanel") paintWpanel(); if (S.overlay === "wdetail" && WD.music) drawFull(); }
 }
 setInterval(readHubMusic, 5000);
+setInterval(() => { if (S.overlay === "wdetail" && WD.music) readHubMusic(); }, 1500);
+setInterval(() => { if (S.overlay === "wdetail" && WD.music && !document.hidden) { readMediaPos(); Panel.syncWords($("#wdetail"), MEDIA, WD.words); } }, 200);
+const readMediaPos = () => { if (MEDIA.hub && HUB_MEDIA && HUB_MEDIA.title === MEDIA.title) { MEDIA.pos = HUB_MEDIA.pos; MEDIA.got = HUB_MEDIA.got; } };
 // The position moves on by itself between asks.
 setInterval(() => { if (S.overlay === "saver" && !document.hidden) Panel.syncPlayer($("#saverHud"), MEDIA); }, 1000);
 setInterval(() => { if (document.hidden || (S.overlay && S.overlay !== "wpanel" && S.overlay !== "wdetail") || S.view !== "home") return; if (S.overlay === "wdetail") { if (WD.music) { Panel.syncPlayer($("#wdetail"), MEDIA); Panel.syncWords($("#wdetail"), MEDIA, WD.words); } return; } Panel.syncPlayer($("#homeW"), MEDIA); if (S.overlay === "wpanel") Panel.syncPlayer($("#wpList"), MEDIA); }, 1000);

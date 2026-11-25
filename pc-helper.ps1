@@ -191,16 +191,19 @@ function Get-Media {
     } catch {}
   }
   $i = $s.GetPlaybackInfo(); $playing = "$($i.PlaybackStatus)" -eq 'Playing'
-  $pos = $null; $dur = $null; $seek = $false
+  $pos = $null; $dur = $null; $seek = $false; $raw = $null; $upd = $null; $rate = 1
+  # A song in a browser: which site, from that browser's window title.
+  if ($script:siteKey -ne $key) { $script:siteKey = $key; $script:site = ''; if ($s.SourceAppUserModelId -match 'chrome|msedge|firefox|brave|opera|vivaldi') { try { $tt = (Get-Process | ? { $_.MainWindowTitle } | % { $_.MainWindowTitle }) -join [char]10; foreach ($n in 'YouTube Music', 'SoundCloud', 'Spotify', 'Apple Music', 'Amazon Music', 'TIDAL', 'Deezer', 'Bandcamp', 'YouTube') { if ($tt -match [regex]::Escape($n)) { $script:site = $n; break } } } catch {} } }
   try {
     $t = $s.GetTimelineProperties()
     $dur = ($t.EndTime - $t.StartTime).TotalSeconds
     $pos = ($t.Position - $t.StartTime).TotalSeconds
+    $raw = $pos; if ($t.LastUpdatedTime.Year -gt 2000) { $upd = $t.LastUpdatedTime.ToUnixTimeMilliseconds() }; if ($i.PlaybackRate) { $rate = [double]$i.PlaybackRate }
     # The player says where it was, and when: the rest is the clock's.
     if ($playing -and $t.LastUpdatedTime.Year -gt 2000) { $pos += ([DateTimeOffset]::Now - $t.LastUpdatedTime).TotalSeconds * $(if ($i.PlaybackRate) { [double]$i.PlaybackRate } else { 1 }) }
     if ($dur -gt 0) { $pos = [Math]::Max(0, [Math]::Min($dur, $pos)); $seek = [bool]$i.Controls.IsPlaybackPositionEnabled } else { $dur = $null; $pos = $null }
   } catch {}
-  @{ on = $true; pos = $pos; dur = $dur; seek = $seek; album = "$($p.AlbumTitle)"; app = "$($s.SourceAppUserModelId)"; title = "$($p.Title)"; artist = "$($p.Artist)"; playing = $playing; art = $script:artData; session = $s }
+  @{ on = $true; raw = $raw; upd = $upd; rate = $rate; site = $script:site; pos = $pos; dur = $dur; seek = $seek; album = "$($p.AlbumTitle)"; app = "$($s.SourceAppUserModelId)"; title = "$($p.Title)"; artist = "$($p.Artist)"; playing = $playing; art = $script:artData; session = $s }
 }
 $mons = @(); $monsAt = [DateTime]::MinValue
 while ($null -ne ($line = [Console]::In.ReadLine())) {

@@ -11,6 +11,7 @@ export const IC = {
   next: sym('<path fill="currentColor" d="M4 6v12l8-6zM13 6v12l8-6z"/>', 1.5),
   play: sym('<path fill="currentColor" d="M7 4.5v15l13-7.5z"/>', 1.5),
   pause: sym('<path fill="currentColor" d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/>', 1.5),
+  words: sym('<path d="M4 5.5h16a1.5 1.5 0 0 1 1.5 1.5v9a1.5 1.5 0 0 1-1.5 1.5h-8L7.5 21v-3.5H4A1.5 1.5 0 0 1 2.5 16V7A1.5 1.5 0 0 1 4 5.5z"/><path d="M8 13.5v-2.2a1.3 1.3 0 1 1 2.4-.7c0 1.4-1 2.4-2.4 2.9M13.6 13.5v-2.2a1.3 1.3 0 1 1 2.4-.7c0 1.4-1 2.4-2.4 2.9"/>', 1.8),
   clock: sym('<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>', 2),
   cloud: sym('<path d="M7 18.5h10a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.2 11.6 3.5 3.5 0 0 0 7 18.5z"/>', 2),
   timer: sym('<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2"/><path d="M9.5 2.5h5"/>'),
@@ -27,33 +28,84 @@ export const IC = {
   home: sym('<path d="M3.5 11 12 4l8.5 7"/><path d="M5.5 9.5V20h4.5v-5.5h4V20h4.5V9.5"/>'),
 };
 const clockOf = (n) => { n = Math.max(0, Math.floor(n)); return `${Math.floor(n / 60)}:${String(n % 60).padStart(2, "0")}`; };
-// The song, full screen: its cover and buttons, and its words beside them when there are some.
-export function fullPlayer(m = {}, words) {
-  const b = (id, ic, label) => `<button class="mp-b" data-w="${id}" aria-label="${label}" tabindex="-1">${ic}</button>`;
-  const has = words?.lines?.length || words?.plain?.length;
-  const ly = words?.off ? '<div class="mpf-ly off"><p>Lyrics come from lrclib.net, which is sent the song’s name, artist and length.</p><button type="button" class="mpf-on" data-w="lyrics">Show lyrics</button></div>'
-    : has ? `<div class="mpf-ly${words.lines?.length ? "" : " plain"}">${(words.lines?.length ? words.lines.map((l) => l.x) : words.plain).map((x, i) => `<p data-l="${i}">${esc(x) || "♪"}</p>`).join("")}</div>` : "";
-  return `<div class="mp mpf${m.playing ? " on" : ""}${ly ? " words" : ""}"><div class="mpf-l"><div class="mpf-art">${m.art ? `<img src="${esc(m.art)}" alt="">` : IC.note}</div><div class="mp-t"><span>${esc(m.title || "Not playing")}</span></div><div class="mp-s"><span>${esc(m.artist || m.app || "")}</span></div><div class="mp-bar${m.seek ? " seek" : ""}" hidden><em class="mp-at">0:00</em><div class="mp-line"><i></i></div><em class="mp-end">0:00</em></div><div class="mp-row">${b("prev", IC.prev, "Previous")}${b("play", m.playing ? IC.pause : IC.play, m.playing ? "Pause" : "Play")}${b("next", IC.next, "Next")}</div></div>${ly}</div>`;
+// The song, full screen: its cover and buttons in the middle, or beside its words. Drawn once, then changed in place, so nothing
+// blinks and moving between the two is a slide. opts: { show: words wanted, ask: whether to ask to turn them on, on: turned on }
+export function wordsMode(m, words, o = {}) {
+  if (!m?.title || !o.show) return "none";
+  if (words?.off || o.on === false) return o.ask ? "off" : "none";
+  return !words ? "load" : words.lines?.length ? "lines" : words.plain?.length ? "plain" : "none";
+}
+export function paintFull(box, m = {}, words, o = {}) {
+  let p = box.querySelector(":scope > .mpf");
+  const b = (id, ic, label) => `<button class="mp-b" data-w="${id}" aria-label="${label}" tabindex="-1">${ic}</button>`, set = (n, k, v) => { if (n["_" + k] !== v) { n["_" + k] = v; n.innerHTML = v; } };
+  const first = !p;
+  if (first) {
+    box.innerHTML = `<div class="mp mpf still"><div class="mpf-l"><div class="mpf-art"></div><div class="mp-t"><span></span></div><div class="mp-s"><span></span></div><div class="mp-bar" hidden><em class="mp-at">0:00</em><div class="mp-line"><i></i></div><em class="mp-end">0:00</em></div><div class="mp-row"><button class="mp-b mpf-app" data-w="open" tabindex="-1" hidden></button>${b("prev", IC.prev, "Previous")}<button class="mp-b" data-w="play" tabindex="-1"></button>${b("next", IC.next, "Next")}<button class="mp-b mpf-w" data-w="words" tabindex="-1">${IC.words}</button></div></div><div class="mpf-r"></div></div>`;
+    p = box.firstElementChild;
+  }
+  const q = (s) => p.querySelector(s), mode = wordsMode(m, words, o);
+  p.classList.toggle("on", !!m.playing);
+  set(q(".mpf-art"), "h", m.art ? `<img src="${esc(m.art)}" alt="">` : IC.note);
+  set(q(".mp-t span"), "h", esc(m.title || "Not playing"));
+  set(q(".mp-s span"), "h", esc(m.artist || m.app || ""));
+  q(".mp-bar").classList.toggle("seek", !!m.seek);
+  set(q('[data-w="play"]'), "h", m.playing ? IC.pause : IC.play);
+  q('[data-w="play"]').setAttribute("aria-label", m.playing ? "Pause" : "Play");
+  const app = q(".mpf-app");
+  app.hidden = !m.icon || !m.title;
+  if (m.icon) { set(app, "h", `<img src="${esc(m.icon)}" alt="" onerror="this.parentNode.hidden=true">`); app.title = `Open ${m.app || "the player"}`; app.setAttribute("aria-label", app.title); }
+  const w = q(".mpf-w"), none = !!words && !words.off && mode === "none" && !!o.show;
+  w.classList.toggle("lit", mode !== "none");
+  w.classList.toggle("dim", none);
+  w.title = none ? "No lyrics for this song" : mode === "none" ? "Lyrics" : "Hide lyrics";
+  w.setAttribute("aria-label", w.title);
+  // What is on its way out stays drawn while it fades.
+  const r = q(".mpf-r");
+  if (mode !== "none") set(r, "h", mode === "load" ? '<div class="mpf-ly wait"><p>Loading lyrics…</p></div>' : mode === "off" ? '<div class="mpf-ly off"><p>Lyrics come from lrclib.net, which is sent the song’s name, artist, album and length.</p><button type="button" class="mpf-on" data-w="lyrics">Show lyrics</button></div>' : `<div class="mpf-ly${mode === "plain" ? " plain" : ""}">${(mode === "plain" ? words.plain : words.lines.map((l) => l.x)).map((x, i) => `<p data-l="${i}">${esc(x) || "♪"}</p>`).join("")}</div>`);
+  p.classList.toggle("words", mode !== "none");
+  if (first) requestAnimationFrame(() => requestAnimationFrame(() => p.classList.remove("still")));
+  return mode;
 }
 // The line being sung, kept in the middle.
 export function syncWords(root, m, words) {
   const box = root?.querySelector?.(".mpf-ly");
   if (!box || !words?.lines?.length || !Number.isFinite(m?.pos)) return;
-  const at = m.pos + (m.playing ? (performance.now() - (m.got || performance.now())) / 1000 : 0) + 0.25;
+  const at = m.pos + (m.playing ? (performance.now() - (m.got || performance.now())) / 1000 : 0) + 0.18;
   let i = -1;
   while (i + 1 < words.lines.length && words.lines[i + 1].t <= at) i++;
   if (box._i === i) return;
+  const was = box._i;
   box._i = i;
   box.querySelectorAll("p").forEach((p, k) => { p.classList.toggle("now", k === i); p.classList.toggle("past", k < i); });
   const p = box.querySelector(`p[data-l="${Math.max(0, i)}"]`);
-  if (p) box.scrollTo({ top: p.offsetTop - box.clientHeight / 2 + p.clientHeight / 2, behavior: "smooth" });
+  if (p) box.scrollTo({ top: p.offsetTop - box.clientHeight / 2 + p.clientHeight / 2, behavior: was === undefined || Math.abs(was - i) > 6 ? "auto" : "smooth" });
 }
 // A card grows out of where it was, to the middle, and goes back to it.
+const still = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 export function grow(box, from, back) {
   const a = from?.getBoundingClientRect?.(), z = box.getBoundingClientRect(), k = box.offsetWidth ? z.width / box.offsetWidth : 1;
-  if (!a?.width || !z.width || !box.animate || matchMedia("(prefers-reduced-motion: reduce)").matches) return Promise.resolve();
-  const small = { transform: `translate(${(a.left + a.width / 2 - z.left - z.width / 2) / k}px, ${(a.top + a.height / 2 - z.top - z.height / 2) / k}px) scale(${Math.max(0.1, a.width / z.width)})`, opacity: back ? 0 : 0.2 }, full = { transform: "none", opacity: 1 };
-  return box.animate(back ? [full, small] : [small, full], { duration: back ? 260 : 420, easing: "cubic-bezier(.2, .85, .25, 1)", fill: back ? "forwards" : "none" }).finished.catch(() => {});
+  if (!a?.width || !z.width || !box.animate || still()) return Promise.resolve();
+  const s = Math.max(0.12, Math.min(a.width / z.width, 1)), small = { transform: `translate(${(a.left + a.width / 2 - z.left - z.width / 2) / k}px, ${(a.top + a.height / 2 - z.top - z.height / 2) / k}px) scale(${s})`, opacity: 0 }, full = { transform: "none", opacity: 1 };
+  const mid = { opacity: 1, offset: back ? 0.6 : 0.3 };
+  box.style.willChange = "transform, opacity";
+  if (!back) from.style.visibility = "hidden"; // it is the card that grows
+  return box.animate(back ? [full, mid, small] : [small, mid, full], { duration: back ? 340 : 460, easing: "cubic-bezier(.32, .72, 0, 1)", fill: back ? "forwards" : "none" }).finished.catch(() => {}).then(() => { box.style.willChange = ""; if (back) from.style.visibility = ""; });
+}
+// The song opens: its cover flies from where it was to where it goes, and the rest comes up around it. And back.
+export function growSong(box, from, back) {
+  const art = box.querySelector(".mpf-art"), img = art?.querySelector("img"), a = from?.getBoundingClientRect?.(), z = art?.getBoundingClientRect();
+  if (!box.animate || still() || !z?.width) return Promise.resolve();
+  const ease = "cubic-bezier(.32, .72, 0, 1)", dur = back ? 380 : 520;
+  const card = box.animate(back ? [{ opacity: 1, transform: "none" }, { opacity: 0, transform: "scale(.97)" }] : [{ opacity: 0, transform: "scale(.97)" }, { opacity: 1, transform: "none" }], { duration: back ? 260 : 380, easing: back ? "ease-in" : "ease-out", fill: back ? "forwards" : "none" }).finished.catch(() => {});
+  if (!img || !a?.width) return card;
+  const fly = document.createElement("div"), s = a.width / z.width, r0 = parseFloat(getComputedStyle(from).borderTopLeftRadius) || 12, r1 = (parseFloat(getComputedStyle(art).borderTopLeftRadius) || 30) * (z.width / (art.offsetWidth || z.width));
+  fly.className = "mpf-fly";
+  fly.style.cssText = `position:fixed;z-index:2147483646;left:${z.left}px;top:${z.top}px;width:${z.width}px;height:${z.height}px;border-radius:${r1}px;overflow:hidden;pointer-events:none;transform-origin:0 0;will-change:transform`;
+  fly.append(Object.assign(new Image(), { src: img.src, style: "width:100%;height:100%;object-fit:cover;display:block" }));
+  document.body.append(fly);
+  art.style.visibility = from.style.visibility = "hidden";
+  const small = { transform: `translate(${a.left - z.left}px, ${a.top - z.top}px) scale(${s}, ${a.height / z.height})`, borderRadius: `${r0 / s}px` }, full = { transform: "none", borderRadius: `${r1}px` };
+  return Promise.all([card, fly.animate(back ? [full, small] : [small, full], { duration: dur, easing: ease, fill: "both" }).finished.catch(() => {})]).then(() => { art.style.visibility = from.style.visibility = ""; fly.remove(); });
 }
 // Where it is in the song isn't in here: that changes every second, and syncPlayer() moves it without drawing this again.
 export function player(m = {}, wide = false) {
@@ -65,7 +117,7 @@ export function player(m = {}, wide = false) {
   return `<div class="mp${wide ? " wide" : ""}${m.art ? " art" : ""}${m.playing ? " on" : ""}${m.title ? " has" : ""}"${m.art ? ` style="--art:url(&quot;${esc(m.art)}&quot;)"` : ""}><div class="mp-art"${m.from === "pc" && m.title ? ` data-open="1" title="Open ${esc(m.app || "the player")}"` : ""}>${art}</div><div class="mp-t"><span>${esc(t)}</span></div><div class="mp-s"><span>${esc(sub)}</span></div>${bar}<div class="mp-row">${b("prev", IC.prev, "Previous")}${b("play", m.playing ? IC.pause : IC.play, m.playing ? "Pause" : "Play")}${b("next", IC.next, "Next")}</div></div>`;
 }
 // How far into the song every player on the page is. m.pos is where it was when m.got (this page's clock) was noted.
-export const noted = (m) => (m && Number.isFinite(m.pos) ? Object.assign(m, { got: performance.now() }) : m);
+export const noted = (m, got = performance.now()) => (m && Number.isFinite(m.pos) ? Object.assign(m, { got }) : m);
 export function syncPlayer(root, m) {
   for (const p of root?.querySelectorAll?.(".mp") || []) {
     const bar = p.querySelector(".mp-bar");

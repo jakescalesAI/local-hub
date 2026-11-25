@@ -28,10 +28,45 @@ const SOURCES = ['auto', 'pc', 'spotify', 'tv']
 const APP_NAMES = [[/spotify/i, 'Spotify'], [/applemusic|apple.*music/i, 'Apple Music'], [/msedge/i, 'Edge'], [/chrome/i, 'Chrome'], [/firefox/i, 'Firefox'], [/amazon.*music/i, 'Amazon Music'], [/tidal/i, 'TIDAL'], [/deezer/i, 'Deezer'], [/vlc/i, 'VLC'], [/zunemusic/i, 'Media Player']]
 export const appName = id => APP_NAMES.find(([re]) => re.test(String(id)))?.[1] || String(id || '').replace(/!.*$/, '').replace(/\.exe$/i, '').split(/[.\\/]/).pop()
 export function readLyrics(j) {
-  const lines = []
-  for (const l of String(j?.syncedLyrics || '').slice(0, 60_000).split('\n')) { const m = /^\[(\d{1,3}):(\d{2}(?:\.\d{1,3})?)\]\s*(.*)$/.exec(l.trim()); if (m) lines.push({ t: Number(m[1]) * 60 + Number(m[2]), x: m[3].slice(0, 300) }) }
+  const lines = [], text = String(j?.syncedLyrics || '').slice(0, 60_000)
+  // A line can be sung at several times, and a file can say all its times are off by so much.
+  const off = (Number(/\[offset:\s*([+-]?\d{1,5})\]/i.exec(text)?.[1]) || 0) / 1000
+  for (const l of text.split('\n')) {
+    const m = /^((?:\[\d{1,3}:\d{2}(?:[.:]\d{1,3})?\]\s*)+)(.*)$/.exec(l.trim())
+    if (m) for (const t of m[1].matchAll(/\[(\d{1,3}):(\d{2})(?:[.:](\d{1,3}))?\]/g)) lines.push({ t: Math.max(0, Number(t[1]) * 60 + Number(t[2]) + Number(`0.${t[3] || 0}`) - off), x: m[2].replace(/<\d+:\d+(?:\.\d+)?>/g, '').trim().slice(0, 300) })
+  }
+  lines.sort((a, b) => a.t - b.t)
   return { lines, plain: lines.length ? [] : String(j?.plainLyrics || '').slice(0, 60_000).split('\n').slice(0, 400).map(x => x.slice(0, 300)) }
 }
+const bare = s => String(s || '').toLowerCase().replace(/\s*[([](feat|ft|with|remaster|deluxe|explicit|bonus)[^)\]]*[)\]]/g, '').replace(/\s+-\s+.*(remaster|version|edit|mix).*$/, '').replace(/[^\p{L}\p{N}]+/gu, ' ').trim()
+/** The one for this recording: its times only fit if it's as long. Timed words first, then the nearest length, then the same album. */
+export function pickLyrics(list, { title, album = '', dur = 0 }) {
+  const ok = (Array.isArray(list) ? list : []).filter(x => x && (x.syncedLyrics || x.plainLyrics) && bare(x.trackName) === bare(title) && (!dur || Math.abs(Number(x.duration) - dur) <= 4))
+  const score = x => (x.syncedLyrics && (!dur || Math.abs(x.duration - dur) <= 2.5) ? 0 : 100) + Math.abs(Number(x.duration) - dur) * 4 + (album && bare(x.albumName) === bare(album) ? 0 : 3)
+  return ok.sort((a, b) => score(a) - score(b))[0] || null
+}
+/** Where a song is, from a player that only says whole seconds, rounded down, and when it said so: each says the song began within
+ * one second, and what they all agree on gets narrower. A player that says parts of a second is taken at its word. */
+export function songClock() {
+  let s = null
+  return {
+    see(key, raw, upd, playing, rate = 1) {
+      if (!playing || rate !== 1 || !(upd > 0) || !Number.isFinite(raw)) { s = null; return }
+      if (raw < 1) return // as a song starts it says 0 a while before there is sound
+      const base = upd / 1000 - raw, whole = Math.abs(raw - Math.round(raw)) < 0.015
+      if (!whole) { s = { key, lo: base, hi: base, exact: true }; return }
+      if (!s || s.key !== key || s.exact ? !s?.exact || s.key !== key || Math.abs(base - s.hi) > 1.2 : base < s.lo - 0.12 || base - 1 > s.hi + 0.12) { s = { key, lo: base - 1, hi: base }; return }
+      if (s.exact) return
+      s.lo = Math.max(s.lo, base - 1)
+      s.hi = Math.min(s.hi, base)
+      if (s.lo > s.hi) s.lo = s.hi = (s.lo + s.hi) / 2
+    },
+    forget() { s = null },
+    at(key, ms) { return s && s.key === key ? Math.max(0, ms / 1000 - (s.lo + s.hi) / 2) : null },
+  }
+}
+const SITES = { 'YouTube Music': 'https://music.youtube.com', SoundCloud: 'https://soundcloud.com', Spotify: 'https://open.spotify.com', 'Apple Music': 'https://music.apple.com', 'Amazon Music': 'https://music.amazon.com', TIDAL: 'https://tidal.com', Deezer: 'https://www.deezer.com', Bandcamp: 'https://bandcamp.com', YouTube: 'https://www.youtube.com' }
+const siteIcon = u => `/api/hub/site-icon?url=${encodeURIComponent(u)}`
 export const validClientId = v => /^[0-9a-f]{32}$/i.test(String(v || ''))
 // Whose player the card shows: the one that's playing, else the one last seen with something on.
 export function pickNow(source, list) {
@@ -54,8 +89,11 @@ export function create({ here }) {
   let monitors = [], outputs = []
   const words = new Map()
   let cover = { key: '', body: null }, player = ''
-  const secs = v => (Number.isFinite(v) && v >= 0 && v < 1e6 ? Math.round(v * 10) / 10 : null)
+  const secs = v => (Number.isFinite(v) && v >= 0 && v < 1e6 ? Math.round(v * 100) / 100 : null)
 
+  const clock = songClock()
+  // What was read a moment ago, moved on to now: a song doesn't wait for whoever asks.
+  const fresh = d => { const n = d.now; if (!n?.playing || !Number.isFinite(n.pos)) return d; const ms = Date.now(), exact = n.from === 'pc' ? clock.at(n.song, ms) : null; return { ...d, now: { ...n, pos: secs(Math.min(n.dur || 1e6, exact ?? n.pos + (ms - (n.read || d.read)) / 1000)) } } }
   async function spotifyToken() {
     const b = box()
     if (!b.refresh) return null
@@ -78,11 +116,12 @@ export function create({ here }) {
     if (Date.now() - spot.at < 4000) return spot.v
     spot.at = Date.now()
     try {
+      const asked = Date.now()
       const r = await spotify('GET', '/me/player')
       if (!r || r.status === 204 || !r.ok) spot.v = r?.status === 204 ? { from: 'spotify', title: '', artist: '', app: 'Spotify', playing: false, art: '' } : spot.v
       else {
         const j = await r.json()
-        spot.v = { from: 'spotify', title: String(j.item?.name || '').slice(0, 200), artist: (j.item?.artists || []).map(a => a.name).join(', ').slice(0, 200) || String(j.item?.show?.name || ''), app: `Spotify${j.device?.name ? ` · ${j.device.name}` : ''}`, playing: !!j.is_playing, pos: secs(j.progress_ms / 1000), dur: secs((j.item?.duration_ms || 0) / 1000), seek: true, art: /^https:\/\/i\.scdn\.co\//.test(j.item?.album?.images?.[1]?.url || '') ? j.item.album.images[1].url : '' }
+        spot.v = { from: 'spotify', title: String(j.item?.name || '').slice(0, 200), artist: (j.item?.artists || []).map(a => a.name).join(', ').slice(0, 200) || String(j.item?.show?.name || ''), app: `Spotify${j.device?.name ? ` · ${j.device.name}` : ''}`, playing: !!j.is_playing, pos: secs(j.progress_ms / 1000), dur: secs((j.item?.duration_ms || 0) / 1000), seek: true, read: (asked + Date.now()) / 2, icon: siteIcon(SITES.Spotify), art: /^https:\/\/i\.scdn\.co\//.test(j.item?.album?.images?.[1]?.url || '') ? j.item.album.images[1].url : '' }
       }
     } catch {}
     return spot.v
@@ -93,6 +132,7 @@ export function create({ here }) {
   }
   async function state() {
     if (cache.data && Date.now() - cache.at < 900) return cache.data
+    const asked = Date.now()
     const [pcs, sp, tv] = await Promise.all([helper.ask('state').catch(() => null), spotifyNow(), tvNow()])
     const m = pcs?.media || {}
     if (m.art) {
@@ -100,7 +140,9 @@ export function create({ here }) {
       if (key !== cover.key) cover = { key, body: Buffer.from(m.art, 'base64') }
     }
     player = m.on ? String(m.app || '') : ''
-    const pc = pcs ? { from: 'pc', title: String(m.title || '').slice(0, 200), artist: String(m.artist || '').slice(0, 200), app: m.on ? appName(m.app) : 'This PC', playing: !!m.playing, pos: secs(m.pos), dur: secs(m.dur), seek: !!m.seek, art: m.art ? `/api/music/art/${cover.key}.jpg` : '' } : null
+    const song = `${m.app}|${m.title}|${m.artist}|${Math.round(m.dur || 0)}`, site = SITES[m.site] ? m.site : ''
+    clock.see(song, m.raw, m.upd, !!m.playing, m.rate || 1)
+    const pc = pcs ? { from: 'pc', title: String(m.title || '').slice(0, 200), artist: String(m.artist || '').slice(0, 200), app: m.on ? site || appName(m.app) : 'This PC', icon: !m.on ? '' : site ? siteIcon(SITES[site]) : `/api/desk/icon?id=${encodeURIComponent(`pc:${player}`)}`, song, album: String(m.album || '').slice(0, 200), playing: !!m.playing, pos: secs(m.pos), dur: secs(m.dur), seek: !!m.seek, art: m.art ? `/api/music/art/${cover.key}.jpg` : '' } : null
     const now = pickNow(pref.source, [pc, sp, tv].filter(Boolean))
     const mons = (Array.isArray(pcs?.monitors) ? pcs.monitors : []).map(x => ({ id: String(x.id), name: String(x.name).slice(0, 60), level: Number(x.level) || 0, kind: String(x.kind), on: !pref.skip.includes(x.id) }))
     monitors = mons
@@ -108,6 +150,8 @@ export function create({ here }) {
     const lit = mons.filter(x => x.on)
     const b = box()
     const data = { source: pref.source, now, pc: !!pcs, tv: !!tv, spotify: { clientId: b.clientId || '', connected: !!b.refresh, redirect: redirect() }, volume: pcs?.volume ?? null, brightness: lit.length ? Math.round(lit.reduce((n, x) => n + x.level, 0) / lit.length) : null, monitors: mons, outputs, lyrics: pref.lyrics }
+    data.read = (asked + Date.now()) / 2
+    if (now && now.from === 'pc') data.read = Date.now()
     cache = { at: Date.now(), data }
     return data
   }
@@ -116,7 +160,7 @@ export function create({ here }) {
   return async function route(url, req, res, { send, readBody }) {
     const p = url.pathname
     if (p !== '/api/music' && !p.startsWith('/api/music/')) return false
-    if (p === '/api/music' && req.method === 'GET') return send(res, 200, await state()), true
+    if (p === '/api/music' && req.method === 'GET') return send(res, 200, fresh(await state())), true
     const am = /^\/api\/music\/art\/([0-9a-f]{16})\.jpg$/.exec(p)
     if (am && req.method === 'GET') {
       if (am[1] !== cover.key || !cover.body) return send(res, 404, { error: 'not found' }), true
@@ -139,6 +183,7 @@ export function create({ here }) {
         if (r && !ok) { const j = await r.json().catch(() => ({})); return send(res, 200, { ok, error: r.status === 403 ? 'Spotify allows this with Premium only.' : r.status === 404 ? 'Open Spotify on a device first.' : String(j.error?.message || 'Spotify said no.').slice(0, 160) }), true }
       }
       cache.at = 0
+      clock.forget()
       return send(res, 200, { ok, ...(ok ? {} : { error: from === 'pc' ? 'Nothing is open to play. Start a song in any player on this PC.' : 'That didn’t go through.' }) }), true
     }
     if (p === '/api/music/open' && req.method === 'POST') {
@@ -174,8 +219,11 @@ export function create({ here }) {
         let found = { lines: [], plain: [] }
         try {
           const ask = async (path, o) => { const r = await fetch(`https://lrclib.net/api/${path}?${new URLSearchParams(o)}`, { headers: { 'user-agent': 'media-player' }, signal: AbortSignal.timeout(9000) }); return r.ok ? r.json() : null }
-          const j = (dur && await ask('get', { track_name: title, artist_name: artist, ...(album ? { album_name: album } : {}), duration: String(dur) })) || (await ask('search', { track_name: title, artist_name: artist }))?.find(x => !dur || Math.abs(x.duration - dur) < 6)
-          found = readLyrics(j)
+          const plainTitle = title.replace(/\s*[([](feat|ft|with)\b[^)\]]*[)\]]/i, '').trim()
+          const one = dur ? await ask('get', { track_name: title, artist_name: artist, ...(album ? { album_name: album } : {}), duration: String(dur) }).catch(() => null) : null
+          // The first one is right when it has times and is exactly as long; otherwise every version there is.
+          const list = one?.syncedLyrics && Math.abs(one.duration - dur) <= 1 ? [one] : [one, ...((await ask('search', { track_name: plainTitle, artist_name: artist })) || [])]
+          found = readLyrics(pickLyrics(list, { title, album, dur }) || (one?.plainLyrics ? { plainLyrics: one.plainLyrics } : null))
         } catch {}
         words.set(key, found)
         if (words.size > 20) words.delete(words.keys().next().value)

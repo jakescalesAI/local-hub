@@ -214,17 +214,16 @@ ${A} .we-bar:empty { display: none; } ${A} .we-bar { display: flex; align-items:
 #wggal { display: none; } ${A} #wggal.on { display: grid; position: fixed; z-index: 76; inset: 0; place-items: center; padding: 30px; background: rgba(0, 0, 0, .55); color: #fff; } #wggal > div { display: flex; flex-direction: column; width: min(1080px, 100%); max-height: 100%; border-radius: 30px; overflow: hidden; background: var(--ui-panel); box-shadow: var(--ui-edge), 0 40px 100px rgba(0, 0, 0, .6); } #wggal > .gal-form { width: min(520px, 100%); } #wggal header { display: flex; align-items: center; justify-content: space-between; padding: 24px 28px 14px; } #wggal h2 { margin: 0; font: 700 26px/1.1 var(--display); letter-spacing: -.02em; }
 .gal-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 20px; overflow-y: auto; scrollbar-width: none; padding: 6px 28px 30px; } .gal-list section { display: flex; flex-direction: column; min-width: 0; padding: 18px; border-radius: 22px; background: var(--ui-fill); box-shadow: var(--ui-edge); } .gal-list h3 { margin: 0 0 4px; font-size: 17px; } .gal-list p { margin: 0 0 14px; font-size: 13.5px; line-height: 1.4; color: rgba(255, 255, 255, .6); } .gal-prev { flex: 1; display: grid; place-items: center; min-height: 190px; padding: 14px; border-radius: 16px; background: rgba(0, 0, 0, .25); pointer-events: none; } .gal-prev .wg { width: 100%; font-size: 5.6px; } .gal-prev .wg-i { margin: 0 auto; } .gal-prev .wg-i.z-s { grid-column: 2 / 4; width: 50%; } .gal-prev .wg-i:is(.z-m, .z-l) { grid-column: 2 / 4; } .gal-prev .wg { font-size: 6.6px; } .gal-prev .wg:has(.z-s, .z-m, .z-l) { width: 160%; } .gal-list footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-top: 14px; } .gal-list .ex-tool { flex-wrap: wrap; border-radius: 20px; } .gal-list .ex-tool button { height: 30px; padding: 0 10px; font-size: 12.5px; } .gal-add { height: 38px; padding: 0 20px; border-radius: 19px; background: var(--ui-sel); color: #000; font-size: 14.5px; font-weight: 600; } .gal-add.plain { background: rgba(255, 255, 255, .1); color: #fff; }
 .gal-form form { display: flex; flex-direction: column; gap: 16px; padding: 4px 28px 28px; } .gal-form label { display: flex; flex-direction: column; gap: 8px; font-size: 14px; font-weight: 600; color: rgba(255, 255, 255, .7); } .gal-form :is(input, textarea) { padding: 12px 16px; border: 0; outline: 0; border-radius: 16px; background: rgba(255, 255, 255, .1); color: #fff; font: 600 16px/1.5 var(--font); color-scheme: dark; } .gal-form p { margin: -8px 0 0; font-size: 13px; color: rgba(255, 255, 255, .5); } .gal-form footer { display: flex; justify-content: flex-end; gap: 10px; }
-#tvwid > .wid { width: min(920px, 100%); } #tvwid .wfull { font-size: clamp(11px, 1.15vw, 15px); }
+@media (max-width: 700px) { #tvwid > div { padding: 28px 24px; } } #tvwid .wfull { font-size: clamp(11px, 1.15vw, 15px); }
 /* On a phone or an iPad: two across, under the apps. */
 ${T} .hw-root[data-view] > #tvside { display: block; padding: 0 0 140px; } ${T} #tvside .wg { font-size: clamp(8.4px, 2.45vw, 13px); } ${T} #tvwx { display: none !important; } ${T} .hw-root:not(.hw-edit) > .hw-stage, ${T} .hw-root:not(.hw-edit) .hw-frame { display: none; } ${T} .hw-root:not(.hw-edit) > #dk { padding-bottom: 26px !important; }
 @media (max-width: 820px) { ${T} #tvside .wg { grid-template-columns: repeat(2, minmax(0, 1fr)); } ${T} #tvside .wg :is(.z-w, .z-xl, .z-xxl) { grid-column: span 2; } }
 ${R} #tvside > :is(.tvt-wx, .tvs-card, .hw-cell), ${R} #tvside .tvp-card .mp { cursor: pointer; transition: box-shadow .15s; } ${R} #tvside > :is(.tvt-wx, .tvs-card):is(:hover, :focus-visible) { box-shadow: 0 0 0 3px rgba(255, 255, 255, .9); outline: 0; }
-#tvwid { display: none; } ${A} #tvwid.on { display: grid; position: fixed; z-index: 73; inset: 0; place-items: center; padding: 34px; background: rgba(0, 0, 0, .55); -webkit-backdrop-filter: blur(14px) saturate(1.1); backdrop-filter: blur(14px) saturate(1.1); color: #fff; animation: widin .35s; } ${A} #tvwid.going { animation: widout .26s forwards; } @keyframes widin { from { background: rgba(0, 0, 0, 0); -webkit-backdrop-filter: blur(0); backdrop-filter: blur(0); } } @keyframes widout { to { background: rgba(0, 0, 0, 0); -webkit-backdrop-filter: blur(0); backdrop-filter: blur(0); } }
-#tvwid > div { width: min(860px, 100%); max-height: 100%; overflow-y: auto; scrollbar-width: none; box-sizing: border-box; padding: 44px 52px; border-radius: 34px; background: var(--ui-panel); box-shadow: var(--ui-edge), 0 40px 100px rgba(0, 0, 0, .6); } #tvwid .wx .wxw { font-size: 25px; } #tvwid .gz { width: auto; padding: 0; background: none; box-shadow: none; } #tvwid .cell { display: grid; min-height: 420px; } #tvwid .cell > * { width: 100%; height: 100%; }
-#tvwid > .music { width: min(1280px, 100%); height: min(780px, 100%); overflow: hidden; } #tvwid .music .mpf { zoom: min(.82, calc((100vh - 170px) / 860px)); }
-${A} .wid-x { position: fixed; right: 52px; top: 52px; z-index: 2; display: grid; place-items: center; width: 46px; height: 46px; border-radius: 50%; background: var(--ui-fill); box-shadow: var(--ui-edge); color: #fff; } ${A} .wid-x:hover { background: var(--ui-sel); color: #000; } ${A} .wid-x svg { width: 22px; height: 22px; }
-.wid-app { margin-left: 16px; padding: 8px 18px; border-radius: 99px; background: rgba(255, 255, 255, .1); color: #fff; font: 600 20px/1 var(--font); vertical-align: middle; } .wid-app:hover { background: #fff; color: #000; } #tvwid .mp-s { display: flex; align-items: center; } #tvwid .mp-b { cursor: pointer; } #tvwid .mp-b:hover { background: var(--ui-sel); color: #000; } #tvwid .mpf-ly:not(.plain, .off) p { cursor: default; }
-${A} #tvside .mp.has .mp-art, ${A} #tvpanel .mp.has .mp-art { cursor: zoom-in; }
+#tvwid { display: none; } ${A} #tvwid.on { display: grid; position: fixed; z-index: 73; inset: 0; place-items: center; padding: 34px; color: #fff; cursor: default; } #tvwid::before { content: ""; position: absolute; inset: 0; background: rgba(4, 5, 8, .74); animation: widin .42s ease both; pointer-events: none; } #tvwid.going::before { animation: widout .34s ease both; } #tvwid.going { pointer-events: none; } @keyframes widin { from { opacity: 0; } } @keyframes widout { to { opacity: 0; } }
+#tvwid > div { position: relative; width: min(800px, 82vw); max-height: 80vh; overflow-y: auto; scrollbar-width: none; box-sizing: border-box; padding: clamp(20px, 3vw, 44px); border-radius: 34px; background: var(--ui-panel); box-shadow: var(--ui-edge), 0 40px 100px rgba(0, 0, 0, .6); } #tvwid .wx .wxw { font-size: 25px; } #tvwid .gz { width: auto; padding: 0; background: none; box-shadow: none; } #tvwid .cell { display: grid; min-height: 420px; } #tvwid .cell > * { width: 100%; height: 100%; }
+#tvwid > .music { width: min(1180px, 84vw); height: min(700px, 80vh); overflow: hidden; } #tvwid .music .mpf { zoom: min(.74, calc((80vh - 88px) / 850px), calc((84vw - 104px) / 1120px)); } @media (max-width: 700px) { #tvwid > .music { width: 92vw; height: 82vh; } #tvwid .music .mpf { zoom: calc((92vw - 48px) / 570px); } .mpf.words .mpf-l { transform: translateX(calc(50cqw - 280px)) translateY(-100%); } .mpf-r { left: 0; } }
+#tvwid .mp-s { display: flex; align-items: center; } #tvwid .mp-b { cursor: pointer; } #tvwid .mp-b:hover { background: var(--ui-sel); color: #000; } #tvwid .mpf-ly:not(.plain, .off) p { cursor: default; }
+${A} #tvside .mp.has .mp-art, ${A} #tvpanel .mp.has .mp-art { cursor: pointer; }
 ${R} #tvside .tvs-g { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; text-align: center; } ${R} #tvside .tvs-g > * { min-width: 0; width: auto; } ${R} #tvside .tvs-g svg { max-width: 100%; height: auto; } @media (max-width: 1420px) { ${R} #tvside .tvs-g > * { zoom: .88; } }
 ${R} #tvside :is(.tvs-card, .tvt-wx) { box-sizing: border-box; min-width: 0; overflow: hidden; } ${R} #tvside .tvs-card { display: flex; flex-direction: column; justify-content: space-between; padding: 18px 20px; border-radius: 26px; background: var(--ui-panel); box-shadow: var(--ui-edge); color: #fff; }
 .tvs-h { font: 600 14px/1 var(--display); color: rgba(255, 255, 255, .6); }
@@ -241,10 +240,10 @@ ${A} .hw-card .hw-track { height: 8px; border-radius: 4px; background: rgba(255,
 ${A} #tvside .tvp-card .mp { position: relative; overflow: hidden; }
 ${A} .mp.art::before { content: ""; position: absolute; inset: -40px; background: var(--art) center / cover; filter: blur(40px) saturate(1.5); opacity: .5; }
 ${A} .mp.art > * { position: relative; }
-${A} .mp-art { transition: transform .3s var(--ease), box-shadow .3s var(--ease); } 
+
 ${A} .tvp-card .mp { transition: transform .3s var(--ease), box-shadow .3s var(--ease); } ${A} .tvp-card .mp.has:hover { transform: scale(1.02); box-shadow: var(--ui-edge), 0 26px 60px rgba(0, 0, 0, .55); }
 ${A} .mp.art::before { transition: opacity .4s; } ${A} .mp.art:hover::before { opacity: .75; }
-${A} .mp:hover .mp-art[data-open] { box-shadow: 0 10px 26px rgba(0, 0, 0, .5); } ${A} .mp-art[data-open] { cursor: pointer; } ${A} .mp-art[data-open]:hover { transform: scale(1.06); } 
+${A} .mp-art[data-open] { cursor: pointer; } 
 ${A} .mp-b { transition: transform .18s var(--ease), background .15s, color .15s; } ${A} .mp-b:active { transform: scale(.9); } ${A} #tvside .mp-b:hover { transform: scale(1.08); }
 ${A} .mp-line { transition: height .2s var(--ease); } ${A} .mp-line i { transition: transform .5s linear; } ${A} .mp-bar em { transition: opacity .25s; }
 ${A} .tvp-card .mp:not(:hover) .mp-bar em { opacity: .7; }
@@ -469,7 +468,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   let MU = null, SYS = null, KEYS = { on: false, state: 'off', why: '' }
   const gauge = (label, v, sub = '') => { const p = Math.max(0, Math.min(100, Number(v) || 0)), c = p > 90 ? '#ff453a' : p > 75 ? '#ff9f0a' : '#30d158'; return `<div><svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="26" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="7"/><circle cx="32" cy="32" r="26" fill="none" stroke="${c}" stroke-width="7" stroke-linecap="round" stroke-dasharray="${(p * 1.634).toFixed(1)} 164" transform="rotate(-90 32 32)"/></svg><b>${Math.round(p)}<i>%</i></b><span>${label}</span><em>${sub}</em></div>` }
   async function readPc() {
-    try { const [m, y] = await Promise.all([fetch('/api/music', { cache: 'no-store' }), fetch('/api/desk/system', { cache: 'no-store' })]); MU = m.ok ? await m.json() : null; P?.noted(MU?.now); SND = await fetch('/api/tv/audio/state', { cache: 'no-store' }).then(r => r.json(), () => null); SYS = y.ok ? await y.json() : null } catch { MU = null }
+    try { const t = performance.now(), sys = fetch('/api/desk/system', { cache: 'no-store' }), m = await fetch('/api/music', { cache: 'no-store' }), n = m.ok ? await m.json() : null; P?.noted(n?.now, (t + performance.now()) / 2); MU = n; const y = await sys; SND = await fetch('/api/tv/audio/state', { cache: 'no-store' }).then(r => r.json(), () => null); SYS = y.ok ? await y.json() : null } catch { MU = null }
     if (!dragging) paintPanel()
     paintSide()
     moveTime()
@@ -488,7 +487,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   const boards = {}
   const board = (which = myScreen()) => WG && (boards[which] ??= WG.createBoard({ screen: which, changed: () => { cancelAnimationFrame(board.raf); board.raf = requestAnimationFrame(() => { paintSide(); drawWid(); tick() }) }, music: () => MU?.now }))
   let CK = null
-  ;(async () => { try { WG = await import('/tv/widgets.js?v=5'); CK = await import('/tv/clock.js?v=1'); P ??= await import('/tv/panel.js?v=10'); board()?.refresh(); paintSide(); tick() } catch {} })()
+  ;(async () => { try { WG = await import('/tv/widgets.js?v=6'); CK = await import('/tv/clock.js?v=1'); P ??= await import('/tv/panel.js?v=11'); board()?.refresh(); paintSide(); tick() } catch {} })()
   setInterval(() => {
     if (!WG || document.hidden || !document.querySelector('.hw-root')) return
     const b = board(editOn || undefined)
@@ -671,17 +670,17 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   document.addEventListener('dragend', () => { wdrag = ''; document.querySelectorAll('#tvside .wg-i.over, #tvside .wg-i.drag').forEach(n => n.classList.remove('over', 'drag')); document.querySelectorAll('.wg-ghost.over').forEach(n => n.classList.remove('over')) })
   // A widget, full screen: it grows out of its card to the middle, with everything behind it dimmed and soft.
   const wid = Object.assign(document.createElement('div'), { id: 'tvwid' })
-  wid.innerHTML = `<div role="dialog" aria-modal="true"></div><button type="button" class="wid-x" aria-label="Close">${svg('<path d="M6 6l12 12M18 6 6 18"/>')}</button>`
+  wid.innerHTML = `<div role="dialog" aria-modal="true"></div>`
   document.body.append(wid)
   const widBox = wid.firstElementChild
   let widFrom = null, widMusic = false, words = null, wordsKey = '', widGo = 0
   async function closeWid() {
     if (!wid.classList.contains('on')) return
     const go = ++widGo
+    const song = widMusic, from = widFrom?.isConnected ? widFrom : song ? document.querySelector('#tvside .mp-art') : null
     widMusic = false
     wid.classList.add('going')
-    const from = widFrom?.isConnected ? widFrom : null
-    await P?.grow(widBox, from, true)
+    await (song ? P?.growSong(widBox, from, true) : P?.grow(widBox, from, true))
     if (go !== widGo) return
     wid.classList.remove('on', 'going')
     widBox.getAnimations().forEach(a => a.cancel())
@@ -691,6 +690,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     widGo++
     widFrom = n
     widBox.className = cls
+    widBox.style.width = widBox.style.height = ''
     widBox._html = ''
     widBox.setAttribute('aria-label', label)
     widBox.getAnimations().forEach(a => a.cancel())
@@ -704,12 +704,18 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     if (!w) return
     const a = document.activeElement
     if (a && widBox.contains(a) && a.matches('textarea, input')) return
-    const html = `<div class="wfull">${w.full ? w.full(b.D, it, 'desk') : w.draw(w.sizes.includes('xl') ? 'xl' : w.sizes.includes('l') ? 'l' : w.sizes.at(-1), b.D, it)}</div>`
-    if (widBox._html !== html) widBox.innerHTML = widBox._html = html
+    const html = WG.fullHTML(it, b.D, 'desk', widFrom)
+    if (widBox._html === html) return
+    const was = widBox.firstElementChild?.style.fontSize, len = widBox._html?.length
+    widBox.innerHTML = widBox._html = html
+    // Only what changes its size is measured again: a clock ticking isn't.
+    if (was && Math.abs(len - html.length) < 12) widBox.firstElementChild.style.fontSize = was; else fitWid()
   }
+  const fitWid = () => { if (widK && wid.classList.contains('on') && !widMusic) WG.fitFull(widBox, widFrom, innerWidth * .82, innerHeight * .8, false) }
+  addEventListener('resize', fitWid)
   function openWid(n) {
     if (n.dataset.wid === 'music') return openMusic(n.querySelector('.mp-art') || n)
-    if (n.dataset.wid === 'hub') { showWid(n, 'cell', 'Widget'); widK = ''; widBox.innerHTML = n.innerHTML; return void P.grow(widBox, n) }
+    if (n.dataset.wid === 'hub') { showWid(n, 'cell', 'Widget'); widK = ''; widBox.innerHTML = n.innerHTML; WG.fitFull(widBox, n, innerWidth * .82, innerHeight * .8, true); return void P.grow(widBox, n) }
     const w = WG.W[n.dataset.wid]
     if (!w) return
     showWid(n, 'wid', w.label)
@@ -749,31 +755,45 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     widK = ''
     showWid(n, 'music', 'Music')
     widMusic = true
-    wordsKey = ''
+    askWords = false
+    widBox.innerHTML = ''
     drawMusic()
-    P.grow(widBox, n)
+    P.syncWords(widBox, MU?.now, words)
+    P.growSong(widBox, n)
+    readMu()
   }
   function drawMusic() {
     if (!widMusic || !P) return
     const m = MU?.now || {}, key = `${m.title}|${m.artist}`
-    const html = P.fullPlayer(m, wordsKey === key ? words : null)
-    if (widBox._html !== html) { widBox.innerHTML = widBox._html = html; if (m.from === 'pc' && m.app) widBox.querySelector('.mp-s')?.insertAdjacentHTML('beforeend', `<button type="button" class="wid-app" data-open="1">Open ${esc(m.app)}</button>`) }
+    P.paintFull(widBox, m, wordsKey === key ? words : null, { show: look.words !== false, ask: askWords, on: MU?.lyrics })
     P.syncPlayer(widBox, m)
     P.syncWords(widBox, m, words)
     if (wordsKey !== key && m.title) {
       wordsKey = key
       words = null
-      fetch(`/api/music/lyrics?${new URLSearchParams({ title: m.title, artist: m.artist || '', dur: String(m.dur || '') })}`, { cache: 'no-store' }).then(r => r.json()).then(w => { if (wordsKey === key) { words = w; drawMusic() } }, () => {})
+      fetch(`/api/music/lyrics?${new URLSearchParams({ title: m.title, artist: m.artist || '', dur: String(m.dur || ''), album: m.album || '' })}`, { cache: 'no-store' }).then(r => r.json()).catch(() => ({ lines: [], plain: [] })).then(w => { if (wordsKey === key) { words = w; drawMusic() } })
     }
   }
-  setInterval(() => { if (widMusic && !document.hidden) { P.syncPlayer(widBox, MU?.now); P.syncWords(widBox, MU?.now, words) } }, 250)
+  setInterval(() => { if (widMusic && !document.hidden) { P.syncPlayer(widBox, MU?.now); P.syncWords(widBox, MU?.now, words) } }, 80)
+  // While it's open the song is asked after every second: a new one shows at once, and where it is gets more exact.
+  let askWords = false, muBusy = false
+  async function readMu() {
+    if (muBusy || document.hidden) return
+    muBusy = true
+    const t = performance.now()
+    try { const r = await fetch('/api/music', { cache: 'no-store' }); if (r.ok) { const was = MU?.now, n = await r.json(); MU = n; P?.noted(n.now, (t + performance.now()) / 2); if (was?.title !== n.now?.title || was?.playing !== n.now?.playing) paintSide() } } catch {}
+    muBusy = false
+    drawMusic()
+  }
+  setInterval(() => { if (widMusic) readMu() }, 1000)
   widBox.addEventListener('click', async e => {
     const w = e.target.closest('[data-w]')?.dataset.w, l = e.target.closest('.mpf-ly:not(.plain, .off) p')
-    if (w === 'lyrics') { await fetch('/api/music/lyrics', { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: '{"on":true}' }).catch(() => {}); wordsKey = ''; return drawMusic() }
+    if (w === 'words') { if (MU?.lyrics === false) { askWords = !askWords; look.words = true } else look.words = look.words === false; try { localStorage.setItem(PREF, JSON.stringify(look)) } catch {} if (words?.off && MU?.lyrics) wordsKey = ''; return drawMusic() }
+    if (w === 'open') return void fetch('/api/music/open', { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: '{}' }).then(r => r.json()).then(r => { if (!r.ok) say(r.error || 'That didn’t open.') }, () => {})
+    if (w === 'lyrics') { await fetch('/api/music/lyrics', { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: '{"on":true}' }).catch(() => {}); if (MU) MU.lyrics = true; askWords = false; words = null; wordsKey = ''; return drawMusic() }
     if (['prev', 'play', 'next'].includes(w)) { music(w === 'play' ? 'toggle' : w); return drawMusic() }
     if (l && MU?.now?.seek) { const to = words?.lines?.[l.dataset.l]?.t; if (Number.isFinite(to)) { MU.now.pos = to; P.noted(MU.now); fetch('/api/music/do', { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: JSON.stringify({ action: 'seek', to }) }).catch(() => {}) } }
   })
-  wid.querySelector('.wid-x').addEventListener('click', closeWid)
   wid.addEventListener('click', e => { if (e.target === wid) closeWid() })
   addEventListener('keydown', e => {
     if (e.key === 'Escape' && wid.classList.contains('on')) { e.stopPropagation(); closeWid() }
@@ -865,7 +885,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     if (had) list.querySelector(`[data-w="${had}"]`)?.focus()
   }
   async function openPanel() {
-    try { P ??= await import('/tv/panel.js?v=10') } catch { return }
+    try { P ??= await import('/tv/panel.js?v=11') } catch { return }
     paintPanel()
     panel.classList.add('on')
     dock()
@@ -903,9 +923,6 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     if (document.documentElement.hasAttribute('data-editing')) return
     const art = e.target.closest?.('#tvside .mp.has .mp-art, #tvpanel .mp.has .mp-art')
     if (art && !(art.closest('#tvpanel') && TV?.on && look.target === 'tv')) { e.stopPropagation(); return openMusic(art) }
-    if (!e.target.closest?.('#tvwid .wid-app')) return
-    e.stopPropagation()
-    fetch('/api/music/open', { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: '{}' }).then(r => r.json()).then(r => { if (!r.ok) say(r.error || 'That didn’t open.') }, () => {})
   }, true)
   // The player at the top right of Home is your TV's.
   document.addEventListener('click', e => { const b = e.target.closest('#tvside .mp-b'); if (b) { e.stopPropagation(); press(b.dataset.w) } }, true)
@@ -913,7 +930,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   async function keepTv() {
     if (document.hidden || !document.documentElement.hasAttribute('data-tvlook') || !document.querySelector('.hw-root') || Date.now() - sideAt < 4000) return
     sideAt = Date.now()
-    try { P ??= await import('/tv/panel.js?v=10') } catch { return }
+    try { P ??= await import('/tv/panel.js?v=11') } catch { return }
     if (TV?.on) post({ type: 'state' })
     await Promise.all([readTv(), readPc()])
   }
