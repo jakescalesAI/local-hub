@@ -55,6 +55,12 @@ final class Native {
         return true;
     }
 
+    /** The computer's sound, here too (tv-audio.mjs). */
+    @JavascriptInterface
+    public void playAudio(boolean on) {
+        if (activity.pageTrusted) AudioLink.set(activity.prefs, on);
+    }
+
     /** Leaving Home for an app: its picture waits in front, so coming back never shows a half-drawn page. */
     @JavascriptInterface
     public void veil() {

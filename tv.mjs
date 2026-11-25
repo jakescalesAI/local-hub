@@ -36,7 +36,8 @@ import http from 'node:http'
 import tls from 'node:tls'
 import crypto from 'node:crypto'
 import { spawn } from 'node:child_process'
-import { hubConfig, PORT } from './config.mjs'
+import { hubConfig, saveHubConfig, PORT } from './config.mjs'
+import { isLocal } from './access.mjs'
 import { create as createStream } from './stream.mjs'
 import { create as createWeather } from './weather.mjs'
 
@@ -49,7 +50,7 @@ const MAX_AUDIO = 8 * 2 ** 20
 const COMMAND_TTL = 90e3
 const MAX_WAIT = 30e3
 const TV_SEEN = 60e3
-const TYPES = new Set(['launch', 'input', 'home', 'saver', 'sleep', 'say', 'answer', 'listen', 'open', 'state', 'media', 'brightness', 'volume', 'mirror', 'key', 'tap', 'type'])
+const TYPES = new Set(['launch', 'input', 'home', 'saver', 'sleep', 'say', 'answer', 'listen', 'open', 'state', 'media', 'brightness', 'volume', 'mirror', 'key', 'tap', 'type', 'audio'])
 // The remote from a computer is for now: one that waited (the TV was asleep) is dropped, never played back later.
 const NOW_ONLY = new Set(['key', 'tap', 'type', 'mirror'])
 const NOW_TTL = 4000
@@ -269,6 +270,21 @@ export function create({ here }) {
       return send(res, 200, listener.status()), true
     }
 
+    // Settings › Alexa: the skill's id (it isn't a secret: Amazon's signature is what's checked). This computer only.
+    if (p === '/api/tv/alexa' && req.method === 'GET') return send(res, 200, { skillId: tvConfig().alexa?.skillId || '', port: Number(tvConfig().alexa?.port) || 3109, on: !!alexa.listening(), heard: alexa.heard() }), true
+    if (p === '/api/tv/alexa/model.json' && req.method === 'GET') return send(res, 200, fs.readFileSync(path.join(here, 'tv', 'alexa', 'interaction-model.json'), 'utf8'), 'application/json; charset=utf-8'), true
+    if (p === '/api/tv/alexa' && req.method === 'POST') {
+      if (!isLocal(req)) return send(res, 403, { error: 'Alexa is set up on the computer the hub runs on.' }), true
+      let b
+      try { b = JSON.parse((await readRaw(req, 4096)).toString('utf8') || '{}') } catch { return send(res, 400, { error: 'body is not valid JSON' }), true }
+      const id = String(b.skillId ?? '').trim()
+      if (id && !/^amzn1\.ask\.skill\.[0-9a-f-]{36}$/i.test(id)) return send(res, 400, { error: 'A Skill ID starts with amzn1.ask.skill.' }), true
+      const tv = { ...hubConfig().tv, alexa: { ...hubConfig().tv?.alexa, skillId: id } }
+      saveHubConfig({ tv })
+      alexa.stop()
+      if (id) { alexa.start(); await new Promise(r => setTimeout(r, 250)) }
+      return send(res, 200, { ok: true, on: !!alexa.listening() }), true
+    }
     if (p === '/api/tv/status' && req.method === 'GET') {
       const a = tvConfig().alexa || {}
       return send(res, 200, {
@@ -393,6 +409,7 @@ export function cleanCommand(raw) {
     case 'launch': { const app = str(raw.app, 80); return app ? { type: 'launch', app } : null }
     case 'input': { const name = str(raw.name || raw.id, 80); return name ? { type: 'input', name } : null }
     case 'mirror': return { type: 'mirror', on: raw.on === true }
+    case 'audio': return { type: 'audio', on: raw.on === true }
     case 'key': return KEYS.has(raw.name) ? { type: 'key', name: raw.name } : null
     case 'tap': return [raw.x, raw.y].every(v => Number.isFinite(v) && v >= 0 && v <= 1920) ? { type: 'tap', x: Math.round(raw.x), y: Math.round(raw.y) } : null
     case 'type': return typeof raw.text === 'string' && raw.text.length <= 200 && raw.text ? { type: 'type', text: raw.text.replace(/[\u0000-\u0007\u0009-\u001f\u007f]/g, '') } : null
@@ -738,7 +755,7 @@ const forSpeech = t => String(t)
 
 function createAlexa({ queue, tvsOnline, ask = askAgent }) {
   let server = null
-  let chat = { id: null, at: 0 }
+  let chat = { id: null, at: 0 }, heardAt = 0
 
   function start() {
     const cfg = tvConfig().alexa || {}
@@ -762,6 +779,7 @@ function createAlexa({ queue, tvsOnline, ask = askAgent }) {
         return done(400)
       }
       try {
+        heardAt = Date.now()
         done(200, await handle(body))
       } catch (e) {
         console.error('alexa:', e.message)
@@ -830,7 +848,7 @@ function createAlexa({ queue, tvsOnline, ask = askAgent }) {
     return speech(tvsOnline() ? "I'm on it. The answer will be on your TV in a moment." : "I'm on it. The answer will be in LocalHub's chat on your laptop.")
   }
 
-  return { start, stop, handle, listening: () => !!server }
+  return { start, stop, handle, listening: () => !!server, heard: () => heardAt }
 }
 
 /** Runs one message through LocalHub's own agent, the same one the dashboard's chat uses. */

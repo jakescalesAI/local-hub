@@ -2065,6 +2065,8 @@ let commandLoop = false;
 async function startCommandLoop() {
   if (commandLoop || !IN_HUB) return;
   commandLoop = true;
+  // The computer's sound was coming here: carry on.
+  if (NATIVE) fetch("/api/tv/audio/state", { cache: "no-store" }).then((r) => r.json()).then((a) => { if (a.to === "tv" || a.to === "both") native("playAudio", true); }).catch(() => {});
   let after = null;
   while (commandLoop) {
     try {
@@ -2083,6 +2085,7 @@ function runCommand(cmd) {
   // Controls on the computer: what the TV is doing, and the same controls, without leaving what's on screen.
   if (cmd.type === "state") return reportState();
   if (cmd.type === "mirror") return Mirror.watch(cmd.on);
+  if (cmd.type === "audio") return native("playAudio", !!cmd.on);
   if (cmd.type === "key") { cmd.name === "home" && document.hidden ? (native("toFront"), window.haven.home()) : handleKey(cmd.name); return Mirror.soon(); }
   if (cmd.type === "tap") { Mirror.tap(cmd.x, cmd.y); return Mirror.soon(); }
   if (cmd.type === "type") { if (!Mirror.type(cmd.text)) toast("Open a text box first"); return Mirror.soon(); }

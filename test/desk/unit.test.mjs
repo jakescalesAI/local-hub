@@ -118,3 +118,11 @@ test('the hub’s icon is one of its drawings, and an upload is a picture', asyn
   assert.ok(!iconSvg({ glyph: 'letter', color: 'blue' }, '<script>').includes('<<') && iconSvg({ glyph: 'letter', color: 'blue' }, '<b').includes('&lt;'))
   assert.deepEqual([imageType(Buffer.from('<svg onload=alert(1)>xxxx')), imageType(Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47]), Buffer.alloc(20)]))], ['', 'png'])
 })
+
+test('an icon of your own is a few characters, and only the sound’s places are places', async () => {
+  const { cleanIcon, iconSvg, shortText } = await import('../../identity.mjs')
+  assert.deepEqual([shortText('👨‍👩‍👧x'), shortText('ABCDE'), shortText('  ')], ['👨‍👩‍👧x', 'ABC', ''])
+  assert.ok(!iconSvg(cleanIcon({ glyph: 'text', text: '<a>', color: 'blue' })).includes('<a>'))
+  const { cleanCommand } = await import('../../tv.mjs')
+  assert.deepEqual(cleanCommand({ type: 'audio', on: 'yes' }), { type: 'audio', on: false })
+})
