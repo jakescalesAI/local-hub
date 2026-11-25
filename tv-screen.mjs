@@ -66,8 +66,9 @@ export function create({ here }) {
     // It stops by itself after three minutes (Android's limit): another follows on.
     me.on('close', () => { clearTimeout(t); if (video === me) { video = null; if (viewers.size) setTimeout(startVideo, Date.now() - begun < 2000 ? 2500 : 0) } })
   }
+  let handsUntil = 0
   function startHands() {
-    if (hands || !viewers.size) return
+    if (hands || (!viewers.size && Date.now() > handsUntil)) return
     const me = hands = spawn(adbPath(), ['-s', `${host()}:5555`, 'shell', '-T', 'CLASSPATH=$(pm path local.hub.tv | cut -d: -f2) exec app_process /system/bin --nice-name=localhub.screen local.hub.tv.ScreenInput'], { windowsHide: true, stdio: ['pipe', 'pipe', 'ignore'] })
     let rest = ''
     me.stdin.on('error', () => {})
@@ -82,10 +83,12 @@ export function create({ here }) {
       }
     })
     me.on('error', () => {})
-    me.on('close', () => { if (hands === me) { hands = null; state = null; if (viewers.size) setTimeout(startHands, 2500) } })
+    me.on('close', () => { if (hands === me) { hands = null; state = null; if (viewers.size || Date.now() < handsUntil) setTimeout(startHands, 2500) } })
   }
   function stop() {
     if (viewers.size) return
+    // A remote in use keeps its hands on the TV, without the picture.
+    if (Date.now() < handsUntil) { clearTimeout(stopT); stopT = setTimeout(stop, handsUntil - Date.now() + 200); return }
     const h = host(), v = video, a = hands
     video = hands = state = null
     held = []
@@ -122,9 +125,15 @@ export function create({ here }) {
     if (req.method !== 'POST') return send(res, 405, { error: 'method not allowed' }), true
     const b = await readBody(req).catch(() => ({})) || {}
     const lines = (Array.isArray(b.events) ? b.events.slice(0, 50) : []).map(eventLine).filter(Boolean)
-    if (!lines.length) return send(res, 400, { error: 'events is a list of { key }, { tap } or { text }' }), true
+    if (!lines.length && b.remote !== true) return send(res, 400, { error: 'events is a list of { key }, { tap } or { text }' }), true
+    // The remote, without its screen open: its hands are started for it, and stay two minutes after the last press.
+    if (b.remote === true) {
+      handsUntil = Date.now() + 120_000
+      if (!viewers.size) { clearTimeout(stopT); stopT = setTimeout(stop, 120_500) }
+      if (!hands?.stdin.writable) { try { await (starting ??= begin().finally(() => { starting = null })); startHands() } catch (e) { return send(res, 503, { error: 'The TV isn’t answering.' }), true } }
+    }
     if (!hands?.stdin.writable) return send(res, 409, { error: 'Open the TV’s screen first.' }), true
-    hands.stdin.write(`${lines.join('\n')}\n`)
-    return send(res, 200, { ok: true }), true
+    if (lines.length) hands.stdin.write(`${lines.join('\n')}\n`)
+    return send(res, 200, { ok: true, app: state?.app || '' }), true
   }
 }

@@ -111,9 +111,9 @@ ${R}[data-editing] .controls { visibility: hidden !important; } ${R}[data-editin
 ${R}[data-editing] #tvside { overflow: visible !important; z-index: 14; } ${R}[data-editing] :is(#dk, #dkfav, #tvask, .askbar) { opacity: .12 !important; pointer-events: none !important; } ${R}[data-editing] .tvt-clock .hc { outline: 2px dashed rgba(255, 255, 255, .4); outline-offset: 12px; border-radius: 14px; } ${R}[data-editing] .tvt-clock .hc:hover { outline-color: #fff; }
 .wg-ghost { display: grid; place-items: center; min-width: 0; min-height: 0; padding: 0; border: .2em dashed rgba(255, 255, 255, .28); border-radius: 2.6em; background: rgba(0, 0, 0, .28); color: rgba(255, 255, 255, .6); font: inherit; cursor: pointer; } .wg-ghost:is(:hover, .over) { border-color: #fff; background: rgba(255, 255, 255, .16); color: #fff; }
 ${R}[data-editing][data-editon="saver"] .hw-root > #tvside { top: max(5vh, 36px) !important; right: max(3.5vw, 28px) !important; width: calc(50vw - max(3.5vw, 28px)) !important; max-height: none !important; } ${R}[data-editing][data-editon="saver"] #tvside .wg { font-size: clamp(5px, min(.84vw, (100vh - 2 * max(5vh, 36px)) / 64), 24px); } ${R}[data-editon="saver"] :is(#dk, #dkfav, #tvask, .askbar) { visibility: hidden !important; } ${R}[data-editon="saver"] #tvebar { top: max(5vh, 36px); max-width: calc(50vw - var(--tvrail) - 90px); } ${R}[data-editon="saver"] .hw-root > .hw-bar { top: calc(max(5vh, 36px) + 172px); right: auto; left: calc(var(--tvrail) + 48px); } ${R}[data-editon="saver"] .tvt-clock { position: fixed; left: calc(var(--tvrail) + 48px); bottom: max(6vh, 40px); font-size: clamp(56px, 8vw, 120px); }
-${R}[data-editing][data-editon="phone"] .hw-root > #tvside { width: 340px !important; right: calc(25vw - 170px) !important; max-height: none !important; bottom: 24px; overflow: auto !important; padding: 26px 22px; margin: 0; border-radius: 44px; background: rgba(0, 0, 0, .5); box-shadow: 0 0 0 2px rgba(255, 255, 255, .2); } ${R}[data-editon="phone"] #tvside .wg { grid-template-columns: repeat(2, minmax(0, 1fr)); font-size: 9px; } ${R}[data-editon="phone"] #tvside .we-add { grid-column: span 2; } ${R}[data-editon="phone"] :is(#dk, #dkfav, #tvask, .askbar) { visibility: hidden !important; } ${R}[data-editon="phone"] #tvebar { max-width: calc(60vw - var(--tvrail) - 120px); } ${R}[data-editon="phone"] .hw-root > .hw-bar { top: calc(max(250px, 59.5vh) + 150px); right: auto; left: calc(var(--tvrail) + 48px); }
-@media (max-width: 1240px) { ${R}[data-editing]:not([data-editon="saver"], [data-editon="phone"]) .hw-root > .hw-bar { top: calc(max(250px, 59.5vh) + 66px); right: auto; left: calc(var(--tvrail) + 48px); } ${R}[data-editing]:not([data-editon="saver"]) #tvebar p { padding-top: 60px; } }
-${R}:is([data-editon="saver"], [data-editon="phone"]) .hw-bar :is([data-hw-act="tabs"], [data-hw-act="style"], [data-hw-act="prefs"]) { display: none; }
+${R}[data-editing][data-editon="side"] .hw-root > #tvside { width: min(460px, 38vw) !important; right: 4vw !important; max-height: none !important; bottom: 24px; overflow: auto !important; padding: 26px 22px; margin: 0; border-radius: 36px; background: rgba(0, 0, 0, .5); box-shadow: 0 0 0 2px rgba(255, 255, 255, .2); } ${R}[data-editon="side"] #tvside .wg { font-size: min(7.8px, .64vw); } ${R}[data-editon="side"] :is(#dk, #dkfav, #tvask, .askbar) { visibility: hidden !important; } ${R}[data-editon="side"] #tvebar { max-width: calc(52vw - var(--tvrail) - 60px); } ${R}[data-editon="side"] .hw-root > .hw-bar { top: calc(max(250px, 59.5vh) + 150px); right: auto; left: calc(var(--tvrail) + 48px); } ${R}[data-editing][data-editon="phone"] .hw-root > #tvside { width: 340px !important; right: calc(25vw - 170px) !important; max-height: none !important; bottom: 24px; overflow: auto !important; padding: 26px 22px; margin: 0; border-radius: 44px; background: rgba(0, 0, 0, .5); box-shadow: 0 0 0 2px rgba(255, 255, 255, .2); } ${R}[data-editon="phone"] #tvside .wg { grid-template-columns: repeat(2, minmax(0, 1fr)); font-size: 9px; } ${R}[data-editon="phone"] #tvside .we-add { grid-column: span 2; } ${R}[data-editon="phone"] :is(#dk, #dkfav, #tvask, .askbar) { visibility: hidden !important; } ${R}[data-editon="phone"] #tvebar { max-width: calc(60vw - var(--tvrail) - 120px); } ${R}[data-editon="phone"] .hw-root > .hw-bar { top: calc(max(250px, 59.5vh) + 150px); right: auto; left: calc(var(--tvrail) + 48px); }
+@media (max-width: 1240px) { ${R}[data-editing]:not([data-editon="saver"], [data-editon="phone"], [data-editon="side"]) .hw-root > .hw-bar { top: calc(max(250px, 59.5vh) + 66px); right: auto; left: calc(var(--tvrail) + 48px); } ${R}[data-editing]:not([data-editon="saver"]) #tvebar p { padding-top: 60px; } }
+${R}:is([data-editon="saver"], [data-editon="phone"], [data-editon="side"]) .hw-bar :is([data-hw-act="tabs"], [data-hw-act="style"], [data-hw-act="prefs"]) { display: none; }
 ${T}[data-editing] :is(.hw-stage, .hw-frame, #dk, #dkfav, .hw-bar [data-hw-act="tabs"], .hw-bar [data-hw-act="style"]) { display: none !important; } ${T}[data-editing] .hw-root > #tvside { display: block !important; padding: 14px 0 190px; }
 ${T}[data-editing] #tvebar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; position: fixed; z-index: 61; left: 10px; right: 10px; bottom: calc(env(safe-area-inset-bottom, 0px) + 10px); padding: 10px; border-radius: 26px; background: #26262c; color: rgba(255, 255, 255, .7); font-size: 13px; box-shadow: 0 10px 40px rgba(0, 0, 0, .6); } ${T} #tvebar p { display: none; } ${T} #tvebar .ex-tool { max-width: 100%; overflow-x: auto; }
 #wepop { display: none; position: fixed; z-index: 90; flex-direction: column; min-width: 170px; padding: 8px; border-radius: 20px; background: #2a2a31; box-shadow: 0 0 0 1px rgba(255, 255, 255, .14), 0 20px 50px rgba(0, 0, 0, .6); } #wepop.on { display: flex; } #wepop button { display: flex; justify-content: space-between; gap: 24px; padding: 11px 14px; border-radius: 13px; color: #fff; font-size: 15px; font-weight: 600; text-align: left; } #wepop button:hover { background: rgba(255, 255, 255, .12); } #wepop button[disabled] { opacity: .35; pointer-events: none; } #wepop em { font-style: normal; font-weight: 500; color: rgba(255, 255, 255, .6); }
@@ -245,6 +245,7 @@ ${A} .tvp-card .mp { transition: transform .3s var(--ease), box-shadow .3s var(-
 ${A} .mp.art::before { transition: opacity .4s; } ${A} .mp.art:hover::before { opacity: .75; }
 ${A} .mp-art[data-open] { cursor: pointer; } 
 ${A} .mp-b { transition: transform .18s var(--ease), background .15s, color .15s; } ${A} .mp-b:active { transform: scale(.9); } ${A} #tvside .mp-b:hover { transform: scale(1.08); }
+${A} .tvm-b em { margin-left: 8px; font: 600 14px var(--font); font-style: normal; white-space: nowrap; } ${A} .tvm-b:has(em) { width: auto !important; padding: 0 18px; display: inline-flex; align-items: center; border-radius: 99px; }
 ${A} .mp-line { transition: height .2s var(--ease); } ${A} .mp-line i { transition: transform .5s linear; } ${A} .mp-bar em { transition: opacity .25s; }
 ${A} .tvp-card .mp:not(:hover) .mp-bar em { opacity: .7; }
 ${A} .mp-bar.seek { cursor: pointer; padding: 8px 0; margin-top: 2px !important; margin-bottom: -8px; touch-action: none; user-select: none; } ${A} .mp-bar.seek .mp-line::before { content: ""; position: absolute; inset: -14px -4px; } ${A} .mp-bar.drag .mp-line { height: 10px; } ${A} .mp-bar.drag .mp-line i { transition: none !important; } ${A} .mp-bar.drag .mp-line::after { transform: scale(1) !important; } ${A} .mp-bar.seek .mp-line::after { content: ""; position: absolute; left: var(--at, 0%); top: 50%; width: 20px; height: 20px; margin: -10px 0 0 -10px; border-radius: 50%; background: #fff; box-shadow: 0 2px 8px rgba(0, 0, 0, .5); transform: scale(0); transition: transform .2s var(--ease); } ${A} .mp-bar.seek:hover .mp-line { height: 10px; } ${A} .mp-bar.seek:hover .mp-line::after { transform: scale(1); }
@@ -478,7 +479,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   function moveTime() {
     if (!P || document.hidden) return
     P.syncPlayer(side, MU?.now)
-    if (panel.classList.contains('on')) P.syncPlayer(panel, TV?.on && look.target === 'tv' ? TV.state?.media : MU?.now)
+    if (panel.classList.contains('on')) P.syncPlayer(panel, TV?.setUp && look.target === 'tv' ? tvMedia() : MU?.now)
   }
   setInterval(moveTime, 500)
   let SND = null, editB = false
@@ -487,8 +488,8 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   const myScreen = () => (document.documentElement.hasAttribute('data-tvtouch') && matchMedia('(max-width: 820px)').matches ? 'phone' : 'desk')
   const boards = {}
   const board = (which = myScreen()) => WG && (boards[which] ??= WG.createBoard({ screen: which, changed: () => { cancelAnimationFrame(board.raf); board.raf = requestAnimationFrame(() => { paintSide(); drawWid(); tick() }) }, music: () => MU?.now }))
-  let CK = null
-  ;(async () => { try { WG = await import('/tv/widgets.js?v=10'); CK = await import('/tv/clock.js?v=1'); P ??= await import('/tv/panel.js?v=14'); board()?.refresh(); paintSide(); tick() } catch {} })()
+  let CK = null, SB = null, PC = null
+  ;(async () => { try { WG = await import('/tv/widgets.js?v=12'); CK = await import('/tv/clock.js?v=1'); SB = await import('/tv/side.js?v=4'); P ??= await import('/tv/panel.js?v=15'); board()?.refresh(); paintSide(); tick() } catch {} })()
   setInterval(() => {
     if (!WG || document.hidden || !document.querySelector('.hw-root')) return
     const b = board(editOn || undefined)
@@ -526,7 +527,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     const which = editOn || myScreen(), bar = document.getElementById('tvebar') || document.body.appendChild(Object.assign(document.createElement('div'), { id: 'tvebar' }))
     editing ? (document.documentElement.dataset.editon = which) : delete document.documentElement.dataset.editon
     const lost = editing ? [...b.pack().out].map(k => b.items().find(x => x.k === k)).filter(Boolean) : []
-    const barHtml = editing ? `<div class="ex-tool">${[['desk', 'This computer'], ['tv', 'Your TV'], ['phone', 'Phone'], ['saver', 'Screensaver']].map(([k, t]) => `<button type="button" data-ws="${k}" class="${which === k ? 'on' : ''}">${t}</button>`).join('')}</div><button type="button" class="gal-add plain" data-clockedit>Clock</button>${lost.map(x => `<span class="te-out">No room for ${esc(WG.W[x.id].label)} <button type="button" data-lost="${x.k}">Remove</button></span>`).join('')}<p>${which === 'phone' ? 'Drag a widget onto another to change the order.' : 'Drag a widget to any slot, or press + on a free one.'} ${which === 'saver' ? 'The screensaver has the whole right half, on this computer and the TV.' : which === 'tv' ? 'This is the corner your TV’s Home has.' : ''}</p>` : ''
+    const barHtml = editing ? `<div class="ex-tool">${[['desk', 'This computer'], ['tv', 'Your TV'], ['phone', 'Phone'], ['saver', 'Screensaver'], ['side', 'Sidebar']].map(([k, t]) => `<button type="button" data-ws="${k}" class="${which === k ? 'on' : ''}">${t}</button>`).join('')}</div><button type="button" class="gal-add plain" data-clockedit>Clock</button>${lost.map(x => `<span class="te-out">No room for ${esc(WG.W[x.id].label)} <button type="button" data-lost="${x.k}">Remove</button></span>`).join('')}<p>${which === 'phone' || which === 'side' ? 'Drag a widget onto another to change the order.' : 'Drag a widget to any slot, or press + on a free one.'} ${which === 'side' ? 'These are in the Sidebar, under its controls.' : which === 'saver' ? 'The screensaver has the whole right half, on this computer and the TV.' : which === 'tv' ? 'This is the corner your TV’s Home has.' : ''}</p>` : ''
     if (bar._html !== barHtml) bar.innerHTML = bar._html = barHtml
     const grid = side.querySelector('.wg') || side.appendChild(Object.assign(document.createElement('div'), { className: 'wg' }))
     grid.dataset.screen = editing ? editOn || myScreen() : ''
@@ -678,6 +679,8 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   async function closeWid() {
     if (!wid.classList.contains('on')) return
     const go = ++widGo
+    tool = ''
+    clearInterval(toolT)
     const song = widMusic, from = widFrom?.isConnected ? widFrom : song ? document.querySelector('#tvside .mp-art') : null
     widMusic = false
     wid.classList.add('going')
@@ -697,11 +700,12 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     widBox.getAnimations().forEach(a => a.cancel())
     wid.classList.remove('going')
     wid.classList.add('on')
+    wid.classList.toggle('over', !!n?.closest?.('#tvpanel') || !!n?._from)
   }
-  let widK = '', widId = ''
+  let widK = '', widId = '', widIn, widIt = null
   function drawWid() {
     if (!widK || !wid.classList.contains('on')) return
-    const b = board(), it = b?.items().find(x => x.k === widK), w = it && WG.W[it.id]
+    const b = board(widIn), it = widIt || b?.items().find(x => x.k === widK), w = it && WG.W[it.id]
     if (!w) return
     const a = document.activeElement
     if (a && widBox.contains(a) && a.matches('textarea, input')) return
@@ -719,13 +723,17 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     if (n.dataset.wid === 'hub') { showWid(n, 'cell', 'Widget'); widK = ''; widBox.innerHTML = n.innerHTML; WG.fitFull(widBox, n, innerWidth * .82, innerHeight * .8, true); return void P.grow(widBox, n) }
     const w = WG.W[n.dataset.wid]
     if (!w) return
-    showWid(n, 'wid', w.label)
+    showWid(n._from || n, 'wid', w.label)
+    tool = ''
+    widIt = n._it || null
+    widIn = n.closest?.('#tvpanel') ? 'side' : undefined
+    if (n._it) { widFrom = { offsetWidth: 300, offsetHeight: 255, isConnected: true, getBoundingClientRect: () => (n._from || widBox).getBoundingClientRect(), style: {} } }
     widK = n.dataset.k
     widId = n.dataset.wid
     w.open?.()
-    board().refresh(w.fullNeeds || [])
+    board(widIn).refresh([...(w.needs?.('l') || []), ...(w.fullNeeds || [])])
     drawWid()
-    P.grow(widBox, n)
+    P.grow(widBox, n._from || n)
     if (w.label === 'Note') setTimeout(() => widBox.querySelector('textarea')?.focus(), 450)
   }
   // A button in a widget, wherever it is drawn.
@@ -738,8 +746,9 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     if (k === 'app') return window.HubDesk?.launch?.(v)
     // Safari leaves the box focused, and a focused box isn't redrawn.
     if (widBox.contains(n) && widBox.contains(document.activeElement)) document.activeElement.blur()
-    board().act(n.dataset.wa)
-    setTimeout(drawWid, 30)
+    const inSide = n.closest('#tvpanel') ? 'side' : widBox.contains(n) ? widIn : undefined
+    board(inSide).act(n.dataset.wa)
+    setTimeout(() => { drawWid(); if (inSide) paintPanel(); else board('side')?.ask('board') }, 30)
   }, true)
   let noteT = 0
   widBox.addEventListener('submit', async e => { if (!e.target.matches('[data-caladd]')) return; e.preventDefault(); document.activeElement?.blur(); await board().calAdd(); widBox._html = ''; drawWid(); widBox.querySelector('[data-cal="title"]')?.focus() })
@@ -755,6 +764,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   function openMusic(n) {
     widK = ''
     showWid(n, 'music', 'Music')
+    tool = ''
     widMusic = true
     askWords = false
     widBox.innerHTML = ''
@@ -804,7 +814,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     const n = e.target?.matches?.('#tvside .wg-i[tabindex]') ? e.target : null
     if (n && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openWid(n) }
   }, true)
-  document.addEventListener('click', e => { if (document.documentElement.hasAttribute('data-editing')) return; const n = e.target.closest?.('#tvside .wg-i'); if (!n || !P || !WG || e.target.closest('button, a, input, [data-wa], .mp-bar.seek, .mp-art') || n.closest('#wggal')) return; e.stopPropagation(); openWid(n) }, true)
+  document.addEventListener('click', e => { if (document.documentElement.hasAttribute('data-editing')) return; const n = e.target.closest?.('#tvside .wg-i, #tvpanel .wg-i'); if (!n || !P || !WG || e.target.closest('button, a, input, [data-wa], .mp-bar.seek, .mp-art') || n.closest('#wggal')) return; e.stopPropagation(); openWid(n) }, true)
   function arrange() {
     const dup = document.documentElement.matches('[data-tvtouch]') && matchMedia('(max-width: 700px)').matches && !document.querySelector('.hw-root.hw-edit')
     for (const c of document.querySelectorAll('.hw-grid > .hw-cell:not(.a)')) c.toggleAttribute('data-dup', dup && ((id => /(^|-)(clock|date|weather)$/.test(id) && !/world-clock$/.test(id))(c.querySelector('[data-hw-widget], [data-hw-wid]')?.dataset.hwWidget || c.dataset.hwKey || '')))
@@ -851,55 +861,183 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   // Controls' round buttons: yours to choose.
   const sym = d => svg(d).replace('<svg', '<svg class="sym"')
   const BTN = [['ask', 'Assistant', () => P.IC.mic], ['pcbrowser', 'Browser', () => sym(IC.globe)], ['mirror', 'TV screen', () => P.IC.pic], ['pcfiles', 'Files', () => sym(IC.files)], ['pcmute', 'Mute', () => sym('<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="m16 9.5 5 5M21 9.5l-5 5"/>')], ['pcsaver', 'Screensaver', () => P.IC.moon], ['pcadd', 'Add app', () => P.IC.plus], ['settings', 'Settings', () => P.IC.gear], ['pcedit', 'Edit Home', () => sym('<path d="m4 20 1-4.5L16.5 4a2.1 2.1 0 0 1 3 3L8 18.5z"/>')], ['displays', 'Displays', () => P.IC.sun], ['musicset', 'Platforms', () => P.IC.note], ['remotes', 'Remotes', () => P.IC.sliders], ['tvpower', 'TV power', () => P.IC.power], ['tvhome', 'TV home', () => P.IC.home]]
+  const BTNC = { ask: '#bf5af2', pcbrowser: '#0a84ff', mirror: '#64d2ff', pcfiles: '#0a84ff', pcmute: '#ff453a', pcsaver: '#5e5ce6', pcadd: '#30d158', settings: '#8e8e93', pcedit: '#ff9f0a', displays: '#ffd60a', musicset: '#ff375f', remotes: '#ff9f0a', tvpower: '#30d158', tvhome: '#0a84ff' }
   const picked = () => (Array.isArray(look.btns) && look.btns.length >= 4 ? look.btns : BTN.slice(0, 8).map(b => b[0]))
-  const btnOf = ([id, label, ic]) => P.round((editB ? 'eb:' : '') + id, ic(), id === 'pcmute' && MU?.volume === 0 ? 'Unmute' : label, editB ? picked().includes(id) : id === 'pcmute' && MU?.volume === 0)
+  const btnOf = ([id, label, ic]) => `<button type="button" class="sb-rnd${(editB ? picked().includes(id) : id === 'pcmute' && MU?.volume === 0) ? ' on' : ''}" data-w="${editB ? 'eb:' : ''}${id}" style="--c:${BTNC[id] || '#8e8e93'}"><b>${ic()}</b><em>${esc(id === 'pcmute' && MU?.volume === 0 ? 'Unmute' : id === 'tvpower' ? SB?.powerText(pw) === 'Turn Off' ? 'Turn TV Off' : pw.busy ? SB.powerText(pw) : 'Turn TV On' : label)}</em></button>`
+  // What the TV is playing: its own, or this computer's song, which is what it shows when it has none.
+  const tvMedia = () => { const m = TV?.state?.media; return !m?.title || m.title === MU?.now?.title ? MU?.now : m }
+  // On or off, as the TV itself says: asked when it's looked at, and every few seconds while it is.
+  let pw = { on: null, busy: false }
+  async function readPower() { if (pw.busy || !TV?.setUp) return; try { const r = await (await fetch('/api/tv/power', { cache: 'no-store' })).json(); if (!pw.busy) pw = { on: r.known ? r.on : TV?.on ? true : null, busy: false } } catch {} paintPanel(); drawTool() }
+  async function readQuick() { try { const r = await fetch('/api/pc', { cache: 'no-store' }); PC = r.ok ? await r.json() : null } catch { PC = null } if (!sliding2) { paintPanel(); drawTool() } }
+  const askPc = (body, ok) => fetch('/api/pc', { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: JSON.stringify(body) }).then(r => r.json()).then(r => { if (!r.ok) say(r.error || 'That didn’t go through.'); else ok?.(); setTimeout(readQuick, 500) }, () => say('The hub didn’t answer.'))
+  let sliding2 = null, slT = 0
+  function setSl(n, v, done) {
+    const id = n.dataset.sl, val = Math.max(id.startsWith('mon:') ? 5 : 0, Math.min(100, Math.round(v)))
+    n.style.setProperty('--v', `${val}%`)
+    n.setAttribute('aria-valuenow', val)
+    n.querySelector('em').textContent = `${val}%`
+    const go = () => {
+      const lev = b => fetch('/api/music/level', { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: JSON.stringify(b) }).catch(() => {})
+      if (id === 'vol') { if (MU) MU.volume = val; lev({ what: 'volume', value: val }) }
+      else if (id.startsWith('mon:')) { const m = MU?.monitors?.find(x => x.id === id.slice(4)); if (m) m.level = val; lev({ what: 'brightness', value: val, id: id.slice(4) }) }
+      else if (id.startsWith('mix:')) { const x = PC?.mix?.find(x => x.id === id.slice(4)); if (x) x.level = val; fetch('/api/pc', { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: JSON.stringify({ what: 'mix', id: id.slice(4), level: val }) }).catch(() => {}) }
+    }
+    clearTimeout(slT)
+    if (done) go(); else slT = setTimeout(go, id.startsWith('mon:') ? 220 : 70)
+  }
+  const atX = (n, e) => { const r = n.getBoundingClientRect(); return (e.clientX - r.left) / r.width * 100 }
+  addEventListener('pointerdown', e => { const n = e.target.closest?.('.sb-sl'); if (!n) return; sliding2 = n; n.setPointerCapture(e.pointerId); setSl(n, atX(n, e), false) })
+  addEventListener('pointermove', e => { if (sliding2) setSl(sliding2, atX(sliding2, e), false) })
+  for (const x of ['pointerup', 'pointercancel']) addEventListener(x, e => { if (!sliding2) return; const n = sliding2; sliding2 = null; if (x === 'pointerup') setSl(n, atX(n, e), true) })
+  addEventListener('keydown', e => { const n = e.target.closest?.('.sb-sl'), d = { ArrowRight: 5, ArrowUp: 5, ArrowLeft: -5, ArrowDown: -5 }[e.key]; if (n && d) { e.preventDefault(); e.stopPropagation(); setSl(n, Number(n.getAttribute('aria-valuenow')) + d, true) } }, true)
+  // ── Tools, full screen: the TV's remote, the mixer, a stopwatch, a calculator… ──
+  let tool = '', toolT = 0, calc = null, watchT = { at: 0, from: 0, laps: [] }, unit = { kind: 'Length', v: '1', a: 'mi', b: 'km' }
+  function drawTool(force) {
+    if (!tool || !wid.classList.contains('on') || !SB) return
+    const a = document.activeElement
+    if (!force && a && widBox.contains(a) && a.matches('input, select, textarea')) return
+    const html = tool === 'remote' || tool === 'type' ? SB.remoteHTML({ TV, pw }) : tool === 'mixer' ? SB.mixerHTML({ PC, MU }) : tool === 'watch' ? SB.watchHTML(watchT) : tool === 'calc' ? SB.calcHTML(calc ??= SB.newCalc()) : SB.convertHTML(unit)
+    if (widBox._html === html || sliding2) return
+    widBox.innerHTML = widBox._html = html
+  }
+  function openTool(id, from) {
+    if (!SB || !WG) return
+    if (['timer', 'notes', 'todo', 'calendar', 'weather', 'world', 'files'].includes(id)) {
+      // These are widgets: opened from here as they are from Home.
+      const k = id === 'notes' ? 'quicknote' : `tool-${id}`, n = Object.assign(document.createElement('div'), { className: 'wg-i' })
+      n.dataset.wid = id
+      n.dataset.k = k
+      n._it = { k, id, size: 'l' }
+      n._from = from
+      return openWid(n)
+    }
+    showWid(from || panel, 'tool-w', SB.TOOLS[id]?.[0] || 'Type on the TV')
+    widK = ''
+    widMusic = false
+    tool = id
+    if (id === 'remote' || id === 'type') { readTv(); readPower(); sendKeys([]) }
+    if (id === 'mixer') readQuick()
+    drawTool(true)
+    P.grow(widBox, from)
+    if (id === 'type') setTimeout(() => widBox.querySelector('.trm-type input')?.focus(), 450)
+    clearInterval(toolT)
+    toolT = setInterval(() => { if (!tool || !wid.classList.contains('on')) return clearInterval(toolT); if (tool === 'watch' && watchT.from) drawTool(); else if (tool === 'mixer' && Date.now() % 2000 < 100) readQuick(); else if (tool === 'remote' && Date.now() % 6000 < 100) readPower() }, 100)
+  }
+  // Keys go to the TV itself, whatever app is on it; its own page is the way when that isn't there.
+  let keyQ = [], keyBusy = false, tvApp = ''
+  async function sendKeys(events) {
+    keyQ.push(...events)
+    if (keyBusy || (!keyQ.length && events.length)) return
+    keyBusy = true
+    do {
+      const now = keyQ.splice(0, 20)
+      try {
+        const r = await fetch('/api/tv/screen/input', { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: JSON.stringify({ remote: true, events: now }) })
+        if (r.ok) tvApp = (await r.json()).app || tvApp
+        else if (now.length && r.status !== 400) for (const x of now) x.key && post({ type: 'key', name: x.key })
+      } catch {}
+    } while (keyQ.length)
+    keyBusy = false
+  }
+  let hold = 0
+  const endHold = () => { clearTimeout(hold); clearInterval(hold); hold = 0 }
+  widBox.addEventListener('pointerdown', e => {
+    const b = e.target.closest('[data-rk]'), pad = e.target.closest('[data-pad]')
+    if (!b && !pad) return
+    if (b && e.target.closest('.trm-type')) return
+    e.preventDefault()
+    endHold()
+    const x0 = e.clientX, y0 = e.clientY, k = b?.dataset.rk
+    let swiped = false, sx = x0, sy = y0
+    const tap = key => { sendKeys([{ key }]); navigator.vibrate?.(8); const n = widBox.querySelector(`[data-rk="${key}"]`); n?.classList.add('hit'); setTimeout(() => n?.classList.remove('hit'), 130) }
+    const arrow = ['up', 'down', 'left', 'right', 'volup', 'voldown'].includes(k)
+    if (arrow && !pad) tap(k)
+    if (arrow) hold = setTimeout(() => { if (swiped) return; swiped = true; tap(k); hold = setInterval(() => tap(k), 170) }, 420)
+    const move = ev => {
+      if (!pad) return
+      const dx = ev.clientX - sx, dy = ev.clientY - sy
+      if (Math.max(Math.abs(dx), Math.abs(dy)) < 42) return
+      endHold()
+      swiped = true
+      tap(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : dy > 0 ? 'down' : 'up')
+      sx = ev.clientX
+      sy = ev.clientY
+    }
+    const up = ev => { endHold(); removeEventListener('pointermove', move); removeEventListener('pointerup', up); removeEventListener('pointercancel', up); if (ev.type === 'pointerup' && !swiped && k && !(arrow && !pad)) tap(k) }
+    addEventListener('pointermove', move)
+    addEventListener('pointerup', up)
+    addEventListener('pointercancel', up)
+  })
+  const RK = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down', Enter: 'enter', Backspace: 'back', Home: 'home', ' ': 'ai', m: 'menu', MediaPlayPause: 'ai' }
+  addEventListener('keydown', e => {
+    if (!tool || !wid.classList.contains('on') || e.ctrlKey || e.metaKey || e.altKey || e.target.matches?.('input, select, textarea, .sb-sl')) return
+    if ((tool === 'remote' || tool === 'type') && RK[e.key]) { e.preventDefault(); e.stopPropagation(); sendKeys([{ key: RK[e.key] }]); const n = widBox.querySelector(`[data-rk="${RK[e.key]}"]`); n?.classList.add('hit'); setTimeout(() => n?.classList.remove('hit'), 130) }
+    if (tool === 'calc') { const k = { '*': '×', '/': '÷', '-': '−', Enter: '=', Backspace: '⌫', Delete: 'AC', c: 'AC' }[e.key] || (/^[\d.+%=]$/.test(e.key) ? e.key : ''); if (k) { e.preventDefault(); e.stopPropagation(); SB.calcKey(calc, k); drawTool() } }
+  }, true)
+  widBox.addEventListener('submit', e => {
+    if (!e.target.matches('[data-rmtype]')) return
+    e.preventDefault()
+    const i = e.target.querySelector('input'), text = i.value
+    if (!text) return sendKeys([{ key: 'enter' }])
+    i.value = ''
+    if (tvApp === 'local.hub.tv' || !tvApp) post({ type: 'type', text }); else sendKeys([{ text }])
+  })
+  widBox.addEventListener('input', e => { if (!('uv' in e.target.dataset)) return; unit.v = e.target.value; widBox.querySelector('[data-uo]').textContent = SB.converted(unit) })
+  widBox.addEventListener('change', e => { const d = e.target.dataset; if ('ua' in d) unit.a = e.target.value; else if ('ub' in d) unit.b = e.target.value; else return; widBox.querySelector('[data-uo]').textContent = SB.converted(unit) })
+  widBox.addEventListener('click', e => {
+    if (!tool) return
+    const n = e.target.closest('button'), d = n?.dataset
+    if (!d) return
+    if (d.rk === 'del') return void sendKeys([{ key: 'del' }])
+    if (d.ck) { SB.calcKey(calc, d.ck); return drawTool(true) }
+    if (d.uk) { const k = Object.keys(SB.UNITS[d.uk]); unit = { kind: d.uk, v: unit.v, a: k[0], b: k[1] }; return drawTool(true) }
+    if ('us' in d) { [unit.a, unit.b] = [unit.b, unit.a]; return drawTool(true) }
+    if (d.st === 'go') { watchT = watchT.from ? { ...watchT, at: watchT.at + Date.now() - watchT.from, from: 0 } : { ...watchT, from: Date.now() }; return drawTool(true) }
+    if (d.st === 'lap') { const t = watchT.at + (watchT.from ? Date.now() - watchT.from : 0); watchT = watchT.from ? { ...watchT, laps: [t - watchT.laps.reduce((a, x) => a + x, 0), ...watchT.laps].slice(0, 50) } : { at: 0, from: 0, laps: [] }; return drawTool(true) }
+    if (d.w) press(d.w, n)
+  })
   function paintPanel() {
     if (!P) return
     const on = !!TV?.on, st = (on && TV.state) || {}
-    const tvSide = on && look.target === 'tv'
-    const sy = d => svg(d).replace('<svg', '<svg class="sym"'), mons = MU?.monitors || [], lit = mons.filter(m => m.on)
+    const tvSide = !!TV?.setUp && look.target === 'tv'
     const list = panel.querySelector('.wpanel-list')
-    const pill = (id, ic, t1, v) => P.pill(id, ic, t1, v ? 'On screen' : 'Hidden', v)
     const sw = panel.querySelector('.wpanel-title .wpt'), swHtml = `<button type="button" data-w="to:pc" class="${tvSide ? '' : 'on'}">This PC</button><button type="button" data-w="to:tv" class="${tvSide ? 'on' : ''}">Your TV</button>`
-    sw.hidden = !on
+    sw.hidden = !TV?.setUp
     if (sw._html !== swHtml) sw.innerHTML = sw._html = swHtml
-    const html = ''
-      + P.player(tvSide ? st.media || {} : MU?.now || {}, true)
-      + (tvSide
-        ? P.slider('brightness', st.brightness ?? 100, P.IC.sun, 'TV brightness') + P.slider('volume', st.volume ?? 0, P.IC.vol, 'TV volume', st.volume == null)
-          + `<div class="wpq">${P.round('home', P.IC.home, 'TV home') + P.round('tvback', sy('<path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/>'), 'Back') + P.round('mirror', P.IC.pic, 'Screen') + P.round('sleep', P.IC.power, 'Power')}</div>`
-          + P.pill('saver', P.IC.moon, 'Screensaver', 'Start it') + P.pill('tvmenu', P.IC.sliders, 'Menu', 'The TV’s own')
-        : P.slider('brightness', MU?.brightness ?? 0, P.IC.sun, 'Brightness', MU?.brightness == null) + P.slider('volume', MU?.volume ?? 0, P.IC.vol, 'Volume', MU?.volume == null)
-          + `<div class="wpq">${BTN.filter(b => picked().slice(0, 4).includes(b[0])).map(btnOf).join('')}</div>`
-          + picked().slice(4).map(id => BTN.find(b => b[0] === id)).filter(Boolean).map(btnOf).join('')
-          + (editB ? `<div class="wph">Tap to add or remove a button</div>${BTN.filter(b => !picked().includes(b[0])).map(btnOf).join('')}` : '')
-          + (SND?.available && (on || SND.to !== 'pc') ? `<div class="wph">Sound plays on</div><div class="wpt wps3">${[['pc', 'This PC'], ['tv', 'Your TV'], ['both', 'Both']].map(([k, t]) => `<button type="button" data-w="snd:${k}" class="${SND.to === k ? 'on' : ''}">${t}</button>`).join('')}</div>${SND.to !== 'pc' && !SND.tv ? '<div class="wpn">Waiting for the TV…</div>' : ''}` : '')
-          + (MU?.outputs?.length ? `<div class="wph">This PC’s sound comes out of</div>${MU.outputs.map(o => P.pill(`out:${o.id}`, P.IC.vol, outName(o.name)[0], outName(o.name)[1], o.on)).join('')}` : '')
-          + (mons.length > 1 ? `<div class="wph">Brightness moves</div>${mons.map(m => P.pill(`mon:${m.id}`, P.IC.sun, m.name, m.on ? `${m.level}%` : 'Left alone', m.on)).join('')}` : ''))
-      + (tvSide ? (st.inputs || []).map(i => P.pill(`input:${i.name}`, P.IC.input, i.name, i.sub || 'Input')).join('') : '')
-      + '<div class="wph">Music</div>' + P.pill('music', P.IC.note, 'Music from', SRC[MU?.source] || 'Automatic', true) + P.pill('musicset', P.IC.sliders, 'Platforms', MU?.spotify?.connected ? 'Spotify connected' : 'Connect one')
-      + '<div class="wph">On Home</div>'
-      + P.pill('homeclock', P.IC.clock, 'Clock', look.clock, look.clock !== 'Off') + (board()?.ready() ? [...new Set(board().list().map(x => x.id))].map(id => P.pill(`wgo:${id}`, WG.W[id].ic, WG.W[id].label, 'On Home', true)).join('') : '')
-      + P.pill('addwidget', P.IC.plus, 'More widgets', 'Add, arrange') + P.pill('editb', P.IC.sliders, editB ? 'Done' : 'Edit buttons', editB ? 'Keep these' : 'Choose yours', editB)
+    if (!SB) return
+    const b = board('side')
+    const html = tvSide ? SB.tvHTML({ P, TV, pw, media: tvMedia() })
+      : SB.pcHTML({ P, MU, SND, PC, tvOn: on, outName, editB, btns: picked().map(id => BTN.find(x => x[0] === id)).filter(Boolean).map(btnOf), more: BTN.filter(x => !picked().includes(x[0])).map(btnOf), widgets: b?.ready() ? b.html(false) : '' })
     if (list._html === html) return
     const had = document.activeElement?.closest?.('#tvpanel [data-w]')?.dataset.w
+    // Only the parts that changed are drawn again, so a slider or a scroll under your finger stays.
+    const tpl = document.createElement('template')
+    tpl.innerHTML = html
+    const kids = [...tpl.content.children], same = list.children.length === kids.length && list._side === tvSide
+    if (!same) list.replaceChildren(...kids)
+    else kids.forEach((n, i) => { const o = list.children[i]; if (o._src === n.outerHTML || (!o._src && o.outerHTML === n.outerHTML)) return; if (o.contains(dragging) || o.contains(sliding2)) return; n._src = n.outerHTML; o.replaceWith(n) })
+    list._side = tvSide
     list._html = html
-    list.innerHTML = html
+    P.syncPlayer(panel, tvSide ? tvMedia() : MU?.now)
     list.querySelectorAll('[data-w]').forEach(n => { n.tabIndex = 0; if (n.tagName !== 'BUTTON') n.setAttribute('role', n.classList.contains('wps') ? 'slider' : 'button') })
     if (had) list.querySelector(`[data-w="${had}"]`)?.focus()
   }
   async function openPanel() {
-    try { P ??= await import('/tv/panel.js?v=14') } catch { return }
+    try { P ??= await import('/tv/panel.js?v=15') } catch { return }
     paintPanel()
     panel.classList.add('on')
     dock()
     setTimeout(paintRail, 60)
     readPc()
+    readQuick()
+    board('side')?.refresh()
     await readTv()
+    readPower()
     if (TV?.on) post({ type: 'state' })
     soon()
     clearInterval(poll)
-    poll = setInterval(() => { if (document.hidden) return; if (TV?.on) post({ type: 'state' }); setTimeout(readTv, 800); readPc() }, 4000)
+    poll = setInterval(() => { if (document.hidden) return; if (TV?.on) post({ type: 'state' }); setTimeout(readTv, 800); readPc(); readQuick(); readPower(); board('side')?.refresh() }, 4000)
   }
   let dragged = 0
   // Seek on the bar, where the player allows it; the cover brings the player forward.
@@ -937,7 +1075,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   async function keepTv() {
     if (document.hidden || !document.documentElement.hasAttribute('data-tvlook') || !document.querySelector('.hw-root') || Date.now() - sideAt < 4000) return
     sideAt = Date.now()
-    try { P ??= await import('/tv/panel.js?v=14') } catch { return }
+    try { P ??= await import('/tv/panel.js?v=15') } catch { return }
     if (TV?.on) post({ type: 'state' })
     await Promise.all([readTv(), readPc()])
   }
@@ -992,12 +1130,33 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     setHtml = ''
     paintSettings()
   }
-  function press(id) {
+  let asked = ''
+  function press(id, from) {
+    if (id.startsWith('tool:')) { const n = from || panel.querySelector(`[data-w="${id}"]`); return openTool(id.slice(5), n) }
+    if (id === 'power') return void power(pw.on !== true)
+    if (id.startsWith('app:')) { post({ type: 'launch', app: id.slice(4) }); return say(`Opening ${id.slice(4)} on the TV`) }
+    if (id.startsWith('mute:')) { const x = PC?.mix?.find(y => y.id === id.slice(5)); if (!x) return; x.muted = !x.muted; paintPanel(); drawTool(); return void askPc({ what: 'mix', id: x.id, mute: x.muted }) }
+    if (id === 'sidewidgets') { closePanel(); closeSettings(); closeMirror(); window.HubChat?.close(); editOn = 'side'; goHome('.hw-root:not(.hw-edit) [data-hw-act="edit"]'); return void setTimeout(() => { editOn = 'side'; paintSide() }, 700) }
+    if (id.startsWith('q:')) {
+      const k = id.slice(2)
+      if (k === 'wifi' || k === 'battery') return void askPc({ what: 'open', value: k })
+      if (k === 'snip' || k === 'tasks') { closePanel(); return void setTimeout(() => askPc({ what: 'open', value: k }), 350) }
+      // These take something away from you, so they ask once.
+      const risky = k === 'lock' || k === 'screens' || (k === 'bt' && PC?.bt?.on && PC.bt.devices.length)
+      if (risky && asked !== k) { asked = k; setTimeout(() => { if (asked === k) asked = '' }, 4000); return say(k === 'lock' ? 'Press again to lock this PC' : k === 'screens' ? 'Press again to turn the screens off' : `Press again: ${PC.bt.devices.join(', ')} will disconnect`) }
+      asked = ''
+      if (k === 'lock' || k === 'screens') return void askPc({ what: k })
+      if (!PC) return
+      const now = k === 'bt' ? PC.bt?.on : PC[k]
+      if (k === 'bt') PC.bt.on = !now; else PC[k] = !now
+      paintPanel()
+      return void askPc({ what: k, value: !now })
+    }
     if (id === 'homeclock') { look.clock = CLOCKS[(CLOCKS.indexOf(look.clock) + 1) % CLOCKS.length]; return saveLook() }
     if (id.startsWith('wgo:')) { const n = side?.querySelector(`.wg-i[data-wid="${id.slice(4)}"]`); closePanel(); closeSettings(); closeMirror(); window.HubChat?.close(); if (n) setTimeout(() => openWid(n), 300); return }
-    const tvSide = !!TV?.on && look.target === 'tv'
+    const tvSide = !!TV?.setUp && look.target === 'tv'
     if (id.startsWith('to:')) { look.target = id.slice(3); return saveLook() }
-    if (['prev', 'play', 'next'].includes(id)) return music(id === 'play' ? 'toggle' : id, tvSide && panel.classList.contains('on') ? 'tv' : undefined)
+    if (['prev', 'play', 'next'].includes(id)) return music(id === 'play' ? 'toggle' : id, tvSide && panel.classList.contains('on') && TV?.on && tvMedia() === TV.state?.media ? 'tv' : undefined)
     if (id === 'homesys') { look.sys = look.sys === false; saveLook(); return paintSide() }
     if (id === 'music') { const k = ['auto', 'pc', ...(MU?.spotify?.connected ? ['spotify'] : []), ...(TV?.on ? ['tv'] : [])], to = k[(k.indexOf(MU?.source) + 1) % k.length]; if (MU) MU.source = to; paintPanel(); return void fetch('/api/music/source', { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: JSON.stringify({ source: to }) }).then(readPc, () => {}) }
     const leave = () => { if (!docked()) closePanel() }
@@ -1020,7 +1179,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     if (id.startsWith('out:')) return setOutput(id.slice(4))
     if (id === 'pcedit') { leave(); closeSettings(); closeMirror(); window.HubChat?.close(); return goHome('.hw-root:not(.hw-edit) [data-hw-act="edit"]') }
     if (id === 'remotes') { leave(); closeMirror(); openSettings(); return onSet('remotepage') }
-    if (id === 'tvpower') return void power()
+    if (id === 'tvpower') return void power(pw.on !== true)
     if (id === 'tvhome') return TV?.on ? void post({ type: 'home' }) : off()
     if (id === 'displays') { leave(); closeMirror(); openSettings(); return onSet('displaypage') }
     if (!TV?.on) return off()
@@ -1194,6 +1353,8 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     if (st.awake && mCanvas.hidden) return
     note(st.awake ? '' : 'The TV is off. Press the power button to turn it on.')
     tvPower = st.awake
+    if (!pw.busy) pw = { on: st.awake, busy: false }
+    paintPower()
   }
   // Keys and clicks: straight to whatever is on the TV while its screen is live, else to LocalHub's page there.
   let sending = null
@@ -1264,6 +1425,11 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   async function power(on = 'toggle') {
     if (powering) return
     powering = true
+    const want = on === 'toggle' ? (pw.on === null ? 'toggle' : !pw.on) : on
+    pw = { on: pw.on, busy: true, want }
+    on = want
+    paintPanel()
+    drawTool()
     const b = mirror.querySelector('[data-key="power"]')
     b?.classList.add('busy')
     note(on === false ? 'Turning the TV off…' : on ? 'One moment…' : '')
@@ -1271,14 +1437,19 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
       const r = await (await fetch('/api/tv/power', { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: JSON.stringify({ on }) })).json()
       if (r.error) { note(r.error); say(r.error) }
       else if (r.on) { note('The TV is on. Opening LocalHub on it…'); mSeen = 0; setTimeout(() => { if (mirror.classList.contains('on')) post({ type: 'mirror', on: true }) }, 6000) }
-      else note('The TV is off. Press the power button to turn it on.')
-      tvPower = r.error ? null : r.on
-    } catch { note('The hub didn’t answer.') }
+      else note('The TV is off. Press Turn On to turn it on.')
+      tvPower = r.known ? r.on : null
+      pw = { on: r.known ? r.on : null, busy: false }
+    } catch { note('The hub didn’t answer.'); say('The hub didn’t answer.'); pw = { on: null, busy: false } }
     b?.classList.remove('busy')
     powering = false
+    paintPanel()
+    drawTool()
+    paintPower()
     soon()
   }
   let tvPower = null
+  function paintPower() { const b = mirror.querySelector('[data-key="power"]'); if (!b) return; const s = SB?.powerText(pw.busy ? pw : { on: tvPower ?? pw.on }) || 'Turn On'; b.title = s; b.setAttribute('aria-label', s); let l = b.querySelector('em'); if (!l) b.append(l = document.createElement('em')); l.textContent = s }
   const MKEY = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down', Enter: 'enter', Escape: 'back', BrowserBack: 'back', ContextMenu: 'menu', PageUp: 'rew', PageDown: 'ff', MediaPlayPause: 'ai' }
   mirror.addEventListener('click', e => {
     const k = e.target.closest('[data-key]')?.dataset.key

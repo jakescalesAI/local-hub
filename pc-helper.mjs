@@ -5,10 +5,13 @@ import { IS_WIN } from './platform.mjs'
 
 const IDLE_MS = 120_000
 const LIMIT = 4 * 2 ** 20
-let shared = null
-export function pcHelper(here) {
-  return (shared ??= make(path.join(here, 'pc-helper.ps1')))
+const shared = new Map()
+/** A helper script of its own, kept for everyone who asks for it. */
+export function helperFor(here, name) {
+  if (!shared.has(name)) shared.set(name, make(path.join(here, name)))
+  return shared.get(name)
 }
+export const pcHelper = here => helperFor(here, 'pc-helper.ps1')
 function make(script) {
   let proc = null, n = 0, buf = '', idle = null
   const waiting = new Map()

@@ -2,7 +2,7 @@
 // these. board.mjs keeps which ones, their sizes and what's in them. A widget is HTML from data; every length in widgets.css is in
 // em, so one drawing fits every screen. Sizes, on a grid four across (two on a phone): SPAN. What doesn’t fit the room a screen has
 // (ROOM) isn’t drawn there, and can’t be added to it.
-import { IC, player } from "./panel.js?v=14";
+import { IC, player } from "./panel.js?v=15";
 import * as Clock from "./clock.js?v=1";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -102,7 +102,7 @@ export const W = {
 };
 /** How many cells each size takes, and how many a screen has: Home's is its top right corner, the screensaver's its right half. */
 export const SPAN = { s: [1, 1], m: [2, 1], l: [2, 2], w: [4, 1], xl: [4, 2], xxl: [4, 3] };
-export const ROOM = { desk: [4, 3], tv: [4, 3], saver: [4, 5], phone: [2, 200] };
+export const ROOM = { desk: [4, 3], tv: [4, 3], saver: [4, 5], side: [4, 40], phone: [2, 200] };
 // What is inside a card's edges, in em: the clock is drawn to fill it.
 const BOX = { s: [10.4, 8.4], m: [24, 8.4], l: [24, 20.6], w: [53, 8.4], xl: [53, 20.6], xxl: [53, 33.6] };
 const sized = (it, phone) => { const w = W[it.id], own = !w || w.sizes.includes(it.size) ? it.size : w.def; return phone ? onPhone({ ...it, size: own }) : own; };
@@ -153,7 +153,7 @@ function tops(info, plain) {
 }
 export const SIZE_NAMES = { s: "Small", m: "Medium", l: "Large", w: "Wide", xl: "Extra large", xxl: "XXL" };
 export const SIZE_SHORT = { s: "S", m: "M", l: "L", w: "Wide", xl: "XL", xxl: "XXL" };
-export const can = (id, screen) => !!W[id] && (!W[id].only || W[id].only.includes(screen));
+export const can = (id, screen) => !!W[id] && (!W[id].only || W[id].only.includes(screen === "side" ? "desk" : screen));
 export const nextSize = (id, size) => { const l = W[id]?.sizes || [size]; return l[(l.indexOf(size) + 1) % l.length]; };
 // A phone is two across: the widest ones are drawn as the large ones are.
 const onPhone = (it) => (it.size === "xl" || it.size === "xxl" ? (W[it.id]?.sizes.includes("l") ? "l" : "m") : it.size === "w" && it.id !== "music" ? "m" : it.size);
@@ -224,7 +224,7 @@ export function createBoard({ screen, changed, music }) {
       const l = list(), p = pack([...l, ...more], screen);
       this.at = p.at;
       const room = ROOM[screen] || ROOM.desk, ghosts = [];
-      if (edit && screen !== "phone") for (let r = 1; r <= room[1]; r++) for (let c = 1; c <= room[0]; c++) if (![...p.at.values()].some(([x, y, w, h]) => c >= x && c < x + w && r >= y && r < y + h)) ghosts.push(`<button type="button" class="wg-ghost" data-k="g-${c}-${r}" data-we="add:${c},${r}" style="grid-area:${r}/${c}" aria-label="Add a widget here">${G.plus}</button>`);
+      if (edit && screen !== "phone") for (let r = 1; r <= (screen === "side" ? Math.max(0, ...[...p.at.values()].map((x) => x[1] + x[3] - 1)) + 1 : room[1]); r++) for (let c = 1; c <= room[0]; c++) if (![...p.at.values()].some(([x, y, w, h]) => c >= x && c < x + w && r >= y && r < y + h)) ghosts.push(`<button type="button" class="wg-ghost" data-k="g-${c}-${r}" data-we="add:${c},${r}" style="grid-area:${r}/${c}" aria-label="Add a widget here">${G.plus}</button>`);
       return l.filter((it) => p.at.has(it.k)).map((it) => drawItem(it, D, edit, screen === "phone", p.at.get(it.k) || null, edit ? fitting(l, it, screen) : undefined)).join("") + ghosts.join("");
     },
     newKey: () => `w${(Date.now() + ++stamp).toString(36)}`,
@@ -253,7 +253,7 @@ export function createBoard({ screen, changed, music }) {
         return true;
       }
       if (k === "volume" || k === "brightness") { const was = D.music_?.[k] ?? 50, to = Math.max(0, Math.min(100, was + (v === "+" ? 10 : -10))); if (D.music_) D.music_[k] = to; changed?.(); send("/api/music/level", { what: k, value: to }); return true; }
-      if (k === "tv") { v === "power" ? send("/api/tv/power", { on: "toggle" }) : send("/api/tv/command", { type: "key", name: v }); return true; }
+      if (k === "tv") { v === "power" ? send("/api/tv/power", { on: "toggle" }) : send("/api/tv/screen/input", { remote: true, events: [{ key: v }] }); return true; }
       return false;
     },
   };

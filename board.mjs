@@ -1,17 +1,18 @@
 // Home's widgets, for every screen: which ones, their sizes and order, and what's kept in them (tv/ui/widgets.js draws them).
-//   GET  /api/board            -> { screens: { desk, tv, phone, saver }, data: { notes, todos, timer, clock } }   each screen a list of { k, id, size, at?: [column, row], opts? }
+//   GET  /api/board            -> { screens: { desk, tv, phone, saver, side }, data: { notes, todos, timer, clock } }   each screen a list of { k, id, size, at?: [column, row], opts? }
 //   POST /api/board { screen, items }         a screen's whole list
 //   POST /api/board { data: { note? { k, text }, todos?, timer?, clock? } }   what's in a widget, the same on every screen
 // Kept in data/board.json (the last one in board.prev.json). Any paired device may change it, as with Home's other widgets.
 import fs from 'node:fs'
 import path from 'node:path'
 
-export const SCREENS = ['desk', 'tv', 'phone', 'saver']
+export const SCREENS = ['desk', 'tv', 'phone', 'saver', 'side']
 export const SIZES = ['s', 'm', 'l', 'w', 'xl', 'xxl']
 export const IDS = ['music', 'weather', 'pc', 'clock', 'world', 'calendar', 'photos', 'countdown', 'timer', 'notes', 'todo', 'storage', 'files', 'apps', 'sound', 'remote', 'devices']
 const START = [{ k: 'a', id: 'music', size: 'w' }, { k: 'b', id: 'weather', size: 'l' }, { k: 'c', id: 'pc', size: 'l' }]
 // The screensaver has its own, the same on the computer and the TV: half the screen, so there is room for more.
 const START_SAVER = [...START, { k: 'd', id: 'calendar', size: 'xl' }]
+const START_SIDE = [{ k: 'a', id: 'pc', size: 'xl' }, { k: 'b', id: 'timer', size: 'm' }, { k: 'c', id: 'todo', size: 'm' }, { k: 'd', id: 'weather', size: 'l' }, { k: 'e', id: 'calendar', size: 'l' }]
 const CLOCK = { style: ['digital', 'stacked', 'flip', 'analog', 'both', 'words'], font: ['display', 'rounded', 'serif', 'elegant', 'slab', 'mono', 'condensed', 'poster', 'script', 'casual'], date: ['full', 'short', 'day', 'off'], where: ['under', 'over'], h24: ['', '12', '24'], shadow: ['none', 'soft', 'strong', 'glow'], align: ['left', 'center', 'right'] }
 const CLOCK_N = { weight: [100, 900], size: [40, 250], saver: [40, 250], spacing: [-8, 20] }
 /** How the big clock looks (tv/ui/clock.js draws it): only what it knows, so nothing typed elsewhere reaches a page. */
@@ -60,7 +61,7 @@ export function cleanData(d, was = { notes: {}, todos: [], timer: null }) {
 
 export function create({ here }) {
   const FILE = path.join(here, 'data', 'board.json')
-  let cur = { screens: Object.fromEntries(SCREENS.map(s => [s, s === 'saver' ? START_SAVER : START])), data: { notes: {}, todos: [], timer: null, clock: null } }
+  let cur = { screens: Object.fromEntries(SCREENS.map(s => [s, s === 'saver' ? START_SAVER : s === 'side' ? START_SIDE : START])), data: { notes: {}, todos: [], timer: null, clock: null } }
   try {
     const j = JSON.parse(fs.readFileSync(FILE, 'utf8'))
     for (const s of SCREENS) if (Array.isArray(j.screens?.[s])) cur.screens[s] = cleanItems(j.screens[s])
@@ -80,7 +81,7 @@ export function create({ here }) {
     if (req.method !== 'POST') return send(res, 405, { error: 'method not allowed' }), true
     const b = await readBody(req).catch(() => null) || {}
     if (b.screen !== undefined) {
-      if (!SCREENS.includes(b.screen) || !Array.isArray(b.items)) return send(res, 400, { error: 'screen is desk, tv, phone or saver, with its items' }), true
+      if (!SCREENS.includes(b.screen) || !Array.isArray(b.items)) return send(res, 400, { error: 'screen is desk, tv, phone, saver or side, with its items' }), true
       cur = { ...cur, screens: { ...cur.screens, [b.screen]: cleanItems(b.items) } }
     } else if (b.data && typeof b.data === 'object') cur = { ...cur, data: cleanData(b.data, cur.data) }
     else return send(res, 400, { error: 'send a screen and its items, or data' }), true

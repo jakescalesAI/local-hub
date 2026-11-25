@@ -197,8 +197,8 @@ test('A song’s place is found from whole seconds, and its words are the ones f
   k.see('a', 20, 1100_000, false); assert.equal(k.at('a', 1100_000), null)
   k.see('c', 12.345, 2000_000, true); assert.ok(Math.abs(k.at('c', 2001_000) - 13.345) < 0.001)
   assert.deepEqual(readLyrics({ syncedLyrics: ['[offset:+500]', '[00:20.00][00:10.50] b', '[00:05:25] a', 'nope'].join(String.fromCharCode(10)) }).lines, [{ t: 4.75, x: 'a' }, { t: 10, x: 'b' }, { t: 19.5, x: 'b' }])
-  const L = [{ trackName: 'Song (Live)', duration: 200, syncedLyrics: 'l' }, { trackName: 'Song', duration: 260, syncedLyrics: 'far' }, { trackName: 'Song (feat. X)', albumName: 'Other', duration: 201, syncedLyrics: 'near' }, { trackName: 'Song', albumName: 'Alb', duration: 200, plainLyrics: 'p' }]
-  assert.equal(pickLyrics(L, { title: 'Song (feat. X)', album: 'Alb', dur: 200 }).syncedLyrics, 'near')
+  const timed = [1, 2, 3, 4, 5].map(x => `[00:0${x}.00] l${x}`).join(String.fromCharCode(10)), L = [{ trackName: 'Song (Live)', duration: 200, syncedLyrics: timed }, { trackName: 'Song', duration: 260, syncedLyrics: timed }, { id: 'near', trackName: 'Song (feat. X)', albumName: 'Other', duration: 201, syncedLyrics: timed }, { trackName: 'Song', albumName: 'Alb', duration: 200, plainLyrics: 'p' }]
+  assert.equal(pickLyrics(L, { title: 'Song (feat. X)', album: 'Alb', dur: 200 }).id, 'near')
   assert.equal(pickLyrics(L, { title: 'Other', dur: 200 }), null)
 })
 
@@ -209,4 +209,19 @@ test('Lyrics: another artist’s song isn’t this one, and the version the othe
   const b = pickLyrics([song(1, 0.9, { albumName: 'Alb' }), song(2, 0), song(3, 0.1), song(4, -0.1), song(5, 12, { duration: 230 })], { title: 'Song', artist: 'Band', album: 'Alb', dur: 200 })
   assert.ok(Math.abs(readLyrics(b).lines[0].t - 10) < 0.11, String(readLyrics(b).lines[0].t))
   assert.equal(readLyrics({ ...song(1, 0.5), fix: -0.5 }).lines[0].t, 10)
+})
+
+test('The Sidebar: only known things are done to the computer, its tools add up, and its names can’t draw anything', async () => {
+  const { command, OPEN } = await import('../../pc.mjs')
+  assert.deepEqual([command({ what: 'mic', value: false }), command({ what: 'mic', value: 'x' }), command({ what: 'lock' }), command({ what: 'open', value: 'snip' }), command({ what: 'open', value: 'toString' }), command({ what: 'open', value: 'calc.exe' }), command({ what: 'shutdown' }), command(null)], [['mic', false], null, ['lock'], ['open', 'snip'], null, null, null, null])
+  assert.deepEqual([command({ what: 'mix', id: 'chrome', level: 250 }), command({ what: 'mix', id: 'a"b', level: 5 }), command({ what: 'mix', id: 'chrome' })], [['mix', { id: 'chrome', level: 100, mute: -1 }], null, null])
+  assert.ok(Object.values(OPEN).every(x => /^(ms-[a-z]+:|taskmgr.exe)/.test(x)))
+  const S = await import('../../tv/ui/side.js')
+  const run = keys => { const x = S.newCalc(); for (const k of keys.split(' ')) S.calcKey(x, k); return x.show }
+  assert.deepEqual(['7 × 8 =', '1 . 1 + 2 . 2 =', '5 ÷ 0 =', '2 0 0 + 1 0 % =', '9 − 4 × 2 =', '1 2 ⌫ 3 ='].map(run), ['56', '3.3', 'Error', '220', '10', '13'])
+  assert.deepEqual([S.convert('Temperature', 212, '°F', '°C'), Math.round(S.convert('Length', 1, 'mi', 'km') * 1000), S.convert('Data', 1, 'GiB', 'MiB')], [100, 1609, 1024])
+  assert.deepEqual([S.powerText({ on: true }), S.powerText({ on: false }), S.powerText({ on: null }), S.powerText({ busy: true, want: false })], ['Turn Off', 'Turn On', 'Turn On', 'Turning off…'])
+  assert.ok(!S.mixRow({ id: 'x', name: '<img src=x>', level: 5 }).includes('<img src=x>') && !S.powerHTML({ on: true }, {}).includes('undefined'))
+  const { SCREENS } = await import('../../board.mjs'), { ROOM } = await import('../../tv/ui/widgets.js')
+  assert.deepEqual([...SCREENS].sort(), Object.keys(ROOM).sort())
 })

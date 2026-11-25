@@ -120,7 +120,7 @@ export function grow(box, from, back) {
   const s = Math.max(0.12, Math.min(a.width / z.width, 1)), small = { transform: `translate(${(a.left + a.width / 2 - z.left - z.width / 2) / k}px, ${(a.top + a.height / 2 - z.top - z.height / 2) / k}px) scale(${s})`, opacity: 0 }, full = { transform: "none", opacity: 1 };
   const mid = { opacity: 1, offset: back ? 0.6 : 0.3 };
   box.style.willChange = "transform, opacity";
-  if (!back) from.style.visibility = "hidden"; // it is the card that grows
+  if (!back && from.matches?.(".wg-i")) from.style.visibility = "hidden"; // it is the card that grows
   return box.animate(back ? [full, mid, small] : [small, mid, full], { duration: back ? 340 : 460, easing: "cubic-bezier(.32, .72, 0, 1)", fill: back ? "forwards" : "none" }).finished.catch(() => {}).then(() => { box.style.willChange = ""; if (back) from.style.visibility = ""; });
 }
 // The song opens: its cover flies from where it was to where it goes, and the rest comes up around it. And back.

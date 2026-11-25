@@ -33,6 +33,40 @@ export function create({ here }) {
   const save = () => { try { fs.mkdirSync(path.dirname(FILE), { recursive: true }); fs.writeFileSync(FILE, JSON.stringify(saved)) } catch {} }
   const adb = (args, timeout = 12_000) => new Promise((ok, no) => execFile(hubConfig().tv?.adb || 'adb', args, { windowsHide: true, timeout }, (e, out, err) => (e ? no(Object.assign(new Error(e.code === 'ENOENT' ? 'adb isn’t on this computer. Set tv.adb in config/hub.json to where it is.' : String(err || out || e.message).trim().split('\n').pop()), { e })) : ok(String(out)))))
   const shell = (cmd, t) => adb(['-s', `${saved.host}:5555`, 'shell', cmd], t)
+  // A TV that slept leaves a connection that looks open and isn't: that one is dropped and made again.
+  async function link() {
+    for (let i = 0; i < 3; i++) {
+      await adb(['connect', `${saved.host}:5555`], 6000).catch(e => { if (/adb isn/.test(e.message)) throw e })
+      try { if ((await shell('echo ready', 4000)).includes('ready')) return } catch {}
+      await adb(['disconnect', `${saved.host}:5555`], 4000).catch(() => {})
+      await new Promise(r => setTimeout(r, 700))
+    }
+    throw new Error('not answering')
+  }
+  const awake = async () => /mWakefulness=(Awake|Dreaming)/.test(await shell('dumpsys power | grep mWakefulness='))
+  const until = async (want, tries) => { for (let i = 0; i < tries; i++) { if ((await awake().catch(() => null)) === want) return true; await new Promise(r => setTimeout(r, 450)) } return false }
+  // One at a time, in the order they were asked; a change is done when the TV itself says so.
+  let line = Promise.resolve(), known = { at: 0, on: null }
+  const power = want => (line = line.catch(() => {}).then(async () => {
+    if (want === undefined && Date.now() - known.at < 2500) return { known: true, on: known.on }
+    await link()
+    let on = await awake()
+    if (want !== undefined) {
+      const to = want === 'toggle' ? !on : want
+      // Wake and Sleep say which; Power, the other way, is for when one of them didn't take.
+      for (const key of to ? [224, 26, 224] : [223, 26, 223]) {
+        if (on === to) break
+        await shell(`input keyevent ${key}`).catch(() => {})
+        if (await until(to, key === 26 ? 6 : 9)) on = to
+        else { await link(); on = await awake() }
+      }
+      if (on && to) await shell('am start -n local.hub.tv/.MainActivity >/dev/null 2>&1; true').catch(() => {})
+      known = { at: Date.now(), on }
+      if (on !== to) return { known: true, on, error: to ? 'The TV didn’t turn on.' : 'The TV didn’t turn off.' }
+    }
+    known = { at: Date.now(), on }
+    return { known: true, on }
+  }))
   async function apply() {
     if (busy) { apply.again = true; return }
     busy = true
@@ -71,16 +105,10 @@ export function create({ here }) {
     if (url.pathname === '/api/tv/power') {
       try {
         if (!saved.host) throw new Error('The TV hasn’t talked to this hub yet. Open LocalHub on it.')
-        const awake = async () => /mWakefulness=(Awake|Dreaming)/.test(await shell('dumpsys power | grep mWakefulness='))
-        await adb(['connect', `${saved.host}:5555`], 6000)
-        const now = await awake()
-        if (req.method === 'GET') return send(res, 200, { known: true, on: now }), true
+        if (req.method === 'GET') return send(res, 200, await power()), true
         const b = await readBody(req).catch(() => ({})) || {}
-        const want = b.on === 'toggle' ? !now : b.on
-        if (typeof want !== 'boolean') return send(res, 400, { error: 'on is true, false or "toggle"' }), true
-        await shell(want ? 'input keyevent 224; sleep 1; am start -n local.hub.tv/.MainActivity >/dev/null 2>&1; true' : 'input keyevent 223')
-        for (let i = 0; i < 8 && (await awake()) !== want; i++) await new Promise(r => setTimeout(r, 400))
-        return send(res, 200, { known: true, on: await awake() }), true
+        if (b.on !== 'toggle' && typeof b.on !== 'boolean') return send(res, 400, { error: 'on is true, false or "toggle"' }), true
+        return send(res, 200, await power(b.on)), true
       } catch (e) {
         return send(res, 200, { known: false, on: null, error: /adb isn/.test(e.message) || /hasn/.test(e.message) ? e.message : 'The TV isn’t answering on the network. It may be unplugged, or its ADB debugging is off.' }), true
       }
