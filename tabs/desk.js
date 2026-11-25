@@ -62,7 +62,8 @@ ${T}:has(.hw-root) #dkfav { flex: 1 0 100%; overflow-x: auto; scrollbar-width: n
 #dkfav .dk-t { flex: none; width: 96px; } #dkfav .dk-a { height: 58px; aspect-ratio: auto; border-radius: 16px; } #dkfav .dk-n { display: none; }
 #dkfav .dk-a b { font-size: 20px; } #dkfav .add .dk-a > svg { width: 24px; height: 24px; }
 @media (max-width: 1250px) { ${D} .hw-root:not(.hw-edit) > #dk { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-@media (max-width: 700px) { ${T} .hw-root:not(.hw-edit) > #dk { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px 12px; padding: 4px 0 24px; } .dk-n { font-size: 12.5px; margin-top: 7px; } #dkfav .dk-t { width: 84px; } }
+@media (max-width: 820px) { ${T} .hw-root:not(.hw-edit) > #dk { grid-template-columns: repeat(auto-fill, minmax(68px, 1fr)) !important; gap: 20px 18px; padding: 2px 0 26px; } ${T} #dk .dk-a { aspect-ratio: 1; border-radius: 24%; box-shadow: none; } ${T} #dk .dk-a i { width: 54%; height: 54%; } ${T} #dk .dk-a i.wide { width: 80%; } ${T} #dk .dk-a img { height: 56%; max-width: 56%; } ${T} #dk .dk-a.mk > svg { height: 54%; max-width: 54%; } ${T} .dk-n { font-size: 12px; font-weight: 500; margin-top: 7px; }
+${T} #dkadd .dk-grid { grid-template-columns: repeat(auto-fill, minmax(74px, 1fr)) !important; gap: 18px 14px !important; } ${T} #dkadd .dk-a { aspect-ratio: 1; border-radius: 24%; } ${T} #dkadd .dk-n { white-space: nowrap; } }
 ${A} #dkadd.on { display: grid; position: fixed; z-index: 72; inset: 0; place-items: center; padding: 24px; background: rgba(0, 0, 0, .5); color: #fff; }
 .dk-sheet { display: flex; flex-direction: column; width: min(760px, 100%); max-height: min(680px, 88vh); border-radius: 30px; background: var(--ui-panel); box-shadow: var(--ui-edge), 0 40px 100px rgba(0, 0, 0, .6); overflow: hidden; }
 .dk-sheet header { display: flex; align-items: center; gap: 14px; padding: 24px 26px 14px; font: 700 26px/1 var(--display); }
@@ -176,6 +177,8 @@ ${A} #dkadd.on { display: grid; position: fixed; z-index: 72; inset: 0; place-it
     else if (sort === 'web') by(a => (isPc(a) ? 0 : 1))
     else if (sort === 'pc') by(a => (isPc(a) ? 1 : 0))
     else if (sort === 'type') list = [...list].sort((a, b) => typeOf(a) - typeOf(b) || az(a, b))
+    // A phone has no favorites row: they come first.
+    if (sort === 'mine' && document.documentElement.hasAttribute('data-tvtouch') && matchMedia('(max-width: 820px)').matches) by(a => (isFav(a.id) ? 1 : 0))
     shown = list
     if (q) list = list.filter(a => a.name.toLowerCase().includes(q))
     set(grid, q ? list.map(a => tile(a)).join('') || '<div class="dk-none" style="grid-column:1/-1">No apps by that name. Press Enter to search the web.</div>' : list.map(a => tile(a)).join('') + plus('Add'))

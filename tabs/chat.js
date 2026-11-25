@@ -623,6 +623,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
 :host-context(html[data-tvlook]) .send.voice { background: rgba(255, 255, 255, .1); color: #fff; }
 :host-context(html[data-tvlook]) .send.voice:hover { background: var(--ui-sel); color: #000; }
 :host-context(html[data-tvlook]) .send.voice.rec { background: var(--red); color: #fff; }
+:host-context(html[data-tvtouch]) .card { background: var(--ui-panel, #1d1e23); border-radius: 26px; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .12), 0 20px 50px rgba(0, 0, 0, .5); } :host-context(html[data-tvtouch]) .ghead { background: none; -webkit-backdrop-filter: none; backdrop-filter: none; } :host-context(html[data-tvtouch]) .ghead .ib { color: rgba(255, 255, 255, .8); border-radius: 50%; }
 :host-context(html[data-tvlook]) .card { background: var(--chat-side-panel); border-radius: var(--chat-card-r); box-shadow: var(--ui-edge), 0 24px 60px rgba(0, 0, 0, .5); }
 :host-context(html[data-tvlook]) .card .ghead { background: none; border: 0; -webkit-backdrop-filter: none; backdrop-filter: none; }
 :host-context(html[data-tvlook]) .card .ghead .ib { width: 36px; height: 36px; margin-left: 6px; }
