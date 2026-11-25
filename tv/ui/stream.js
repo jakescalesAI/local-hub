@@ -17,6 +17,8 @@ const IC = {
   back: sym('<path d="m15 18-6-6 6-6"/>', 2.6),
   reload: sym('<path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/>'),
   home: sym('<rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8"/>'),
+  forward: sym('<path d="m9 5 7 7-7 7"/>'),
+  plus: sym('<path d="M12 5v14M5 12h14"/>'),
   lock: sym('<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>'),
   globe: sym('<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/>'),
   search: sym('<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>'),
@@ -73,7 +75,7 @@ function build() {
   if (el) return el;
   const css = document.createElement("link");
   css.rel = "stylesheet";
-  css.href = "./stream.css?v=2";
+  css.href = "./stream.css?v=4";
   document.head.append(css);
   el = document.createElement("section");
   el.className = "player";
@@ -86,11 +88,16 @@ function build() {
     <div class="player-ring"></div>
     <nav class="player-bar lg">
       <button type="button" data-act="back" aria-label="Back">${IC.back}</button>
-      <div class="player-addr" data-act="address" role="button"><span class="ic">${IC.globe}</span><span class="host"></span><span class="title"></span><i class="load"></i></div>
+      <button type="button" data-act="forward" aria-label="Forward">${IC.forward}</button>
       <button type="button" data-act="reload" aria-label="Reload">${IC.reload}</button>
-      <button type="button" data-act="home" aria-label="Home">${IC.home}</button>
+      <div class="player-tabs l"></div>
+      <div class="player-addr" data-act="address" role="button"><span class="ic">${IC.globe}</span><span class="host"></span><span class="title"></span><i class="load"></i></div>
+      <div class="player-tabs r"></div>
+      <button type="button" data-act="newtab" aria-label="New tab">${IC.plus}</button>
+      <button type="button" data-act="home" aria-label="Back to the TV">${IC.home}</button>
       <span class="player-stats"></span>
     </nav>
+    <div class="player-ask"></div>
     <div class="player-type"><div class="sheet lg"><label></label><input type="text" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="go"><div class="hint"></div></div></div>`;
   ($("#stage") || document.body).append(el);
   const input = $(".player-type input", el);
@@ -105,6 +112,7 @@ function build() {
   canvas.addEventListener("mousemove", (e) => { el.classList.add("mouse"); [P.cx, P.cy] = at(e); showBarIfTop(); hover(); });
   canvas.addEventListener("click", (e) => { [P.cx, P.cy] = at(e); P.mode = "cursor"; dropRing(); paintBar(); click(); });
   canvas.addEventListener("wheel", (e) => { e.preventDefault(); const [x, y] = at(e); send([{ type: "scroll", x, y, dx: e.deltaX, dy: e.deltaY }]); }, { passive: false });
+  $(".player-ask", el).addEventListener("click", (e) => { const b = e.target.closest("[data-ask]"); if (b) answerAsk(b.dataset.ask === "1"); });
   $(".player-bar", el).addEventListener("click", (e) => { const b = e.target.closest("[data-act]"); if (b) barAct(b.dataset.act); });
   return el;
 }
@@ -114,8 +122,8 @@ export async function open(app, from) {
   if (!engine) return false;
   if (ENG[engine] && !ENG[engine].available) { H_?.toast(ENG[engine].message || `${app.name} isn't on this computer`); return "missing"; }
   build();
-  P.open = true; P.engine = engine; P.app = app; P.mode = "links"; P.ring = null; P.cx = W / 2; P.cy = H / 2; P.focus = null; P.state = {}; P.live = false;
-  el.classList.remove("live", "typing", "mode-bar", "mouse", "loading", "mode-cursor", "ringed");
+  P.open = true; P.engine = engine; P.app = app; P.mode = "links"; P.ring = null; P.cx = W / 2; P.cy = H / 2; P.focus = null; P.state = {}; P.live = false; P.ask = null; P.asked = "";
+  el.classList.remove("live", "typing", "mode-bar", "mouse", "loading", "mode-cursor", "ringed", "asking");
   el.style.setProperty("--a-bg", app.bg || "#111");
   el.style.setProperty("--a-fg", app.fg || "#fff");
   const k = document.getElementById("stage")?.getBoundingClientRect();
@@ -230,6 +238,14 @@ setInterval(() => {
 
 function onState(s) {
   P.state = { ...P.state, ...s };
+  paintTabs();
+  if (s.ask && P.asked !== s.ask.key) {
+    P.asked = s.ask.key;
+    let host = "";
+    try { host = new URL(s.ask.url).host.replace(/^www\./, ""); } catch { /* not known yet */ }
+    ask({ key: s.ask.key, title: "Open a new tab?", text: host ? `This page wants to open ${host}` : "This page wants to open another tab", no: "Stay here", yes: "Open it", go: (yes) => nav({ act: yes ? "allow" : "deny", tab: s.ask.key }) });
+  } else if (P.ask?.key && s.ask?.key === P.ask.key) { try { const t = `This page wants to open ${new URL(s.ask.url).host.replace(/^www\./, "")}`; if (t !== P.ask.text) { P.ask.text = t; paintAsk(); } } catch { /* not known yet */ } }
+  else if (P.ask?.key && !s.ask) ask(null);
   if (!el) return;
   let host = "", secure = false;
   try { const u = new URL(P.state.url); host = u.protocol === "about:" ? "" : u.host.replace(/^www\./, ""); secure = u.protocol === "https:"; } catch { /* about:blank */ }
@@ -237,7 +253,7 @@ function onState(s) {
   // The page's own title; not while it's still just the address (a page that hasn't named itself yet).
   const t = P.state.title || "";
   $(".player-addr .title", el).textContent = t && t !== P.state.url && !P.state.url.includes(t) && !/^(https?:\/\/)?[\w.-]+\.[a-z]{2,}(\/|$)/i.test(t) ? t : "";
-  $(".player-addr .ic", el).innerHTML = host ? (secure ? IC.lock : IC.globe) : IC.search;
+  if (!host) { const ic = $(".player-addr .ic", el); ic._src = ""; ic.innerHTML = IC.search; }
   if (s.url && s.url !== P.ringUrl) dropRing();
   el.classList.toggle("loading", !!P.state.loading);
   if (P.state.loading) showBar(2500);
@@ -356,7 +372,39 @@ function setMode(mode) {
 }
 
 /* ── the bar ───────────────────────────────────────────────────────────── */
-const BAR = ["back", "address", "reload", "home"];
+const bar = () => [...el.querySelectorAll(".player-bar [data-act]")];
+// The open tabs in their order: the one you are on is the address itself, the others an icon each, left and right of it.
+function paintTabs() {
+  const all = P.state.tabs || [], at0 = Math.max(0, all.findIndex((t) => t.key === P.state.tab)), from = Math.max(0, Math.min(at0 - 4, all.length - 9)), list = all.slice(from, from + 9), here = at0 - from;
+  const draw = (l) => l.map((t) => {
+    let host = "";
+    try { host = new URL(t.url).host.replace(/^www\./, ""); } catch { /* blank */ }
+    const l = esc((host || t.title || "•").slice(0, 1).toUpperCase());
+    return `<button type="button" data-act="tab:${esc(t.key)}" aria-label="${esc(t.title || host || "Tab")}"><b>${l}</b>${host ? `<img src="/api/hub/site-icon?url=${encodeURIComponent(t.url)}" alt="" onerror="this.remove()">` : ""}</button>`;
+  }).join("");
+  const l = $(".player-tabs.l", el), r = $(".player-tabs.r", el), lh = draw(list.slice(0, here)), rh = draw(list.slice(here + 1));
+  // This tab's own icon, by its address.
+  const ic = $(".player-addr .ic", el), src = /^https?:/.test(P.state.url || "") ? `/api/hub/site-icon?url=${encodeURIComponent(P.state.url)}` : "";
+  if (src ? ic._src !== src : false) { ic._src = src; ic.innerHTML = `${IC.globe}${src ? `<img src="${esc(src)}" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()">` : ""}`; }
+  if (l._html === lh && r._html === rh) return;
+  const on = bar()[P.bar]?.dataset.act;
+  l.innerHTML = l._html = lh;
+  r.innerHTML = r._html = rh;
+  const at = bar().findIndex((n) => n.dataset.act === on);
+  if (at >= 0) P.bar = at;
+  paintBar();
+}
+// Are you sure? One question over the page; nothing happens until it's answered.
+function ask(a) {
+  P.ask = a ? { ...a, sel: 0 } : null;
+  paintAsk();
+}
+function paintAsk() {
+  const box = $(".player-ask", el), a = P.ask;
+  el.classList.toggle("asking", !!a);
+  if (a) box.innerHTML = `<div class="sheet"><h2>${esc(a.title)}</h2><p>${esc(a.text)}</p><div>${[a.no, a.yes].map((t, i) => `<button type="button" data-ask="${i}" class="${a.sel === i ? "sel" : ""}">${esc(t)}</button>`).join("")}</div></div>`;
+}
+function answerAsk(yes) { const a = P.ask; ask(null); if (a) a.go(yes); }
 function showBar(ms) {
   el.classList.add("bar");
   clearTimeout(P.barTimer);
@@ -366,21 +414,27 @@ function showBarIfTop() { if (P.cy < 150) showBar(1500); }
 function focusBar() {
   if (P.mode !== "bar") P.lastMode = P.mode;
   P.mode = "bar";
-  P.bar = 1;
+  P.bar = Math.max(0, bar().findIndex((n) => n.dataset.act === "address"));
   showBar();
   paintBar();
 }
 function paintBar() {
   el.classList.toggle("mode-bar", P.mode === "bar");
-  el.querySelectorAll(".player-bar [data-act]").forEach((n) => n.classList.toggle("is-sel", P.mode === "bar" && n.dataset.act === BAR[P.bar]));
-  $(".player-bar [data-act=back]", el).disabled = false;
+  bar().forEach((n, i) => n.classList.toggle("is-sel", P.mode === "bar" && i === P.bar));
+  $(".player-bar [data-act=forward]", el).classList.toggle("off", !P.state.canForward);
   if (P.mode !== "bar") showBar(1500);
 }
 function barAct(act) {
   if (act === "back") return goBack();
   if (act === "address") return startTyping("address");
-  if (act === "reload") return nav({ act: "reload" });
+  if (act === "reload" || act === "forward" || act === "newtab") return nav({ act });
+  if (act.startsWith("tab:")) return tabAct(act.slice(4));
   if (act === "home") return close();
+}
+// A tab's icon shows that tab. Menu on one offers to close it, and on the address the one you are on.
+function tabAct(key) {
+  if (key !== P.state.tab) return nav({ act: "tab", tab: key });
+  ask({ title: "Close this tab?", text: P.state.title || P.state.url || "", no: "Keep it", yes: "Close tab", go: (yes) => yes && nav({ act: "closetab", tab: key }).then((r) => r.left && close()) });
 }
 async function nav(body) {
   const r = await hub("/api/tv/stream/nav", { engine: P.engine, ...body }).catch((e) => { H_?.toast(e.message); return {}; });
@@ -402,6 +456,7 @@ function startTyping(target, first = "") {
   $(".player-type label", el).textContent = target === "address" ? "Search or type an address" : f?.label || (f?.secret ? "Password" : "Type here");
   $(".player-type .hint", el).innerHTML = H_?.NATIVE ? "OK to finish · Back to cancel" : `<kbd>Enter</kbd> ${P.typing.search ? "go" : "done"} · <kbd>Esc</kbd> cancel${target === "page" && !P.typing.search ? " · <kbd>Ctrl</kbd>+<kbd>Enter</kbd> send" : ""}`;
   el.classList.add("typing");
+  el.classList.toggle("tvkeys", !!H_?.NATIVE); // the TV's own keyboard shows what is typed
   showBar();
   H_?.native?.("setTyping", true);
   setTimeout(() => { input.focus(); if (!first) input.select(); else input.setSelectionRange(input.value.length, input.value.length); }, 30);
@@ -426,13 +481,14 @@ async function finishTyping(ok, submit, quiet) {
 /** The remote's keys, by name: left right up down enter back menu ai. */
 export function key(name) {
   if (!P.open) return false;
+  if (P.ask) { if (name === "left" || name === "right") { P.ask.sel = name === "right" ? 1 : 0; paintAsk(); } else if (name === "enter") answerAsk(P.ask.sel === 1); else if (name === "back") answerAsk(false); return true; }
   if (P.typing) { if (name === "back") finishTyping(false); else if (name === "enter") finishTyping(true); return true; }
   if (P.mode === "bar") {
     if (name === "left") P.bar = Math.max(0, P.bar - 1);
-    else if (name === "right") P.bar = Math.min(BAR.length - 1, P.bar + 1);
+    else if (name === "right") P.bar = Math.min(bar().length - 1, P.bar + 1);
     else if (name === "down" || name === "back") { P.mode = P.lastMode || "links"; P.cy = Math.max(P.cy, 170); paintCursor(); paintRing(); }
-    else if (name === "enter") { const act = BAR[P.bar]; if (act !== "back") { P.mode = P.lastMode || "links"; } barAct(act); }
-    else if (name === "menu") startTyping("address");
+    else if (name === "enter") { const act = bar()[P.bar]?.dataset.act || ""; if (!/^(back|forward|reload|tab:)/.test(act)) { P.mode = P.lastMode || "links"; } barAct(act); }
+    else if (name === "menu") { const act = bar()[P.bar]?.dataset.act || ""; if (act.startsWith("tab:")) ask({ title: "Close this tab?", text: bar()[P.bar].getAttribute("aria-label"), no: "Keep it", yes: "Close tab", go: (yes) => yes && nav({ act: "closetab", tab: act.slice(4) }).then((r) => r.left && close()) }); else if ((P.state.tabs || []).length > 1) tabAct(P.state.tab); else startTyping("address"); }
     paintBar();
     return true;
   }

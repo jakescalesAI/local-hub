@@ -190,12 +190,26 @@ function localProvider(root, { run, label }) {
       await writeFile(p, String(text ?? ''), 'utf8')
       return { mtime: (await stat(p)).mtimeMs }
     },
-    async raw(r, res, download) {
+    async raw(r, res, download, range) {
       const p = await guard(full(r))
       const st = await stat(p)
       if (!st.isFile()) throw fail('not a file')
-      sendHead(res, path.basename(p), download, st.size)
-      createReadStream(p).pipe(res)
+      // Part of a file, so a video can be skipped through.
+      const m = !download && /^bytes=(\d*)-(\d*)$/.exec(range || '')
+      if (m && (m[1] || m[2]) && st.size) {
+        const from = m[1] ? Number(m[1]) : Math.max(0, st.size - Number(m[2])), to = m[1] && m[2] ? Math.min(Number(m[2]), st.size - 1) : st.size - 1
+        if (from > to) { res.writeHead(416, { 'content-range': `bytes */${st.size}` }); return res.end() }
+        sendHead(res, path.basename(p), download, to - from + 1, { 'content-range': `bytes ${from}-${to}/${st.size}` })
+        const s = createReadStream(p, { start: from, end: to })
+        s.on('error', () => res.destroy())
+        res.on('close', () => s.destroy())
+        return void s.pipe(res)
+      }
+      sendHead(res, path.basename(p), download, st.size, { 'accept-ranges': 'bytes' })
+      const s = createReadStream(p)
+      s.on('error', () => res.destroy())
+      res.on('close', () => s.destroy())
+      s.pipe(res)
     },
   }
 }
@@ -209,6 +223,46 @@ function localProvider(root, { run, label }) {
 // answer is kept in data/drives-meta.json and served at once; a rescan runs behind it when it's
 // over 15 s old. Deletes always wait for a fresh scan, since the Recycle Bin check depends on it.
 const DRIVES_META = path.join(path.dirname(fileURLToPath(import.meta.url)), 'data', 'drives-meta.json')
+
+const KIND_EXT = { image: /\.(png|jpe?g|gif|webp|avif|bmp|heic)$/i, video: /\.(mp4|m4v|webm|mov|mkv|avi)$/i, music: /\.(mp3|m4a|wav|ogg|aac|flac)$/i, doc: /\.(pdf|docx?|xlsx?|pptx?|rtf|odt|ods|odp|pages|numbers|key|txt|md|csv)$/i }
+const HOME = os.homedir()
+// A path as the page has it: "C:/Users/…" on Windows, "Home/…" elsewhere.
+const asPage = p => (IS_WIN ? p.split(path.sep).join('/') : `Home/${path.relative(HOME, p).split(path.sep).join('/')}`)
+async function userFolders() {
+  const out = []
+  for (const id of ['Desktop', 'Downloads', 'Documents', 'Pictures', 'Music', IS_WIN || process.platform !== 'darwin' ? 'Videos' : 'Movies']) {
+    // The one with something in it, when there are two.
+    const there = []
+    for (const base of [HOME, path.join(HOME, 'OneDrive')]) {
+      const full = path.join(base, id), names = holdsKeys(full) ? null : await readdir(full).catch(() => null)
+      if (names) there.push({ full, n: names.filter(shown).length })
+    }
+    const it = there.find(x => x.n) || there[0]
+    if (it) out.push({ id: id === 'Movies' ? 'Videos' : id, path: asPage(it.full), full: it.full })
+  }
+  return out
+}
+// The newest files under those folders that match, breadth first, never through links, for a few seconds at most.
+async function walk(folders, want, depth, ms) {
+  const end = Date.now() + ms, found = [], queue = folders.map(f => ({ p: f.full, d: 0 })), seen = new Set()
+  let looked = 0
+  while (queue.length && Date.now() < end && looked < 40_000) {
+    const { p, d } = queue.shift()
+    if (seen.has(p) || holdsKeys(p)) continue
+    seen.add(p)
+    const list = await readdir(p, { withFileTypes: true }).catch(() => [])
+    looked += list.length
+    const files = []
+    for (const e of list) {
+      if (!shown(e.name) || e.isSymbolicLink()) continue
+      const full = path.join(p, e.name)
+      if (e.isDirectory()) { if (d < depth && !SKIP.has(e.name)) queue.push({ p: full, d: d + 1 }) }
+      else if (e.isFile() && want(e.name) && !/\.(lnk|url|tmp|crdownload|part)$/i.test(e.name) && !holdsKeys(full)) files.push(full)
+    }
+    await Promise.all(files.slice(0, 3000).map(async full => { const st = await stat(full).catch(() => null); if (st) found.push({ name: path.basename(full), path: asPage(full), dir: false, size: st.size, mtime: st.mtimeMs }) }))
+  }
+  return found.sort((a, b) => b.mtime - a.mtime)
+}
 
 function drivesProvider({ run }) {
   const byId = {}
@@ -277,13 +331,26 @@ function drivesProvider({ run }) {
     },
     async text({ path: r }) { const { p, rest } = split(r); return p.text({ path: rest }) },
     async write({ path: r, text, mtime }) { const { p, rest } = split(r); return p.write({ path: rest, text, mtime }) },
-    async raw(r, res, download) { const { p, rest } = split(r); return p.raw(rest, res, download) },
+    async raw(r, res, download, range) { const { p, rest } = split(r); return p.raw(rest, res, download, range) },
+    // Your own folders, wherever Windows keeps them (OneDrive takes some over), and the newest files in them.
+    async places() {
+      const list = await userFolders()
+      const places = await Promise.all(list.map(async x => ({ ...x, full: undefined, count: await readdir(x.full).then(c => c.filter(shown).length, () => null) })))
+      return { places, recent: (await walk(list, () => true, 3, 1500)).slice(0, 60) }
+    },
+    // Every picture, video, song or document in them, newest first.
+    async kind({ q }) {
+      const re = KIND_EXT[q]
+      if (!re) throw fail('q is image, video, music or doc')
+      return { entries: (await walk(await userFolders(), n => re.test(n), 6, 4000)).slice(0, 400) }
+    },
   }
 }
 
-function sendHead(res, name, download, size) {
+function sendHead(res, name, download, size, more) {
   const ext = path.extname(name).slice(1).toLowerCase()
-  res.writeHead(200, {
+  res.writeHead(more?.['content-range'] ? 206 : 200, {
+    ...more,
     'content-type': MIME[ext] || 'application/octet-stream',
     ...(size != null && { 'content-length': size }),
     'content-disposition': `${MIME[ext] && !download ? 'inline' : 'attachment'}; filename*=UTF-8''${encodeURIComponent(name)}`,
@@ -332,7 +399,7 @@ export function createFiles({ run, sshHost, here }) {
   }
   // Add-on roots answer only when their add-on is on.
   const rootOn = id => id === 'server' ? !!sshHost && tabOn('server') : id === 'icloud' ? addonOn('icloud') : true
-  const READS = new Set(['list', 'search', 'text'])
+  const READS = new Set(['list', 'search', 'text', 'places', 'kind'])
   const WRITES = new Set(['mkdir', 'rename', 'move', 'delete', 'write'])
 
   // GET /api/files/<root>[/search|/text]?path=&q=, POST /api/files/<root>/<op>,
@@ -342,12 +409,13 @@ export function createFiles({ run, sshHost, here }) {
     if (m && roots[m[1]] && rootOn(m[1])) {
       const p = roots[m[1]]
       const op = m[2] || 'list'
+      if (READS.has(op) && typeof p[op] !== 'function') return false
       if (req.method === 'GET' && READS.has(op)) return send(res, 200, await p[op]({ path: url.searchParams.get('path') || '', q: url.searchParams.get('q') || '' })), true
       if (req.method === 'POST' && WRITES.has(op)) return send(res, 200, await p[op](await readBody(req))), true
       return false
     }
     m = /^\/files\/(\w+)\/raw$/.exec(url.pathname)
-    if (m && roots[m[1]] && rootOn(m[1]) && req.method === 'GET') return await roots[m[1]].raw(url.searchParams.get('path') || '', res, url.searchParams.has('download')), true
+    if (m && roots[m[1]] && rootOn(m[1]) && req.method === 'GET') return await roots[m[1]].raw(url.searchParams.get('path') || '', res, url.searchParams.has('download'), req.headers.range), true
     return false
   }
 }

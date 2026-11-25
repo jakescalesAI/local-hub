@@ -17,7 +17,8 @@
 //                              app's tab (a tab per app, so it comes back where you left it; fresh starts it over)
 //   GET  /api/tv/stream/frames?engine=             -> application/octet-stream, the packets above, until closed
 //   POST /api/tv/stream/input  { engine, events }  -> { ok, focus?, target? } move, click, scroll, key, text, snap {x,y,dir}
-//   POST /api/tv/stream/nav    { engine, act, url? } -> { ok, left? } back | forward | reload | go | home
+//   POST /api/tv/stream/nav    { engine, act, url?, tab? } -> { ok, left? } back | forward | reload | go | home | newtab | tab | closetab |
+//                              allow | deny (a tab a page wants to open waits for one of these: the state's ask)
 //   POST /api/tv/stream/close  { engine }          -> { ok } the TV left: pause media, stop the frames
 //
 // Settings in config/hub.json, all optional:
@@ -413,12 +414,16 @@ export function create({ here, dataDir = path.join(here, 'data', 'tv-stream'), f
     if (method === 'closed') { for (const v of inst.viewers) v.res.end(); inst.viewers.clear(); engines.delete(inst.id); clearInterval(inst.meter); return }
     if (method === 'Page.screencastFrame') return onFrame(inst, p, sid)
     if (method === 'Target.targetCreated' && p.targetInfo.type === 'page' && p.targetInfo.openerId) {
-      // A link that opens a new tab opens it here, in front; Back at its first page comes back to the one it came from.
+      // A page that opens a new tab waits for a yes, one at a time; Back at its first page comes back to the one it came from.
       const [openerKey] = tabFor(inst, p.targetInfo.openerId)
       if (!openerKey) return
+      if (inst.ask) return inst.cdp.send('Target.closeTarget', { targetId: p.targetInfo.targetId }).catch(() => {})
       const key = `${openerKey}~${p.targetInfo.targetId.slice(0, 8)}`
-      inst.tabs.set(key, { key, targetId: p.targetInfo.targetId, session: '', url: p.targetInfo.url, title: '', opener: openerKey })
-      if (openerKey === inst.active) show(inst, key).catch(() => {})
+      inst.tabs.set(key, { key, targetId: p.targetInfo.targetId, session: '', url: p.targetInfo.url, title: '', opener: openerKey, waits: true })
+      inst.ask = key
+      clearTimeout(inst.askTimer)
+      inst.askTimer = setTimeout(() => answer(inst, key, false).catch(() => {}), 30_000)
+      pushState(inst)
       return
     }
     if (method === 'Target.targetInfoChanged') {
@@ -427,15 +432,18 @@ export function create({ here, dataDir = path.join(here, 'data', 'tv-stream'), f
       tab.url = p.targetInfo.url
       tab.title = p.targetInfo.title
       if (key === inst.active) refreshHistory(inst).then(() => pushState(inst))
+      else pushState(inst)
       return
     }
     if (method === 'Target.targetDestroyed') {
       const [key, tab] = tabFor(inst, p.targetId)
       if (!tab) return
       inst.tabs.delete(key)
+      if (key === inst.ask) inst.ask = ''
+      pushState(inst)
       if (key === inst.active) {
         inst.session = ''
-        const back = tab.opener && inst.tabs.has(tab.opener) ? tab.opener : [...inst.tabs.keys()].pop()
+        const back = tab.opener && inst.tabs.has(tab.opener) ? tab.opener : [...inst.tabs.values()].filter(t => !t.waits).pop()?.key
         if (back) show(inst, back).catch(() => {})
       }
       return
@@ -450,11 +458,25 @@ export function create({ here, dataDir = path.join(here, 'data', 'tv-stream'), f
 
   /* ----- frames ----- */
 
+  // A yes or no for the tab a page wants to open.
+  async function answer(inst, key, yes) {
+    if (!key || key !== inst.ask) return
+    clearTimeout(inst.askTimer)
+    inst.ask = ''
+    const tab = inst.tabs.get(key)
+    if (!tab) return pushState(inst)
+    if (yes) { tab.waits = false; return show(inst, key) }
+    inst.tabs.delete(key)
+    await inst.cdp.send('Target.closeTarget', { targetId: tab.targetId }).catch(() => {})
+    pushState(inst)
+  }
+
   function state(inst) {
-    const tab = inst.tabs.get(inst.active)
+    const tab = inst.tabs.get(inst.active), wait = inst.ask && inst.tabs.get(inst.ask)
     return {
       engine: inst.id, name: inst.name, via: inst.via, tab: inst.active, url: tab?.url || '', title: tab?.title || '',
       canBack: !!inst.canBack, canForward: !!inst.canForward, loading: !!inst.loading,
+      tabs: [...inst.tabs.values()].filter(t => !t.waits).map(t => ({ key: t.key, url: String(t.url || '').slice(0, 500), title: String(t.title || '').slice(0, 120) })), ask: wait ? { key: wait.key, url: String(wait.url || '').slice(0, 500), title: String(wait.title || '').slice(0, 120) } : null,
       width: OUT.w, height: OUT.h, zoom: zoom(), quality: QUALITY[inst.q], fps: inst.fps,
     }
   }
@@ -613,7 +635,22 @@ export function create({ here, dataDir = path.join(here, 'data', 'tv-stream'), f
     if (!inst || inst.cdp.closed || !inst.session) throw err(409, 'Open the browser first')
     inst.lastUse = Date.now()
     const s = inst.session
-    const act = String(body.act || '')
+    const act = String(body.act || ''), named = String(body.tab || '')
+    if (act === 'allow' || act === 'deny') { await answer(inst, named, act === 'allow'); return { ok: true } }
+    if (act === 'newtab') { await openTab(inst, `n-${Date.now().toString(36)}`, body.url ? normUrl(body.url, homeUrl()) : homeUrl()); return { ok: true, tab: inst.active } }
+    if (act === 'tab') { if (!inst.tabs.has(named) || inst.tabs.get(named).waits) throw err(404, 'That tab is closed'); await show(inst, named); return { ok: true } }
+    if (act === 'closetab') {
+      const t = inst.tabs.get(named)
+      if (!t) return { ok: true }
+      const rest = [...inst.tabs.values()].filter(x => x !== t && !x.waits)
+      inst.tabs.delete(named)
+      if (named === inst.active && rest.length) await show(inst, rest.find(x => x.key === t.opener)?.key || rest.sort((a, b) => (b.used || 0) - (a.used || 0))[0].key)
+      // A browser needs one page: the last one is only emptied.
+      if (rest.length) inst.cdp.send('Target.closeTarget', { targetId: t.targetId }).catch(() => {})
+      else { inst.tabs.set(named, t); await inst.cdp.send('Page.navigate', { url: 'about:blank' }, inst.session).catch(() => {}); inst.tabs.delete(named) }
+      pushState(inst)
+      return { ok: true, left: !rest.length }
+    }
     await refreshHistory(inst)
     if (act === 'back') {
       const h = inst.history
@@ -644,7 +681,7 @@ export function create({ here, dataDir = path.join(here, 'data', 'tv-stream'), f
       await inst.cdp.send('Page.navigate', { url }, s)
       return { ok: true, url }
     }
-    throw err(400, 'act must be back, forward, reload, go or home')
+    throw err(400, 'act must be back, forward, reload, go, home, newtab, tab, closetab, allow or deny')
   }
 
   async function open(body) {

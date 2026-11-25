@@ -14,9 +14,9 @@
 // voice) comes from Java through window.LocalHubNative. On a laptop, apps open their websites.
 // ============================================================================
 
-import * as Stream from "./stream.js?v=4";
+import * as Stream from "./stream.js?v=7";
 import * as Panel from "./panel.js?v=10";
-import * as Files from "./files.js?v=1";
+import * as Files from "./files.js?v=2";
 import { createLock } from "./lock.js?v=2";
 import * as Remote from "./remote.js?v=5";
 import * as Mirror from "./mirror.js?v=3";
@@ -596,9 +596,10 @@ function move(dx, dy) {
     const cards = homeCards(), c = /^c(\d)$/.exec(S.mp || ""), out = () => { S.zone = "favs"; S.f = clamp(S.lastF ?? favStart(), 0, FAVS.length - 1); paintHomeWidgets(); applyFocus(); };
     if (c) {
       const k = Math.min(+c[1], cards.length - 1);
-      if (dx < 0) return out();
-      if (dy > 0) { if (k + 1 >= cards.length) return out(); S.mp = `c${k + 1}`; }
-      if (dy < 0) { if (k > 0) S.mp = `c${k - 1}`; else if (prefs.homePlayer !== false) S.mp = "play"; }
+      if (dx < 0 && k % 2 === 0) return out();
+      if (dx && cards[k + dx] && (k + dx) >> 1 === k >> 1) S.mp = `c${k + dx}`;
+      if (dy > 0) { if ((k >> 1) * 2 + 2 >= cards.length) return out(); S.mp = `c${Math.min(k + 2, cards.length - 1)}`; }
+      if (dy < 0) { if (k > 1) S.mp = `c${k - 2}`; else if (prefs.homePlayer !== false) S.mp = "play"; }
       return paintHomeWidgets();
     }
     if (dy > 0 && cards.length) { S.mp = "c0"; return paintHomeWidgets(); }
@@ -616,7 +617,7 @@ function move(dx, dy) {
     }
     const up = homeCards().length;
     if (dy < 0 && prefs.homePlayer === false && !up) return tilt(0, -1.6);
-    if (dy < 0) { S.lastF = S.f; S.zone = "player"; S.mp = up ? `c${up - 1}` : "play"; applyFocus(); return paintHomeWidgets(); }
+    if (dy < 0) { S.lastF = S.f; S.zone = "player"; S.mp = up ? `c${(up - 1) >> 1 << 1}` : "play"; applyFocus(); return paintHomeWidgets(); }
     if (dy > 0) { S.zone = "grid"; S.i = clamp(S.lastI ?? gridColUnderFav(S.f), 0, Math.min(COLS, ITEMS.length) - 1); }
     applyFocus();
     return tilt(dx, dy);
@@ -1285,17 +1286,18 @@ let mediaTimer = null;
 // With nothing on the TV itself, it's what the computer (or your Spotify) is playing, and the buttons work that.
 let HUB_MEDIA = null, SYS = null, sysAt = 0;
 async function readHubMusic() {
-  if (!IN_HUB || document.hidden || (S.overlay && S.overlay !== "wpanel" && S.overlay !== "wdetail") || S.view !== "home") return;
+  if (!IN_HUB || document.hidden || (S.overlay && S.overlay !== "wpanel" && S.overlay !== "wdetail" && S.overlay !== "saver") || (S.view !== "home" && S.overlay !== "saver")) return;
   try { const r = await fetch("/api/music", { cache: "no-store" }); const n = r.ok ? (await r.json()).now : null; HUB_MEDIA = n && n.from !== "tv" && n.title ? Panel.noted(n) : null; } catch { /* as it was: one missed ask isn't silence */ }
   // The computer's card, a few times a minute: the TV has better things to do.
   let sysNew = false;
   if (prefs.homeSys !== false && Date.now() - sysAt > 20_000) { sysAt = Date.now(); try { const r = await fetch("/api/desk/system", { cache: "no-store" }); SYS = r.ok ? await r.json() : null; sysNew = true; } catch { SYS = null; } }
   const was = songKey(MEDIA);
   readMedia();
-  if (sysNew || songKey(MEDIA) !== was) { paintHomeWidgets(); if (S.overlay === "wpanel") paintWpanel(); if (S.overlay === "wdetail" && WD.music) drawFull(); }
+  if (sysNew || songKey(MEDIA) !== was) { paintHomeWidgets(); if (S.overlay === "saver") paintSaverHud(); if (S.overlay === "wpanel") paintWpanel(); if (S.overlay === "wdetail" && WD.music) drawFull(); }
 }
 setInterval(readHubMusic, 5000);
 // The position moves on by itself between asks.
+setInterval(() => { if (S.overlay === "saver" && !document.hidden) Panel.syncPlayer($("#saverHud"), MEDIA); }, 1000);
 setInterval(() => { if (document.hidden || (S.overlay && S.overlay !== "wpanel" && S.overlay !== "wdetail") || S.view !== "home") return; if (S.overlay === "wdetail") { if (WD.music) { Panel.syncPlayer($("#wdetail"), MEDIA); Panel.syncWords($("#wdetail"), MEDIA, WD.words); } return; } Panel.syncPlayer($("#homeW"), MEDIA); if (S.overlay === "wpanel") Panel.syncPlayer($("#wpList"), MEDIA); }, 1000);
 setTimeout(readHubMusic, 2500);
 function readMedia() {
@@ -1848,8 +1850,13 @@ function paintSaverHud() {
   const sizes = {};
   for (const x of SETTINGS?.widgets?.tv || []) { const id = x?.id || x?.[0]; if (id) sizes[id] = x?.size || x?.[1] || "m"; }
   const ids = [...new Set([...Object.keys(sizes), ...w])].filter((id) => id !== "clock" && id !== "date" && id !== "world-clock" && WIDGETS[id]).slice(0, 3);
-  const cards = ids.map((id) => widgetCard(id, sizes[id] || "m")).join("");
-  $("#saverHud").innerHTML = `${cards ? `<div class="saver-cards">${cards}</div>` : ""}${time || date ? `<div class="saver-when">${time}${date}</div>` : ""}`;
+  // The right half, two by two, as on Home: what's playing across the top, and an odd one out across the bottom.
+  const list = [...ids.map((id) => (wide) => widgetCard(id, wide ? "l" : "m")), ...(SYS && prefs.homeSys !== false ? [() => Panel.gauges(SYS)] : [])];
+  const cards = (MEDIA.title && prefs.homePlayer !== false ? `<div class="span">${Panel.player(MEDIA, true)}</div>` : "") + list.map((f, i) => { const wide = i === list.length - 1 && list.length % 2 === 1; return `<div class="${wide ? "span" : ""}">${f(wide)}</div>`; }).join("");
+  const html = `${cards ? `<div class="saver-cards">${cards}</div>` : ""}${time || date ? `<div class="saver-when">${time}${date}</div>` : ""}`;
+  const hud = $("#saverHud");
+  if (hud._html !== html) hud.innerHTML = hud._html = html;
+  Panel.syncPlayer(hud, MEDIA);
 }
 // A library that couldn't be used says so for a few seconds, then the wallpapers carry on alone.
 function paintSaverNote() {

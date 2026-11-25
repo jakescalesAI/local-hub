@@ -127,6 +127,17 @@ test('a paused song keeps its place, and timed words are read', async () => {
   assert.deepEqual(readLyrics(null).lines, [])
 })
 
+test('Files: your folders, the newest first, and part of a file', async () => {
+  const { createFiles } = await import('../../files.mjs')
+  const route = createFiles({ run: async () => ({ stdout: '' }), sshHost: '', here: process.cwd() })
+  let got
+  const send = (res, code, body) => { got = [code, body] }
+  assert.equal(await route(new URL('http://x/api/files/drives/places'), { method: 'GET', headers: {} }, {}, { send }), true)
+  assert.ok(got[0] === 200 && got[1].places.every(p => p.path && !('full' in JSON.parse(JSON.stringify(p)))))
+  assert.ok(got[1].recent.every((x, i, l) => !i || l[i - 1].mtime >= x.mtime))
+  assert.equal(await route(new URL('http://x/api/files/laptop/kind?q=image'), { method: 'GET', headers: {} }, {}, { send }), false)
+})
+
 test('an icon of your own is a few characters, and only the sound’s places are places', async () => {
   const { cleanIcon, iconSvg, shortText } = await import('../../identity.mjs')
   assert.deepEqual([shortText('👨‍👩‍👧x'), shortText('ABCDE'), shortText('  ')], ['👨‍👩‍👧x', 'ABC', ''])

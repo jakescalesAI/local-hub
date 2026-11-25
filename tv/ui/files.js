@@ -10,12 +10,14 @@ const IC = {
   doc: sym('<path d="M7 3.5h7l4 4V20a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1z"/><path d="M14 3.5V8h4"/>'),
 };
 const KIND = { img: /\.(png|jpe?g|gif|webp)$/i, vid: /\.(mp4|m4v|webm|mov)$/i, aud: /\.(mp3|m4a|wav|ogg|aac|flac)$/i, txt: /\.(txt|md|log|csv|json|srt)$/i };
+const NAMED = { recent: "Recent", "all:image": "All pictures", "all:video": "All videos", "all:music": "All music", "all:doc": "All documents" };
 const ROW = 108, MAX = 400;
 let H = null, path = "", list = [], at = 0, shown = false, loading = 0, viewing = null, loaded = false, gone = "";
+const HOMES = new Set(); // Back from one of the first page's own places is the first page
 const kept = new Map(); // folder -> the row you were on
 const kind = (e) => (e.drive ? "drive" : e.dir ? "dir" : KIND.img.test(e.name) ? "img" : KIND.vid.test(e.name) ? "vid" : KIND.aud.test(e.name) ? "aud" : "doc");
 const size = (n) => (n > 1e12 ? `${(n / 1e12).toFixed(1)} TB` : n > 1e9 ? `${(n / 1e9).toFixed(1)} GB` : n > 1e6 ? `${(n / 1e6).toFixed(1)} MB` : n > 1e3 ? `${Math.round(n / 1e3)} KB` : `${n || 0} B`);
-const join = (name) => (path ? `${path.replace(/\/$/, "")}/${name}` : name);
+const join = (name, x) => x?.path ? x.path : (path ? `${path.replace(/\/$/, "")}/${name}` : name);
 const raw = (p) => `/files/drives/raw?path=${encodeURIComponent(p)}`;
 
 export function init(hooks) {
@@ -36,11 +38,18 @@ async function go(to, back) {
   gone = "Opening…";
   if (!loaded) draw();
   try {
-    const r = await fetch(`/api/files/drives?path=${encodeURIComponent(to)}`, { cache: "no-store" });
+    const all = /^all:(\w+)$/.exec(to), r = await fetch(to === "recent" ? "/api/files/drives/places" : all ? `/api/files/drives/kind?q=${all[1]}` : `/api/files/drives?path=${encodeURIComponent(to)}`, { cache: "no-store" });
     const b = await r.json();
+    if (r.ok && to === "recent") b.entries = b.recent;
+    // The first page: your folders, all your media, then the drives.
+    if (r.ok && !to) {
+      const p = await fetch("/api/files/drives/places", { cache: "no-store" }).then((x) => (x.ok ? x.json() : {})).catch(() => ({}));
+      b.entries = [{ name: "Recent", dir: true, path: "recent" }, ...(p.places || []).map((x) => ({ name: x.id, dir: true, path: x.path, count: x.count })), { name: "All pictures", dir: true, path: "all:image" }, { name: "All videos", dir: true, path: "all:video" }, { name: "All music", dir: true, path: "all:music" }, { name: "All documents", dir: true, path: "all:doc" }, ...(b.entries || [])];
+    }
     if (n !== loading) return;
     if (!r.ok) throw new Error(b.error || "That folder didn't open");
     path = to;
+    if (!to) for (const x of b.entries || []) if (x.path) HOMES.add(x.path);
     list = (b.entries || []).slice(0, MAX);
     loaded = true;
     gone = list.length ? "" : "This folder is empty";
@@ -54,8 +63,8 @@ async function go(to, back) {
 }
 function draw() {
   const e = H.esc;
-  H.el.querySelector(".fl-title").textContent = path ? path.split("/").filter(Boolean).pop() : "Files";
-  H.el.querySelector(".fl-path").textContent = path || "This computer";
+  H.el.querySelector(".fl-title").textContent = NAMED[path] || (path ? path.split("/").filter(Boolean).pop() : "Files");
+  H.el.querySelector(".fl-path").textContent = NAMED[path] ? "This computer" : path || "This computer";
   const t = H.el.querySelector(".fl-track");
   t.innerHTML = gone ? `<div class="fl-note">${e(gone)}</div>` : list.map((x, i) => {
     const m = x.drive ? (x.free ? `${size(x.free)} free` : "") : x.dir ? (x.count != null ? `${x.count} item${x.count === 1 ? "" : "s"}` : "") : size(x.size);
@@ -72,7 +81,7 @@ function paint() {
 function open() {
   const x = list[at];
   if (!x) return;
-  const p = join(x.name);
+  const p = join(x.name, x);
   if (x.dir || x.drive) return go(p);
   const k = kind(x), v = H.el.querySelector(".fl-view"), cap = `<div class="fl-cap">${H.esc(x.name)}</div>`;
   if (k === "img") { viewing = "img"; v.innerHTML = `<img src="${H.esc(raw(p))}" alt="">${cap}`; v.hidden = false; return; }
@@ -116,6 +125,6 @@ export function key(name) {
   if (name === "down") { if (at < list.length - 1) { at++; paint(); } return true; }
   if (name === "rew" || name === "ff") { at = Math.max(0, Math.min(list.length - 1, at + (name === "ff" ? 6 : -6))); paint(); return true; }
   if (name === "enter" || name === "right") { open(); return true; }
-  if (name === "back" && path) { go(path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : ""); return true; }
+  if (name === "back" && path) { go(HOMES.has(path) ? "" : path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : ""); return true; }
   return false;
 }

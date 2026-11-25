@@ -342,7 +342,7 @@ html.lite .settings::before { background: var(--bg); -webkit-backdrop-filter: no
 .saver-time { display: flex; align-items: baseline; gap: 14px; font: 600 156px/.9 var(--display); letter-spacing: -0.035em; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .saver-time small { font-size: 46px; font-weight: 600; letter-spacing: 0; color: rgba(255, 255, 255, .8); }
 .saver-date { font-size: 38px; font-weight: 600; letter-spacing: -0.01em; color: rgba(255, 255, 255, .85); padding-left: 6px; }
-.saver-cards { display: flex; flex-direction: column; align-items: flex-end; gap: 20px; }
+.saver-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; width: 960px; } .saver-cards > div { min-width: 0; display: grid; } .saver-cards > .span { grid-column: 1 / -1; } .saver .saver-cards .w.card, .saver .saver-cards .gz { box-sizing: border-box; width: 100% !important; height: 100% !important; } .saver .saver-cards .mp { width: 100%; box-sizing: border-box; } .saver .saver-cards > div:not(.span) .wxw { font-size: 21px; }
 /* Over moving photos the glass blurs less: a big blur recomputed every frame is what a Fire TV can't afford. */
 .saver .w.card { --lg-blur: saturate(160%) blur(20px); --lg-tint: rgba(16, 16, 22, .2); width: 320px; height: 250px; padding: 26px 28px; }
 .saver .w.card.wide { width: 520px; }
@@ -692,8 +692,8 @@ html.native #hub-chat { zoom: calc(var(--k, .5) * 1.25); }
 .when.time-only .when-date, .when.off { display: none; }
 /* Your LocalHub TV widgets (Home, TV view) at the top right of the home screen, like the screensaver's. */
 .homew { position: absolute; right: 84px; top: 44px; z-index: 6; display: flex; flex-direction: column; align-items: flex-end; gap: 18px; pointer-events: none; transition: opacity .4s var(--ease); }
-.homew { display: flex; flex-direction: column; align-items: flex-end; gap: 18px; }
-.homew .mp { width: 560px; }
+.homew { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 890px; gap: 18px; align-items: stretch; }
+.homew .mp { grid-column: 1 / -1; width: 100%; } .homew > .gz, .homew > .w.card, .homew > .w.card.sz-m, .homew > .w.card.sz-l { box-sizing: border-box; width: 100% !important; } .homew > :not(.mp):last-child:nth-child(even):nth-child(2) { grid-column: 1 / -1; }
 .homew > * { transition: box-shadow .15s; } .homew > .sel { box-shadow: 0 0 0 5px #fff !important; }
 /* A widget, opened. */
 .wdetail { position: absolute; inset: 0; z-index: 45; display: none; place-items: center; background: rgba(0, 0, 0, .62); } .wdetail.on { display: grid; }

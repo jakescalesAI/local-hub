@@ -311,6 +311,7 @@ html.offline .reconnect { opacity: 1; transform: translate(-50%, 0); }
 <script src="/tabs/tvlook.js"></script>
 <script src="/tabs/desk.js"></script>
 <script src="/tabs/pad.js"></script>
+<script src="/tabs/explorer.js"></script>
 <script src="/tabs/setup.js"></script>
 <script src="/tabs/tvsetup.js"></script>
 <script src="/tabs/launcher.js" onerror="this.remove()"></script>
@@ -684,7 +685,7 @@ function renderFiles() {
   const cloud = root === 'drives' && /^iCloud(\/|$)/.test(fsPath.drives)
   let html = cloud ? icloudWidgets() : root === 'drives' ? drivesWidgets() : root === 'laptop' ? laptopWidgets() : serverWidgets()
   const l = listing[root]
-  if (l?.root && (root !== 'drives' || fsPath[root])) html += `<div class="crumbs" title="${esc(fullPath(root, fsPath[root]))}">${esc(fullPath(root, fsPath[root]))}</div>`
+  if (l?.root && (root !== 'drives' || (fsPath[root] && !window.HubFiles))) html += `<div class="crumbs" title="${esc(fullPath(root, fsPath[root]))}">${esc(fullPath(root, fsPath[root]))}</div>`
   if (search && search.root === root) {
     const rows = (search.results || []).map(e => fileRow(root, e, e.path, `${parentOf(e.path) || ROOT_TITLE[root]} · ${e.dir ? 'Folder' : size(e.size)}`))
     const n = search.results.length
@@ -697,6 +698,7 @@ function renderFiles() {
       ${rows.length ? `<div class="list plain">${rows.join('')}</div>` : search.loading ? '' : `<div class="list"><div class="empty">${search.partial ? 'Nothing found yet.' : 'No files or folders match.'}</div></div>`}
       <div class="group-foot">${foot} Skips node_modules and .git; start with “.” to include hidden files.</div></section>`
   }
+  if (root === 'drives' && window.HubFiles) return window.HubFiles.render(l)
   if (!l) return html + `<div class="empty">Opening ${ROOT_TITLE[root]}…</div>`
   if (l.error) return html + `<div class="notice err">${esc(l.error)}</div>`
   const rows = l.entries.map(e => fileRow(root, e, join(l.path, e.name)))

@@ -15,7 +15,7 @@
 ${R} .nav.scrolled::after { display: none; }
 ${A} :is(.hc-panel, .menu) { background: var(--ui-panel) !important; box-shadow: var(--ui-edge), 0 24px 60px rgba(0, 0, 0, .5) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
 
-${A} #tvpanel { position: fixed; z-index: 60; top: 0; right: 0; bottom: 0; width: 418px; overflow-y: auto; scrollbar-width: none; background: var(--ui-panel); border-radius: 26px 0 0 26px; box-shadow: inset 1px 0 0 rgba(255, 255, 255, .1), -30px 0 80px rgba(0, 0, 0, .45); color: #fff; transform: translateX(105%); visibility: hidden; transition: transform .28s var(--ease), visibility 0s .28s; }
+${A} #tvpanel { position: fixed; z-index: 74; top: 0; right: 0; bottom: 0; width: 418px; overflow-y: auto; scrollbar-width: none; background: var(--ui-panel); border-radius: 26px 0 0 26px; box-shadow: inset 1px 0 0 rgba(255, 255, 255, .1), -30px 0 80px rgba(0, 0, 0, .45); color: #fff; transform: translateX(105%); visibility: hidden; transition: transform .28s var(--ease), visibility 0s .28s; }
 ${A} #tvpanel.on { transform: none; visibility: visible; transition: transform .28s var(--ease); }
 ${A} #tvpanel > div { zoom: .55; padding: 56px 48px; }
 ${A} #tvpanel [data-w] { cursor: pointer; touch-action: none; }
@@ -150,6 +150,7 @@ ${R} .tvm-fit { flex: 1; min-height: 0; display: grid; place-items: center; }
 ${R} .tvm-screen { position: relative; overflow: hidden; border-radius: 18px; background: #000; box-shadow: 0 0 0 1px rgba(255, 255, 255, .14), 0 30px 80px rgba(0, 0, 0, .5); }
 ${R} .tvm-screen iframe { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; border: 0; transform-origin: 0 0; pointer-events: none; }
 ${R} .tvm-screen canvas { position: absolute; inset: 0; width: 100%; height: 100%; } ${R} .tvm-screen canvas[hidden] { display: none; }
+${R} .tvm-screen.real iframe { visibility: hidden; }
 ${R} .tvm-cover { position: absolute; inset: 0; cursor: pointer; }
 ${R} .tvm-note { position: absolute; inset: 0; display: grid; place-items: center; padding: 40px; text-align: center; font-size: 20px; font-weight: 600; background: rgba(0, 0, 0, .72); pointer-events: none; }
 ${R} .tvm-note[hidden] { display: none; }
@@ -339,9 +340,12 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
 #hubsaver i { position: absolute; inset: -3%; background: center / cover no-repeat; opacity: 0; transition: opacity 1.6s; animation: hubsaver 24s ease-in-out infinite alternate; }
 #hubsaver i.on { opacity: 1; }
 #hubsaver::after { content: ""; position: absolute; inset: 0; background: linear-gradient(0deg, rgba(0, 0, 0, .45), transparent 45%); }
-#hubsaver div { position: absolute; z-index: 1; left: max(6vw, 28px); bottom: max(7vh, 40px); }
-#hubsaver b { display: block; font: 700 clamp(56px, 8vw, 120px)/1 var(--display); letter-spacing: -.035em; font-variant-numeric: tabular-nums; }
-#hubsaver span { font: 600 clamp(18px, 2vw, 30px)/1.4 var(--display); }
+#hubsaver .when { position: absolute; z-index: 1; left: max(4vw, 28px); bottom: max(6vh, 40px); }
+#hubsaver .cards { position: absolute; z-index: 1; right: max(3.5vw, 28px); top: max(5vh, 36px); width: calc(50vw - max(3.5vw, 28px)); max-height: 88vh; overflow: hidden; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 232px), 1fr)); gap: 14px; pointer-events: none; }
+#hubsaver .cards:empty { display: none; } #hubsaver .tvp-card { grid-column: 1 / -1; } #hubsaver .tvp-card .mp { position: relative; overflow: hidden; zoom: .7; } #hubsaver :is(.tvs-card, .tvt-wx) { box-sizing: border-box; min-width: 0; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; padding: 20px 22px; border-radius: 26px; background: var(--ui-panel); box-shadow: var(--ui-edge); } #hubsaver .tvs-g > * { min-width: 0; } #hubsaver .hw-cell { height: 184px; min-width: 0; grid-column: auto !important; grid-row: auto !important; }
+@media (max-width: 700px) { #hubsaver .cards { display: none; } }
+#hubsaver .when b { display: block; font: 700 clamp(56px, 8vw, 120px)/1 var(--display); letter-spacing: -.035em; font-variant-numeric: tabular-nums; }
+#hubsaver .when span { font: 600 clamp(18px, 2vw, 30px)/1.4 var(--display); }
 @keyframes hubsaver { from { transform: scale(1); } to { transform: scale(1.06); } }
 @media (prefers-reduced-motion: reduce) { #hubsaver i { animation: none; } }
 `
@@ -724,8 +728,8 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   }
   function closePanel() { clearInterval(poll); panel.classList.remove('on'); dock(); setTimeout(paintRail, 60); if (panel.contains(document.activeElement)) btn.focus() }
   btn.addEventListener('click', e => { e.stopPropagation(); panel.classList.contains('on') ? closePanel() : openPanel() })
-  // Beside the page on a computer, so everything stays clickable; over it on a phone or a narrow window, where a tap outside closes it.
-  const docked = () => document.documentElement.hasAttribute('data-tvlook') && innerWidth >= 980
+  // A layer over everything: nothing under it moves, and a click anywhere else closes it.
+  const docked = () => false
   const dock = () => { const on = panel.classList.contains('on') && docked(); if (document.documentElement.hasAttribute('data-dock') !== on) { document.documentElement.toggleAttribute('data-dock', on); if (mirror.classList.contains('on')) setTimeout(fitMirror, 300); setTimeout(fitRow, 320) } }
   addEventListener('resize', dock)
   document.addEventListener('click', e => { if (panel.classList.contains('on') && !panel.contains(e.target) && e.target.isConnected && !btn.contains(e.target) && !e.target.closest?.('[data-rail="overlay"], #dkadd, #tvwid')) setTimeout(closePanel) })
@@ -856,7 +860,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   async function frameCss() {
     // The TV page's own stylesheets, from the same list it uses. No scripts run in here (sandbox).
     const page = await (await fetch('/tv/', { cache: 'no-store' })).text()
-    const css = [...page.matchAll(/<link rel="stylesheet" href="\.\/([\w.?=-]+)">/g)].map(m => m[1]).concat('stream.css?v=2', 'assistant.css').filter((x, i, l) => l.findIndex(y => y.split('?')[0] === x.split('?')[0]) === i).map(x => `<link rel="stylesheet" href="/tv/${x}">`).join('')
+    const css = [...page.matchAll(/<link rel="stylesheet" href="\.\/([\w.?=-]+)">/g)].map(m => m[1]).concat('stream.css?v=4', 'assistant.css').filter((x, i, l) => l.findIndex(y => y.split('?')[0] === x.split('?')[0]) === i).map(x => `<link rel="stylesheet" href="/tv/${x}">`).join('')
     await new Promise(done => { mFrame.onload = done; mFrame.srcdoc = `<!doctype html><html><head><base href="/tv/">${css}<style>html,body{margin:0;width:1920px;height:1080px;overflow:hidden;background:#000}#stage{left:0!important;top:0!important;transform:none!important}*{transition:none!important;animation:none!important;cursor:pointer!important}#hub-wall{display:block!important;position:absolute;inset:0;z-index:0;background:#000 center/cover;--hub-scrim:.22}#hub-wall::after{background:#000!important}</style></head><body></body></html>` })
   }
   async function watch(run) {
@@ -877,7 +881,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
         d.body.className = bc || ''
         d.body.innerHTML = `<div id="hub-wall"></div>${m.html.replace(/ on[a-z]+="[^"]*"/g, '')}`
         if (m.wall) d.getElementById('hub-wall').style.backgroundImage = `url("${m.wall.replace(/["\\\n]/g, '')}")`
-        if (isLive()) continue
+        if (live || mScreen.classList.contains('real')) continue
         note(m.away ? 'Another app is open on the TV. Press TV home to come back to LocalHub.' : m.stream ? 'The TV’s browser is open. The arrow keys still work in it.' : '')
       } catch { await new Promise(w => setTimeout(w, 1500)) }
     }
@@ -889,18 +893,24 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   async function watchScreen(run) {
     if (!('VideoDecoder' in window)) return false // an address that isn't https or this computer
     const stop = new AbortController(), g = mCanvas.getContext('2d', { alpha: false, desynchronized: true })
-    let dec = null, head = [], got = false
-    const reset = () => { try { dec?.close() } catch {} dec = null; head = [] }
+    let dec = null, head = [], conf = null, got = false
+    const reset = all => { try { dec?.close() } catch {} dec = null; if (all) { head = []; conf = null } }
+    // A decoder that gave up starts again at the next whole picture.
+    const make = () => { dec = new VideoDecoder({ output: frame, error: () => reset() }); dec.configure(conf) }
     let r
     try { r = await fetch('/api/tv/screen', { cache: 'no-store', signal: stop.signal }) } catch { return false }
     if (run !== mRun || !r.ok) { stop.abort(); return false }
     live = { stop, state: null }
     const me = live
+    mScreen.classList.add('real')
+    // No picture for a while: ask again from the start.
+    const late = setTimeout(() => { if (!got && live === me) stop.abort() }, 6000)
     const frame = f => { try { g.drawImage(f, 0, 0, 1280, 720) } finally { f.close() } if (!got) { got = true; mSeen = Date.now(); mCanvas.hidden = false; clearInterval(mBeat); post({ type: 'mirror', on: false }); screenNote() } }
     const nal = n => {
       const type = n[n[2] === 1 ? 3 : 4] & 31, at = performance.now() * 1000
-      if (type === 7) { reset(); head = [n]; const o = n[2] === 1 ? 4 : 5; dec = new VideoDecoder({ output: frame, error: () => reset() }); dec.configure({ codec: `avc1.${[n[o], n[o + 1], n[o + 2]].map(v => v.toString(16).padStart(2, '0')).join('')}`, optimizeForLatency: true }) }
+      if (type === 7) { reset(true); head = [n]; const o = n[2] === 1 ? 4 : 5; conf = { codec: `avc1.${[n[o], n[o + 1], n[o + 2]].map(v => v.toString(16).padStart(2, '0')).join('')}`, optimizeForLatency: true }; make() }
       else if (type === 8) head.push(n)
+      else if (type === 5 && conf && dec?.state !== 'configured') { make(); dec.decode(new EncodedVideoChunk({ type: 'key', timestamp: at, data: bytes(...head, n) })); dec._key = true }
       else if (!dec || dec.state !== 'configured') return
       else if (type === 5) { dec.decode(new EncodedVideoChunk({ type: 'key', timestamp: at, data: bytes(...head, n) })); dec._key = true }
       else if (type === 1 && dec._key) dec.decode(new EncodedVideoChunk({ type: 'delta', timestamp: at, data: n }))
@@ -924,7 +934,8 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
           buf = buf.subarray(i)
         }
       } catch {}
-      reset()
+      clearTimeout(late)
+      reset(true)
       stop.abort()
       if (live === me) live = null
       if (run !== mRun) return
@@ -983,6 +994,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
       fetch('/api/tv/power', { cache: 'no-store' }).then(r => r.json()).then(r => { if (run === mRun && !mSeen && r.known) note(r.on ? 'The TV is on. Press TV home to open LocalHub on it.' : 'The TV is off. Press the power button to turn it on.') }, () => {})
     }
     mCanvas.hidden = true
+    mScreen.classList.remove('real')
     mName.textContent = 'Your TV'
     const real = watchScreen(run)
     try { await frameCss() } catch { return note('The TV’s page didn’t load') }
@@ -1637,7 +1649,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     if (saver) return
     saver = document.createElement('div')
     saver.id = 'hubsaver'
-    saver.innerHTML = '<i></i><i></i><div><b></b><span></span></div>'
+    saver.innerHTML = '<i></i><i></i><div class="when"><b></b><span></span></div><div class="cards" aria-hidden="true"></div>'
     document.body.append(saver)
     const mine = saver, d = devLook(PHONE.matches ? 'mobile' : 'desktop')
     let pics = [getComputedStyle(document.getElementById('hub-wall')).backgroundImage].filter(x => x && x !== 'none')
@@ -1645,12 +1657,21 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     if (saver !== mine) return
     let n = Math.floor(Math.random() * Math.max(1, pics.length)), side = 0
     const turn = () => { const [a, b] = [mine.children[side], mine.children[1 - side]]; if (pics.length) a.style.backgroundImage = pics[n++ % pics.length]; a.classList.add('on'); b.classList.remove('on'); side = 1 - side }
-    const time = () => { const t = new Date(); mine.querySelector('b').textContent = t.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); mine.querySelector('span').textContent = t.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' }) }
+    const time = () => { const t = new Date(); mine.querySelector('.when b').textContent = t.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); mine.querySelector('.when span').textContent = t.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' }) }
+    // Home's widgets, on the right half as on Home.
+    const cards = mine.querySelector('.cards')
+    const widgets = () => {
+      const html = P && MU?.now?.title && look.player !== false ? `<div class="tvp-card">${P.player(MU.now, true)}</div>` : ''
+      const rest = [...document.getElementById('tvside')?.children || []].filter(n => !n.classList.contains('tvp-card')).map(n => n.outerHTML.replace(/ (role|tabindex|aria-label)="[^"]*"/g, '')).join('')
+      if (cards._html !== html + rest) cards.innerHTML = cards._html = html + rest
+      P?.syncPlayer(cards, MU?.now)
+    }
     turn()
     time()
+    widgets()
     requestAnimationFrame(() => mine.classList.add('on'))
     let k = 0
-    saverTimer = setInterval(() => { time(); if (pics.length > 1 && ++k % 12 === 0) turn() }, 1000)
+    saverTimer = setInterval(() => { time(); if (k % 5 === 4) readPc(); widgets(); if (pics.length > 1 && ++k % 12 === 0) turn() }, 1000)
   }
   function stir(e) {
     still = Date.now()
@@ -1736,7 +1757,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
       + (at('home') ? tabItem(at('home')) : '') + item('assistant', 'mic', 'Assistant', chat && !set.classList.contains('on'))
       + (window.HubBrowser ? item('browser', 'globe', 'Browser', !!window.HubBrowser.isOpen?.()) : '') + item('tv', 'tv', 'TV', mirror.classList.contains('on'))
       + (at('drives') ? tabItem(at('drives')) : '') + rest.map(tabItem).join('')
-      + '</div>' + item('overlay', panel.classList.contains('on') ? 'sideclose' : 'sideopen', panel.classList.contains('on') ? 'Close sidebar' : 'Sidebar', panel.classList.contains('on')) + item('settings', 'gear', 'Settings', set.classList.contains('on'))
+      + '</div>' + item('overlay', panel.classList.contains('on') ? 'sideclose' : 'sideopen', panel.classList.contains('on') ? 'Close sidebar' : 'Sidebar', false) + item('settings', 'gear', 'Settings', set.classList.contains('on'))
     if (rail._html === html) return
     rail._html = html
     rail.innerHTML = html
