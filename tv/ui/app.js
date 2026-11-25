@@ -16,7 +16,8 @@
 
 import * as Stream from "./stream.js?v=8";
 import * as Panel from "./panel.js?v=10";
-import * as Wg from "./widgets.js?v=2";
+import * as Clock from "./clock.js?v=1";
+import * as Wg from "./widgets.js?v=5";
 import * as Files from "./files.js?v=2";
 import { createLock } from "./lock.js?v=2";
 import * as Remote from "./remote.js?v=5";
@@ -479,7 +480,7 @@ async function walkRows() {
   // Two rows a step: the screen shows about two and a half, and the TV also draws a margin around what it shows.
   for (let row = 1; row < rows; row += 2) {
     if (document.body.classList.contains("booted")) break;
-    page.style.transform = `translateY(${-(648 + row * 236 - 400)}px)`;
+    page.style.transform = `translateY(${-(624 + row * 236 - 400)}px)`;
     await frame();
   }
   window.__boot.rows = Math.round(performance.now());
@@ -538,7 +539,7 @@ function applyFocus(instant) {
   // Row 0 sits on the Top Shelf. Further down, in one long scroll (the default, like tvOS) the
   // focused row rides about a third of the way up; in pages the rows move three at a time.
   const paged = SETTINGS?.scroll?.tv === "pages";
-  const gridTop = 690 + (fav ? FAVS_H : 0);
+  const gridTop = 666 + (fav ? FAVS_H : 0);
   const first = fav ? Math.floor(gRow / 3) * 3 : 1 + Math.floor((gRow - 1) / 3) * 3;
   const y = !inGrid ? 0 : paged ? -(gridTop + first * 236 - 190) : -(gridTop + gRow * 236 - 400);
   // A page shows its own rows: the ones before it leave with it instead of hanging under the clock.
@@ -725,7 +726,7 @@ function appShelfHTML(it) {
       ? `<span class="banner-mark"><img class="cut" src="${esc(it.mark)}" alt=""></span>`
     : it.wordmark
       ? `<span class="banner-mark"><i style="--glyph:url('./brands/${esc(it.wordmark)}.svg')"></i></span>`
-      : `<h1 class="banner-text">${esc(it.name)}</h1>`;
+      : `<h1 class="banner-text" style="font-size:${Math.max(62, Math.min(150, Math.round(1230 / Math.max(1, it.name.length))))}px">${esc(it.name)}</h1>`;
   return `<div class="shelf-title" aria-label="${esc(it.name)}">${mark}</div>`;
 }
 
@@ -1173,13 +1174,14 @@ function paintTiles() {
 /* ── the home screen's widgets (top right) and the widget panel (the row's widgets button) ── */
 // Home's widgets (widgets.js, the same on the computer and the web), at the top right. Where the remote can stop: each widget,
 // or the buttons of one that has some.
-const BOARD = Wg.createBoard({ screen: "tv", changed: () => { paintHomeWidgets(); if (S.overlay === "saver") paintSaverHud(); if (S.overlay === "wdetail" && WD.k) drawWidget(); }, music: () => MEDIA });
+const BOARD = Wg.createBoard({ screen: "tv", changed: () => { paintHomeWidgets(); paintClock(); if (S.overlay === "wdetail" && WD.k) drawWidget(); }, music: () => MEDIA });
+const SBOARD = Wg.createBoard({ screen: "saver", changed: () => { if (S.overlay === "saver") paintSaverHud(); }, music: () => MEDIA });
 const boardHTML = () => (BOARD.ready() ? BOARD.html() : Wg.drawItem({ k: "m", id: "music", size: "w" }, { music: MEDIA }));
 setInterval(() => {
   if (document.hidden || !IN_HUB || (S.overlay && !["wpanel", "wdetail", "saver"].includes(S.overlay)) || (S.view !== "home" && S.overlay !== "saver")) return;
-  BOARD.refresh();
+  (S.overlay === "saver" ? SBOARD : BOARD).refresh();
   if (S.overlay === "wdetail") { if (WD.k && Wg.W[WD.id]?.tick === 1) drawWidget(); return; }
-  const tick = Math.min(...BOARD.list().map((x) => Wg.W[x.id]?.tick || 999));
+  const tick = Math.min(...(S.overlay === "saver" ? SBOARD : BOARD).fits().map((x) => Wg.W[x.id]?.tick || 999));
   if (tick === 1) { S.overlay === "saver" ? paintSaverHud() : paintHomeWidgets(); }
 }, 1000);
 function wgStops() {
@@ -1221,9 +1223,9 @@ function widgetMenu(k) {
   const it = BOARD.items().find((x) => x.k === k), w = it && Wg.W[it.id];
   if (!w) return addWidgetMenu();
   const l = BOARD.list(), i = l.findIndex((x) => x.k === k);
-  showMenu(w.label, [...(w.sizes.length > 1 ? w.sizes.map((z) => ({ id: `wd:z:${k}:${z}`, label: Wg.SIZE_NAMES[z] + (it.size === z ? "  ✓" : ""), ic: SYM.move })) : []), ...(i > 0 ? [{ id: `wd:up:${k}`, label: "Move earlier", ic: SYM.move }] : []), ...(i < l.length - 1 ? [{ id: `wd:dn:${k}`, label: "Move later", ic: SYM.move }] : []), { id: `wd:rm:${k}`, label: "Remove", ic: SYM.trash }, { id: "wd:add", label: "Add a widget", ic: SYM.plus }]);
+  showMenu(w.label, [...(w.sizes.length > 1 ? Wg.fitting(l, it, "tv").map((z) => ({ id: `wd:z:${k}:${z}`, label: Wg.SIZE_NAMES[z] + (it.size === z ? "  ✓" : ""), ic: SYM.move })) : []), ...(i > 0 ? [{ id: `wd:up:${k}`, label: "Move earlier", ic: SYM.move }] : []), ...(i < l.length - 1 ? [{ id: `wd:dn:${k}`, label: "Move later", ic: SYM.move }] : []), { id: `wd:rm:${k}`, label: "Remove", ic: SYM.trash }, { id: "wd:add", label: "Add a widget", ic: SYM.plus }]);
 }
-const addWidgetMenu = () => showMenu("Add a widget", Object.entries(Wg.W).filter(([id]) => Wg.can(id, "tv")).map(([id, w]) => ({ id: `wd:new:${id}`, label: w.label, ic: SYM.plus })));
+const addWidgetMenu = () => showMenu("Add a widget", Object.entries(Wg.W).filter(([id, w]) => Wg.can(id, "tv") && Wg.fitting(BOARD.list(), { k: "new", id, size: w.def }, "tv").length).map(([id, w]) => ({ id: `wd:new:${id}`, label: w.label, ic: SYM.plus })));
 function showMenu(name, menu) {
   S.menu = menu;
   S.menuAt = 0;
@@ -1237,18 +1239,18 @@ function showMenu(name, menu) {
 function widgetPick(a) {
   const [act, k, z] = a.split(":"), l = BOARD.items().map((x) => ({ ...x })), i = l.findIndex((x) => x.k === k);
   if (act === "add") return setTimeout(addWidgetMenu, 60);
-  if (act === "new") { const nk = BOARD.newKey(); S.zone = "player"; S.mp = nk; return saveBoard([...l, { k: nk, id: k, size: Wg.W[k].def }], `Added ${Wg.W[k].label}`); }
+  if (act === "new") { const nk = BOARD.newKey(); S.zone = "player"; S.mp = nk; const ok = Wg.fitting(BOARD.list(), { k: nk, id: k, size: Wg.W[k].def }, "tv"); return saveBoard([...l, { k: nk, id: k, size: ok.includes(Wg.W[k].def) ? Wg.W[k].def : ok.at(-1) }], `Added ${Wg.W[k].label}`); }
   if (i < 0) return;
-  if (act === "z") l[i].size = z;
+  if (act === "z") { const next = Wg.place(l, "tv", k, { size: z }); return next ? saveBoard(next) : toast("No room for that size"); }
   else if (act === "rm") l.splice(i, 1);
-  else { const j = i + (act === "up" ? -1 : 1); if (!l[j]) return; [l[i], l[j]] = [l[j], l[i]]; }
+  else { const j = i + (act === "up" ? -1 : 1); if (!l[j]) return; [l[i], l[j]] = [l[j], l[i]]; for (const x of l) delete x.at; }
   saveBoard(l);
 }
 // A widget, full screen.
 function drawWidget() {
   const it = BOARD.items().find((x) => x.k === WD.k), w = it && Wg.W[it.id];
   if (!w) return closeHomeCard();
-  const box = $("#wdetail > div"), html = `<div class="wfull">${w.full ? w.full(BOARD.D, it) : w.draw(w.sizes.includes("x") ? "x" : w.sizes.includes("l") ? "l" : w.sizes.at(-1), BOARD.D, it)}</div>`;
+  const box = $("#wdetail > div"), html = `<div class="wfull">${w.full ? w.full(BOARD.D, it, "tv") : w.draw(w.sizes.includes("xl") ? "xl" : w.sizes.includes("l") ? "l" : w.sizes.at(-1), BOARD.D, it)}</div>`;
   if (box._html !== html) box.innerHTML = box._html = html;
   const stops = [...box.querySelectorAll("button[data-wa]")];
   stops.forEach((n, i) => n.classList.toggle("sel", i === Math.min(WD.at || 0, stops.length - 1)));
@@ -1263,6 +1265,7 @@ function openHomeCard(n) {
   WD.id = n.dataset.wid;
   WD.at = 0;
   WD.from = n;
+  w.open?.();
   box._html = "";
   box.scrollTop = 0;
   BOARD.refresh(w.fullNeeds || []);
@@ -1274,7 +1277,13 @@ function openHomeCard(n) {
 }
 function widgetKey(name) {
   const box = $("#wdetail > div"), stops = [...box.querySelectorAll("button[data-wa]")];
-  if (stops.length && ["up", "left", "down", "right"].includes(name)) { WD.at = clamp((WD.at || 0) + (name === "down" || name === "right" ? 1 : -1), 0, stops.length - 1); drawWidget(); return stops[WD.at]?.scrollIntoView?.({ block: "nearest" }); }
+  if (stops.length && ["up", "left", "down", "right"].includes(name)) {
+    // Where the arrow points: a month is a grid.
+    const all = stops.map((n, i) => ({ n, i, r: n.getBoundingClientRect() })), to = wgNext(all, all[Math.min(WD.at || 0, all.length - 1)], name === "left" ? -1 : name === "right" ? 1 : 0, name === "up" ? -1 : name === "down" ? 1 : 0);
+    if (to) WD.at = to.i; else if (name === "up" || name === "down") box.scrollTop += name === "down" ? 160 : -160;
+    drawWidget();
+    return to && to.n.scrollIntoView?.({ block: "nearest" });
+  }
   if (stops.length && name === "enter") return BOARD.act(stops[Math.min(WD.at || 0, stops.length - 1)].dataset.wa);
   if (name === "up" || name === "down") return void (box.scrollTop += name === "down" ? 160 : -160);
   if (["back", "enter", "menu", "home"].includes(name)) closeHomeCard();
@@ -1623,6 +1632,7 @@ function settingsModel() {
     { title: "Settings" },
     { group: "Home Screen" },
     { key: "clock", t1: "Clock", t2: "Top left, and on the screensaver", values: ["12-hour", "24-hour"] },
+    { id: "clockStyle", t1: "Clock style", t2: "The same on every screen; more in LocalHub on the computer", v: clockVal("clockStyle") }, { id: "clockFont", t1: "Clock font", t2: "", v: clockVal("clockFont") }, { id: "clockColor", t1: "Clock color", t2: "", v: clockVal("clockColor") }, { id: "clockSize", t1: "Clock size", t2: "On Home and the screensaver", v: clockVal("clockSize") }, { id: "clockDate", t1: "Date", t2: "With the clock", v: clockVal("clockDate") },
     { key: "homeClock", t1: "Home clock", t2: "What the top left of the home screen shows", values: ["Time and date", "Time", "Off"] },
     ...(S.inputCount ? [{ key: "inputs", t1: "HDMI inputs", t2: "Shown in the Sidebar", toggle: true }] : []), // only on a TV that has some
     { id: "sortapps", t1: "Sort apps", t2: "The order of the tiles on Home", v: SORTS[sortMode()] },
@@ -1702,6 +1712,7 @@ function settingsActivate() {
   else if (it.id === "address") return openModal("LocalHub address", "The laptop's address on your network, and the hub's port.", HUB.url.replace(/^https?:\/\//, ""), (v) => { native("setHub", v.trim()); HUB.paired = false; probeNative(); });
   else if (it.id === "pair") return openPairing();
   else if (it.id === "saverSource") return cycleSaverSource();
+  else if (CLOCK_SET[it.id]) return cycleClock(it.id);
   else if (it.id === "wall") return openWallPicker();
   else if (it.id === "conn") return openConnMenu();
   else if (it.id === "listen") return toggleListen();
@@ -1781,10 +1792,25 @@ function tick() {
   const when = $(".when"), hc = prefs.homeClock || "Time and date";
   when.classList.toggle("time-only", hc === "Time");
   when.classList.toggle("off", hc === "Off");
-  $("#clock").textContent = clockText(d);
-  $("#today").textContent = d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+  paintClock(d);
   if (S.overlay === "saver") paintSaverHud();
   if (S.shelfId === "hub" && !S.overlay) $("#shelfBody").innerHTML = hubShelfHTML();
+}
+// How it looks is the hub's (data.clock): the same on every screen.
+const CLOCK = () => Clock.of(BOARD.D.board?.data?.clock || SBOARD.D.board?.data?.clock);
+function paintClock(d = new Date()) {
+  const c = CLOCK();
+  Clock.paint($("#clock"), prefs.homeClock === "Time" ? { ...c, date: "off" } : c, { now: d, h24: prefs.clock === "24-hour", scale: c.size / 100, maxW: 690, maxH: 400 });
+}
+setInterval(() => { if (document.hidden || !CLOCK().secs) return; if (S.overlay === "saver") paintSaverClock(); else if (!S.overlay && S.view === "home") paintClock(); }, 1000);
+const CLOCK_SET = { clockStyle: ["style", Clock.STYLES], clockFont: ["font", Clock.FONTS], clockColor: ["color", { "#ffffff": "White", "#ffd60a": "Yellow", "#ff9f0a": "Orange", "#ff453a": "Red", "#ff375f": "Pink", "#bf5af2": "Purple", "#0a84ff": "Blue", "#64d2ff": "Light blue", "#30d158": "Green" }], clockSize: ["size", { 60: "Small", 100: "Medium", 140: "Large", 180: "Extra large" }], clockDate: ["date", Clock.DATES] };
+const clockVal = (id) => { const [k, o] = CLOCK_SET[id], v = o[CLOCK()[k]]; return Array.isArray(v) ? v[0] : v || "Custom"; };
+async function cycleClock(id) {
+  if (!IN_HUB) return toast("Pair this TV with LocalHub first");
+  const [k, o] = CLOCK_SET[id], l = Object.keys(o), cur = CLOCK(), v = l[(l.indexOf(String(cur[k])) + 1) % l.length], kept = Object.fromEntries(Object.entries({ ...cur, [k]: k === "size" ? Number(v) : v, ...(k === "size" ? { saver: Number(v) } : {}) }).filter(([x, y]) => y !== Clock.DEF[x]));
+  if (!(await BOARD.data({ clock: Object.keys(kept).length ? kept : null }))) toast("LocalHub didn't answer");
+  paintClock();
+  renderSettings();
 }
 let saverTimer = 0;
 function armSaver() {
@@ -1924,17 +1950,19 @@ async function showNextPhoto(gen) {
 }
 
 function paintSaverHud() {
-  const w = saverSettings().widgets;
-  const d = new Date(), t = clockParts(d);
-  const time = w.includes("clock") ? `<div class="saver-time">${esc(t.hm)}${t.ap ? `<small>${t.ap}</small>` : ""}</div>` : "";
-  const date = w.includes("date") ? `<div class="saver-date">${esc(d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" }))}</div>` : "";
+  const on = saverSettings().widgets.includes("clock");
   // Home's widgets, in the right half as on Home.
-  const cards = BOARD.list().length || !BOARD.ready() ? boardHTML() : "";
-  const html = `${cards ? '<div class="saver-cards"><div class="wg"></div></div>' : ""}${time || date ? `<div class="saver-when">${time}${date}</div>` : ""}`;
+  const cards = SBOARD.ready() ? SBOARD.html() : boardHTML();
+  const html = `${cards ? '<div class="saver-cards"><div class="wg"></div></div>' : ""}${on ? '<div class="saver-when"></div>' : ""}`;
   const hud = $("#saverHud");
   if (hud._html !== html) hud.innerHTML = hud._html = html;
   if (cards) Wg.put(hud.querySelector(".wg"), cards);
+  paintSaverClock();
   Panel.syncPlayer(hud, MEDIA);
+}
+function paintSaverClock() {
+  const box = $("#saverHud .saver-when"), c = CLOCK(), w = saverSettings().widgets;
+  if (box) Clock.paint(box, w.includes("date") ? c : { ...c, date: "off" }, { h24: prefs.clock === "24-hour", scale: c.saver / 100, maxW: 780, maxH: 860 });
 }
 // A library that couldn't be used says so for a few seconds, then the wallpapers carry on alone.
 function paintSaverNote() {

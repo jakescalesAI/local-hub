@@ -314,7 +314,8 @@ const deviceAuth = createDeviceAuth({ here: HERE, hubName: () => hubConfig().nam
 // the page. A service add-on loads when it is turned on; until then its routes don't exist.
 // tv-setup and tv-saver sit before tv: tv answers every other /api/tv/* path with a 404.
 const BACKENDS = ['ai', 'cloud', 'calendar', 'stripe', 'hub-settings', 'identity', 'hub-setup', 'hub-sites', 'home', 'chat', 'browser', 'system', 'agent-actions', 'launcher', 'connections', 'music', 'board', 'desk', 'reach', 'lock', 'tv-setup', 'tv-saver', 'tv-keys', 'tv-screen', 'tv-audio', 'tv']
-const SERVICES = new Set(['ai', 'cloud', 'calendar', 'stripe'])
+// The calendar is the hub's own until feeds are added, so it is always here for the widget.
+const SERVICES = new Set(['ai', 'cloud', 'stripe'])
 const loaded = new Map()
 async function tabRoutes() {
   const routes = []

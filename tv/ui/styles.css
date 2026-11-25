@@ -26,7 +26,7 @@
   /* tabs/custom.js */
   --hub-radius: 20px; --hub-blur: 20px; --hub-alpha: 70%; --hub-scrim: .45; --hub-shadow: 0 0 0 .5px var(--sep);
   /* tvOS geometry, in canvas pixels */
-  --icon-w: 300px; --icon-h: 180px; --icon-r: 24px; --gap-x: 49px; --pitch: 252px; --row0: 690px; --side: 112px;
+  --icon-w: 300px; --icon-h: 180px; --icon-r: 24px; --gap-x: 49px; --pitch: 252px; --row0: 666px; --side: 112px;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -92,7 +92,7 @@ html.lite .card, html.lite .glass { -webkit-backdrop-filter: none !important; ba
    stick 100-350 ms frames, and a class on body for it restyled every tile (~30 ms each time Settings opened). */
 
 /* Top Shelf: full-bleed art for whatever the top row has in focus. */
-.shelf { position: relative; height: 802px; overflow: hidden; transition: opacity .6s var(--ease), filter .6s var(--ease); }
+.shelf { position: relative; height: 778px; overflow: hidden; transition: opacity .6s var(--ease), filter .6s var(--ease); }
 body.in-grid .shelf { opacity: 0; }
 .shelf-art { position: absolute; inset: 0; opacity: 0; transition: opacity 1s var(--ease); overflow: hidden; }
 .shelf-art.on { opacity: 1; }
@@ -338,11 +338,8 @@ html.lite .settings::before { background: var(--bg); -webkit-backdrop-filter: no
 .saver-hud { position: absolute; left: 0; bottom: 0; z-index: 4; width: 1920px; height: 1080px; transform: scale(var(--k, 1)); transform-origin: 0 100%; display: flex; flex-direction: column; align-items: flex-end; justify-content: space-between; gap: 36px; padding: 70px 120px 70px 960px; pointer-events: none; }
 .saver-hud > :only-child { margin-top: auto; }
 /* The time and date at the bottom left; your widgets down the right. */
-.saver-when { position: absolute; left: 120px; bottom: 92px; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; color: #fff; text-align: left; }
-.saver-time { display: flex; align-items: baseline; gap: 14px; font: 600 156px/.9 var(--display); letter-spacing: -0.035em; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.saver-time small { font-size: 46px; font-weight: 600; letter-spacing: 0; color: rgba(255, 255, 255, .8); }
-.saver-date { font-size: 38px; font-weight: 600; letter-spacing: -0.01em; color: rgba(255, 255, 255, .85); padding-left: 6px; }
-.saver-cards { width: 960px; } .saver-cards .wg { font-size: 16.4px; } .saver .wg .wxw { font-size: inherit; }
+.saver-when { position: absolute; left: 110px; bottom: 84px; color: #fff; font-size: 156px; line-height: 1; }
+.saver-cards { width: 870px; } .saver-cards .wg { width: 100%; font-size: 14.7px; } .saver .wg .wxw { font-size: inherit; }
 /* Over moving photos the glass blurs less: a big blur recomputed every frame is what a Fire TV can't afford. */
 .saver .w.card { --lg-blur: saturate(160%) blur(20px); --lg-tint: rgba(16, 16, 22, .2); width: 320px; height: 250px; padding: 26px 28px; }
 .saver .w.card.wide { width: 520px; }
@@ -582,7 +579,7 @@ body.shelf-hub .shelf-fade { background: none; }
    the same box, set on its bottom left so every banner sits on the same line. The shadow is on
    the wrapper, since the mask would cut it off. */
 .shelf-title .banner-mark { display: block; }
-.shelf-title .banner-mark img { display: block; max-width: 680px; max-height: 200px; }
+.shelf-title .banner-mark img { display: block; max-width: 660px; max-height: 200px; }
 .shelf-title .banner-mark img.cut { max-width: 640px; max-height: 170px; object-fit: contain; object-position: left bottom; }
 .shelf-title .banner-mark i { display: block; width: 680px; height: 200px; background: #fff; -webkit-mask: var(--glyph) left bottom/contain no-repeat; mask: var(--glyph) left bottom/contain no-repeat; }
 .shelf-title .banner-text { font: 800 150px/.95 var(--display); letter-spacing: -0.045em; color: #fff; white-space: nowrap; }
@@ -687,12 +684,13 @@ html.native #hub-chat { zoom: calc(var(--k, .5) * 1.25); }
 .gear, .cc, .scrim, .hubapp { display: none !important; }
 /* The home screen's time and date: top left, in the screensaver's type (Settings > Home clock). */
 .when { left: var(--side); top: 44px; flex-direction: column; align-items: flex-start; gap: 8px; }
-.when .when-time { font: 600 92px/.92 var(--display); letter-spacing: -0.035em; }
+.when .when-time { font-size: 92px; line-height: 1; letter-spacing: 0; }
 .when .when-date { font-size: 30px; font-weight: 600; color: rgba(255, 255, 255, .85); padding-left: 4px; }
-.when.time-only .when-date, .when.off { display: none; }
+.when .when-date, .when.off { display: none; }
 /* Your LocalHub TV widgets (Home, TV view) at the top right of the home screen, like the screensaver's. */
+.shelf-title { max-width: 700px; } .shelf-title h1 { padding-bottom: .16em; margin-bottom: -.16em; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .homew { position: absolute; right: 84px; top: 44px; z-index: 6; display: flex; flex-direction: column; align-items: flex-end; gap: 18px; pointer-events: none; transition: opacity .4s var(--ease); }
-.homew { width: 890px; max-height: 606px; overflow: hidden; padding: 8px; margin: -8px; } .homew .wg { font-size: 15.2px; } .homew .sel { box-shadow: 0 0 0 5px #fff !important; } .homew .mp-art.sel { overflow: visible; }
+.homew { width: 890px; max-height: 606px; overflow: hidden; padding: 8px; margin: -8px; } .homew .wg { width: 100%; font-size: 15.2px; } .homew .sel { box-shadow: 0 0 0 5px #fff !important; } .homew .mp-art.sel { overflow: visible; }
 /* A widget, opened. */
 .wdetail { position: absolute; inset: 0; z-index: 45; display: none; place-items: center; background: rgba(0, 0, 0, .62); } .wdetail.on { display: grid; }
 .wdetail > div { width: 1000px; max-height: 940px; overflow-y: auto; scrollbar-width: none; box-sizing: border-box; padding: 50px 60px; border-radius: 48px; background: var(--ui-panel); box-shadow: var(--ui-edge), 0 40px 100px rgba(0, 0, 0, .6); color: #fff; } .wdetail .wfull { font-size: 21px; } .wdetail .sel { box-shadow: 0 0 0 5px #fff; } .wdetail .wedit, .wdetail .wadd { display: none; }

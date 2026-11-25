@@ -64,7 +64,7 @@ ${R} #tvrail button b.old { position: absolute; left: 66px; padding: 7px 14px; b
 ${R} #seg-scroll { display: none; }
 ${A} .large-title { font-size: 52px; font-weight: 700; letter-spacing: -.03em; line-height: 1.1; }
 ${R}:has(.hw-root) .head, ${R}:has(.hw-root) .nav { display: none; }
-${A} .tvt-clock { font: 700 76px/1 var(--display); letter-spacing: -.035em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+${A} .tvt-clock { font-size: 76px; line-height: 1; white-space: nowrap; } ${A} .tvt-clock .hc { pointer-events: auto; cursor: pointer; } ${A} .tvt-date { display: none; }
 ${A} .tvt-date { margin-top: 10px; font: 600 24px/1.2 var(--display); color: rgba(255, 255, 255, .9); }
 ${A} .tvt-wx .wxw { font-size: 13px; }
 ${A} .search input { height: 56px; padding: 0 44px 0 26px; border-radius: 28px; background: var(--ui-fill) !important; box-shadow: var(--ui-edge); font-size: 18px; font-weight: 600; -webkit-backdrop-filter: none; backdrop-filter: none; }
@@ -94,9 +94,9 @@ ${R} { --side: calc((min(100vw, 1500px) - var(--tvrail)) / 2); --sidegap: 32px; 
 ${R}:has(.hw-root) .page { position: relative; padding-right: 48px; }
 ${R}:has(.hw-root:is([data-view="tv"], [data-view="ipad"], [data-view="mobile"])) .page, ${R}[data-noside]:has(.hw-root) .page { padding-right: 48px; }
 /* The TV's own proportions: the clock at the top, the name of what you're on above the row, the row three fifths down. */
-${R}:has(.hw-root) #tvtop { display: flex; flex-direction: column; box-sizing: border-box; height: max(250px, 63vh); padding: 36px 0 22px; margin: 0; color: #fff; pointer-events: none; }
+${R}:has(.hw-root) #tvtop { display: flex; flex-direction: column; box-sizing: border-box; height: max(250px, 59.5vh); padding: 36px 0 14px; margin: 0; color: #fff; pointer-events: none; position: relative; z-index: 1; }
 ${R} .tvt-name { margin-top: auto; max-width: calc(100% - var(--side) - 20px); font: 700 clamp(44px, 5.4vw, 92px)/1.05 var(--display); padding: .06em .06em .2em 0; margin-bottom: -.2em; min-height: 1.31em; box-sizing: border-box; letter-spacing: -.035em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 2px 14px rgba(0, 0, 0, .35); }
-@media (max-height: 620px) { ${R}:has(.hw-root) #tvtop { height: 150px; } ${R} .tvt-name { display: none; } }
+@media (max-height: 620px) { ${R} .tvt-name { display: none; } }
 ${R} .controls { margin-bottom: 26px; top: 12px; }
 ${R}:has(.hw-root) .controls { position: relative; top: 0; z-index: 12; min-height: 56px; padding-right: var(--barw, 0px); gap: 12px; }
 ${R} .search { max-width: 520px; }
@@ -105,10 +105,19 @@ ${R} .hw-root > .hw-bar { position: absolute; z-index: 13; top: var(--bartop, 0p
 ${R} .hw-root:is([data-view="tv"], [data-view="ipad"], [data-view="mobile"]) > .hw-bar, ${R}[data-noside] .hw-root > .hw-bar { right: 48px; }
 ${R} .hw-root.hw-edit > .hw-bar { left: auto; }
 /* Edit Home: a page of its own. */
-${R}[data-editing] #tvtop { height: 118px !important; padding-top: 40px !important; } ${R}[data-editing] #tvtop > * { display: none; } ${R}[data-editing] #tvtop::before { content: "Edit Home"; font: 700 46px/1 var(--display); letter-spacing: -.03em; }
-${R}[data-editing] .controls { display: none !important; } ${R}[data-editing] .hw-root > .hw-bar { position: fixed; top: 34px; right: calc(var(--dock) + 48px); z-index: 14; }
+/* Editing happens on Home itself: the widgets stay in their corner, the free cells show, and the tools take the row's place. */
+${R}[data-editing] .controls { visibility: hidden !important; } ${R}[data-editing] .tvt-name { visibility: hidden; } ${R}[data-editing] .hw-root > .hw-bar { position: fixed; top: max(250px, 59.5vh); right: calc(var(--dock) + 48px); left: auto; z-index: 14; height: 56px; margin: 0; } ${R}[data-editing] .hw-bar [data-hw-act="add"] { display: none; }
+#tvebar { display: none; } ${R}[data-editing] #tvebar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; position: fixed; z-index: 13; top: max(250px, 59.5vh); left: calc(var(--tvrail) + 48px); min-height: 56px; color: rgba(255, 255, 255, .7); font-size: 15px; } #tvebar p { flex: 1 0 100%; margin: 8px 0 0; max-width: 620px; line-height: 1.5; } #tvebar .te-out { display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 14px; border-radius: 17px; background: rgba(255, 159, 10, .2); color: #ffd39b; font-size: 14px; font-weight: 600; }
+${R}[data-editing] #tvside { overflow: visible !important; z-index: 14; } ${R}[data-editing] :is(#dk, #dkfav, #tvask, .askbar) { opacity: .12 !important; pointer-events: none !important; } ${R}[data-editing] .tvt-clock .hc { outline: 2px dashed rgba(255, 255, 255, .4); outline-offset: 12px; border-radius: 14px; } ${R}[data-editing] .tvt-clock .hc:hover { outline-color: #fff; }
+.wg-ghost { display: grid; place-items: center; min-width: 0; min-height: 0; padding: 0; border: .2em dashed rgba(255, 255, 255, .28); border-radius: 2.6em; background: rgba(0, 0, 0, .28); color: rgba(255, 255, 255, .6); font: inherit; cursor: pointer; } .wg-ghost:is(:hover, .over) { border-color: #fff; background: rgba(255, 255, 255, .16); color: #fff; }
+${R}[data-editing][data-editon="saver"] .hw-root > #tvside { top: max(5vh, 36px) !important; right: max(3.5vw, 28px) !important; width: calc(50vw - max(3.5vw, 28px)) !important; max-height: none !important; } ${R}[data-editing][data-editon="saver"] #tvside .wg { font-size: clamp(5px, min(.84vw, (100vh - 2 * max(5vh, 36px)) / 64), 24px); } ${R}[data-editon="saver"] :is(#dk, #dkfav, #tvask, .askbar) { visibility: hidden !important; } ${R}[data-editon="saver"] #tvebar { top: max(5vh, 36px); max-width: calc(50vw - var(--tvrail) - 90px); } ${R}[data-editon="saver"] .hw-root > .hw-bar { top: calc(max(5vh, 36px) + 172px); right: auto; left: calc(var(--tvrail) + 48px); } ${R}[data-editon="saver"] .tvt-clock { position: fixed; left: calc(var(--tvrail) + 48px); bottom: max(6vh, 40px); font-size: clamp(56px, 8vw, 120px); }
+${R}[data-editing][data-editon="phone"] .hw-root > #tvside { width: 340px !important; right: calc(25vw - 170px) !important; max-height: none !important; bottom: 24px; overflow: auto !important; padding: 26px 22px; margin: 0; border-radius: 44px; background: rgba(0, 0, 0, .5); box-shadow: 0 0 0 2px rgba(255, 255, 255, .2); } ${R}[data-editon="phone"] #tvside .wg { grid-template-columns: repeat(2, minmax(0, 1fr)); font-size: 9px; } ${R}[data-editon="phone"] #tvside .we-add { grid-column: span 2; } ${R}[data-editon="phone"] :is(#dk, #dkfav, #tvask, .askbar) { visibility: hidden !important; } ${R}[data-editon="phone"] #tvebar { max-width: calc(60vw - var(--tvrail) - 120px); } ${R}[data-editon="phone"] .hw-root > .hw-bar { top: calc(max(250px, 59.5vh) + 150px); right: auto; left: calc(var(--tvrail) + 48px); }
+@media (max-width: 1240px) { ${R}[data-editing]:not([data-editon="saver"], [data-editon="phone"]) .hw-root > .hw-bar { top: calc(max(250px, 59.5vh) + 66px); right: auto; left: calc(var(--tvrail) + 48px); } ${R}[data-editing]:not([data-editon="saver"]) #tvebar p { padding-top: 60px; } }
+${R}:is([data-editon="saver"], [data-editon="phone"]) .hw-bar :is([data-hw-act="tabs"], [data-hw-act="style"], [data-hw-act="prefs"]) { display: none; }
+${T}[data-editing] :is(.hw-stage, .hw-frame, #dk, #dkfav, .hw-bar [data-hw-act="tabs"], .hw-bar [data-hw-act="style"]) { display: none !important; } ${T}[data-editing] .hw-root > #tvside { display: block !important; padding: 14px 0 190px; }
+${T}[data-editing] #tvebar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; position: fixed; z-index: 61; left: 10px; right: 10px; bottom: calc(env(safe-area-inset-bottom, 0px) + 10px); padding: 10px; border-radius: 26px; background: #26262c; color: rgba(255, 255, 255, .7); font-size: 13px; box-shadow: 0 10px 40px rgba(0, 0, 0, .6); } ${T} #tvebar p { display: none; } ${T} #tvebar .ex-tool { max-width: 100%; overflow-x: auto; }
+#wepop { display: none; position: fixed; z-index: 90; flex-direction: column; min-width: 170px; padding: 8px; border-radius: 20px; background: #2a2a31; box-shadow: 0 0 0 1px rgba(255, 255, 255, .14), 0 20px 50px rgba(0, 0, 0, .6); } #wepop.on { display: flex; } #wepop button { display: flex; justify-content: space-between; gap: 24px; padding: 11px 14px; border-radius: 13px; color: #fff; font-size: 15px; font-weight: 600; text-align: left; } #wepop button:hover { background: rgba(255, 255, 255, .12); } #wepop button[disabled] { opacity: .35; pointer-events: none; } #wepop em { font-style: normal; font-weight: 500; color: rgba(255, 255, 255, .6); }
 ${R}[data-editing] .hw-bar .hw-btn, ${R}[data-editing] .hw-bar .hw-btn.red { height: 46px; padding: 0 20px; border-radius: 99px; background: var(--ui-fill) !important; box-shadow: var(--ui-edge); color: #fff !important; font-size: 15px; font-weight: 600; } ${R}[data-editing] .hw-bar .hw-btn:hover, ${R}[data-editing] .hw-bar .hw-btn[data-hw-act="edit"] { background: var(--ui-sel) !important; color: #000 !important; }
-${R}[data-editing] .hw-root[data-view="desktop"] > #tvside { display: block !important; left: calc(var(--tvrail) + 48px); right: calc(var(--dock) + 48px); top: 118px; bottom: 0; width: auto; max-height: none; margin: 0; padding: 14px 14px 40px; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 30px 26px; }
 ${R}[data-editing] .hw-root > .hw-stage { visibility: hidden; }
 ${R} .tve { position: relative; min-width: 0; } ${R} .tve > :not(button) { pointer-events: none; } ${R} .tve .tvs-card, ${R} .tve .tvt-wx { margin: 0; }
 ${R} .tve-x { position: absolute; z-index: 3; left: -12px; top: -12px; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--ui-sel); color: #000; box-shadow: 0 6px 16px rgba(0, 0, 0, .5); transition: transform .18s var(--ease); } ${R} .tve-x:hover { transform: scale(1.12); } ${R} .tve-x svg { width: 18px; height: 18px; }
@@ -192,22 +201,23 @@ ${R} .hw-root[data-view="desktop"] .hw-grid > .hw-cell:not(.a) { position: absol
 ${R} .hw-root[data-view="desktop"] .hw-grid > .hw-cell.m:not(.a) { width: var(--side); }
 ${R} .hw-root[data-view="desktop"] .hw-grid > .hw-cell.l:not(.a) { width: var(--side); height: 380px; }
 #tvside { display: none; }
-${R} .hw-root[data-view="desktop"] > #tvside { display: grid; position: fixed; z-index: 11; top: 30px; right: max(48px, calc((100vw - 1500px) / 2 + 48px)); width: var(--side); max-height: max(190px, calc(63vh - 52px)); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; grid-template-columns: repeat(auto-fit, minmax(min(100%, 232px), 1fr)); gap: 14px; align-content: start; padding: 8px; margin: -8px; box-sizing: content-box; }
+${R} .hw-root[data-view="desktop"] > #tvside { display: grid; position: fixed; z-index: 11; top: 30px; right: max(48px, calc((100vw - 1500px) / 2 + 48px)); width: var(--side); max-height: max(190px, calc(59.5vh - 38px)); overflow: hidden; scrollbar-width: none; grid-template-columns: repeat(auto-fit, minmax(min(100%, 232px), 1fr)); gap: 14px; align-content: start; padding: 8px; margin: -8px; box-sizing: content-box; }
 ${R} #tvside::-webkit-scrollbar { display: none; }
 ${R} #tvside .hw-cell { height: 184px; min-width: 0; grid-column: auto !important; grid-row: auto !important; }
 ${R} #tvside .hw-cell.l { grid-column: 1 / -1 !important; }
 ${R} #tvside .hw-cell.l { height: 380px; }
 ${R} #tvside .tvp-card { grid-column: 1 / -1; } ${R} .tvp-card .mp { zoom: .62; } ${R} .tvp-card .mp-b { cursor: pointer; } ${R} .tvp-card .mp-b:hover { background: var(--ui-sel); color: #000; }
-${R} .hw-root[data-view="desktop"] > #tvside { display: block !important; } ${R} #tvside .wg { font-size: clamp(8px, calc(var(--side) / 59), 12.4px); } ${A} #tvside .wg-i { cursor: pointer; } ${A} #tvside .wg-i:is(:hover, :focus-visible):not([draggable]):not(.hub) { box-shadow: 0 0 0 3px rgba(255, 255, 255, .9); outline: 0; } ${A} #tvside .wg-i.hub { padding: 0; background: none; box-shadow: none; } ${A} #tvside .wg-i.hub > * { height: 100% !important; width: 100%; }
-${A} .we-bar:empty { display: none; } ${A} .we-bar { display: flex; align-items: center; gap: 18px; margin-bottom: 18px; font-size: 14px; color: rgba(255, 255, 255, .6); } ${A}[data-editing] #tvside .wg { max-width: 860px; font-size: 13px; } ${A}[data-editing] #tvside .wg[data-screen="phone"] { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 400px; font-size: 11px; } ${A}[data-editing] #tvside .wg[data-screen="phone"] :is(.z-w, .z-x) { grid-column: span 2; }
+${R} .hw-root[data-view="desktop"] > #tvside { display: block !important; } ${R} #tvside .wg { font-size: clamp(5px, min(var(--side) / 59, (59.5vh - 50px) / 37.8), 13px); } ${A} #tvside .wg-i { cursor: pointer; } ${A} #tvside .wg-i:is(:hover, :focus-visible):not([draggable]):not(.hub) { box-shadow: 0 0 0 3px rgba(255, 255, 255, .9); outline: 0; } ${A} #tvside .wg-i.hub { padding: 0; background: none; box-shadow: none; } ${A} #tvside .wg-i.hub > * { height: 100% !important; width: 100%; }
+${A} .we-bar:empty { display: none; } ${A} .we-bar { display: flex; align-items: center; gap: 18px; margin-bottom: 18px; font-size: 14px; color: rgba(255, 255, 255, .6); }
 .we-add { align-items: center; border: 2px dashed rgba(255, 255, 255, .22) !important; background: none !important; box-shadow: none !important; font: 600 15px var(--font); color: rgba(255, 255, 255, .75) !important; cursor: pointer; } .we-add svg { width: 26px; height: 26px; } .we-add:hover { border-color: #fff !important; color: #fff !important; }
+#wggal .gal-add[disabled] { opacity: .4; pointer-events: none; } .ck { max-width: 860px; } .ck-prev { flex: none; position: relative; display: grid; place-items: center; height: min(32vh, 270px); margin: 0 28px; border-radius: 22px; overflow: hidden; background: #111 center / cover; font-size: 76px; line-height: 1; } .ck-prev::before { content: ""; position: absolute; inset: 0; background: rgba(0, 0, 0, .28); } .ck-prev > div { position: relative; } .ck-form { overflow-y: auto; padding: 14px 28px 28px; } .ck-r { display: grid; grid-template-columns: 170px minmax(0, 1fr) auto; align-items: center; gap: 18px; padding: 13px 0; border-bottom: 1px solid rgba(255, 255, 255, .08); font-size: 15px; font-weight: 600; } .ck-r > div { grid-column: 2 / -1; } .ck-r output { min-width: 52px; text-align: right; color: rgba(255, 255, 255, .6); font-variant-numeric: tabular-nums; } .ck-r input[type=range] { width: 100%; accent-color: #fff; } .ck-seg { display: flex; flex-wrap: wrap; gap: 6px; height: auto !important; border-radius: 22px !important; justify-self: start; } .ck-sw { display: flex; flex-wrap: wrap; gap: 9px; align-items: center; } .ck-sw button:not(.ck-none) { width: 30px; height: 30px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .25); } .ck-sw button.on:not(.ck-none) { box-shadow: 0 0 0 2px var(--ui-panel, #1c1d22), 0 0 0 4px #fff; } .ck-none { height: 30px; padding: 0 14px; border-radius: 15px; background: rgba(255, 255, 255, .1); color: #fff; font-size: 13px; font-weight: 600; } .ck-none.on { background: #f2f2f5; color: #000; } .ck-sw input { width: 34px; height: 34px; padding: 0; border: 0; border-radius: 50%; background: none; cursor: pointer; } @media (max-width: 640px) { .ck-r { grid-template-columns: minmax(0, 1fr) auto; } .ck-r > :is(div, input) { grid-column: 1 / -1; grid-row: 2; } }
 #wggal { display: none; } ${A} #wggal.on { display: grid; position: fixed; z-index: 76; inset: 0; place-items: center; padding: 30px; background: rgba(0, 0, 0, .55); color: #fff; } #wggal > div { display: flex; flex-direction: column; width: min(1080px, 100%); max-height: 100%; border-radius: 30px; overflow: hidden; background: var(--ui-panel); box-shadow: var(--ui-edge), 0 40px 100px rgba(0, 0, 0, .6); } #wggal > .gal-form { width: min(520px, 100%); } #wggal header { display: flex; align-items: center; justify-content: space-between; padding: 24px 28px 14px; } #wggal h2 { margin: 0; font: 700 26px/1.1 var(--display); letter-spacing: -.02em; }
 .gal-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 20px; overflow-y: auto; scrollbar-width: none; padding: 6px 28px 30px; } .gal-list section { display: flex; flex-direction: column; min-width: 0; padding: 18px; border-radius: 22px; background: var(--ui-fill); box-shadow: var(--ui-edge); } .gal-list h3 { margin: 0 0 4px; font-size: 17px; } .gal-list p { margin: 0 0 14px; font-size: 13.5px; line-height: 1.4; color: rgba(255, 255, 255, .6); } .gal-prev { flex: 1; display: grid; place-items: center; min-height: 190px; padding: 14px; border-radius: 16px; background: rgba(0, 0, 0, .25); pointer-events: none; } .gal-prev .wg { width: 100%; font-size: 5.6px; } .gal-prev .wg-i { margin: 0 auto; } .gal-prev .wg-i.z-s { grid-column: 2 / 4; width: 50%; } .gal-prev .wg-i:is(.z-m, .z-l) { grid-column: 2 / 4; } .gal-prev .wg { font-size: 6.6px; } .gal-prev .wg:has(.z-s, .z-m, .z-l) { width: 160%; } .gal-list footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-top: 14px; } .gal-list .ex-tool { flex-wrap: wrap; border-radius: 20px; } .gal-list .ex-tool button { height: 30px; padding: 0 10px; font-size: 12.5px; } .gal-add { height: 38px; padding: 0 20px; border-radius: 19px; background: var(--ui-sel); color: #000; font-size: 14.5px; font-weight: 600; } .gal-add.plain { background: rgba(255, 255, 255, .1); color: #fff; }
 .gal-form form { display: flex; flex-direction: column; gap: 16px; padding: 4px 28px 28px; } .gal-form label { display: flex; flex-direction: column; gap: 8px; font-size: 14px; font-weight: 600; color: rgba(255, 255, 255, .7); } .gal-form :is(input, textarea) { padding: 12px 16px; border: 0; outline: 0; border-radius: 16px; background: rgba(255, 255, 255, .1); color: #fff; font: 600 16px/1.5 var(--font); color-scheme: dark; } .gal-form p { margin: -8px 0 0; font-size: 13px; color: rgba(255, 255, 255, .5); } .gal-form footer { display: flex; justify-content: flex-end; gap: 10px; }
-#tvwid > .wid { width: min(820px, 100%); } #tvwid .wfull { font-size: clamp(11px, 1.15vw, 15px); }
+#tvwid > .wid { width: min(920px, 100%); } #tvwid .wfull { font-size: clamp(11px, 1.15vw, 15px); }
 /* On a phone or an iPad: two across, under the apps. */
 ${T} .hw-root[data-view] > #tvside { display: block; padding: 0 0 140px; } ${T} #tvside .wg { font-size: clamp(8.4px, 2.45vw, 13px); } ${T} #tvwx { display: none !important; } ${T} .hw-root:not(.hw-edit) > .hw-stage, ${T} .hw-root:not(.hw-edit) .hw-frame { display: none; } ${T} .hw-root:not(.hw-edit) > #dk { padding-bottom: 26px !important; }
-@media (max-width: 820px) { ${T} #tvside .wg { grid-template-columns: repeat(2, minmax(0, 1fr)); } ${T} #tvside .wg :is(.z-w, .z-x) { grid-column: span 2; } }
+@media (max-width: 820px) { ${T} #tvside .wg { grid-template-columns: repeat(2, minmax(0, 1fr)); } ${T} #tvside .wg :is(.z-w, .z-xl, .z-xxl) { grid-column: span 2; } }
 ${R} #tvside > :is(.tvt-wx, .tvs-card, .hw-cell), ${R} #tvside .tvp-card .mp { cursor: pointer; transition: box-shadow .15s; } ${R} #tvside > :is(.tvt-wx, .tvs-card):is(:hover, :focus-visible) { box-shadow: 0 0 0 3px rgba(255, 255, 255, .9); outline: 0; }
 #tvwid { display: none; } ${A} #tvwid.on { display: grid; position: fixed; z-index: 73; inset: 0; place-items: center; padding: 34px; background: rgba(0, 0, 0, .55); -webkit-backdrop-filter: blur(14px) saturate(1.1); backdrop-filter: blur(14px) saturate(1.1); color: #fff; animation: widin .35s; } ${A} #tvwid.going { animation: widout .26s forwards; } @keyframes widin { from { background: rgba(0, 0, 0, 0); -webkit-backdrop-filter: blur(0); backdrop-filter: blur(0); } } @keyframes widout { to { background: rgba(0, 0, 0, 0); -webkit-backdrop-filter: blur(0); backdrop-filter: blur(0); } }
 #tvwid > div { width: min(860px, 100%); max-height: 100%; overflow-y: auto; scrollbar-width: none; box-sizing: border-box; padding: 44px 52px; border-radius: 34px; background: var(--ui-panel); box-shadow: var(--ui-edge), 0 40px 100px rgba(0, 0, 0, .6); } #tvwid .wx .wxw { font-size: 25px; } #tvwid .gz { width: auto; padding: 0; background: none; box-shadow: none; } #tvwid .cell { display: grid; min-height: 420px; } #tvwid .cell > * { width: 100%; height: 100%; }
@@ -350,16 +360,15 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
 /* ── Screensaver, on a computer or a phone ── */
 #hubsaver { position: fixed; inset: 0; z-index: 200; background: #000; color: #fff; opacity: 0; transition: opacity .6s; cursor: none; overflow: hidden; }
 #hubsaver.on { opacity: 1; }
-#hubsaver i { position: absolute; inset: -3%; background: center / cover no-repeat; opacity: 0; transition: opacity 1.6s; animation: hubsaver 24s ease-in-out infinite alternate; }
-#hubsaver i.on { opacity: 1; }
+#hubsaver > i { position: absolute; inset: -3%; background: center / cover no-repeat; opacity: 0; transition: opacity 1.6s; animation: hubsaver 24s ease-in-out infinite alternate; }
+#hubsaver > i.on { opacity: 1; }
 #hubsaver::after { content: ""; position: absolute; inset: 0; background: linear-gradient(0deg, rgba(0, 0, 0, .45), transparent 45%); }
 #hubsaver .when { position: absolute; z-index: 1; left: max(4vw, 28px); bottom: max(6vh, 40px); }
-#hubsaver .cards { position: absolute; z-index: 1; right: max(3.5vw, 28px); top: max(5vh, 36px); width: calc(50vw - max(3.5vw, 28px)); max-height: 88vh; overflow: hidden; pointer-events: none; } #hubsaver .wg { font-size: clamp(8px, .84vw, 13px); }
+#hubsaver .cards { position: absolute; z-index: 1; right: max(3.5vw, 28px); top: max(5vh, 36px); width: calc(50vw - max(3.5vw, 28px)); max-height: 88vh; overflow: hidden; pointer-events: none; } #hubsaver .cards { max-height: none; } #hubsaver .wg { font-size: clamp(5px, min(.84vw, (100vh - 2 * max(5vh, 36px)) / 64), 24px); }
 @media (max-width: 700px) { #hubsaver .cards { display: none; } }
-#hubsaver .when b { display: block; font: 700 clamp(56px, 8vw, 120px)/1 var(--display); letter-spacing: -.035em; font-variant-numeric: tabular-nums; }
-#hubsaver .when span { font: 600 clamp(18px, 2vw, 30px)/1.4 var(--display); }
+#hubsaver .when { font-size: clamp(56px, 8vw, 120px); line-height: 1; }
 @keyframes hubsaver { from { transform: scale(1); } to { transform: scale(1.06); } }
-@media (prefers-reduced-motion: reduce) { #hubsaver i { animation: none; } }
+@media (prefers-reduced-motion: reduce) { #hubsaver > i { animation: none; } }
 `
   document.head.append(css)
 
@@ -477,8 +486,9 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   let WG = null, editOn = ''
   const myScreen = () => (document.documentElement.hasAttribute('data-tvtouch') && matchMedia('(max-width: 820px)').matches ? 'phone' : 'desk')
   const boards = {}
-  const board = (which = myScreen()) => WG && (boards[which] ??= WG.createBoard({ screen: which, changed: () => { cancelAnimationFrame(board.raf); board.raf = requestAnimationFrame(() => { paintSide(); drawWid() }) }, music: () => MU?.now }))
-  ;(async () => { try { WG = await import('/tv/widgets.js?v=2'); P ??= await import('/tv/panel.js?v=10'); board()?.refresh(); paintSide() } catch {} })()
+  const board = (which = myScreen()) => WG && (boards[which] ??= WG.createBoard({ screen: which, changed: () => { cancelAnimationFrame(board.raf); board.raf = requestAnimationFrame(() => { paintSide(); drawWid(); tick() }) }, music: () => MU?.now }))
+  let CK = null
+  ;(async () => { try { WG = await import('/tv/widgets.js?v=5'); CK = await import('/tv/clock.js?v=1'); P ??= await import('/tv/panel.js?v=10'); board()?.refresh(); paintSide(); tick() } catch {} })()
   setInterval(() => {
     if (!WG || document.hidden || !document.querySelector('.hw-root')) return
     const b = board(editOn || undefined)
@@ -513,12 +523,15 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     onScreen = []
     // Widgets of the hub's own, from its older gallery, stay under these.
     const cells = editOn && editOn !== myScreen() ? [] : [...root.querySelectorAll('.hw-grid > .hw-cell:not(.a)')].filter(c => !/(^|-)(clock|date|weather|world-clock)$/.test(c.querySelector('[data-hw-widget], [data-hw-wid]')?.dataset.hwWidget || c.dataset.hwKey || '') && c.style.display !== 'none')
-    const bar = side.querySelector('.we-bar') || side.insertBefore(Object.assign(document.createElement('div'), { className: 'we-bar' }), side.firstChild)
-    const barHtml = editing ? `<div class="ex-tool">${[['desk', 'This computer'], ['phone', 'Phone'], ['tv', 'Your TV']].map(([k, t]) => `<button type="button" data-ws="${k}" class="${(editOn || myScreen()) === k ? 'on' : ''}">${t}</button>`).join('')}</div><span>Drag to move. Size changes on the card.</span>` : ''
+    const which = editOn || myScreen(), bar = document.getElementById('tvebar') || document.body.appendChild(Object.assign(document.createElement('div'), { id: 'tvebar' }))
+    editing ? (document.documentElement.dataset.editon = which) : delete document.documentElement.dataset.editon
+    const lost = editing ? [...b.pack().out].map(k => b.items().find(x => x.k === k)).filter(Boolean) : []
+    const barHtml = editing ? `<div class="ex-tool">${[['desk', 'This computer'], ['tv', 'Your TV'], ['phone', 'Phone'], ['saver', 'Screensaver']].map(([k, t]) => `<button type="button" data-ws="${k}" class="${which === k ? 'on' : ''}">${t}</button>`).join('')}</div><button type="button" class="gal-add plain" data-clockedit>Clock</button>${lost.map(x => `<span class="te-out">No room for ${esc(WG.W[x.id].label)} <button type="button" data-lost="${x.k}">Remove</button></span>`).join('')}<p>${which === 'phone' ? 'Drag a widget onto another to change the order.' : 'Drag a widget to any slot, or press + on a free one.'} ${which === 'saver' ? 'The screensaver has the whole right half, on this computer and the TV.' : which === 'tv' ? 'This is the corner your TV’s Home has.' : ''}</p>` : ''
     if (bar._html !== barHtml) bar.innerHTML = bar._html = barHtml
     const grid = side.querySelector('.wg') || side.appendChild(Object.assign(document.createElement('div'), { className: 'wg' }))
     grid.dataset.screen = editing ? editOn || myScreen() : ''
-    const html = b.html(editing) + cells.map(c => `<div class="wg-i z-${c.classList.contains('l') ? 'l' : c.classList.contains('m') ? 'm' : 's'} bare hub" data-k="hub-${esc(c.dataset.hwKey)}" data-wid="hub">${c.outerHTML}</div>`).join('') + (editing ? `<button type="button" class="wg-i z-m we-add" data-k="add" data-we="add">${svg('<path d="M12 5v14M5 12h14"/>')}<span>Add a widget</span></button>` : '')
+    const more = cells.map(c => ({ k: `hub-${c.dataset.hwKey}`, id: 'hub', size: c.classList.contains('l') ? 'l' : c.classList.contains('m') ? 'm' : 's' }))
+    const html = b.html(editing, more) + cells.filter(c => b.at.has(`hub-${c.dataset.hwKey}`)).map(c => `<div class="wg-i z-${c.classList.contains('l') ? 'l' : c.classList.contains('m') ? 'm' : 's'} bare hub"${(p => p ? ` style="grid-area:${p[1]}/${p[0]}/span ${p[3]}/span ${p[2]}"` : '')(b.at.get(`hub-${c.dataset.hwKey}`))} data-k="hub-${esc(c.dataset.hwKey)}" data-wid="hub">${c.outerHTML}</div>`).join('') + (editing && which === 'phone' ? `<button type="button" class="wg-i z-m we-add" data-k="add" data-we="add">${svg('<path d="M12 5v14M5 12h14"/>')}<span>Add a widget</span></button>` : '')
     WG.put(grid, html)
     P?.syncPlayer(side, MU?.now)
     document.documentElement.toggleAttribute('data-noside', !grid.children.length)
@@ -526,10 +539,29 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   // ── editing: size, remove, options, drag, add ──
   const gal = Object.assign(document.createElement('div'), { id: 'wggal' })
   document.body.append(gal)
-  let galSize = {}
+  let galSize = {}, galAt = null // the slot it was opened from
+  const pop = Object.assign(document.createElement('div'), { id: 'wepop' })
+  document.body.append(pop)
+  function sizes(k, from) {
+    const b = board(editOn || undefined), it = b.items().find(x => x.k === k), w = it && WG.W[it.id]
+    if (!w) return
+    const ok = WG.fitting(b.list(), it, editOn || myScreen()), r = from.getBoundingClientRect()
+    pop.innerHTML = w.sizes.map(z => `<button type="button" data-ps="${k}:${z}"${ok.includes(z) ? '' : ' disabled'}>${WG.SIZE_NAMES[z]}<em>${z === it.size ? '✓' : ok.includes(z) ? WG.SIZE_SHORT[z] : 'No room'}</em></button>`).join('')
+    pop.classList.add('on')
+    pop.style.left = `${Math.max(10, Math.min(innerWidth - pop.offsetWidth - 10, r.right - pop.offsetWidth))}px`
+    pop.style.top = `${Math.max(10, r.bottom + 8 + pop.offsetHeight > innerHeight ? r.top - 8 - pop.offsetHeight : r.bottom + 8)}px`
+  }
+  addEventListener('pointerdown', e => { if (!pop.contains(e.target)) pop.classList.remove('on') }, true)
+  pop.addEventListener('click', e => {
+    const [k, size] = (e.target.closest('[data-ps]')?.dataset.ps || '').split(':')
+    if (!k) return
+    pop.classList.remove('on')
+    const b = board(editOn || undefined), l = WG.place(b.items(), editOn || myScreen(), k, { size })
+    l ? b.set(l) : window.hud?.('No room for that')
+  })
   function paintGal() {
     const which = editOn || myScreen(), b = board(which), D = b.D
-    gal.innerHTML = `<div role="dialog" aria-modal="true" aria-label="Add a widget"><header><h2>Add a widget</h2><button type="button" class="hw-done" data-gx>Done</button></header><div class="gal-list">${Object.entries(WG.W).filter(([id]) => WG.can(id, which)).map(([id, w]) => { const z = galSize[id] || w.def; return `<section><h3>${esc(w.label)}</h3><p>${esc(w.what)}</p><div class="gal-prev"><div class="wg">${WG.drawItem({ k: 'prev', id, size: z }, D)}</div></div><footer><div class="ex-tool">${w.sizes.map(x => `<button type="button" data-gz="${id}:${x}" class="${x === z ? 'on' : ''}">${WG.SIZE_NAMES[x]}</button>`).join('')}</div><button type="button" class="gal-add" data-ga="${id}">Add</button></footer></section>` }).join('')}<section class="gal-more"><h3>More</h3><p>The hub’s own widgets: usage, services, markets and the rest</p><footer><button type="button" class="gal-add" data-hw-act="add" data-gx>Open</button></footer></section></div></div>`
+    gal.innerHTML = `<div role="dialog" aria-modal="true" aria-label="Add a widget"><header><h2>Add a widget</h2><button type="button" class="hw-done" data-gx>Done</button></header><div class="gal-list">${Object.entries(WG.W).filter(([id]) => WG.can(id, which)).map(([id, w]) => { const ok = WG.fitting(b.list(), { k: 'new', id, size: w.def }, which), z = galSize[id] || (ok.includes(w.def) ? w.def : ok.at(-1) || w.def); return `<section><h3>${esc(w.label)}</h3><p>${esc(w.what)}</p><div class="gal-prev"><div class="wg">${WG.drawItem({ k: 'prev', id, size: z }, D)}</div></div><footer><div class="ex-tool">${w.sizes.map(x => `<button type="button" data-gz="${id}:${x}" class="${x === z ? 'on' : ''}" aria-label="${WG.SIZE_NAMES[x]}" title="${WG.SIZE_NAMES[x]}">${WG.SIZE_SHORT[x]}</button>`).join('')}</div><button type="button" class="gal-add" data-ga="${id}:${z}"${ok.includes(z) ? '' : ' disabled'}>${ok.includes(z) ? 'Add' : 'No room'}</button></footer></section>` }).join('')}<section class="gal-more"><h3>More</h3><p>The hub’s own widgets: usage, services, markets and the rest</p><footer><button type="button" class="gal-add" data-hw-act="add" data-gx>Open</button></footer></section></div></div>`
     P?.syncPlayer(gal, MU?.now)
   }
   function openGal() { const b = board(editOn || undefined); b.refresh(Object.values(WG.W).flatMap(w => w.needs('m'))); paintGal(); gal.classList.add('on'); setTimeout(() => gal.classList.contains('on') && paintGal(), 1500) }
@@ -537,12 +569,13 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     if (e.target === gal || e.target.closest('[data-gx]')) return gal.classList.remove('on')
     const z = e.target.closest('[data-gz]')?.dataset.gz, a = e.target.closest('[data-ga]')?.dataset.ga
     if (z) { const [id, size] = z.split(':'); galSize[id] = size; const y = gal.querySelector('.gal-list').scrollTop; paintGal(); gal.querySelector('.gal-list').scrollTop = y }
-    if (a) { const b = board(editOn || undefined); b.set([...b.items(), { k: b.newKey(), id: a, size: galSize[a] || WG.W[a].def }]); window.hud?.(`${WG.W[a].label} added`) }
+    if (a) { const b = board(editOn || undefined), [id, size] = a.split(':'); const nk = b.newKey(), it = { k: nk, id, size }, put = galAt && WG.pack([...b.list().map(x => ({ ...x, at: b.pack().at.get(x.k)?.slice(0, 2) || x.at })), { ...it, at: galAt }], editOn || myScreen()); b.set([...b.items(), put && !put.out.has(nk) && [...put.out].every(k => b.pack().out.has(k)) ? { ...it, at: galAt } : it]); galAt = null; window.hud?.(`${WG.W[id].label} added`); const y = gal.querySelector('.gal-list').scrollTop; paintGal(); gal.querySelector('.gal-list').scrollTop = y }
   })
   addEventListener('keydown', e => { if (e.key === 'Escape' && gal.classList.contains('on')) { e.stopImmediatePropagation(); gal.classList.remove('on') } }, true)
   function options(k) {
     const b = board(editOn || undefined), it = b.items().find(x => x.k === k), w = it && WG.W[it.id]
     if (!w) return
+    if (w.form === 'clock') return editClock(k)
     const o = it.opts || {}
     const fields = w.form === 'date' ? `<label>What<input name="title" maxlength="60" value="${esc(o.title || '')}" placeholder="Holiday"></label><label>When<input name="date" type="date" value="${esc(o.date || '')}"></label>` : `<label>Places, one a line<textarea name="zones" rows="5" spellcheck="false">${esc((o.zones || ['America/New_York', 'Europe/London', 'Asia/Tokyo']).join('\n'))}</textarea></label><p>Like Europe/Paris or America/Denver</p>`
     gal.innerHTML = `<div role="dialog" aria-modal="true" aria-label="${esc(w.label)}" class="gal-form"><header><h2>${esc(w.label)}</h2></header><form>${fields}<footer><button type="button" class="gal-add plain" data-gx>Cancel</button><button type="submit" class="gal-add">Save</button></footer></form></div>`
@@ -554,32 +587,88 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
       gal.classList.remove('on')
     })
   }
+  // ── the clock's own editor: every change shows at once, here and behind it ──
+  const ckNum = (k, t, min, max, unit = '') => `<label class="ck-r"><span>${t}</span><input type="range" data-ck="${k}" min="${min}" max="${max}" step="${k === 'weight' ? 100 : 1}" value="${draft.c[k]}"><output>${draft.c[k]}${unit}</output></label>`
+  const ckSeg = (k, t, l) => `<div class="ck-r"><span>${t}</span><div class="ex-tool ck-seg">${l.map(([v, n, st]) => `<button type="button" data-cks="${k}:${v}" class="${String(draft.c[k]) === String(v) ? 'on' : ''}"${st ? ` style="${st}"` : ''}>${n}</button>`).join('')}</div></div>`
+  const ckCol = (k, t, none) => `<div class="ck-r"><span>${t}</span><div class="ck-sw">${none ? `<button type="button" data-cks="${k}:" class="ck-none${draft.c[k] ? '' : ' on'}">${none}</button>` : ''}${CK.COLORS.map(c => `<button type="button" data-cks="${k}:${c}" style="background:${c}" class="${draft.c[k] === c ? 'on' : ''}" aria-label="${c}"></button>`).join('')}<input type="color" data-ck="${k}" value="${draft.c[k] || draft.c.color}" aria-label="Any color"></div></div>`
+  function ckPrev() {
+    const c = draft.c, box = gal.querySelector('.ck-prev > div')
+    if (!box) return
+    box._hk = ''
+    CK.paint(box, { ...c, align: 'center' }, { h24: H24, scale: (draft.k ? Math.min(100, c.size) : c.size) / 100, maxW: box.parentElement.clientWidth - 48, maxH: box.parentElement.clientHeight - 36 })
+  }
+  function ckBody() {
+    const c = draft.c, list = o => Object.entries(o)
+    gal.querySelector('.ck-form').innerHTML = ckSeg('style', 'Style', list(CK.STYLES)) + ckSeg('font', 'Font', list(CK.FONTS).map(([k, [n, f]]) => [k, n, `font-family:${f.replace(/"/g, "'")}`]))
+      + ckNum('size', draft.k ? 'Size in its card' : 'Size on Home', 40, draft.k ? 100 : 250, '%') + (draft.k ? '' : ckNum('saver', 'Size on the screensaver', 40, 250, '%')) + ckNum('weight', 'Weight', 100, 900) + ckNum('spacing', 'Letter spacing', -8, 20)
+      + ckCol('color', 'Color') + ckCol('color2', 'Fades to', 'None') + ckCol('dateColor', 'Date color', 'Same') + ckSeg('shadow', 'Shadow', list(CK.SHADOWS))
+      + ckSeg('date', 'Date', list(CK.DATES)) + (c.date === 'off' ? '' : ckSeg('where', 'Date goes', [['under', 'Under'], ['over', 'Over']])) + ckSeg('h24', 'Hours', [['', 'Automatic'], ['12', '12-hour'], ['24', '24-hour']])
+      + ckSeg('secs', 'Seconds', [['false', 'Off'], ['true', 'On']]) + ckSeg('ampm', 'AM and PM', [['true', 'On'], ['false', 'Off']]) + ckSeg('italic', 'Italic', [['false', 'Off'], ['true', 'On']]) + (draft.k ? '' : ckSeg('align', 'Lines up', [['left', 'Left'], ['center', 'Center'], ['right', 'Right']]))
+    ckPrev()
+  }
+  let ckT = 0
+  function ckSave() {
+    ckPrev()
+    const { k, c, b, kept } = draft
+    clearTimeout(ckT)
+    // Only what differs from how it starts is kept, so it goes on following what it doesn't set.
+    const diff = Object.fromEntries(Object.entries(c).filter(([x, v]) => v !== (k ? CK.DEF : CK.DEF)[x] || (k && kept?.[x] !== undefined)))
+    ckT = setTimeout(() => (k ? b.set(b.items().map(x => (x.k === k ? { ...x, opts: { ...x.opts, clock: diff } } : x))) : b.data({ clock: Object.keys(diff).length ? diff : null })), 300)
+    if (!k) tick()
+  }
+  function editClock(k = '') {
+    if (!CK || !WG) return
+    const b = board(k ? editOn || undefined : undefined), kept = k ? b.items().find(x => x.k === k)?.opts?.clock : b.D.board?.data?.clock
+    draft = { k, b, kept, c: CK.of(k ? { ...(b.D.board?.data?.clock || {}), size: 100, ...(kept || {}) } : kept) }
+    gal.innerHTML = `<div role="dialog" aria-modal="true" aria-label="Clock" class="ck"><header><h2>Clock</h2><button type="button" class="gal-add plain" data-ckreset>Reset</button><button type="button" class="hw-done" data-gx>Done</button></header><div class="ck-prev"><div></div></div><div class="ck-form"></div></div>`
+    gal.querySelector('.ck-prev').style.backgroundImage = getComputedStyle(document.getElementById('hub-wall')).backgroundImage
+    gal.classList.add('on')
+    ckBody()
+  }
+  new MutationObserver(() => { if (draft && !gal.classList.contains('on')) { const was = draft; setTimeout(() => { if (draft === was) { draft = null; tick() } }, 900) } }).observe(gal, { attributes: true, attributeFilter: ['class'] })
+  gal.addEventListener('input', e => { const k = e.target.dataset.ck; if (!k || !draft) return; draft.c[k] = e.target.type === 'range' ? Number(e.target.value) : e.target.value; const o = e.target.parentElement.querySelector('output'); if (o) o.textContent = e.target.value + (k === 'size' || k === 'saver' ? '%' : ''); ckSave() })
+  gal.addEventListener('change', e => { if (e.target.dataset.ck && e.target.type === 'color') ckBody() })
+  gal.addEventListener('click', e => {
+    const s = e.target.closest('[data-cks]')?.dataset.cks
+    if (s && draft) { const i = s.indexOf(':'), k = s.slice(0, i), v = s.slice(i + 1); draft.c[k] = v === 'true' ? true : v === 'false' ? false : v; const f = gal.querySelector('.ck-form'), y = f.scrollTop; ckBody(); f.scrollTop = y; ckSave() }
+    if (e.target.closest('[data-ckreset]') && draft) { draft.c = CK.of(null); draft.kept = null; ckBody(); ckSave() }
+  })
+  document.addEventListener('click', e => { if (e.target.closest?.('[data-clockedit], .tvt-clock .hc')) { e.stopPropagation(); editClock() } }, true)
   let wdrag = ''
   document.addEventListener('click', e => {
     // The bar's Add and Reset are for these widgets.
     const act = document.documentElement.hasAttribute('data-editing') && e.target.closest?.('.hw-root > .hw-bar [data-hw-act]')?.dataset.hwAct
-    if (act === 'add') { e.stopPropagation(); return openGal() }
-    if (act === 'reset') { e.stopPropagation(); if (confirm('Put this screen’s widgets back as they first were?')) { const b = board(editOn || undefined); b.set([['music', 'w'], ['weather', 'l'], ['pc', 'l']].map(([id, size], i) => ({ k: `r${i}`, id, size }))) } return }
-    const ws = e.target.closest?.('#tvside [data-ws]')?.dataset.ws, we = e.target.closest?.('#tvside [data-we]')?.dataset.we
-    if (ws) { e.stopPropagation(); editOn = ws; board(ws).refresh(); return paintSide() }
+    if (act === 'add') { e.stopPropagation(); galAt = null; return openGal() }
+    if (act === 'reset') { e.stopPropagation(); if (confirm('Put this screen’s widgets back as they first were?')) { const b = board(editOn || undefined); b.set([['music', 'w'], ['weather', 'l'], ['pc', 'l'], ...(editOn === 'saver' ? [['calendar', 'xl']] : [])].map(([id, size], i) => ({ k: `r${i}`, id, size }))) } return }
+    const lost = e.target.closest?.('#tvebar [data-lost]')?.dataset.lost
+    if (lost) { e.stopPropagation(); const b = board(editOn || undefined); return b.set(b.items().filter(x => x.k !== lost)) }
+    const ws = e.target.closest?.('#tvebar [data-ws]')?.dataset.ws, we = e.target.closest?.('#tvside [data-we]')?.dataset.we
+    if (ws) { e.stopPropagation(); editOn = ws; board(ws).refresh(); paintSide(); top.querySelector('.tvt-clock')._hk = ''; top.querySelector('.tvt-clock')._hc = ''; return tick() }
     if (!we) return
     e.stopPropagation()
-    if (we === 'add') return openGal()
+    if (we.startsWith('add')) { galAt = we.includes(':') ? we.slice(4).split(',').map(Number) : null; return openGal() }
     const b = board(editOn || undefined), [a, k] = we.split(':')
     if (a === 'x') b.set(b.items().filter(x => x.k !== k))
-    else if (a === 'z') b.set(b.items().map(x => (x.k === k ? { ...x, size: WG.nextSize(x.id, x.size) } : x)))
+    else if (a === 'z') sizes(k, e.target.closest('button'))
     else if (a === 'f') options(k)
   }, true)
   document.addEventListener('dragstart', e => { const n = e.target.closest?.('#tvside .wg-i[draggable]'); if (!n) return; wdrag = n.dataset.k; n.classList.add('drag'); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', n.dataset.k); e.stopPropagation() }, true)
-  document.addEventListener('dragover', e => { if (!wdrag) return; document.querySelectorAll('#tvside .wg-i.over').forEach(n => n.classList.remove('over')); const n = e.target.closest?.('#tvside .wg-i'); if (n) { e.preventDefault(); if (n.dataset.k !== wdrag) n.classList.add('over') } })
+  document.addEventListener('dragover', e => { if (!wdrag) return; document.querySelectorAll('#tvside .over').forEach(n => n.classList.remove('over')); const n = e.target.closest?.('#tvside :is(.wg-i, .wg-ghost)'); if (n) { e.preventDefault(); if (n.dataset.k !== wdrag) n.classList.add('over') } })
   document.addEventListener('drop', e => {
-    const n = wdrag && e.target.closest?.('#tvside .wg-i')
+    const n = wdrag && e.target.closest?.('#tvside :is(.wg-i, .wg-ghost)')
     if (!n) return
     e.preventDefault()
-    const b = board(editOn || undefined), l = b.items().filter(x => x.k !== wdrag), it = b.items().find(x => x.k === wdrag), from = b.items().findIndex(x => x.k === wdrag), to = b.items().findIndex(x => x.k === n.dataset.k)
-    if (it && n.dataset.k !== wdrag) { const i = l.findIndex(x => x.k === n.dataset.k); l.splice(i < 0 ? l.length : from < to ? i + 1 : i, 0, it); b.set(l) }
+    const which = editOn || myScreen(), b = board(which), k = wdrag
+    if (n.dataset.k === k) return
+    if (which !== 'phone') {
+      const at = n.dataset.we?.startsWith('add:') ? n.dataset.we.slice(4).split(',').map(Number) : b.at.get(n.dataset.k)?.slice(0, 2)
+      const l = at && (WG.place(b.items(), which, k, { at, swap: true }) || WG.place(b.items(), which, k, { at }) || (p => p && WG.place(b.items(), which, k, { at: [p[0], p[1] + p[3] - 1] }))(b.at.get(n.dataset.k)))
+      return l ? void b.set(l) : window.hud?.('That doesn’t fit there')
+    }
+    const l = b.items().filter(x => x.k !== k), it = b.items().find(x => x.k === k), from = b.items().findIndex(x => x.k === k), to = b.items().findIndex(x => x.k === n.dataset.k)
+    if (it) { const i = l.findIndex(x => x.k === n.dataset.k); l.splice(i < 0 ? l.length : from < to ? i + 1 : i, 0, it); b.set(l) }
   })
-  document.addEventListener('dragend', () => { wdrag = ''; document.querySelectorAll('#tvside .wg-i.over, #tvside .wg-i.drag').forEach(n => n.classList.remove('over', 'drag')) })
+  document.addEventListener('dragend', () => { wdrag = ''; document.querySelectorAll('#tvside .wg-i.over, #tvside .wg-i.drag').forEach(n => n.classList.remove('over', 'drag')); document.querySelectorAll('.wg-ghost.over').forEach(n => n.classList.remove('over')) })
   // A widget, full screen: it grows out of its card to the middle, with everything behind it dimmed and soft.
   const wid = Object.assign(document.createElement('div'), { id: 'tvwid' })
   wid.innerHTML = `<div role="dialog" aria-modal="true"></div><button type="button" class="wid-x" aria-label="Close">${svg('<path d="M6 6l12 12M18 6 6 18"/>')}</button>`
@@ -615,7 +704,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     if (!w) return
     const a = document.activeElement
     if (a && widBox.contains(a) && a.matches('textarea, input')) return
-    const html = `<div class="wfull">${w.full ? w.full(b.D, it) : w.draw(w.sizes.includes('x') ? 'x' : w.sizes.includes('l') ? 'l' : w.sizes.at(-1), b.D, it)}</div>`
+    const html = `<div class="wfull">${w.full ? w.full(b.D, it, 'desk') : w.draw(w.sizes.includes('xl') ? 'xl' : w.sizes.includes('l') ? 'l' : w.sizes.at(-1), b.D, it)}</div>`
     if (widBox._html !== html) widBox.innerHTML = widBox._html = html
   }
   function openWid(n) {
@@ -626,6 +715,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     showWid(n, 'wid', w.label)
     widK = n.dataset.k
     widId = n.dataset.wid
+    w.open?.()
     board().refresh(w.fullNeeds || [])
     drawWid()
     P.grow(widBox, n)
@@ -639,11 +729,14 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     const [k, ...r] = n.dataset.wa.split(':'), v = r.join(':')
     if (k === 'file') { window.open(`/files/drives/raw?path=${encodeURIComponent(v)}`, '_blank', 'noopener'); return }
     if (k === 'app') return window.HubDesk?.launch?.(v)
+    // Safari leaves the box focused, and a focused box isn't redrawn.
+    if (widBox.contains(n) && widBox.contains(document.activeElement)) document.activeElement.blur()
     board().act(n.dataset.wa)
     setTimeout(drawWid, 30)
   }, true)
   let noteT = 0
-  widBox.addEventListener('input', e => { const k = e.target.dataset.note; if (!k) return; clearTimeout(noteT); noteT = setTimeout(() => board().data({ note: { k, text: e.target.value } }), 500) })
+  widBox.addEventListener('submit', async e => { if (!e.target.matches('[data-caladd]')) return; e.preventDefault(); document.activeElement?.blur(); await board().calAdd(); widBox._html = ''; drawWid(); widBox.querySelector('[data-cal="title"]')?.focus() })
+  widBox.addEventListener('input', e => { if (e.target.dataset.cal) return WG.calText(e.target.dataset.cal, e.target.value); const k = e.target.dataset.note; if (!k) return; clearTimeout(noteT); noteT = setTimeout(() => board().data({ note: { k, text: e.target.value } }), 500) })
   widBox.addEventListener('keydown', e => {
     if (e.target.dataset.todo === undefined || e.key !== 'Enter' || !e.target.value.trim()) return
     e.preventDefault()
@@ -718,7 +811,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   const CLOCKS = ['Time and date', 'Time', 'Off']
   function applyLook() {
     top.querySelector('.tvt-clock').style.display = look.clock === 'Off' ? 'none' : ''
-    top.querySelector('.tvt-date').style.display = look.clock === 'Time and date' ? '' : 'none'
+    tick()
     paintSide()
   }
   const SRC = { auto: 'Automatic', pc: 'This PC', spotify: 'Spotify', tv: 'Your TV' }
@@ -1189,7 +1282,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
 
   // The name of what you're on, large above the row, as on the TV.
   const nameEl = top.querySelector('.tvt-name')
-  const setName = e => { const c = e.target.closest?.('#dk .dk-t, #dkfav .dk-t'); nameEl.textContent = c && c.dataset.dk !== 'add' && c.dataset.dk !== 'addfav' ? c.getAttribute('aria-label') : '' }
+  const setName = e => { const c = e.target.closest?.('#dk .dk-t, #dkfav .dk-t'); nameEl.textContent = c && c.dataset.dk !== 'add' && c.dataset.dk !== 'addfav' ? c.getAttribute('aria-label') : ''; nameEl.style.fontSize = ''; const w = nameEl.scrollWidth; if (w > nameEl.clientWidth + 1) nameEl.style.fontSize = `${Math.max(24, Math.floor(parseFloat(getComputedStyle(nameEl).fontSize) * nameEl.clientWidth / w) - 1)}px` }
   document.addEventListener('pointerover', setName, { passive: true })
   document.addEventListener('focusin', setName)
 
@@ -1262,6 +1355,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
       { info: true, t1: 'Version', t2: '', v: version || '' },
       { group: 'Home Screen' },
       { id: 'clock', t1: 'Home clock', t2: 'What the top left of Home shows', v: look.clock, on: look.clock !== 'Off' },
+      { id: 'clockedit', t1: 'Clock style', t2: 'Size, font, colors and more, on every screen', v: CK ? CK.STYLES[clockLook().style] : '' },
       { id: 'sortapps', t1: 'Sort apps', t2: 'The order of the tiles on Home', v: SORT_NAMES[look.sort] || 'My order' },
       { id: 'addapps', t1: 'Apps and websites', t2: 'What is on Home', v: '' },
       { id: 'edit', t1: 'Widgets', t2: 'Add, size and arrange them, for this computer, your phone and the TV', v: board()?.ready() ? `${board().list().length} here` : '' },
@@ -1730,6 +1824,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     if (id === 'plr') { press('homeplayer'); return paintSettings() }
     if (id === 'syscard') { press('homesys'); return paintSettings() }
     if (id === 'sortapps') { const i = SORTS.findIndex(x => x[0] === (look.sort || 'mine')); look.sort = SORTS[(i + 1) % SORTS.length][0]; saveLook(); arrange(); window.HubDesk?.paint(); return paintSettings() }
+    if (id === 'clockedit') { closeSettings(); return editClock() }
     if (id === 'browserpage') { closeSettings(); return openSync() }
     if (id === 'panel') return void openPanel()
     if (id === 'tvcontrol') { closeSettings(); return openMirror() }
@@ -1772,7 +1867,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     if (saver) return
     saver = document.createElement('div')
     saver.id = 'hubsaver'
-    saver.innerHTML = '<i></i><i></i><div class="when"><b></b><span></span></div><div class="cards" aria-hidden="true"></div>'
+    saver.innerHTML = '<i></i><i></i><div class="when"></div><div class="cards" aria-hidden="true"></div>'
     document.body.append(saver)
     const mine = saver, d = devLook(PHONE.matches ? 'mobile' : 'desktop')
     let pics = [getComputedStyle(document.getElementById('hub-wall')).backgroundImage].filter(x => x && x !== 'none')
@@ -1780,13 +1875,14 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     if (saver !== mine) return
     let n = Math.floor(Math.random() * Math.max(1, pics.length)), side = 0
     const turn = () => { const [a, b] = [mine.children[side], mine.children[1 - side]]; if (pics.length) a.style.backgroundImage = pics[n++ % pics.length]; a.classList.add('on'); b.classList.remove('on'); side = 1 - side }
-    const time = () => { const t = new Date(); mine.querySelector('.when b').textContent = t.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); mine.querySelector('.when span').textContent = t.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' }) }
+    const time = () => { const c = CK && clockLook(); if (c) CK.paint(mine.querySelector('.when'), c, { h24: H24, scale: c.saver / 100, maxW: PHONE.matches ? innerWidth - 56 : innerWidth / 2 - 2 * Math.max(28, innerWidth * .04), maxH: innerHeight * .8 }) }
     // Home's widgets, on the right half as on Home.
     const cards = mine.querySelector('.cards')
     const widgets = () => {
-      if (!WG || !board()) return
+      if (!WG || !board('saver')) return
+      board('saver').refresh()
       if (!cards.firstElementChild) cards.innerHTML = '<div class="wg"></div>'
-      WG.put(cards.firstElementChild, board().html())
+      WG.put(cards.firstElementChild, board('saver').html())
       P?.syncPlayer(cards, MU?.now)
     }
     turn()
@@ -1921,10 +2017,18 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   for (const ev of ['hub-browser-state', 'hub-chat-state']) document.addEventListener(ev, () => paintRail())
   new MutationObserver(paintRail).observe(seg, { subtree: true, childList: true, attributes: true, characterData: true })
 
+  const H24 = !/[ap]\.?m/i.test(new Date(2020, 0, 1, 13).toLocaleTimeString())
+  let draft = null // the clock being edited
+  const clockLook = () => CK.of(draft && !draft.k ? draft.c : board()?.D.board?.data?.clock)
   function tick() {
     const d = new Date()
-    top.querySelector('.tvt-clock').textContent = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
-    top.querySelector('.tvt-date').textContent = d.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })
+    const box = top.querySelector('.tvt-clock')
+    if (!CK) { if (!box.firstChild) box.textContent = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); return }
+    const c = clockLook(), side = document.getElementById('tvside'), name = top.querySelector('.tvt-name')
+    const room = document.documentElement.hasAttribute('data-tvtouch') || !side?.offsetWidth ? innerWidth - 60 : side.getBoundingClientRect().left - box.getBoundingClientRect().left - 34
+    if (document.documentElement.dataset.editon === 'saver') return CK.paint(box, c, { now: d, h24: H24, scale: c.saver / 100, maxW: room, maxH: innerHeight * .5 })
+    const tall = document.documentElement.hasAttribute('data-tvtouch') ? 0 : (top.clientHeight || 400) - 58 - (name?.offsetHeight || 0) - 14
+    CK.paint(box, look.clock === 'Time' ? { ...c, date: 'off' } : c, { now: d, h24: H24, scale: c.size / 100, maxW: Math.max(120, room), maxH: tall > 60 ? tall : 0 })
   }
   let wxAt = 0
   async function weather() {

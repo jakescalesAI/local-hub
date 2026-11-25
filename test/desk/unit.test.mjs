@@ -155,9 +155,32 @@ test('Home’s widgets: every one in the list is drawn at every size, and a boar
     assert.ok(w.sizes.includes(w.def) && w.sizes.every(z => SIZES.includes(z)), id)
     for (const size of w.sizes) { const h = drawItem({ k: 'n', id, size }, D); assert.ok(h.includes('wg-i') && !h.includes('A <b>') && !/<(x|q|img)>/.test(h), `${id} ${size}`); assert.ok(drawItem({ k: 'n', id, size }, {}).includes('wg-i'), `${id} empty`) }
   }
-  assert.ok(can('music', 'tv') && !can('remote', 'tv') && nextSize('music', 'x') === 's')
+  assert.ok(can('music', 'tv') && !can('remote', 'tv') && nextSize('music', 'xl') === 's')
   assert.deepEqual(cleanItems([{ k: 'a', id: 'music', size: 'w' }, { k: 'a', id: 'pc' }, { k: '<', id: 'pc' }, { k: 'b', id: 'nope' }, { k: 'c', id: 'pc', size: 'huge', opts: { zones: ['Europe/London', '../x'], evil: 1 } }]), [{ k: 'a', id: 'music', size: 'w' }, { k: 'c', id: 'pc', size: 'm', opts: { zones: ['Europe/London'] } }])
   assert.deepEqual(cleanOpts({ date: '2026-12-25', title: ' X ' }), { title: 'X', date: '2026-12-25' })
   assert.deepEqual(cleanData({ todos: [{ text: ' a ', done: 1 }, { text: '' }, 3], timer: { total: 5, left: 1e99, end: -1 } }).todos, [{ text: 'a', done: false }])
   assert.deepEqual([timerLeft({ end: 0, left: 5 }), timerLeft({ end: 100, left: 5 }, 40), mmss(61_000), mmss(3_661_000)], [5, 60, '1:01', '1:01:01'])
+})
+
+test('Widgets: what doesn’t fit a screen isn’t placed, the rest stay where they were put, and the clock and the days are right', async () => {
+  const { pack, place, fitting, ROOM, events, W } = await import('../../tv/ui/widgets.js')
+  const { clockHTML, words, STYLES, FONTS } = await import('../../tv/ui/clock.js')
+  const { cleanClock, cleanItems, cleanData } = await import('../../board.mjs')
+  const l = [{ k: 'a', id: 'music', size: 'w' }, { k: 'b', id: 'weather', size: 'l' }, { k: 'c', id: 'pc', size: 'l' }]
+  assert.deepEqual([...pack(l, 'desk').at.values()], [[1, 1, 4, 1], [1, 2, 2, 2], [3, 2, 2, 2]])
+  assert.deepEqual([...pack([...l, { k: 'd', id: 'calendar', size: 'xl' }], 'desk').out], ['d'])
+  assert.equal(pack([...l, { k: 'd', id: 'calendar', size: 'xl' }], 'saver').out.size, 0)
+  assert.deepEqual(fitting(l, { k: 'n', id: 'clock', size: 's' }, 'tv'), [])
+  assert.deepEqual(fitting(l, l[1], 'desk'), ['s', 'm', 'l'])
+  assert.deepEqual(place(l, 'desk', 'b', { at: [3, 2], swap: true }).map(x => [x.k, x.at]), [['b', [3, 2]], ['c', [1, 2]], ['a', [1, 1]]])
+  assert.equal(place(l, 'desk', 'b', { size: 'xxl' }), null)
+  for (const s of Object.keys(ROOM)) for (const [id, w] of Object.entries(W)) for (const size of w.sizes) { const [x] = pack([{ k: 'k', id, size }], s).at.values(); assert.ok(x && x[0] + x[2] - 1 <= ROOM[s][0] && x[1] + x[3] - 1 <= ROOM[s][1], `${id} ${size} ${s}`) }
+  assert.deepEqual(cleanItems([{ k: 'a', id: 'pc', size: 'x', at: [1, 2] }, { k: 'b', id: 'pc', size: 's', at: [0, 'x'] }]), [{ k: 'a', id: 'pc', size: 'xl', at: [1, 2] }, { k: 'b', id: 'pc', size: 's' }])
+  const [e] = events({ cal: { calendars: [], events: [{ id: 'l1', title: 'Off', start: '2026-11-25', end: '2026-11-26', allDay: true }] } })
+  assert.deepEqual([e.at.getDate(), e.at.getHours()], [25, 0])
+  assert.deepEqual(cleanClock({ font: 'serif', color: '#12345g', size: 9999, evil: 1, style: 'x"><img>' }), { font: 'serif', size: 250 })
+  assert.deepEqual(cleanData({ clock: { style: 'flip' } }).clock, { style: 'flip' })
+  assert.equal(cleanData({ todos: [] }, cleanData({ clock: { style: 'flip' } })).clock.style, 'flip')
+  for (const style of Object.keys(STYLES)) for (const font of Object.keys(FONTS)) assert.ok(clockHTML({ style, font, color: '"><img>', secs: true }).startsWith('<div class="hc') && !clockHTML({ style, font, color: '"><img>' }).includes('<img'))
+  assert.deepEqual([words(new Date(2026, 0, 1, 21, 5)), words(new Date(2026, 0, 1, 11, 45)), words(new Date(2026, 0, 1, 0, 0))], ['five past nine', 'quarter to twelve', 'twelve o’clock'])
 })
