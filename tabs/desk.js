@@ -323,5 +323,5 @@ ${A} #dkadd.on { display: grid; position: fixed; z-index: 72; inset: 0; place-it
   load()
   setInterval(() => { if (!document.hidden) { if (!box.value) q = ''; paint() } }, 1000)
   addEventListener('focus', load)
-  window.HubDesk = { open: openAdd, paint }
+  window.HubDesk = { open: openAdd, paint, launch: id => open(id) }
 })()

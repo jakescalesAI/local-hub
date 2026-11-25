@@ -108,7 +108,7 @@ ${R} .hw-root.hw-edit > .hw-bar { left: auto; }
 ${R}[data-editing] #tvtop { height: 118px !important; padding-top: 40px !important; } ${R}[data-editing] #tvtop > * { display: none; } ${R}[data-editing] #tvtop::before { content: "Edit Home"; font: 700 46px/1 var(--display); letter-spacing: -.03em; }
 ${R}[data-editing] .controls { display: none !important; } ${R}[data-editing] .hw-root > .hw-bar { position: fixed; top: 34px; right: calc(var(--dock) + 48px); z-index: 14; }
 ${R}[data-editing] .hw-bar .hw-btn, ${R}[data-editing] .hw-bar .hw-btn.red { height: 46px; padding: 0 20px; border-radius: 99px; background: var(--ui-fill) !important; box-shadow: var(--ui-edge); color: #fff !important; font-size: 15px; font-weight: 600; } ${R}[data-editing] .hw-bar .hw-btn:hover, ${R}[data-editing] .hw-bar .hw-btn[data-hw-act="edit"] { background: var(--ui-sel) !important; color: #000 !important; }
-${R}[data-editing] .hw-root[data-view="desktop"] > #tvside { display: grid !important; left: calc(var(--tvrail) + 48px); right: calc(var(--dock) + 48px); top: 118px; bottom: 0; width: auto; max-height: none; margin: 0; padding: 14px 14px 40px; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 30px 26px; }
+${R}[data-editing] .hw-root[data-view="desktop"] > #tvside { display: block !important; left: calc(var(--tvrail) + 48px); right: calc(var(--dock) + 48px); top: 118px; bottom: 0; width: auto; max-height: none; margin: 0; padding: 14px 14px 40px; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 30px 26px; }
 ${R}[data-editing] .hw-root > .hw-stage { visibility: hidden; }
 ${R} .tve { position: relative; min-width: 0; } ${R} .tve > :not(button) { pointer-events: none; } ${R} .tve .tvs-card, ${R} .tve .tvt-wx { margin: 0; }
 ${R} .tve-x { position: absolute; z-index: 3; left: -12px; top: -12px; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--ui-sel); color: #000; box-shadow: 0 6px 16px rgba(0, 0, 0, .5); transition: transform .18s var(--ease); } ${R} .tve-x:hover { transform: scale(1.12); } ${R} .tve-x svg { width: 18px; height: 18px; }
@@ -195,6 +195,16 @@ ${R} #tvside .hw-cell { height: 184px; min-width: 0; grid-column: auto !importan
 ${R} #tvside .hw-cell.l { grid-column: 1 / -1 !important; }
 ${R} #tvside .hw-cell.l { height: 380px; }
 ${R} #tvside .tvp-card { grid-column: 1 / -1; } ${R} .tvp-card .mp { zoom: .62; } ${R} .tvp-card .mp-b { cursor: pointer; } ${R} .tvp-card .mp-b:hover { background: var(--ui-sel); color: #000; }
+${R} .hw-root[data-view="desktop"] > #tvside { display: block !important; } ${R} #tvside .wg { font-size: clamp(8px, calc(var(--side) / 59), 12.4px); } ${A} #tvside .wg-i { cursor: pointer; } ${A} #tvside .wg-i:is(:hover, :focus-visible):not([draggable]):not(.hub) { box-shadow: 0 0 0 3px rgba(255, 255, 255, .9); outline: 0; } ${A} #tvside .wg-i.hub { padding: 0; background: none; box-shadow: none; } ${A} #tvside .wg-i.hub > * { height: 100% !important; width: 100%; }
+${A} .we-bar:empty { display: none; } ${A} .we-bar { display: flex; align-items: center; gap: 18px; margin-bottom: 18px; font-size: 14px; color: rgba(255, 255, 255, .6); } ${A}[data-editing] #tvside .wg { max-width: 860px; font-size: 13px; } ${A}[data-editing] #tvside .wg[data-screen="phone"] { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 400px; font-size: 11px; } ${A}[data-editing] #tvside .wg[data-screen="phone"] :is(.z-w, .z-x) { grid-column: span 2; }
+.we-add { align-items: center; border: 2px dashed rgba(255, 255, 255, .22) !important; background: none !important; box-shadow: none !important; font: 600 15px var(--font); color: rgba(255, 255, 255, .75) !important; cursor: pointer; } .we-add svg { width: 26px; height: 26px; } .we-add:hover { border-color: #fff !important; color: #fff !important; }
+#wggal { display: none; } ${A} #wggal.on { display: grid; position: fixed; z-index: 76; inset: 0; place-items: center; padding: 30px; background: rgba(0, 0, 0, .55); color: #fff; } #wggal > div { display: flex; flex-direction: column; width: min(1080px, 100%); max-height: 100%; border-radius: 30px; overflow: hidden; background: var(--ui-panel); box-shadow: var(--ui-edge), 0 40px 100px rgba(0, 0, 0, .6); } #wggal > .gal-form { width: min(520px, 100%); } #wggal header { display: flex; align-items: center; justify-content: space-between; padding: 24px 28px 14px; } #wggal h2 { margin: 0; font: 700 26px/1.1 var(--display); letter-spacing: -.02em; }
+.gal-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 20px; overflow-y: auto; scrollbar-width: none; padding: 6px 28px 30px; } .gal-list section { display: flex; flex-direction: column; min-width: 0; padding: 18px; border-radius: 22px; background: var(--ui-fill); box-shadow: var(--ui-edge); } .gal-list h3 { margin: 0 0 4px; font-size: 17px; } .gal-list p { margin: 0 0 14px; font-size: 13.5px; line-height: 1.4; color: rgba(255, 255, 255, .6); } .gal-prev { flex: 1; display: grid; place-items: center; min-height: 190px; padding: 14px; border-radius: 16px; background: rgba(0, 0, 0, .25); pointer-events: none; } .gal-prev .wg { width: 100%; font-size: 5.6px; } .gal-prev .wg-i { margin: 0 auto; } .gal-prev .wg-i.z-s { grid-column: 2 / 4; width: 50%; } .gal-prev .wg-i:is(.z-m, .z-l) { grid-column: 2 / 4; } .gal-prev .wg { font-size: 6.6px; } .gal-prev .wg:has(.z-s, .z-m, .z-l) { width: 160%; } .gal-list footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-top: 14px; } .gal-list .ex-tool { flex-wrap: wrap; border-radius: 20px; } .gal-list .ex-tool button { height: 30px; padding: 0 10px; font-size: 12.5px; } .gal-add { height: 38px; padding: 0 20px; border-radius: 19px; background: var(--ui-sel); color: #000; font-size: 14.5px; font-weight: 600; } .gal-add.plain { background: rgba(255, 255, 255, .1); color: #fff; }
+.gal-form form { display: flex; flex-direction: column; gap: 16px; padding: 4px 28px 28px; } .gal-form label { display: flex; flex-direction: column; gap: 8px; font-size: 14px; font-weight: 600; color: rgba(255, 255, 255, .7); } .gal-form :is(input, textarea) { padding: 12px 16px; border: 0; outline: 0; border-radius: 16px; background: rgba(255, 255, 255, .1); color: #fff; font: 600 16px/1.5 var(--font); color-scheme: dark; } .gal-form p { margin: -8px 0 0; font-size: 13px; color: rgba(255, 255, 255, .5); } .gal-form footer { display: flex; justify-content: flex-end; gap: 10px; }
+#tvwid > .wid { width: min(820px, 100%); } #tvwid .wfull { font-size: clamp(11px, 1.15vw, 15px); }
+/* On a phone or an iPad: two across, under the apps. */
+${T} .hw-root[data-view] > #tvside { display: block; padding: 0 0 140px; } ${T} #tvside .wg { font-size: clamp(8.4px, 2.45vw, 13px); } ${T} #tvwx { display: none !important; } ${T} .hw-root:not(.hw-edit) > .hw-stage, ${T} .hw-root:not(.hw-edit) .hw-frame { display: none; } ${T} .hw-root:not(.hw-edit) > #dk { padding-bottom: 26px !important; }
+@media (max-width: 820px) { ${T} #tvside .wg { grid-template-columns: repeat(2, minmax(0, 1fr)); } ${T} #tvside .wg :is(.z-w, .z-x) { grid-column: span 2; } }
 ${R} #tvside > :is(.tvt-wx, .tvs-card, .hw-cell), ${R} #tvside .tvp-card .mp { cursor: pointer; transition: box-shadow .15s; } ${R} #tvside > :is(.tvt-wx, .tvs-card):is(:hover, :focus-visible) { box-shadow: 0 0 0 3px rgba(255, 255, 255, .9); outline: 0; }
 #tvwid { display: none; } ${A} #tvwid.on { display: grid; position: fixed; z-index: 73; inset: 0; place-items: center; padding: 34px; background: rgba(0, 0, 0, .55); -webkit-backdrop-filter: blur(14px) saturate(1.1); backdrop-filter: blur(14px) saturate(1.1); color: #fff; animation: widin .35s; } ${A} #tvwid.going { animation: widout .26s forwards; } @keyframes widin { from { background: rgba(0, 0, 0, 0); -webkit-backdrop-filter: blur(0); backdrop-filter: blur(0); } } @keyframes widout { to { background: rgba(0, 0, 0, 0); -webkit-backdrop-filter: blur(0); backdrop-filter: blur(0); } }
 #tvwid > div { width: min(860px, 100%); max-height: 100%; overflow-y: auto; scrollbar-width: none; box-sizing: border-box; padding: 44px 52px; border-radius: 34px; background: var(--ui-panel); box-shadow: var(--ui-edge), 0 40px 100px rgba(0, 0, 0, .6); } #tvwid .wx .wxw { font-size: 25px; } #tvwid .gz { width: auto; padding: 0; background: none; box-shadow: none; } #tvwid .cell { display: grid; min-height: 420px; } #tvwid .cell > * { width: 100%; height: 100%; }
@@ -341,8 +351,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
 #hubsaver i.on { opacity: 1; }
 #hubsaver::after { content: ""; position: absolute; inset: 0; background: linear-gradient(0deg, rgba(0, 0, 0, .45), transparent 45%); }
 #hubsaver .when { position: absolute; z-index: 1; left: max(4vw, 28px); bottom: max(6vh, 40px); }
-#hubsaver .cards { position: absolute; z-index: 1; right: max(3.5vw, 28px); top: max(5vh, 36px); width: calc(50vw - max(3.5vw, 28px)); max-height: 88vh; overflow: hidden; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 232px), 1fr)); gap: 14px; pointer-events: none; }
-#hubsaver .cards:empty { display: none; } #hubsaver .tvp-card { grid-column: 1 / -1; } #hubsaver .tvp-card .mp { position: relative; overflow: hidden; zoom: .7; } #hubsaver :is(.tvs-card, .tvt-wx) { box-sizing: border-box; min-width: 0; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; padding: 20px 22px; border-radius: 26px; background: var(--ui-panel); box-shadow: var(--ui-edge); } #hubsaver .tvs-g > * { min-width: 0; } #hubsaver .hw-cell { height: 184px; min-width: 0; grid-column: auto !important; grid-row: auto !important; }
+#hubsaver .cards { position: absolute; z-index: 1; right: max(3.5vw, 28px); top: max(5vh, 36px); width: calc(50vw - max(3.5vw, 28px)); max-height: 88vh; overflow: hidden; pointer-events: none; } #hubsaver .wg { font-size: clamp(8px, .84vw, 13px); }
 @media (max-width: 700px) { #hubsaver .cards { display: none; } }
 #hubsaver .when b { display: block; font: 700 clamp(56px, 8vw, 120px)/1 var(--display); letter-spacing: -.035em; font-variant-numeric: tabular-nums; }
 #hubsaver .when span { font: 600 clamp(18px, 2vw, 30px)/1.4 var(--display); }
@@ -461,6 +470,19 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   }
   setInterval(moveTime, 500)
   let SND = null, editB = false
+  // Home's widgets (tv/ui/widgets.js): this screen's, and while editing any screen's.
+  let WG = null, editOn = ''
+  const myScreen = () => (document.documentElement.hasAttribute('data-tvtouch') && matchMedia('(max-width: 820px)').matches ? 'phone' : 'desk')
+  const boards = {}
+  const board = (which = myScreen()) => WG && (boards[which] ??= WG.createBoard({ screen: which, changed: () => { cancelAnimationFrame(board.raf); board.raf = requestAnimationFrame(() => { paintSide(); drawWid() }) }, music: () => MU?.now }))
+  ;(async () => { try { WG = await import('/tv/widgets.js?v=2'); P ??= await import('/tv/panel.js?v=10'); board()?.refresh(); paintSide() } catch {} })()
+  setInterval(() => {
+    if (!WG || document.hidden || !document.querySelector('.hw-root')) return
+    const b = board(editOn || undefined)
+    b?.refresh()
+    if (b && Math.min(...b.list().map(x => WG.W[x.id]?.tick || 999)) === 1) paintSide()
+    if (wid.classList.contains('on') && widK && WG.W[widId]?.tick === 1) drawWid()
+  }, 1000)
   let onScreen = [] // the widgets Controls can show or hide
   let side = null, sideWatch = null, sideRoot = null
   function paintSide() {
@@ -481,34 +503,80 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
       new MutationObserver(() => { paintSide(); fitRow() }).observe(root, { attributes: true, attributeFilter: ['class', 'data-view'] })
     }
     const editing = root.classList.contains('hw-edit')
-    onScreen = []
-    const wx = look.weather && wxBody && window.HubWeatherCard ? `<div class="tvt-wx" role="button" tabindex="0" aria-label="Weather, more">${window.HubWeatherCard(wxBody, 'm')}</div>` : ''
-    const cells = [...root.querySelectorAll('.hw-grid > .hw-cell:not(.a)')].filter(c => {
-      const id = c.querySelector('[data-hw-widget], [data-hw-wid]')?.dataset.hwWidget || c.dataset.hwKey || ''
-      if (/(^|-)(clock|date|weather|world-clock)$/.test(id)) return editing && c.style.display !== 'none'
-      const key = c.dataset.hwKey, name = (c.querySelector('.hw-label')?.textContent || c.querySelector('[aria-label]')?.getAttribute('aria-label') || id.replace(/^[a-z]\d+-/, '').replace(/-/g, ' ')).trim()
-      onScreen.push({ key, name: name.charAt(0).toUpperCase() + name.slice(1) })
-      return c.style.display !== 'none' && (editing || !look.off?.includes(key))
-    })
-    const pl = P && MU && look.player !== false ? `<div class="tvp-card">${P.player(MU.now || {}, true)}</div>` : ''
-    const sysCard = SYS && look.sys !== false ? `<div class="tvs-card" role="button" tabindex="0" aria-label="This PC, more"><div class="tvs-h">This PC</div><div class="tvs-g">${gauge('CPU', SYS.cpu)}${gauge('Memory', SYS.mem)}${gauge('Disk', SYS.disk, SYS.diskFree ? `${Math.round(SYS.diskFree / 2 ** 30)} GB free` : '')}</div></div>` : ''
     document.documentElement.toggleAttribute('data-editing', editing)
-    // Editing: every card with its − (or a + to bring it back), filling the page.
-    const held = (id, name, html2, on) => `<div class="tve${on ? '' : ' gone'}"><button type="button" class="tve-x" data-tve="${id}" aria-label="${on ? 'Remove' : 'Add'} ${name}" title="${on ? 'Remove from Home' : 'Put on Home'}">${svg(on ? '<path d="M6 12h12"/>' : '<path d="M12 6v12M6 12h12"/>')}</button>${on ? html2 : `<div class="tve-off"><b>${name}</b><span>Not on Home</span></div>`}</div>`
-    const plOn = look.player !== false, sysOn = look.sys !== false
-    const html = editing ? held('homeplayer', 'Music', P && MU ? `<div class="tvp-card">${P.player(MU.now || {}, true)}</div>` : '', plOn) + held('homeweather', 'Weather', wx, look.weather) + held('homesys', 'This PC', sysCard, sysOn) + held('homeclock', 'Clock', `<div class="tvs-card tve-clock"><div class="tvs-h">Clock</div><strong>${esc(top.querySelector('.tvt-clock').textContent)}</strong><span>${esc(top.querySelector('.tvt-date').textContent)}</span></div>`, look.clock !== 'Off') + cells.map(c => c.outerHTML).join('') + `<button type="button" class="tve-add" data-hw-act="add">${svg('<path d="M12 5v14M5 12h14"/>')}<span>Add a widget</span></button>` : pl + wx + sysCard + cells.map(c => c.outerHTML).join('')
-    if (side._html === html) return
-    const y = side.scrollTop
-    // The player is kept while the song is the same: drawn again, its cover would blink.
-    const was = side.querySelector('.tvp-card')
-    side._html = html
-    side.innerHTML = html
-    const now = side.querySelector('.tvp-card')
-    if (was && now && was._pl === pl) now.replaceWith(was)
-    else if (now) now._pl = pl
-    side.scrollTop = y
-    document.documentElement.toggleAttribute('data-noside', !html)
+    if (!editing) editOn = ''
+    if (!WG) return
+    const b = board(editOn || undefined)
+    onScreen = []
+    // Widgets of the hub's own, from its older gallery, stay under these.
+    const cells = editOn && editOn !== myScreen() ? [] : [...root.querySelectorAll('.hw-grid > .hw-cell:not(.a)')].filter(c => !/(^|-)(clock|date|weather|world-clock)$/.test(c.querySelector('[data-hw-widget], [data-hw-wid]')?.dataset.hwWidget || c.dataset.hwKey || '') && c.style.display !== 'none')
+    const bar = side.querySelector('.we-bar') || side.insertBefore(Object.assign(document.createElement('div'), { className: 'we-bar' }), side.firstChild)
+    const barHtml = editing ? `<div class="ex-tool">${[['desk', 'This computer'], ['phone', 'Phone'], ['tv', 'Your TV']].map(([k, t]) => `<button type="button" data-ws="${k}" class="${(editOn || myScreen()) === k ? 'on' : ''}">${t}</button>`).join('')}</div><span>Drag to move. Size changes on the card.</span>` : ''
+    if (bar._html !== barHtml) bar.innerHTML = bar._html = barHtml
+    const grid = side.querySelector('.wg') || side.appendChild(Object.assign(document.createElement('div'), { className: 'wg' }))
+    grid.dataset.screen = editing ? editOn || myScreen() : ''
+    const html = b.html(editing) + cells.map(c => `<div class="wg-i z-${c.classList.contains('l') ? 'l' : c.classList.contains('m') ? 'm' : 's'} bare hub" data-k="hub-${esc(c.dataset.hwKey)}" data-wid="hub">${c.outerHTML}</div>`).join('') + (editing ? `<button type="button" class="wg-i z-m we-add" data-k="add" data-we="add">${svg('<path d="M12 5v14M5 12h14"/>')}<span>Add a widget</span></button>` : '')
+    WG.put(grid, html)
+    P?.syncPlayer(side, MU?.now)
+    document.documentElement.toggleAttribute('data-noside', !grid.children.length)
   }
+  // ── editing: size, remove, options, drag, add ──
+  const gal = Object.assign(document.createElement('div'), { id: 'wggal' })
+  document.body.append(gal)
+  let galSize = {}
+  function paintGal() {
+    const which = editOn || myScreen(), b = board(which), D = b.D
+    gal.innerHTML = `<div role="dialog" aria-modal="true" aria-label="Add a widget"><header><h2>Add a widget</h2><button type="button" class="hw-done" data-gx>Done</button></header><div class="gal-list">${Object.entries(WG.W).filter(([id]) => WG.can(id, which)).map(([id, w]) => { const z = galSize[id] || w.def; return `<section><h3>${esc(w.label)}</h3><p>${esc(w.what)}</p><div class="gal-prev"><div class="wg">${WG.drawItem({ k: 'prev', id, size: z }, D)}</div></div><footer><div class="ex-tool">${w.sizes.map(x => `<button type="button" data-gz="${id}:${x}" class="${x === z ? 'on' : ''}">${WG.SIZE_NAMES[x]}</button>`).join('')}</div><button type="button" class="gal-add" data-ga="${id}">Add</button></footer></section>` }).join('')}<section class="gal-more"><h3>More</h3><p>The hub’s own widgets: usage, services, markets and the rest</p><footer><button type="button" class="gal-add" data-hw-act="add" data-gx>Open</button></footer></section></div></div>`
+    P?.syncPlayer(gal, MU?.now)
+  }
+  function openGal() { const b = board(editOn || undefined); b.refresh(Object.values(WG.W).flatMap(w => w.needs('m'))); paintGal(); gal.classList.add('on'); setTimeout(() => gal.classList.contains('on') && paintGal(), 1500) }
+  gal.addEventListener('click', e => {
+    if (e.target === gal || e.target.closest('[data-gx]')) return gal.classList.remove('on')
+    const z = e.target.closest('[data-gz]')?.dataset.gz, a = e.target.closest('[data-ga]')?.dataset.ga
+    if (z) { const [id, size] = z.split(':'); galSize[id] = size; const y = gal.querySelector('.gal-list').scrollTop; paintGal(); gal.querySelector('.gal-list').scrollTop = y }
+    if (a) { const b = board(editOn || undefined); b.set([...b.items(), { k: b.newKey(), id: a, size: galSize[a] || WG.W[a].def }]); window.hud?.(`${WG.W[a].label} added`) }
+  })
+  addEventListener('keydown', e => { if (e.key === 'Escape' && gal.classList.contains('on')) { e.stopImmediatePropagation(); gal.classList.remove('on') } }, true)
+  function options(k) {
+    const b = board(editOn || undefined), it = b.items().find(x => x.k === k), w = it && WG.W[it.id]
+    if (!w) return
+    const o = it.opts || {}
+    const fields = w.form === 'date' ? `<label>What<input name="title" maxlength="60" value="${esc(o.title || '')}" placeholder="Holiday"></label><label>When<input name="date" type="date" value="${esc(o.date || '')}"></label>` : `<label>Places, one a line<textarea name="zones" rows="5" spellcheck="false">${esc((o.zones || ['America/New_York', 'Europe/London', 'Asia/Tokyo']).join('\n'))}</textarea></label><p>Like Europe/Paris or America/Denver</p>`
+    gal.innerHTML = `<div role="dialog" aria-modal="true" aria-label="${esc(w.label)}" class="gal-form"><header><h2>${esc(w.label)}</h2></header><form>${fields}<footer><button type="button" class="gal-add plain" data-gx>Cancel</button><button type="submit" class="gal-add">Save</button></footer></form></div>`
+    gal.classList.add('on')
+    gal.querySelector('form').addEventListener('submit', e => {
+      e.preventDefault()
+      const d = new FormData(e.target), opts = w.form === 'date' ? { title: d.get('title'), date: d.get('date') } : { zones: String(d.get('zones')).split(/\s+/).filter(z => { try { Intl.DateTimeFormat([], { timeZone: z }); return z.includes('/') } catch { return false } }) }
+      b.set(b.items().map(x => (x.k === k ? { ...x, opts } : x)))
+      gal.classList.remove('on')
+    })
+  }
+  let wdrag = ''
+  document.addEventListener('click', e => {
+    // The bar's Add and Reset are for these widgets.
+    const act = document.documentElement.hasAttribute('data-editing') && e.target.closest?.('.hw-root > .hw-bar [data-hw-act]')?.dataset.hwAct
+    if (act === 'add') { e.stopPropagation(); return openGal() }
+    if (act === 'reset') { e.stopPropagation(); if (confirm('Put this screen’s widgets back as they first were?')) { const b = board(editOn || undefined); b.set([['music', 'w'], ['weather', 'l'], ['pc', 'l']].map(([id, size], i) => ({ k: `r${i}`, id, size }))) } return }
+    const ws = e.target.closest?.('#tvside [data-ws]')?.dataset.ws, we = e.target.closest?.('#tvside [data-we]')?.dataset.we
+    if (ws) { e.stopPropagation(); editOn = ws; board(ws).refresh(); return paintSide() }
+    if (!we) return
+    e.stopPropagation()
+    if (we === 'add') return openGal()
+    const b = board(editOn || undefined), [a, k] = we.split(':')
+    if (a === 'x') b.set(b.items().filter(x => x.k !== k))
+    else if (a === 'z') b.set(b.items().map(x => (x.k === k ? { ...x, size: WG.nextSize(x.id, x.size) } : x)))
+    else if (a === 'f') options(k)
+  }, true)
+  document.addEventListener('dragstart', e => { const n = e.target.closest?.('#tvside .wg-i[draggable]'); if (!n) return; wdrag = n.dataset.k; n.classList.add('drag'); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', n.dataset.k); e.stopPropagation() }, true)
+  document.addEventListener('dragover', e => { if (!wdrag) return; document.querySelectorAll('#tvside .wg-i.over').forEach(n => n.classList.remove('over')); const n = e.target.closest?.('#tvside .wg-i'); if (n) { e.preventDefault(); if (n.dataset.k !== wdrag) n.classList.add('over') } })
+  document.addEventListener('drop', e => {
+    const n = wdrag && e.target.closest?.('#tvside .wg-i')
+    if (!n) return
+    e.preventDefault()
+    const b = board(editOn || undefined), l = b.items().filter(x => x.k !== wdrag), it = b.items().find(x => x.k === wdrag), from = b.items().findIndex(x => x.k === wdrag), to = b.items().findIndex(x => x.k === n.dataset.k)
+    if (it && n.dataset.k !== wdrag) { const i = l.findIndex(x => x.k === n.dataset.k); l.splice(i < 0 ? l.length : from < to ? i + 1 : i, 0, it); b.set(l) }
+  })
+  document.addEventListener('dragend', () => { wdrag = ''; document.querySelectorAll('#tvside .wg-i.over, #tvside .wg-i.drag').forEach(n => n.classList.remove('over', 'drag')) })
   // A widget, full screen: it grows out of its card to the middle, with everything behind it dimmed and soft.
   const wid = Object.assign(document.createElement('div'), { id: 'tvwid' })
   wid.innerHTML = `<div role="dialog" aria-modal="true"></div><button type="button" class="wid-x" aria-label="Close">${svg('<path d="M6 6l12 12M18 6 6 18"/>')}</button>`
@@ -537,16 +605,52 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     wid.classList.remove('going')
     wid.classList.add('on')
   }
-  async function openWid(n) {
-    if (n.classList.contains('hw-cell')) { showWid(n, 'cell', 'Widget'); widBox.innerHTML = n.innerHTML; return void P.grow(widBox, n) }
-    const pc = n.classList.contains('tvs-card')
-    showWid(n, pc ? 'pc' : 'wx', pc ? 'This PC' : 'Weather')
-    const draw = info => { widBox.innerHTML = pc ? P.pcDetail(SYS || {}, info) : window.HubWeatherCard(wxBody, 'l') }
-    draw(null)
-    P.grow(widBox, n)
-    if (pc) { const info = await fetch('/api/system/info', { cache: 'no-store' }).then(r => (r.ok ? r.json() : {}), () => ({})); if (wid.classList.contains('on') && widBox.className === 'pc') draw(info) }
+  let widK = '', widId = ''
+  function drawWid() {
+    if (!widK || !wid.classList.contains('on')) return
+    const b = board(), it = b?.items().find(x => x.k === widK), w = it && WG.W[it.id]
+    if (!w) return
+    const a = document.activeElement
+    if (a && widBox.contains(a) && a.matches('textarea, input')) return
+    const html = `<div class="wfull">${w.full ? w.full(b.D, it) : w.draw(w.sizes.includes('x') ? 'x' : w.sizes.includes('l') ? 'l' : w.sizes.at(-1), b.D, it)}</div>`
+    if (widBox._html !== html) widBox.innerHTML = widBox._html = html
   }
+  function openWid(n) {
+    if (n.dataset.wid === 'music') return openMusic(n.querySelector('.mp-art') || n)
+    if (n.dataset.wid === 'hub') { showWid(n, 'cell', 'Widget'); widK = ''; widBox.innerHTML = n.innerHTML; return void P.grow(widBox, n) }
+    const w = WG.W[n.dataset.wid]
+    if (!w) return
+    showWid(n, 'wid', w.label)
+    widK = n.dataset.k
+    widId = n.dataset.wid
+    board().refresh(w.fullNeeds || [])
+    drawWid()
+    P.grow(widBox, n)
+    if (w.label === 'Note') setTimeout(() => widBox.querySelector('textarea')?.focus(), 450)
+  }
+  // A button in a widget, wherever it is drawn.
+  document.addEventListener('click', e => {
+    const n = e.target.closest?.('[data-wa]')
+    if (!n || document.documentElement.hasAttribute('data-editing') || n.closest('#wggal')) return
+    e.stopPropagation()
+    const [k, ...r] = n.dataset.wa.split(':'), v = r.join(':')
+    if (k === 'file') { window.open(`/files/drives/raw?path=${encodeURIComponent(v)}`, '_blank', 'noopener'); return }
+    if (k === 'app') return window.HubDesk?.launch?.(v)
+    board().act(n.dataset.wa)
+    setTimeout(drawWid, 30)
+  }, true)
+  let noteT = 0
+  widBox.addEventListener('input', e => { const k = e.target.dataset.note; if (!k) return; clearTimeout(noteT); noteT = setTimeout(() => board().data({ note: { k, text: e.target.value } }), 500) })
+  widBox.addEventListener('keydown', e => {
+    if (e.target.dataset.todo === undefined || e.key !== 'Enter' || !e.target.value.trim()) return
+    e.preventDefault()
+    const l = [...(board().D.board?.data?.todos || []), { text: e.target.value.trim(), done: false }]
+    e.target.value = ''
+    e.target.blur()
+    board().data({ todos: l }).then(() => { widBox._html = ''; drawWid(); widBox.querySelector('.wadd')?.focus() })
+  })
   function openMusic(n) {
+    widK = ''
     showWid(n, 'music', 'Music')
     widMusic = true
     wordsKey = ''
@@ -577,18 +681,10 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   wid.addEventListener('click', e => { if (e.target === wid) closeWid() })
   addEventListener('keydown', e => {
     if (e.key === 'Escape' && wid.classList.contains('on')) { e.stopPropagation(); closeWid() }
-    const n = e.target?.closest?.('#tvside > :is(.tvt-wx, .tvs-card)')
+    const n = e.target?.matches?.('#tvside .wg-i[tabindex]') ? e.target : null
     if (n && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openWid(n) }
   }, true)
-  document.addEventListener('click', e => { if (document.documentElement.hasAttribute('data-editing')) return; const n = e.target.closest?.('#tvside > :is(.tvt-wx, .tvs-card, .hw-cell)'); if (!n || !P || (n.classList.contains('hw-cell') && e.target.closest('button, a, input, [data-hw-open]'))) return; if (n.classList.contains('hw-cell')) e.stopPropagation(); openWid(n) }, true)
-  document.addEventListener('click', e => {
-    const id = e.target.closest?.('[data-tve]')?.dataset.tve
-    if (!id) return
-    e.stopPropagation()
-    if (id === 'homeclock') { look.clock = look.clock === 'Off' ? 'Time and date' : 'Off'; saveLook() } else press(id)
-    side._html = ''
-    paintSide()
-  }, true)
+  document.addEventListener('click', e => { if (document.documentElement.hasAttribute('data-editing')) return; const n = e.target.closest?.('#tvside .wg-i'); if (!n || !P || !WG || e.target.closest('button, a, input, [data-wa], .mp-bar.seek, .mp-art') || n.closest('#wggal')) return; e.stopPropagation(); openWid(n) }, true)
   function arrange() {
     const dup = document.documentElement.matches('[data-tvtouch]') && matchMedia('(max-width: 700px)').matches && !document.querySelector('.hw-root.hw-edit')
     for (const c of document.querySelectorAll('.hw-grid > .hw-cell:not(.a)')) c.toggleAttribute('data-dup', dup && ((id => /(^|-)(clock|date|weather)$/.test(id) && !/world-clock$/.test(id))(c.querySelector('[data-hw-widget], [data-hw-wid]')?.dataset.hwWidget || c.dataset.hwKey || '')))
@@ -663,8 +759,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
       + (tvSide ? (st.inputs || []).map(i => P.pill(`input:${i.name}`, P.IC.input, i.name, i.sub || 'Input')).join('') : '')
       + '<div class="wph">Music</div>' + P.pill('music', P.IC.note, 'Music from', SRC[MU?.source] || 'Automatic', true) + P.pill('musicset', P.IC.sliders, 'Platforms', MU?.spotify?.connected ? 'Spotify connected' : 'Connect one')
       + '<div class="wph">On Home</div>'
-      + P.pill('homeclock', P.IC.clock, 'Clock', look.clock, look.clock !== 'Off') + pill('homeweather', P.IC.cloud, 'Weather', look.weather) + pill('homeplayer', P.IC.note, 'Music', look.player !== false) + pill('homesys', P.IC.gauge, 'This PC', look.sys !== false)
-      + onScreen.map(w => pill('wg:' + w.key, P.IC.widgets, w.name, !look.off?.includes(w.key))).join('')
+      + P.pill('homeclock', P.IC.clock, 'Clock', look.clock, look.clock !== 'Off') + (board()?.ready() ? [...new Set(board().list().map(x => x.id))].map(id => P.pill(`wgo:${id}`, WG.W[id].ic, WG.W[id].label, 'On Home', true)).join('') : '')
       + P.pill('addwidget', P.IC.plus, 'More widgets', 'Add, arrange') + P.pill('editb', P.IC.sliders, editB ? 'Done' : 'Edit buttons', editB ? 'Keep these' : 'Choose yours', editB)
     if (list._html === html) return
     const had = document.activeElement?.closest?.('#tvpanel [data-w]')?.dataset.w
@@ -779,7 +874,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   }
   function press(id) {
     if (id === 'homeclock') { look.clock = CLOCKS[(CLOCKS.indexOf(look.clock) + 1) % CLOCKS.length]; return saveLook() }
-    if (id === 'homeweather') { look.weather = !look.weather; return saveLook() }
+    if (id.startsWith('wgo:')) { const n = side?.querySelector(`.wg-i[data-wid="${id.slice(4)}"]`); closePanel(); closeSettings(); closeMirror(); window.HubChat?.close(); if (n) setTimeout(() => openWid(n), 300); return }
     const tvSide = !!TV?.on && look.target === 'tv'
     if (id.startsWith('to:')) { look.target = id.slice(3); return saveLook() }
     if (['prev', 'play', 'next'].includes(id)) return music(id === 'play' ? 'toggle' : id, tvSide && panel.classList.contains('on') ? 'tv' : undefined)
@@ -792,7 +887,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     if (id === 'mirror') { leave(); return openMirror() }
     if (id === 'homeplayer') { look.player = look.player === false; saveLook(); return paintSide() }
     if (id.startsWith('wg:')) { const k = id.slice(3), o = look.off || []; look.off = o.includes(k) ? o.filter(x => x !== k) : [...o, k]; saveLook(); return paintSide() }
-    if (id === 'addwidget') { closePanel(); window.HubChat?.close(); closeSettings(); closeMirror(); return goHome('[data-hw-act="add"]') }
+    if (id === 'addwidget') { closePanel(); window.HubChat?.close(); closeSettings(); closeMirror(); goHome('.hw-root:not(.hw-edit) [data-hw-act="edit"]'); return void setTimeout(openGal, 900) }
     if (id === 'settings') { leave(); closeMirror(); return openSettings() }
     if (id === 'pcbrowser') { leave(); closeSettings(); closeMirror(); window.HubChat?.close(); return window.HubBrowser?.open() }
     if (id === 'pcfiles') { leave(); closeSettings(); closeMirror(); window.HubChat?.close(); return seg.querySelector('[data-env="drives"]')?.click() }
@@ -1138,12 +1233,9 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
       { info: true, t1: 'Version', t2: '', v: version || '' },
       { group: 'Home Screen' },
       { id: 'clock', t1: 'Home clock', t2: 'What the top left of Home shows', v: look.clock, on: look.clock !== 'Off' },
-      { id: 'weather', t1: 'Home weather', t2: 'At the top right', v: look.weather ? 'On' : 'Off', on: look.weather },
-      { id: 'plr', t1: 'Music on Home', t2: 'What’s playing, at the top right', v: look.player !== false ? 'On' : 'Off', on: look.player !== false },
-      { id: 'syscard', t1: 'This PC on Home', t2: 'Processor, memory and disk', v: look.sys !== false ? 'On' : 'Off', on: look.sys !== false },
       { id: 'sortapps', t1: 'Sort apps', t2: 'The order of the tiles on Home', v: SORT_NAMES[look.sort] || 'My order' },
       { id: 'addapps', t1: 'Apps and websites', t2: 'What is on Home', v: '' },
-      { id: 'edit', t1: 'Widgets', t2: 'Add and arrange them', v: '' },
+      { id: 'edit', t1: 'Widgets', t2: 'Add, size and arrange them, for this computer, your phone and the TV', v: board()?.ready() ? `${board().list().length} here` : '' },
       { id: 'tabs', t1: 'Tabs', t2: 'What’s on the left, under Files', v: '' },
       { group: 'Display and Sound' },
       { id: 'displaypage', t1: 'Brightness', t2: 'Which monitors the slider moves, and each one on its own', v: !MU?.monitors?.length ? '' : MU.monitors.every(m => m.on) ? (MU.monitors.length > 1 ? 'All monitors' : MU.monitors[0].name) : `${MU.monitors.filter(m => m.on).length} of ${MU.monitors.length} monitors` },
@@ -1661,9 +1753,9 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     // Home's widgets, on the right half as on Home.
     const cards = mine.querySelector('.cards')
     const widgets = () => {
-      const html = P && MU?.now?.title && look.player !== false ? `<div class="tvp-card">${P.player(MU.now, true)}</div>` : ''
-      const rest = [...document.getElementById('tvside')?.children || []].filter(n => !n.classList.contains('tvp-card')).map(n => n.outerHTML.replace(/ (role|tabindex|aria-label)="[^"]*"/g, '')).join('')
-      if (cards._html !== html + rest) cards.innerHTML = cards._html = html + rest
+      if (!WG || !board()) return
+      if (!cards.firstElementChild) cards.innerHTML = '<div class="wg"></div>'
+      WG.put(cards.firstElementChild, board().html())
       P?.syncPlayer(cards, MU?.now)
     }
     turn()

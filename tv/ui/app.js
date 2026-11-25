@@ -16,6 +16,7 @@
 
 import * as Stream from "./stream.js?v=7";
 import * as Panel from "./panel.js?v=10";
+import * as Wg from "./widgets.js?v=2";
 import * as Files from "./files.js?v=2";
 import { createLock } from "./lock.js?v=2";
 import * as Remote from "./remote.js?v=5";
@@ -593,19 +594,12 @@ function move(dx, dy) {
   }
   // The player at the top right: Up from the row of buttons, Down back to it.
   if (S.zone === "player") {
-    const cards = homeCards(), c = /^c(\d)$/.exec(S.mp || ""), out = () => { S.zone = "favs"; S.f = clamp(S.lastF ?? favStart(), 0, FAVS.length - 1); paintHomeWidgets(); applyFocus(); };
-    if (c) {
-      const k = Math.min(+c[1], cards.length - 1);
-      if (dx < 0 && k % 2 === 0) return out();
-      if (dx && cards[k + dx] && (k + dx) >> 1 === k >> 1) S.mp = `c${k + dx}`;
-      if (dy > 0) { if ((k >> 1) * 2 + 2 >= cards.length) return out(); S.mp = `c${Math.min(k + 2, cards.length - 1)}`; }
-      if (dy < 0) { if (k > 1) S.mp = `c${k - 2}`; else if (prefs.homePlayer !== false) S.mp = "play"; }
-      return paintHomeWidgets();
-    }
-    if (dy > 0 && cards.length) { S.mp = "c0"; return paintHomeWidgets(); }
-    const row = [...(MEDIA.title ? ["art"] : []), "prev", "play", "next"], at = row.indexOf(S.mp);
-    if ((dx < 0 && at === 0) || dy > 0) { S.zone = "favs"; S.f = clamp(S.lastF ?? favStart(), 0, FAVS.length - 1); paintHomeWidgets(); return applyFocus(); }
-    if (dx) S.mp = row[clamp(at + dx, 0, row.length - 1)];
+    const out = () => { S.zone = "favs"; S.f = clamp(S.lastF ?? favStart(), 0, FAVS.length - 1); paintHomeWidgets(); applyFocus(); };
+    const all = wgStops(), cur = all.find((x) => x.key === S.mp) || all[0];
+    if (!cur) return out();
+    const to = wgNext(all, cur, dx, dy);
+    if (!to) { if (dy > 0 || dx < 0) out(); return; }
+    S.mp = to.key;
     return paintHomeWidgets();
   }
   if (S.zone === "favs") {
@@ -615,9 +609,9 @@ function move(dx, dy) {
       else if (dx < 0) return openRail();
       else return tilt(dx * 1.6, 0);
     }
-    const up = homeCards().length;
-    if (dy < 0 && prefs.homePlayer === false && !up) return tilt(0, -1.6);
-    if (dy < 0) { S.lastF = S.f; S.zone = "player"; S.mp = up ? `c${(up - 1) >> 1 << 1}` : "play"; applyFocus(); return paintHomeWidgets(); }
+    const stops = dy < 0 ? wgStops() : [];
+    if (dy < 0 && !stops.length) return tilt(0, -1.6);
+    if (dy < 0) { S.lastF = S.f; S.zone = "player"; S.mp = stops.reduce((a, x) => (x.r.bottom > a.r.bottom + 4 || (Math.abs(x.r.bottom - a.r.bottom) <= 4 && x.r.left < a.r.left) ? x : a)).key; applyFocus(); return paintHomeWidgets(); }
     if (dy > 0) { S.zone = "grid"; S.i = clamp(S.lastI ?? gridColUnderFav(S.f), 0, Math.min(COLS, ITEMS.length) - 1); }
     applyFocus();
     return tilt(dx, dy);
@@ -1177,22 +1171,113 @@ function paintTiles() {
   paintCC();
 }
 /* ── the home screen's widgets (top right) and the widget panel (the row's widgets button) ── */
-// The widgets under the player, which the remote can go up to and open.
-const homeCards = () => [...($("#homeW")?.children || [])].filter((n) => !n.classList.contains("mp"));
-async function openHomeCard(n) {
+// Home's widgets (widgets.js, the same on the computer and the web), at the top right. Where the remote can stop: each widget,
+// or the buttons of one that has some.
+const BOARD = Wg.createBoard({ screen: "tv", changed: () => { paintHomeWidgets(); if (S.overlay === "saver") paintSaverHud(); if (S.overlay === "wdetail" && WD.k) drawWidget(); }, music: () => MEDIA });
+const boardHTML = () => (BOARD.ready() ? BOARD.html() : Wg.drawItem({ k: "m", id: "music", size: "w" }, { music: MEDIA }));
+setInterval(() => {
+  if (document.hidden || !IN_HUB || (S.overlay && !["wpanel", "wdetail", "saver"].includes(S.overlay)) || (S.view !== "home" && S.overlay !== "saver")) return;
+  BOARD.refresh();
+  if (S.overlay === "wdetail") { if (WD.k && Wg.W[WD.id]?.tick === 1) drawWidget(); return; }
+  const tick = Math.min(...BOARD.list().map((x) => Wg.W[x.id]?.tick || 999));
+  if (tick === 1) { S.overlay === "saver" ? paintSaverHud() : paintHomeWidgets(); }
+}, 1000);
+function wgStops() {
+  const o = [];
+  for (const n of document.querySelectorAll("#homeW .wg-i")) {
+    const k = n.dataset.k, inner = n.dataset.wid === "music" ? [...(MEDIA.title ? n.querySelectorAll(".mp-art") : []), ...n.querySelectorAll(".mp-b")] : [...n.querySelectorAll("button[data-wa]")];
+    const seen = inner.filter((x) => x.offsetWidth);
+    if (seen.length) for (const x of seen) o.push({ key: `${k}|${x.dataset.wa || x.dataset.w || "art"}`, n: x, item: n, r: x.getBoundingClientRect() });
+    else o.push({ key: k, n, item: n, r: n.getBoundingClientRect() });
+  }
+  const box = $("#homeW")?.getBoundingClientRect();
+  return o.filter((x) => x.r.width && (!box || x.r.top < box.bottom - 8));
+}
+function wgNext(all, cur, dx, dy) {
+  const c = cur.r, cx = c.left + c.width / 2, cy = c.top + c.height / 2;
+  let best = null, score = Infinity;
+  for (const x of all) {
+    if (x === cur) continue;
+    const r = x.r, mx = r.left + r.width / 2, my = r.top + r.height / 2, a = dx ? (mx - cx) * dx : (my - cy) * dy;
+    if (a < 6) continue;
+    const off = dx ? Math.max(0, Math.max(r.top, c.top) - Math.min(r.bottom, c.bottom)) : Math.max(0, Math.max(r.left, c.left) - Math.min(r.right, c.right));
+    if (dx && off > 0) continue;
+    const v = a + off * 3 + Math.abs(dx ? my - cy : mx - cx) * 0.3;
+    if (v < score) { score = v; best = x; }
+  }
+  return best;
+}
+// OK on where the remote is.
+function wgEnter() {
+  const at = wgStops().find((x) => x.key === S.mp), [k, act] = String(S.mp).split("|");
+  if (!at) return;
+  if (at.item.dataset.wid === "music") return !act || act === "art" ? openFullMusic() : mediaDo(act === "play" ? "toggle" : act);
+  if (act) { if (act.startsWith("file:")) return toast("Open files in Files"); BOARD.act(act); return; }
+  openHomeCard(at.item);
+}
+// Hold OK on a widget: its size, its place, or another one.
+async function saveBoard(items, said) { if (!IN_HUB) return toast("Pair this TV with LocalHub to change its widgets"); (await BOARD.set(items)) ? said && toast(said) : toast("LocalHub didn't answer"); }
+function widgetMenu(k) {
+  const it = BOARD.items().find((x) => x.k === k), w = it && Wg.W[it.id];
+  if (!w) return addWidgetMenu();
+  const l = BOARD.list(), i = l.findIndex((x) => x.k === k);
+  showMenu(w.label, [...(w.sizes.length > 1 ? w.sizes.map((z) => ({ id: `wd:z:${k}:${z}`, label: Wg.SIZE_NAMES[z] + (it.size === z ? "  ✓" : ""), ic: SYM.move })) : []), ...(i > 0 ? [{ id: `wd:up:${k}`, label: "Move earlier", ic: SYM.move }] : []), ...(i < l.length - 1 ? [{ id: `wd:dn:${k}`, label: "Move later", ic: SYM.move }] : []), { id: `wd:rm:${k}`, label: "Remove", ic: SYM.trash }, { id: "wd:add", label: "Add a widget", ic: SYM.plus }]);
+}
+const addWidgetMenu = () => showMenu("Add a widget", Object.entries(Wg.W).filter(([id]) => Wg.can(id, "tv")).map(([id, w]) => ({ id: `wd:new:${id}`, label: w.label, ic: SYM.plus })));
+function showMenu(name, menu) {
+  S.menu = menu;
+  S.menuAt = 0;
+  S.menuFor = null;
+  $("#tileMenuName").textContent = name;
+  $("#tileMenuList").innerHTML = menu.map((m, i) => `<div class="tilemenu-item" data-m="${i}">${m.ic}<span>${esc(m.label)}</span></div>`).join("");
+  paintTileMenu();
+  $("#tileMenu").classList.add("on");
+  setOverlay("tilemenu");
+}
+function widgetPick(a) {
+  const [act, k, z] = a.split(":"), l = BOARD.items().map((x) => ({ ...x })), i = l.findIndex((x) => x.k === k);
+  if (act === "add") return setTimeout(addWidgetMenu, 60);
+  if (act === "new") { const nk = BOARD.newKey(); S.zone = "player"; S.mp = nk; return saveBoard([...l, { k: nk, id: k, size: Wg.W[k].def }], `Added ${Wg.W[k].label}`); }
+  if (i < 0) return;
+  if (act === "z") l[i].size = z;
+  else if (act === "rm") l.splice(i, 1);
+  else { const j = i + (act === "up" ? -1 : 1); if (!l[j]) return; [l[i], l[j]] = [l[j], l[i]]; }
+  saveBoard(l);
+}
+// A widget, full screen.
+function drawWidget() {
+  const it = BOARD.items().find((x) => x.k === WD.k), w = it && Wg.W[it.id];
+  if (!w) return closeHomeCard();
+  const box = $("#wdetail > div"), html = `<div class="wfull">${w.full ? w.full(BOARD.D, it) : w.draw(w.sizes.includes("x") ? "x" : w.sizes.includes("l") ? "l" : w.sizes.at(-1), BOARD.D, it)}</div>`;
+  if (box._html !== html) box.innerHTML = box._html = html;
+  const stops = [...box.querySelectorAll("button[data-wa]")];
+  stops.forEach((n, i) => n.classList.toggle("sel", i === Math.min(WD.at || 0, stops.length - 1)));
+}
+function openHomeCard(n) {
   if (!n) return;
-  const box = $("#wdetail > div"), pc = n.classList.contains("gz"), id = n.dataset.wid;
-  const draw = (info) => { box.innerHTML = pc ? Panel.pcDetail(SYS || {}, info) : widgetCard(id, "l"); };
-  draw(null);
-  box.scrollTop = 0;
+  const box = $("#wdetail > div"), w = Wg.W[n.dataset.wid];
+  if (!w) return;
+  if (n.dataset.wid === "music") return openFullMusic();
   WD.music = false;
+  WD.k = n.dataset.k;
+  WD.id = n.dataset.wid;
+  WD.at = 0;
   WD.from = n;
   box._html = "";
+  box.scrollTop = 0;
+  BOARD.refresh(w.fullNeeds || []);
+  drawWidget();
   $("#wdetail").classList.remove("music", "going");
   $("#wdetail").classList.add("on");
   setOverlay("wdetail");
   Panel.grow(box, n);
-  if (pc) { const info = await fetch("/api/system/info", { cache: "no-store" }).then((r) => (r.ok ? r.json() : {})).catch(() => ({})); if (S.overlay === "wdetail") draw(info); }
+}
+function widgetKey(name) {
+  const box = $("#wdetail > div"), stops = [...box.querySelectorAll("button[data-wa]")];
+  if (stops.length && ["up", "left", "down", "right"].includes(name)) { WD.at = clamp((WD.at || 0) + (name === "down" || name === "right" ? 1 : -1), 0, stops.length - 1); drawWidget(); return stops[WD.at]?.scrollIntoView?.({ block: "nearest" }); }
+  if (stops.length && name === "enter") return BOARD.act(stops[Math.min(WD.at || 0, stops.length - 1)].dataset.wa);
+  if (name === "up" || name === "down") return void (box.scrollTop += name === "down" ? 160 : -160);
+  if (["back", "enter", "menu", "home"].includes(name)) closeHomeCard();
 }
 // The song, full screen: the cover on the player opens it.
 const WD = { music: false, words: null, key: "", sel: "play", from: null };
@@ -1213,6 +1298,7 @@ function drawFull() {
 function openFullMusic() {
   const box = $("#wdetail > div");
   WD.music = true;
+  WD.k = "";
   WD.sel = "play";
   WD.key = "";
   WD.from = $("#homeW .mp-art");
@@ -1244,13 +1330,13 @@ function closeHomeCard() {
 function paintHomeWidgets() {
   const box = $("#homeW");
   if (!box) return;
-  const sizes = {};
-  for (const x of SETTINGS?.widgets?.tv || []) { const id = x?.id || x?.[0]; if (id && id !== "clock" && id !== "date" && id !== "world-clock" && WIDGETS[id]) sizes[id] = x?.size || x?.[1] || "s"; }
-  const html = (prefs.homePlayer === false ? "" : Panel.player(MEDIA, true)) + Object.keys(sizes).slice(0, 2).map((id) => widgetCard(id, SYS && prefs.homeSys !== false && sizes[id] === "l" ? "m" : sizes[id]).replace('<div class="w card', `<div data-wid="${id}" class="w card`)).join("") + (SYS && prefs.homeSys !== false ? Panel.gauges(SYS) : "");
-  if (box._html !== html) { box.innerHTML = html; box._html = html; }
-  homeCards().forEach((n, i) => n.classList.toggle("sel", S.zone === "player" && !S.overlay && S.view === "home" && S.mp === `c${i}`));
-  box.querySelector(".mp-art")?.classList.toggle("sel", S.zone === "player" && !S.overlay && S.view === "home" && S.mp === "art");
-  box.querySelectorAll(".mp-b").forEach((n) => n.classList.toggle("sel", S.zone === "player" && !S.overlay && S.view === "home" && n.dataset.w === S.mp));
+  const html = boardHTML();
+  if (!box.firstElementChild) box.innerHTML = '<div class="wg"></div>';
+  Wg.put(box.firstElementChild, html);
+  Panel.syncPlayer(box, MEDIA);
+  const here = S.zone === "player" && !S.overlay && S.view === "home" ? S.mp : "";
+  box.querySelectorAll(".sel").forEach((n) => n.classList.remove("sel"));
+  if (here) (wgStops().find((x) => x.key === here) || {}).n?.classList.add("sel");
 }
 // What is playing, kept fresh while Home is what you see.
 setInterval(() => { if (!NATIVE || document.hidden || S.overlay || S.view !== "home") return; const was = songKey(MEDIA); readMedia(); if (songKey(MEDIA) !== was) paintHomeWidgets(); }, 5000);
@@ -1290,7 +1376,7 @@ async function readHubMusic() {
   try { const r = await fetch("/api/music", { cache: "no-store" }); const n = r.ok ? (await r.json()).now : null; HUB_MEDIA = n && n.from !== "tv" && n.title ? Panel.noted(n) : null; } catch { /* as it was: one missed ask isn't silence */ }
   // The computer's card, a few times a minute: the TV has better things to do.
   let sysNew = false;
-  if (prefs.homeSys !== false && Date.now() - sysAt > 20_000) { sysAt = Date.now(); try { const r = await fetch("/api/desk/system", { cache: "no-store" }); SYS = r.ok ? await r.json() : null; sysNew = true; } catch { SYS = null; } }
+  if (false) { sysAt = Date.now(); try { const r = await fetch("/api/desk/system", { cache: "no-store" }); SYS = r.ok ? await r.json() : null; sysNew = true; } catch { SYS = null; } }
   const was = songKey(MEDIA);
   readMedia();
   if (sysNew || songKey(MEDIA) !== was) { paintHomeWidgets(); if (S.overlay === "saver") paintSaverHud(); if (S.overlay === "wpanel") paintWpanel(); if (S.overlay === "wdetail" && WD.music) drawFull(); }
@@ -1341,9 +1427,7 @@ function wpHTML() {
     + round("timer", SYM.timer, S.sleepAt ? clockText(new Date(S.sleepAt)) : "Timer", !!S.sleepAt) + round("saver", SYM.moon, "Screensaver") + round("picture", WP_IC.pic, "Picture") + round("settings", SYM.gear, "Settings")
     + INPUTS.map((i) => pill(`input:${i.id}`, WP_IC.input, i.name, i.sub || "Input")).join("")
     + pill("homeclock", WP_IC.clock, "Home clock", prefs.homeClock || CLOCKS[0], (prefs.homeClock || CLOCKS[0]) !== "Off")
-    + pill("homeweather", WP_IC.cloud, "Home weather", homeWeatherOn() ? "On" : "Off", homeWeatherOn())
-    + pill("homeplayer", Panel.IC.note, "Home player", prefs.homePlayer === false ? "Off" : "On", prefs.homePlayer !== false)
-    + pill("homesys", Panel.IC.gauge, "This PC", prefs.homeSys === false ? "Off" : "On", prefs.homeSys !== false)
+    + pill("addwidget", WP_IC.plus, "Add a widget", "Hold OK on one to change it")
     + `<div class="wpx">${wx}</div>`;
 }
 function paintWpanel() {
@@ -1422,8 +1506,7 @@ function wpKey(name) {
     return paintWpanel();
   }
   if (id === "timer") { cycleSleepTimer(); return paintWpanel(); }
-  if (id === "homesys") { prefs.homeSys = prefs.homeSys === false; sysAt = 0; savePrefs(); paintHomeWidgets(); readHubMusic(); return paintWpanel(); }
-  if (id === "homeplayer") { prefs.homePlayer = prefs.homePlayer === false; savePrefs(); paintHomeWidgets(); return paintWpanel(); }
+  if (id === "addwidget") { closeWidgets(); return setTimeout(addWidgetMenu, 250); }
   if (id === "homeclock") {
     prefs.homeClock = CLOCKS[(CLOCKS.indexOf(prefs.homeClock || CLOCKS[0]) + 1) % CLOCKS.length];
     savePrefs();
@@ -1845,17 +1928,12 @@ function paintSaverHud() {
   const d = new Date(), t = clockParts(d);
   const time = w.includes("clock") ? `<div class="saver-time">${esc(t.hm)}${t.ap ? `<small>${t.ap}</small>` : ""}</div>` : "";
   const date = w.includes("date") ? `<div class="saver-date">${esc(d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" }))}</div>` : "";
-  // The widgets you put on the TV in LocalHub (Home, TV view) that this screen can draw, down the right.
-  // Each at the size you gave it in LocalHub (s, m or l): the same card, the same sizes, as on LocalHub's Home.
-  const sizes = {};
-  for (const x of SETTINGS?.widgets?.tv || []) { const id = x?.id || x?.[0]; if (id) sizes[id] = x?.size || x?.[1] || "m"; }
-  const ids = [...new Set([...Object.keys(sizes), ...w])].filter((id) => id !== "clock" && id !== "date" && id !== "world-clock" && WIDGETS[id]).slice(0, 3);
-  // The right half, two by two, as on Home: what's playing across the top, and an odd one out across the bottom.
-  const list = [...ids.map((id) => (wide) => widgetCard(id, wide ? "l" : "m")), ...(SYS && prefs.homeSys !== false ? [() => Panel.gauges(SYS)] : [])];
-  const cards = (MEDIA.title && prefs.homePlayer !== false ? `<div class="span">${Panel.player(MEDIA, true)}</div>` : "") + list.map((f, i) => { const wide = i === list.length - 1 && list.length % 2 === 1; return `<div class="${wide ? "span" : ""}">${f(wide)}</div>`; }).join("");
-  const html = `${cards ? `<div class="saver-cards">${cards}</div>` : ""}${time || date ? `<div class="saver-when">${time}${date}</div>` : ""}`;
+  // Home's widgets, in the right half as on Home.
+  const cards = BOARD.list().length || !BOARD.ready() ? boardHTML() : "";
+  const html = `${cards ? '<div class="saver-cards"><div class="wg"></div></div>' : ""}${time || date ? `<div class="saver-when">${time}${date}</div>` : ""}`;
   const hud = $("#saverHud");
   if (hud._html !== html) hud.innerHTML = hud._html = html;
+  if (cards) Wg.put(hud.querySelector(".wg"), cards);
   Panel.syncPlayer(hud, MEDIA);
 }
 // A library that couldn't be used says so for a few seconds, then the wallpapers carry on alone.
@@ -2620,10 +2698,7 @@ function handleKey(raw) {
     return;
   }
   if (S.overlay === "wdetail" && WD.music) return fullKey(name);
-  if (S.overlay === "wdetail") {
-    if (name === "up" || name === "down") return void ($("#wdetail > div").scrollTop += name === "down" ? 160 : -160);
-    return ["back", "enter", "menu", "home"].includes(name) ? closeHomeCard() : undefined;
-  }
+  if (S.overlay === "wdetail") return widgetKey(name);
   if (S.overlay === "cc") {
     if (name === "back" || name === "menu") return closeCC();
     if (name === "enter") return ccActivate();
@@ -2646,8 +2721,8 @@ function handleKey(raw) {
     case "right": return move(1, 0);
     case "up": return move(0, -1);
     case "down": return move(0, 1);
-    case "enter": if (S.zone === "player" && /^c\d$/.test(S.mp)) return openHomeCard(homeCards()[+S.mp[1]]); if (S.zone === "player" && S.mp === "art") return openFullMusic(); if (S.zone === "player") return mediaDo(S.mp === "play" ? "toggle" : S.mp); return press(activate);
-    case "hold": return S.zone === "player" ? undefined : openTileMenu();
+    case "enter": if (S.zone === "player") return wgEnter(); return press(activate);
+    case "hold": return S.zone === "player" ? widgetMenu(String(S.mp).split("|")[0]) : openTileMenu();
     case "menu": {
       // On one of your websites, ☰ twice removes it (from the hub, so everywhere); anywhere else ☰ opens the sidebar.
       const it = ITEMS[S.i];
@@ -3030,6 +3105,7 @@ function openTileMenu() {
 }
 function paintTileMenu() {
   document.querySelectorAll(".tilemenu-item").forEach((n) => n.classList.toggle("sel", Number(n.dataset.m) === S.menuAt));
+  document.querySelector(".tilemenu-item.sel")?.scrollIntoView({ block: "nearest" });
 }
 function closeTileMenu() {
   S.capture = false;
@@ -3044,6 +3120,7 @@ function tileMenuKey(name) {
   if (name !== "enter") return;
   const it = S.menuFor, act = S.menu[S.menuAt].id;
   closeTileMenu();
+  if (act.startsWith("wd:")) return widgetPick(act.slice(3));
   if (act.startsWith("sort:")) return setSort(act.slice(5));
   if (act.startsWith("conn:")) return connAction(act.slice(5));
   if (act.startsWith("btn:")) return buttonPick(act.slice(4));

@@ -145,3 +145,19 @@ test('an icon of your own is a few characters, and only the sound’s places are
   const { cleanCommand } = await import('../../tv.mjs')
   assert.deepEqual(cleanCommand({ type: 'audio', on: 'yes' }), { type: 'audio', on: false })
 })
+
+test('Home’s widgets: every one in the list is drawn at every size, and a board keeps only what it knows', async () => {
+  const { cleanItems, cleanData, cleanOpts, IDS, SIZES } = await import('../../board.mjs')
+  const { W, drawItem, can, nextSize, timerLeft, mmss } = await import('../../tv/ui/widgets.js')
+  assert.deepEqual(Object.keys(W).sort(), [...IDS].sort())
+  const D = { music: { title: 'A <b>', playing: true }, music_: { volume: 40, brightness: 50 }, wx: { place: 'X', now: { temp: 1, feels: 1, code: 3, text: 'Cloudy', day: true }, high: 2, low: 0, hours: [], days: [] }, sys: { cpu: 5, mem: 95, disk: 40, diskFree: 1e12 }, board: { data: { notes: { n: '<img>' }, todos: [{ text: '<i>', done: false }], timer: null } }, places: { recent: [{ name: '<x>', path: 'C:/a', size: 3 }] }, drives: { entries: [{ name: 'C:', size: 10, free: 4 }] }, photos: { photos: [{ url: '/a' }] }, apps: { favorites: ['q'], apps: [{ id: 'q', name: '<q>', url: 'https://a.b/' }] } }
+  for (const [id, w] of Object.entries(W)) {
+    assert.ok(w.sizes.includes(w.def) && w.sizes.every(z => SIZES.includes(z)), id)
+    for (const size of w.sizes) { const h = drawItem({ k: 'n', id, size }, D); assert.ok(h.includes('wg-i') && !h.includes('<b>A') && !/<(x|q|img)>/.test(h), `${id} ${size}`); assert.ok(drawItem({ k: 'n', id, size }, {}).includes('wg-i'), `${id} empty`) }
+  }
+  assert.ok(can('music', 'tv') && !can('remote', 'tv') && nextSize('music', 'x') === 's')
+  assert.deepEqual(cleanItems([{ k: 'a', id: 'music', size: 'w' }, { k: 'a', id: 'pc' }, { k: '<', id: 'pc' }, { k: 'b', id: 'nope' }, { k: 'c', id: 'pc', size: 'huge', opts: { zones: ['Europe/London', '../x'], evil: 1 } }]), [{ k: 'a', id: 'music', size: 'w' }, { k: 'c', id: 'pc', size: 'm', opts: { zones: ['Europe/London'] } }])
+  assert.deepEqual(cleanOpts({ date: '2026-12-25', title: ' X ' }), { title: 'X', date: '2026-12-25' })
+  assert.deepEqual(cleanData({ todos: [{ text: ' a ', done: 1 }, { text: '' }, 3], timer: { total: 5, left: 1e99, end: -1 } }).todos, [{ text: 'a', done: false }])
+  assert.deepEqual([timerLeft({ end: 0, left: 5 }), timerLeft({ end: 100, left: 5 }, 40), mmss(61_000), mmss(3_661_000)], [5, 60, '1:01', '1:01:01'])
+})

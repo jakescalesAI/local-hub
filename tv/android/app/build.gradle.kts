@@ -11,7 +11,7 @@ val generatedAssets = layout.buildDirectory.dir("generated/localhub-ui")
 
 val copyUi by tasks.registering(Sync::class) {
     from(uiDir) {
-        include("index.html", "app.js", "stream.js", "stream.css", "styles.css", "theme.css", "panel.js", "panel.css", "files.js", "files.css", "mirror.js", "remote.js", "lock.js", "remote.webp", "splash.js", "splash.css", "intro.mp4", "brands/**", "photos/**", "assistant.js", "assistant.css", "agentview.js")
+        include("index.html", "app.js", "stream.js", "stream.css", "styles.css", "theme.css", "panel.js", "panel.css", "widgets.js", "widgets.css", "files.js", "files.css", "mirror.js", "remote.js", "lock.js", "remote.webp", "splash.js", "splash.css", "intro.mp4", "brands/**", "photos/**", "assistant.js", "assistant.css", "agentview.js")
     }
     from(hubDir.resolve("icons")) {
         include("hub.svg")

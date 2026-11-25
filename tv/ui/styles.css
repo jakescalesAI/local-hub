@@ -342,7 +342,7 @@ html.lite .settings::before { background: var(--bg); -webkit-backdrop-filter: no
 .saver-time { display: flex; align-items: baseline; gap: 14px; font: 600 156px/.9 var(--display); letter-spacing: -0.035em; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .saver-time small { font-size: 46px; font-weight: 600; letter-spacing: 0; color: rgba(255, 255, 255, .8); }
 .saver-date { font-size: 38px; font-weight: 600; letter-spacing: -0.01em; color: rgba(255, 255, 255, .85); padding-left: 6px; }
-.saver-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; width: 960px; } .saver-cards > div { min-width: 0; display: grid; } .saver-cards > .span { grid-column: 1 / -1; } .saver .saver-cards .w.card, .saver .saver-cards .gz { box-sizing: border-box; width: 100% !important; height: 100% !important; } .saver .saver-cards .mp { width: 100%; box-sizing: border-box; } .saver .saver-cards > div:not(.span) .wxw { font-size: 21px; }
+.saver-cards { width: 960px; } .saver-cards .wg { font-size: 16.4px; } .saver .wg .wxw { font-size: inherit; }
 /* Over moving photos the glass blurs less: a big blur recomputed every frame is what a Fire TV can't afford. */
 .saver .w.card { --lg-blur: saturate(160%) blur(20px); --lg-tint: rgba(16, 16, 22, .2); width: 320px; height: 250px; padding: 26px 28px; }
 .saver .w.card.wide { width: 520px; }
@@ -692,18 +692,12 @@ html.native #hub-chat { zoom: calc(var(--k, .5) * 1.25); }
 .when.time-only .when-date, .when.off { display: none; }
 /* Your LocalHub TV widgets (Home, TV view) at the top right of the home screen, like the screensaver's. */
 .homew { position: absolute; right: 84px; top: 44px; z-index: 6; display: flex; flex-direction: column; align-items: flex-end; gap: 18px; pointer-events: none; transition: opacity .4s var(--ease); }
-.homew { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 890px; gap: 18px; align-items: stretch; }
-.homew > .gz, .saver-cards .gz { display: flex; flex-direction: column; } .homew > .gz .gz-g, .saver-cards .gz .gz-g { margin: auto 0; }
-.homew .mp { grid-column: 1 / -1; width: 100%; } .homew > .gz, .homew > .w.card, .homew > .w.card.sz-m, .homew > .w.card.sz-l { box-sizing: border-box; width: 100% !important; } .homew > :not(.mp):last-child:nth-child(even):nth-child(2) { grid-column: 1 / -1; }
-.homew > * { transition: box-shadow .15s; } .homew > .sel { box-shadow: 0 0 0 5px #fff !important; }
+.homew { width: 890px; max-height: 606px; overflow: hidden; padding: 8px; margin: -8px; } .homew .wg { font-size: 15.2px; } .homew .sel { box-shadow: 0 0 0 5px #fff !important; } .homew .mp-art.sel { overflow: visible; }
 /* A widget, opened. */
 .wdetail { position: absolute; inset: 0; z-index: 45; display: none; place-items: center; background: rgba(0, 0, 0, .62); } .wdetail.on { display: grid; }
-.wdetail > div { width: 900px; max-height: 920px; overflow-y: auto; scrollbar-width: none; padding: 44px 52px; border-radius: 48px; background: var(--ui-panel); box-shadow: var(--ui-edge), 0 40px 100px rgba(0, 0, 0, .6); color: #fff; }
-.homew .mp-art.sel { box-shadow: 0 0 0 5px #fff; overflow: visible; } .homew .mp-art.sel img { border-radius: 20px; }
+.wdetail > div { width: 1000px; max-height: 940px; overflow-y: auto; scrollbar-width: none; box-sizing: border-box; padding: 50px 60px; border-radius: 48px; background: var(--ui-panel); box-shadow: var(--ui-edge), 0 40px 100px rgba(0, 0, 0, .6); color: #fff; } .wdetail .wfull { font-size: 21px; } .wdetail .sel { box-shadow: 0 0 0 5px #fff; } .wdetail .wedit, .wdetail .wadd { display: none; }
 .wdetail { animation: wdin .3s; } .wdetail.going { animation: wdout .26s forwards; } @keyframes wdin { from { background: rgba(0, 0, 0, 0); } } @keyframes wdout { to { background: rgba(0, 0, 0, 0); } }
-html:not(.lite) .wdetail { -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); } .wdetail.music { background: rgba(6, 7, 10, .96); } .wdetail.music > div { box-sizing: border-box; width: 1720px; height: 960px; max-height: none; padding: 40px 70px; background: none; box-shadow: none; }
-.wdetail .w-label { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; font: 600 24px/1 var(--display); color: rgba(255, 255, 255, .6); } .wdetail .w-label .sym { width: 28px; height: 28px; } .wdetail .w-label .dot { display: none; }
-.wdetail .w.card { width: auto !important; height: auto !important; padding: 0; background: none !important; box-shadow: none !important; } .wdetail .wxw { font-size: 26px; } .wdetail .gz { width: auto; padding: 0; background: none; box-shadow: none; }
+html:not(.lite) .wdetail { -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); } .wdetail.music { background: rgba(6, 7, 10, .96); } .wdetail.music > div { width: 1720px; height: 960px; max-height: none; padding: 40px 70px; background: none; box-shadow: none; }
 .homew .w.card { width: 340px; height: auto; padding: 22px 26px 24px; gap: 14px; border-radius: 30px; background: var(--ui-panel) !important; box-shadow: var(--ui-edge) !important; }
 .homew .w.card.sz-m, .homew .w.card.sz-l { width: 560px; }
 .homew .w.card .w-label { font: 600 20px/1 var(--display); color: rgba(255, 255, 255, .62); }
@@ -764,3 +758,5 @@ html:not(.lite) .wdetail { -webkit-backdrop-filter: blur(18px); backdrop-filter:
 .icon.add .sym { position: relative; z-index: 1; width: 78px; height: 78px; color: rgba(255, 255, 255, .85); }
 /* Settings: the LocalHub icon sits centred in the space between the sidebar and the list (x 140..880). */
 .settings-art { margin: 0 -40px 0 var(--rail-w); }
+
+#tileMenuList { max-height: 860px; overflow-y: auto; scrollbar-width: none; }
