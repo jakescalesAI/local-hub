@@ -122,7 +122,7 @@ ${A} #dkadd.on { display: grid; position: fixed; z-index: 72; inset: 0; place-it
     const src = isPc(a) || (a.pc && LOCAL) ? `/api/desk/icon?id=${encodeURIComponent(a.pc || a.id)}` : `/api/hub/site-icon?url=${encodeURIComponent(a.url)}`
     return `<span class="dk-a"${tints[a.id] ? ` style="--dk-bg:${esc(tints[a.id])}"` : ''}><img class="${isPc(a) || a.pc ? 'pc' : ''}" data-dkicon="${esc(a.id)}" src="${esc(src)}" alt="${esc(a.name)}" loading="lazy" draggable="false"></span>`
   }
-  const tile = (a, cls = '', label = a.name) => `<button type="button" class="dk-t ${cls}" data-dk="${esc(a.id)}" draggable="true" aria-label="${esc(a.name)}">${art(a)}<span class="dk-n">${esc(label)}</span></button>`
+  const tile = (a, cls = '', label = a.name) => `<button type="button" class="dk-t ${cls}" data-dk="${esc(a.id)}" draggable="${matchMedia('(hover: hover)').matches}" aria-label="${esc(a.name)}">${art(a)}<span class="dk-n">${esc(label)}</span></button>`
   const plus = label => `<button type="button" class="dk-t add" data-dk="add" aria-label="${label}"><span class="dk-a">${PLUS}</span><span class="dk-n">${label}</span></button>`
   const set = (n, html) => { if (n._html !== html) { n._html = html; n.innerHTML = html } }
 
@@ -286,7 +286,7 @@ ${A} #dkadd.on { display: grid; position: fixed; z-index: 72; inset: 0; place-it
   // First, and alone: Home's own menu is for what's around the tiles.
   addEventListener('contextmenu', e => { const t = onHome(e); closeMenu(); if (!t || t.classList.contains('add')) return; e.preventDefault(); e.stopImmediatePropagation(); openMenu(t.dataset.dk, e.clientX, e.clientY) }, true)
   document.addEventListener('pointerdown', e => { const t = onHome(e); if (!t || e.pointerType !== 'touch' || t.classList.contains('add')) return; pressed = false; clearTimeout(pressT); pressT = setTimeout(() => { pressed = true; openMenu(t.dataset.dk, e.clientX, e.clientY) }, 550) })
-  for (const ev of ['pointerup', 'pointercancel', 'scroll']) addEventListener(ev, () => clearTimeout(pressT), true)
+  for (const ev of ['pointerup', 'pointercancel', 'pointermove', 'touchmove', 'scroll']) addEventListener(ev, () => clearTimeout(pressT), true)
   // Drag to reorder, or a tile onto the favorites.
   let drag = ''
   document.addEventListener('dragstart', e => { const t = onHome(e); if (!t || t.classList.contains('add')) return; drag = t.dataset.dk; t.classList.add('drag'); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', t.getAttribute('aria-label') || ''); e.stopPropagation() }, true)

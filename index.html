@@ -1208,11 +1208,15 @@ let pressTimer = 0
 let suppressClick = false
 document.addEventListener('touchstart', e => {
   const t = e.touches[0]
-  if (e.touches.length !== 1 || e.target.closest('.menu, .scrim, input')) return
+  if (e.touches.length !== 1 || e.target.closest('.menu, .scrim, input, textarea, .wps, .sb-sl, .trm-pad, .trm-row, .mp-bar, #tvnav')) return
   clearTimeout(pressTimer)
-  pressTimer = setTimeout(() => { if (contextFor(e.target, t.clientX, t.clientY)) { suppressClick = true; navigator.vibrate?.(10) } }, 500)
+  pressTimer = setTimeout(() => {
+    // With the TV's look, one way in for every menu (tabs/tvlook.js); it says whether it opened one.
+    const opened = document.documentElement.hasAttribute('data-tvtouch') ? (e.target.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: t.clientX, clientY: t.clientY })), !!menuEl) : contextFor(e.target, t.clientX, t.clientY)
+    if (opened) { suppressClick = true; navigator.vibrate?.(10) }
+  }, 500)
 }, { passive: true })
-for (const ev of ['touchend', 'touchmove', 'touchcancel']) document.addEventListener(ev, () => clearTimeout(pressTimer), { passive: true })
+for (const ev of ['touchend', 'touchmove', 'touchcancel', 'scroll']) document.addEventListener(ev, () => clearTimeout(pressTimer), { passive: true, capture: true })
 
 // Drag a file or folder onto a folder row (or the back button) to move it there.
 const DRAG_TYPE = 'application/x-hub-item'

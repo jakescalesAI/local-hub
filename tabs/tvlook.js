@@ -18,7 +18,7 @@ ${A} :is(.hc-panel, .menu) { background: var(--ui-panel) !important; box-shadow:
 ${A} #tvpanel { position: fixed; z-index: 74; top: 0; right: 0; bottom: 0; width: 418px; overflow-y: auto; scrollbar-width: none; background: var(--ui-panel); border-radius: 26px 0 0 26px; box-shadow: inset 1px 0 0 rgba(255, 255, 255, .1), -30px 0 80px rgba(0, 0, 0, .45); color: #fff; transform: translateX(105%); visibility: hidden; transition: transform .28s var(--ease), visibility 0s .28s; }
 ${A} #tvpanel.on { transform: none; visibility: visible; transition: transform .28s var(--ease); }
 ${A} #tvpanel > div { zoom: .55; padding: 56px 48px; }
-${A} #tvpanel [data-w] { cursor: pointer; touch-action: none; }
+${A} #tvpanel [data-w] { cursor: pointer; touch-action: manipulation; } ${A} .wps { touch-action: none !important; }
 ${A} #tvpanel .wpanel-title { display: flex; align-items: center; justify-content: space-between; } ${A} #tvpanel .wpanel-title button { display: grid; place-items: center; width: 76px; height: 76px; border-radius: 50%; background: var(--ui-fill); box-shadow: var(--ui-edge); } ${A} #tvpanel .wpanel-title button:hover { background: var(--ui-sel); color: #000; } ${A} #tvpanel .wpanel-title svg { width: 34px; height: 34px; } ${A} #tvpanel .wpanel-title { gap: 18px; font-size: 44px; } ${A} #tvpanel .wpanel-title .wpt { flex: 0 1 320px; margin-left: auto; padding: 6px; } ${A} #tvpanel .wpanel-title .wpt[hidden] { display: none; } ${A} #tvpanel .wpanel-title .wpt button { flex: 1; width: auto; height: 62px; border-radius: 31px; background: none; box-shadow: none; font: 600 23px/1 var(--display); letter-spacing: 0; white-space: nowrap; } ${A} #tvpanel .wpanel-title .wpt button.on, ${A} #tvpanel .wpanel-title .wpt button.on:hover { background: var(--ui-sel); color: #000; } ${A} #tvpanel .wpanel-title > button { flex: none; }
 ${A} #tvpanel .mp { position: relative; overflow: hidden; isolation: isolate; } ${A} .mp::before { pointer-events: none; }
 ${A} #tvpanel .mp.wide { grid-column: 1 / -1; position: relative; overflow: hidden; isolation: isolate; background: var(--ui-fill); } ${A} #tvpanel .wps { height: 354px; }
@@ -252,7 +252,7 @@ ${A} .mp-b { transition: transform .18s var(--ease), background .15s, color .15s
 ${A} .tvm-b em { margin-left: 8px; font: 600 14px var(--font); font-style: normal; white-space: nowrap; } ${A} .tvm-b:has(em) { width: auto !important; padding: 0 18px; display: inline-flex; align-items: center; border-radius: 99px; }
 ${A} .mp-line { transition: height .2s var(--ease); } ${A} .mp-line i { transition: transform .5s linear; } ${A} .mp-bar em { transition: opacity .25s; }
 ${A} .tvp-card .mp:not(:hover) .mp-bar em { opacity: .7; }
-${A} .mp-bar.seek { cursor: pointer; padding: 8px 0; margin-top: 2px !important; margin-bottom: -8px; touch-action: none; user-select: none; } ${A} .mp-bar.seek .mp-line::before { content: ""; position: absolute; inset: -14px -4px; } ${A} .mp-bar.drag .mp-line { height: 10px; } ${A} .mp-bar.drag .mp-line i { transition: none !important; } ${A} .mp-bar.drag .mp-line::after { transform: scale(1) !important; } ${A} .mp-bar.seek .mp-line::after { content: ""; position: absolute; left: var(--at, 0%); top: 50%; width: 20px; height: 20px; margin: -10px 0 0 -10px; border-radius: 50%; background: #fff; box-shadow: 0 2px 8px rgba(0, 0, 0, .5); transform: scale(0); transition: transform .2s var(--ease); } ${A} .mp-bar.seek:hover .mp-line { height: 10px; } ${A} .mp-bar.seek:hover .mp-line::after { transform: scale(1); }
+${A} .mp-bar.seek { cursor: pointer; padding: 8px 0; margin-top: 2px !important; margin-bottom: -8px; touch-action: pan-y; user-select: none; } ${A} .mp-bar.seek .mp-line::before { content: ""; position: absolute; inset: -14px -4px; } ${A} .mp-bar.drag .mp-line { height: 10px; } ${A} .mp-bar.drag .mp-line i { transition: none !important; } ${A} .mp-bar.drag .mp-line::after { transform: scale(1) !important; } ${A} .mp-bar.seek .mp-line::after { content: ""; position: absolute; left: var(--at, 0%); top: 50%; width: 20px; height: 20px; margin: -10px 0 0 -10px; border-radius: 50%; background: #fff; box-shadow: 0 2px 8px rgba(0, 0, 0, .5); transform: scale(0); transition: transform .2s var(--ease); } ${A} .mp-bar.seek:hover .mp-line { height: 10px; } ${A} .mp-bar.seek:hover .mp-line::after { transform: scale(1); }
 ${A} .mp:hover .long span { animation: mplong 7s ease-in-out .4s infinite alternate; } @keyframes mplong { 0%, 12% { transform: none; } 88%, 100% { transform: translateX(var(--over)); } }
 @media (prefers-reduced-motion: reduce) { ${A} .mp *, ${A} .mp { animation: none !important; transition: none !important; } }
 /* Controls on a computer: all of it, its own scroll, and headings. */
@@ -335,6 +335,19 @@ ${T} .tvround:active { background: var(--ui-sel); color: #000; }
 ${T} .hw-root:not(.hw-edit) > .hw-bar { display: none; }
 /* Home is as long as what's on it and the page scrolls, as the TV's does. */
 html[data-tvtouch]:has(.hw-root:not(.hw-edit)):not(:has(#tvset.on)) { overflow-y: auto !important; overflow-x: clip; }
+/* ── A phone or an iPad: a navbar along the bottom, and one page at a time ── */
+#tvnav { display: none; }
+${T} { --nav: 62px; --nav-gap: 10px; --ask-o: 0; --ask-v: hidden; --ask-pe: none; --ask-y: 22px; overscroll-behavior-y: none; } ${T}[data-askon] { --ask-o: 1; --ask-v: visible; --ask-pe: auto; --ask-y: 0px; }
+${T} #tvnav { display: flex; justify-content: center; position: fixed; z-index: 72; left: 0; right: 0; bottom: 0; box-sizing: border-box; height: calc(var(--nav) + env(safe-area-inset-bottom, 0px)); padding: 0 6px env(safe-area-inset-bottom, 0px); background: rgba(20, 21, 25, .88); -webkit-backdrop-filter: blur(24px) saturate(1.5); backdrop-filter: blur(24px) saturate(1.5); box-shadow: 0 -1px 0 rgba(255, 255, 255, .09); }
+#tvnav > div { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); width: 100%; max-width: 620px; } #tvnav button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-width: 0; padding: 0; border: 0; background: none; color: rgba(255, 255, 255, .56); font: 600 10.5px/1 var(--font); -webkit-tap-highlight-color: transparent; touch-action: manipulation; transition: color .18s, transform .18s; } #tvnav svg { width: 25px; height: 25px; } #tvnav button.on { color: #fff; } #tvnav button:active { transform: scale(.92); }
+#tvnav [data-nav="assistant"] b { display: grid; place-items: center; width: 50px; height: 50px; margin-top: -4px; border-radius: 50%; background: linear-gradient(160deg, #3a3b45, #26272e); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .14), 0 6px 18px rgba(0, 0, 0, .35); color: #fff; transition: background .2s, color .2s; } #tvnav [data-nav="assistant"] span { display: none; } #tvnav [data-nav="assistant"].on b { background: #f2f2f5; color: #000; }
+${T}:has(.lk) #tvnav, ${T}:has(#splash:not(.is-gone)) #tvnav { visibility: hidden; }
+${T} :is(#tvgear, #tvlayout).tvround { display: none !important; } ${T}:has(.hw-root) .controls, ${T}:has(.hw-root) #seg-scroll, ${T}:has(.hw-root) .search { position: static !important; }
+${T} .tvs-title > button { flex: none; } ${T} .page { padding-bottom: calc(var(--nav) + env(safe-area-inset-bottom, 0px) + 28px) !important; } ${T} .hw-root[data-view] > #tvside { padding-bottom: 8px !important; }
+${T} #tvpanel { bottom: calc(var(--nav) + env(safe-area-inset-bottom, 0px)) !important; width: min(460px, 100vw) !important; border-radius: 0 !important; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; } ${T} #tvpanel > div { zoom: min(.6, calc(100vw / 760px)) !important; padding: 84px 48px 60px !important; }
+${T} #tvset.on { bottom: calc(var(--nav) + env(safe-area-inset-bottom, 0px)) !important; } ${T} .tvs-list { padding-bottom: 36px !important; overscroll-behavior: contain; } ${T} #tvsync.on { bottom: calc(var(--nav) + env(safe-area-inset-bottom, 0px)) !important; } ${T} #tvmirror.on { bottom: calc(var(--nav) + env(safe-area-inset-bottom, 0px)) !important; }
+${T}:is(:has(#tvpanel.on), :has(#tvset.on), :has(#tvsync.on), :has(#tvwid.on), :has(#wggal.on)) { overflow: hidden !important; } ${T}[data-editing] #tvebar { bottom: calc(var(--nav) + env(safe-area-inset-bottom, 0px) + 10px) !important; } ${T} .hud { bottom: calc(var(--nav) + env(safe-area-inset-bottom, 0px) + 18px) !important; }
+${T} :is(.dk-t, .wg-i, #tvnav button) { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; touch-action: manipulation; }
 ${T} .hw-root:not(.hw-edit) .hw-frame { height: auto !important; }
 ${T} .hw-root:not(.hw-edit) .hw-pager { overflow: visible; flex: none; overscroll-behavior: auto; touch-action: pan-y; -webkit-mask: none; mask: none; }
 ${T} .hw-root:not(.hw-edit) .hw-grid { padding-bottom: 120px; }
@@ -996,9 +1009,11 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     if (done) go(); else slT = setTimeout(go, id.startsWith('mon:') ? 220 : 70)
   }
   const atX = (n, e) => { const r = n.getBoundingClientRect(); return (e.clientX - r.left) / r.width * 100 }
-  addEventListener('pointerdown', e => { const n = e.target.closest?.('.sb-sl'); if (!n) return; sliding2 = n; n.setPointerCapture(e.pointerId); setSl(n, atX(n, e), false) })
-  addEventListener('pointermove', e => { if (sliding2) setSl(sliding2, atX(sliding2, e), false) })
-  for (const x of ['pointerup', 'pointercancel']) addEventListener(x, e => { if (!sliding2) return; const n = sliding2; sliding2 = null; if (x === 'pointerup') setSl(n, atX(n, e), true) })
+  addEventListener('pointerdown', e => { const n = e.target.closest?.('.sb-sl'); if (!n) return; if (e.pointerType === 'touch') { slAt = { n, x: e.clientX, id: e.pointerId }; return } sliding2 = n; n.setPointerCapture(e.pointerId); setSl(n, atX(n, e), false) })
+  // A finger going up or down is scrolling: only one going sideways slides it.
+  let slAt = null
+  addEventListener('pointermove', e => { if (slAt && Math.abs(e.clientX - slAt.x) > 7) { sliding2 = slAt.n; try { sliding2.setPointerCapture(slAt.id) } catch {} slAt = null } if (sliding2) setSl(sliding2, atX(sliding2, e), false) })
+  for (const x of ['pointerup', 'pointercancel']) addEventListener(x, e => { if (slAt) { const a = slAt; slAt = null; if (x === 'pointerup' && Math.abs(e.clientX - a.x) < 7) setSl(a.n, atX(a.n, e), true) } if (!sliding2) return; const n = sliding2; sliding2 = null; if (x === 'pointerup') setSl(n, atX(n, e), true) })
   addEventListener('keydown', e => { const n = e.target.closest?.('.sb-sl'), d = { ArrowRight: 5, ArrowUp: 5, ArrowLeft: -5, ArrowDown: -5 }[e.key]; if (n && d) { e.preventDefault(); e.stopPropagation(); setSl(n, Number(n.getAttribute('aria-valuenow')) + d, true) } }, true)
   // ── Tools, full screen: the TV's remote, the mixer, a stopwatch, a calculator… ──
   let tool = '', toolT = 0, calc = null, watchT = { at: 0, from: 0, laps: [] }, unit = { kind: 'Length', v: '1', a: 'mi', b: 'km' }
@@ -2270,6 +2285,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   const behind = Object.assign(document.createElement('div'), { id: 'tvback2' })
   document.body.append(behind)
   function paintRail() {
+    paintNav()
     document.documentElement.toggleAttribute('data-cover', set.classList.contains('on') || mirror.classList.contains('on') || sync.classList.contains('on') || !!window.HubChat?.isOpen?.())
     const chat = !!window.HubChat?.isOpen?.()
     const tabs = [...seg.querySelectorAll('button[data-env]')].filter(b => !b.hidden && b.style.display !== 'none')
@@ -2322,6 +2338,52 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   for (const ev of ['hub-browser-state', 'hub-chat-state']) document.addEventListener(ev, () => paintRail())
   new MutationObserver(paintRail).observe(seg, { subtree: true, childList: true, attributes: true, characterData: true })
 
+  // ── the navbar (phone, iPad) ──
+  const nav = document.createElement('nav')
+  nav.id = 'tvnav'
+  nav.setAttribute('aria-label', 'LocalHub')
+  nav.innerHTML = `<div>${[['home', 'Home', IC.home], ['browser', 'Browser', IC.globe], ['assistant', 'Assistant', IC.mic], ['sidebar', 'Sidebar', IC.sideopen], ['settings', 'Settings', IC.gear]].map(([k, n, ic]) => `<button type="button" data-nav="${k}" aria-label="${n}"><b>${svg(ic)}</b><span>${n}</span></button>`).join('')}</div>`
+  document.body.append(nav)
+  const askOn = () => document.documentElement.hasAttribute('data-askon')
+  function setAsk(on) {
+    document.documentElement.toggleAttribute('data-askon', on)
+    window.HubChat?.bar?.(on)
+    paintNav()
+  }
+  function paintNav() {
+    const at = askOn() || window.HubChat?.isOpen?.() ? 'assistant' : panel.classList.contains('on') ? 'sidebar' : set.classList.contains('on') ? 'settings' : sync.classList.contains('on') ? 'browser' : seg.querySelector('[data-env="home"]')?.getAttribute('aria-pressed') === 'true' ? 'home' : ''
+    for (const b of nav.querySelectorAll('button')) { const on = b.dataset.nav === at; b.classList.toggle('on', on); on ? b.setAttribute('aria-current', 'page') : b.removeAttribute('aria-current') }
+  }
+  nav.addEventListener('click', e => {
+    const k = e.target.closest('[data-nav]')?.dataset.nav
+    if (!k) return
+    e.stopPropagation()
+    const chat = !!window.HubChat?.isOpen?.()
+    if (wid.classList.contains('on')) closeWid()
+    gal.classList.remove('on')
+    window.HubDesk?.close?.()
+    // The assistant opens over whatever you're on; everything else takes its place.
+    if (k === 'assistant') { if (chat) window.HubChat.close(); else { if (panel.classList.contains('on')) closePanel(); setAsk(!askOn()) } return setTimeout(paintNav, 60) }
+    if (chat) window.HubChat.close()
+    if (askOn()) setAsk(false)
+    const was = { sidebar: panel.classList.contains('on'), settings: set.classList.contains('on'), browser: sync.classList.contains('on') }
+    if (k !== 'sidebar') closePanel()
+    if (k !== 'settings') closeSettings()
+    if (k !== 'browser') closeSync()
+    closeMirror()
+    if (k === 'sidebar') was.sidebar ? closePanel() : openPanel()
+    else if (k === 'settings') { if (!was.settings) openSettings(); else if (picking) onSet('back') }
+    else if (k === 'browser') { if (!was.browser) openSync() }
+    else {
+      const there = !was.sidebar && !was.settings && !was.browser && seg.querySelector('[data-env="home"]')?.getAttribute('aria-pressed') === 'true'
+      if (there) scrollTo({ top: 0, behavior: 'smooth' })
+      else { if (document.querySelector('.hw-root.hw-edit')) document.querySelector('.hw-root.hw-edit [data-hw-act="edit"]')?.click(); seg.querySelector('[data-env="home"]')?.click() }
+    }
+    setTimeout(paintNav, 80)
+  })
+  // Touching the page puts the chat's bar away, unless something is typed in it.
+  addEventListener('pointerdown', e => { if (askOn() && e.target !== window.HubChat?.host && !nav.contains(e.target) && !e.target.closest?.('.menu') && !window.HubChat?.typed?.()) setAsk(false) }, true)
+  new MutationObserver(() => paintNav()).observe(document.documentElement, { attributes: true, attributeFilter: ['data-cover', 'data-tvtouch', 'data-askon'] })
   const H24 = !/[ap]\.?m/i.test(new Date(2020, 0, 1, 13).toLocaleTimeString())
   let draft = null // the clock being edited
   const clockLook = () => CK.of(draft && !draft.k ? draft.c : board()?.D.board?.data?.clock)

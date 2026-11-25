@@ -259,7 +259,7 @@
 :host { all: initial; }
 *, *::before, *::after { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 [hidden] { display: none !important; }
-.root { position: fixed; inset: 0; z-index: 50; pointer-events: none; font: 15px/1.4 var(--font, system-ui, sans-serif); letter-spacing: -0.016em; color: var(--label, #000); -webkit-font-smoothing: antialiased; --kb: 0px; --barh: 54px; --code-font: ui-monospace, "SF Mono", SFMono-Regular, Menlo, "Cascadia Mono", "Cascadia Code", Consolas, monospace; }
+.root { position: fixed; inset: 0; z-index: 50; pointer-events: none; font: 15px/1.4 var(--font, system-ui, sans-serif); letter-spacing: -0.016em; color: var(--label, #000); -webkit-font-smoothing: antialiased; --kb: 0px; --nb: var(--nav, 0px); --barh: 54px; --code-font: ui-monospace, "SF Mono", SFMono-Regular, Menlo, "Cascadia Mono", "Cascadia Code", Consolas, monospace; }
 button, input, textarea, select { font: inherit; letter-spacing: inherit; color: inherit; }
 button { border: 0; background: none; padding: 0; cursor: pointer; }
 button:focus-visible, .row:focus-visible { outline: 2px solid var(--blue, #007aff); outline-offset: 2px; }
@@ -270,7 +270,7 @@ textarea, textarea:focus, textarea:focus-visible { outline: none; box-shadow: no
 :host-context(html.lite) .glass, :host-context(html.lite) .card, :host-context(html.lite) .ghead, :host-context(html.lite) .menu { background: var(--surface, #1c1c1e); }
 
 /* ----- the bar ----- */
-.bar { position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom) + var(--kb)); width: min(640px, calc(100vw - 32px)); transform: translateX(-50%); pointer-events: auto; transition: opacity .2s, transform .38s var(--ease, ease); }
+.bar { position: fixed; left: 50%; bottom: calc(var(--nbg, 16px) + env(safe-area-inset-bottom) + var(--kb) + var(--nb)); width: min(640px, calc(100vw - 32px)); transform: translate(-50%, var(--ask-y, 0px)); opacity: var(--ask-o, 1); visibility: var(--ask-v, visible); pointer-events: var(--ask-pe, auto); transition: opacity .22s, visibility .22s, transform .38s cubic-bezier(.32, .72, 0, 1); }
 .bar.away { opacity: 0; transform: translateX(-50%) translateY(20px); pointer-events: none; }
 .pill { position: relative; display: flex; align-items: flex-end; gap: 2px; min-height: 54px; padding: 5px; border-radius: 27px; box-shadow: 0 0 0 .5px var(--sep, rgba(60, 60, 67, .18)), 0 10px 32px rgba(0, 0, 0, .16), 0 2px 6px rgba(0, 0, 0, .06); transition: border-radius .2s, box-shadow .2s; }
 .pill:focus-within { box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--blue, #007aff) 55%, transparent), 0 10px 32px rgba(0, 0, 0, .16); }
@@ -301,8 +301,8 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
 .vclock { flex: none; min-width: 36px; padding-right: 4px; text-align: right; font-size: 14px; font-variant-numeric: tabular-nums; color: var(--label-2, rgba(60, 60, 67, .6)); }
 
 /* ----- the answer card ----- */
-.card { position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom) + var(--kb) + var(--barh) + 10px); width: min(640px, calc(100vw - 32px)); max-height: clamp(254px, calc(33vh + 54px), 434px); display: flex; flex-direction: column; border-radius: 22px; overflow: hidden; transform: translate(-50%, 16px) scale(.98); transform-origin: 50% 100%; opacity: 0; visibility: hidden; pointer-events: none; background: color-mix(in srgb, var(--surface, #fff) 86%, transparent); -webkit-backdrop-filter: saturate(180%) blur(24px); backdrop-filter: saturate(180%) blur(24px); box-shadow: 0 0 0 .5px var(--sep, rgba(60, 60, 67, .18)), 0 18px 50px rgba(0, 0, 0, .22), 0 3px 10px rgba(0, 0, 0, .08); transition: opacity .2s, transform .38s var(--ease, ease), visibility 0s .38s; }
-.card.on { transform: translate(-50%, 0); opacity: 1; visibility: visible; pointer-events: auto; transition: opacity .2s, transform .38s var(--ease, ease), visibility 0s; }
+.card { position: fixed; left: 50%; bottom: calc(var(--nbg, 16px) + env(safe-area-inset-bottom) + var(--kb) + var(--nb) + var(--barh) + 10px); width: min(640px, calc(100vw - 32px)); max-height: clamp(254px, calc(33vh + 54px), 434px); display: flex; flex-direction: column; border-radius: 22px; overflow: hidden; transform: translate(-50%, 16px) scale(.98); transform-origin: 50% 100%; opacity: 0; visibility: hidden; pointer-events: none; background: color-mix(in srgb, var(--surface, #fff) 86%, transparent); -webkit-backdrop-filter: saturate(180%) blur(24px); backdrop-filter: saturate(180%) blur(24px); box-shadow: 0 0 0 .5px var(--sep, rgba(60, 60, 67, .18)), 0 18px 50px rgba(0, 0, 0, .22), 0 3px 10px rgba(0, 0, 0, .08); transition: opacity .2s, transform .38s var(--ease, ease), visibility 0s .38s; }
+.card.on { transform: translate(-50%, var(--ask-y, 0px)); opacity: var(--ask-o, 1); visibility: var(--ask-v, visible); pointer-events: var(--ask-pe, auto); transition: opacity .2s, transform .38s var(--ease, ease), visibility 0s; }
 /* The header of both chats: a flat bar flush to its panel, on the Hub's glass. Only this bar has a hover effect: a soft sheen that follows the pointer. */
 .ghead { position: relative; isolation: isolate; flex: none; z-index: 2; display: flex; align-items: center; height: 54px; padding: 0 8px 0 18px; overflow: hidden; background: var(--material, rgba(249, 249, 249, .78)); -webkit-backdrop-filter: saturate(180%) blur(24px); backdrop-filter: saturate(180%) blur(24px); border-bottom: .5px solid var(--sep, rgba(60, 60, 67, .18)); }
 .ghead::after { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; opacity: 0; background: radial-gradient(300px 130px at var(--gx, 50%) 0, var(--sheen, rgba(255, 255, 255, .95)), transparent 72%), radial-gradient(420px 90px at var(--gx, 50%) 100%, color-mix(in srgb, var(--blue, #007aff) 15%, transparent), transparent 75%), linear-gradient(180deg, var(--sheen, rgba(255, 255, 255, .95)), transparent 55%); transition: opacity .28s var(--ease, ease); }
@@ -323,7 +323,7 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
 .full.on { pointer-events: auto; visibility: visible; transition: visibility 0s; }
 .scrim { position: absolute; inset: 0; background: rgba(0, 0, 0, .3); opacity: 0; transition: opacity .3s; }
 .full.on .scrim { opacity: 1; }
-.fp { position: absolute; left: 50%; top: 24px; bottom: 24px; width: min(920px, calc(100vw - 48px)); display: flex; flex-direction: column; overflow: hidden; border-radius: 20px; background: var(--bg, #f2f2f7); box-shadow: 0 0 0 .5px var(--sep, rgba(60, 60, 67, .18)), 0 28px 80px rgba(0, 0, 0, .32); transform: translateX(-50%) translateY(16px) scale(.985); opacity: 0; transition: opacity .25s, transform .4s var(--ease, ease); }
+.fp { position: absolute; left: 50%; top: 24px; bottom: calc(24px + var(--nb)); width: min(920px, calc(100vw - 48px)); display: flex; flex-direction: column; overflow: hidden; border-radius: 20px; background: var(--bg, #f2f2f7); box-shadow: 0 0 0 .5px var(--sep, rgba(60, 60, 67, .18)), 0 28px 80px rgba(0, 0, 0, .32); transform: translateX(-50%) translateY(16px) scale(.985); opacity: 0; transition: opacity .25s, transform .4s var(--ease, ease); }
 .full.on .fp { transform: translateX(-50%); opacity: 1; }
 .ttl { flex: 1; min-width: 0; }
 .ttl b { display: block; font: 600 17px/1.2 var(--display, inherit); letter-spacing: -0.022em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -567,8 +567,8 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
 .none { padding: 28px 16px; text-align: center; color: var(--label-2, rgba(60, 60, 67, .6)); font-size: 14px; }
 
 @media (max-width: 720px) {
-  .bar { bottom: calc(12px + env(safe-area-inset-bottom) + var(--kb)); }
-  .card { bottom: calc(12px + env(safe-area-inset-bottom) + var(--kb) + var(--barh) + 8px); max-height: clamp(180px, 36vh, 340px); }
+  .bar { bottom: calc(var(--nbg, 12px) + env(safe-area-inset-bottom) + var(--kb) + var(--nb)); }
+  .card { bottom: calc(var(--nbg, 12px) + env(safe-area-inset-bottom) + var(--kb) + var(--nb) + var(--barh) + 8px); max-height: clamp(180px, 36vh, 340px); }
   .fp { left: 0; right: 0; bottom: 0; width: auto; border-radius: 16px 16px 0 0; transform: translateY(100%); opacity: 1; transition: transform .42s var(--ease, ease); }
   .full.on .fp { transform: none; }
   .flog { padding: 14px 14px 8px; }
@@ -1210,10 +1210,16 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
   // The phone keyboard: lift the bar and the sheet with the visual viewport.
   const vv = window.visualViewport
   function fitViewport() {
-    if (!PHONE.matches || !vv) { rootEl.style.setProperty('--kb', '0px'); fp.style.top = fp.style.height = ''; return }
+    if (!vv) return
+    if (!PHONE.matches) fp.style.top = fp.style.height = fp.style.bottom = ''
+    if (!PHONE.matches && !document.documentElement.hasAttribute('data-tvtouch')) { rootEl.style.setProperty('--kb', '0px'); return }
     const kb = Math.max(0, window.innerHeight - vv.height - vv.offsetTop)
     rootEl.style.setProperty('--kb', `${kb > 60 ? Math.round(kb) : 0}px`)
-    if (S.full) { fp.style.top = `${vv.offsetTop + 10}px`; fp.style.height = `${vv.height - 10}px`; fp.style.bottom = 'auto' }
+    // The keyboard covers the navbar: nothing to stand clear of.
+    rootEl.style.setProperty('--nb', kb > 60 ? '0px' : 'var(--nav, 0px)')
+    rootEl.style.setProperty('--nbg', kb > 60 ? '8px' : `var(--nav-gap, ${PHONE.matches ? 12 : 16}px)`)
+    const nav = kb > 60 ? 0 : document.getElementById('tvnav')?.offsetHeight || 0
+    if (S.full && PHONE.matches) { fp.style.top = `${vv.offsetTop + 10}px`; fp.style.height = `${vv.height - 10 - nav}px`; fp.style.bottom = 'auto' }
   }
   if (vv) { vv.addEventListener('resize', fitViewport); vv.addEventListener('scroll', fitViewport) }
   PHONE.addEventListener?.('change', fitViewport)
@@ -2635,5 +2641,5 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
 
   // A tiny handle for other tabs or tests: HubChat.open(), HubChat.ask('...').
   // voice/hush/say/listening are for pages around the chat: LocalHub TV's ⏯ key and Control Center talk through them.
-  window.HubChat = { isOpen: () => S.full, open: () => setFull(true), close: () => setFull(false), toggle: () => setFull(!S.full), ask: t => submit(t), openChat: async id => { setFull(true); await openConv(id) }, voice: () => toggleVoice(S.full ? fta : bta), cancelVoice, hush, say, busy: () => S.busy, listening: () => V.state !== 'idle' }
+  window.HubChat = { host, bar(on) { if (on) { fitViewport(); const has = flogEl.querySelector('.msg, .tool, .err, .confirm'); S.cardOn = S.busy || !!has; syncCard(); bta.focus({ preventScroll: true }) } else bta.blur() }, typed: () => !!bta.value.trim(), isOpen: () => S.full, open: () => setFull(true), close: () => setFull(false), toggle: () => setFull(!S.full), ask: t => submit(t), openChat: async id => { setFull(true); await openConv(id) }, voice: () => toggleVoice(S.full ? fta : bta), cancelVoice, hush, say, busy: () => S.busy, listening: () => V.state !== 'idle' }
 })()
