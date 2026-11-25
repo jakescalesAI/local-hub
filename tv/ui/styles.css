@@ -769,3 +769,15 @@ html.native #hub-chat { zoom: calc(var(--k, .5) * 1.25); }
 .hey-w { flex: none; display: flex; align-items: center; gap: 5px; height: 44px; } .hey-w b { width: 6px; height: 12px; border-radius: 3px; background: #4aa3ff; animation: hey .9s ease-in-out infinite; } .hey-w b:nth-child(2) { animation-delay: .12s; background: #7a8bff; } .hey-w b:nth-child(3) { animation-delay: .24s; background: #b36bff; } .hey-w b:nth-child(4) { animation-delay: .36s; background: #ff6bb5; } .hey-w b:nth-child(5) { animation-delay: .48s; background: #ff9a6b; }
 #hey[data-s="wait"] .hey-w b { animation-duration: 1.8s; } #hey[data-s="say"] .hey-w b, #hey:not(.on) .hey-w b { animation: none; }
 @keyframes hey { 50% { transform: scaleY(3.2); } }
+
+:root[data-font="tight"] { --font: "LH InterTight", system-ui, sans-serif; --display: var(--font); --rounded: var(--font); }
+:root[data-font="outfit"] { --font: "LH Outfit", system-ui, sans-serif; --display: var(--font); --rounded: var(--font); }
+:root[data-font="manrope"] { --font: "LH Manrope", system-ui, sans-serif; --display: var(--font); --rounded: var(--font); }
+:root[data-font="grotesk"] { --font: "LH SpaceGrotesk", system-ui, sans-serif; --display: var(--font); --rounded: var(--font); }
+:root[data-font="sora"] { --font: "LH Sora", system-ui, sans-serif; --display: var(--font); --rounded: var(--font); }
+:root[data-font="nunito"] { --font: "LH Nunito", system-ui, sans-serif; --display: var(--font); --rounded: var(--font); }
+:root[data-font="quicksand"] { --font: "LH Quicksand", system-ui, sans-serif; --display: var(--font); --rounded: var(--font); }
+:root[data-font="playfair"] { --font: "LH PlayfairDisplay", system-ui, sans-serif; --display: var(--font); --rounded: var(--font); }
+:root[data-font="fraunces"] { --font: "LH Fraunces", system-ui, sans-serif; --display: var(--font); --rounded: var(--font); }
+:root[data-font="robotoslab"] { --font: "LH RobotoSlab", system-ui, sans-serif; --display: var(--font); --rounded: var(--font); }
+:root[data-font="jetbrains"] { --font: "LH JetBrainsMono", system-ui, sans-serif; --display: var(--font); --rounded: var(--font); }

@@ -16,8 +16,8 @@
 
 import * as Stream from "./stream.js?v=8";
 import * as Panel from "./panel.js?v=16";
-import * as Clock from "./clock.js?v=1";
-import * as Wg from "./widgets.js?v=17";
+import * as Clock from "./clock.js?v=2";
+import * as Wg from "./widgets.js?v=18";
 import * as Files from "./files.js?v=2";
 import { createLock } from "./lock.js?v=2";
 import * as Remote from "./remote.js?v=5";
@@ -167,6 +167,7 @@ function applyLook() {
   r.style.setProperty("--hub-blur", `${st.blur}px`);
   r.style.setProperty("--hub-alpha", `${100 - st.transparency}%`);
   r.style.setProperty("--hub-radius", `${st.radius}px`);
+  r.style.setProperty("--hub-r", (st.radius / 20).toFixed(2));
   // No live glass anywhere: every blur, mask and blend mode was an extra GPU surface on a Fire TV Stick. The
   // look is flat tinted surfaces over the frozen wallpaper ("lite" in the CSS), on every screen.
   r.classList.add("lite");
@@ -2405,7 +2406,7 @@ const Hey = {
       const last = [...document.querySelectorAll("#assistantView .as-bot")].at(-1), st = Assistant?.state?.() || {};
       // It needs a yes: its own screen has the buttons.
       if (document.querySelector("#assistantView .as-confirm:not(.done) button:not([disabled])") && st.busy) { this.close(); return showView("assistant"); }
-      if (last && last !== before) { const s = last.innerText.trim(); if (p.textContent !== s) { p.textContent = s; p.scrollTop = p.scrollHeight; this.stage("say"); } }
+      if (last && last !== before) { const s = last.textContent.trim(); if (p.textContent !== s) { p.textContent = s; p.scrollTop = p.scrollHeight; this.stage("say"); } }
       idle = st.busy ? 0 : idle + 300;
       // Long enough to read, or to be read out.
       const words = p.textContent.split(/\s+/).length;

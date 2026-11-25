@@ -3,7 +3,7 @@
 // em, so one drawing fits every screen. Sizes, on a grid four across (two on a phone): SPAN. What doesn’t fit the room a screen has
 // (ROOM) isn’t drawn there, and can’t be added to it.
 import { IC, player } from "./panel.js?v=16";
-import * as Clock from "./clock.js?v=1";
+import * as Clock from "./clock.js?v=2";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const sym = (d, w = 1.9) => `<svg class="sym" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;

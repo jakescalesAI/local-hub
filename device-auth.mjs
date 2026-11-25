@@ -138,7 +138,7 @@ export function createDeviceAuth({ here, hubName = () => 'Hub', hubUrl = () => '
       qrSvg = qr.createSvgTag({ cellSize: 6, margin: 12, scalable: true })
     }
     // The code travels after the #, which no server or log sees.
-    const links = (Array.isArray(urls) ? urls : [address]).filter(u => typeof u === 'string' && u.length < 200 && /^https?:\/\/[\w.:[\]-]+$/i.test(u)).slice(0, 4).map(u => {
+    const links = [...new Set([usable ? address : '', ...(Array.isArray(urls) ? urls : [])])].filter(u => typeof u === 'string' && u.length < 200 && /^https?:\/\/[\w.:[\]-]+$/i.test(u)).slice(0, 4).map(u => {
       const q = qrcode(0, 'M')
       q.addData(`${u}/pair#${code}`)
       q.make()

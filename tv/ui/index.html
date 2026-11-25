@@ -9,14 +9,15 @@
 <link rel="stylesheet" href="./theme.css?v=1">
 <script>/* What Home’s widgets show, asked for while the rest is still loading. */ if (location.pathname.indexOf("/tv") === 0) { window.__early = {}; ["/api/board", "/api/tv/weather", "/api/desk/system", "/api/system/info", "/api/music"].forEach(function (u) { window.__early[u] = fetch(u, { cache: "no-store" }); window.__early[u].catch(function () {}); }); }</script>
 <link rel="preload" href="./intro.mp4?v=2" as="fetch" crossorigin>
-<link rel="stylesheet" href="./styles.css?v=88">
+<link rel="stylesheet" href="./styles.css?v=89">
+<link rel="stylesheet" href="./fonts.css?v=1">
 <link rel="stylesheet" href="./splash.css?v=3">
-<link rel="stylesheet" href="./panel.css?v=19">
-<link rel="stylesheet" href="./widgets.css?v=14">
+<link rel="stylesheet" href="./panel.css?v=20">
+<link rel="stylesheet" href="./widgets.css?v=15">
 <link rel="stylesheet" href="./assistant.css?v=13">
 <link rel="stylesheet" href="./files.css?v=1">
 <!-- Fetched alongside app.js instead of after it has been parsed: ~0.9 s sooner to a home screen on a Fire TV Stick. -->
-<link rel="modulepreload" href="./app.js?v=167">
+<link rel="modulepreload" href="./app.js?v=169">
 <link rel="modulepreload" href="./stream.js?v=8">
 <link rel="modulepreload" href="./panel.js?v=16">
 <link rel="modulepreload" href="./remote.js?v=5">
@@ -118,6 +119,6 @@ if (location.pathname.startsWith("/tv")) {
   /* The hub page defines hubFetch for chat.js (it waits out hub restarts); the TV only needs plain fetch. */
   if (typeof window.hubFetch !== "function") window.hubFetch = function (url, init) { return fetch(url, init); };
 </script>
-<script type="module" src="./app.js?v=167"></script>
+<script type="module" src="./app.js?v=169"></script>
 </body>
 </html>

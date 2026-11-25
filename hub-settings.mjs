@@ -75,7 +75,7 @@ export const STYLE = {
   shadow: { enum: ['none', 'soft', 'deep'], default: 'soft' },
   tabBar: { enum: ['solid', 'glass'], default: 'solid' },
   effect: { enum: ['none', 'grain', 'glow'], default: 'none' },
-  font: { enum: ['system', 'rounded', 'serif', 'mono'], default: 'system' },
+  font: { enum: ['system', 'rounded', 'serif', 'mono', 'tight', 'outfit', 'manrope', 'grotesk', 'sora', 'nunito', 'quicksand', 'playfair', 'fraunces', 'robotoslab', 'jetbrains'], default: 'system' },
   density: { enum: ['compact', 'regular', 'roomy'], default: 'regular' },
 }
 

@@ -1,0 +1,29 @@
+/* Fonts for the clock and the Style page. One loads only where it's used. */
+@font-face { font-family: "LH InterTight"; src: url("fonts/InterTight.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+@font-face { font-family: "LH Outfit"; src: url("fonts/Outfit.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+@font-face { font-family: "LH Sora"; src: url("fonts/Sora.woff2") format("woff2"); font-weight: 100 800; font-display: swap; }
+@font-face { font-family: "LH Manrope"; src: url("fonts/Manrope.woff2") format("woff2"); font-weight: 200 800; font-display: swap; }
+@font-face { font-family: "LH SpaceGrotesk"; src: url("fonts/SpaceGrotesk.woff2") format("woff2"); font-weight: 300 700; font-display: swap; }
+@font-face { font-family: "LH BricolageGrotesque"; src: url("fonts/BricolageGrotesque.woff2") format("woff2"); font-weight: 200 800; font-display: swap; }
+@font-face { font-family: "LH Unbounded"; src: url("fonts/Unbounded.woff2") format("woff2"); font-weight: 200 900; font-display: swap; }
+@font-face { font-family: "LH Nunito"; src: url("fonts/Nunito.woff2") format("woff2"); font-weight: 200 1000; font-display: swap; }
+@font-face { font-family: "LH Quicksand"; src: url("fonts/Quicksand.woff2") format("woff2"); font-weight: 300 700; font-display: swap; }
+@font-face { font-family: "LH Oswald"; src: url("fonts/Oswald.woff2") format("woff2"); font-weight: 200 700; font-display: swap; }
+@font-face { font-family: "LH BebasNeue"; src: url("fonts/BebasNeue.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "LH Anton"; src: url("fonts/Anton.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "LH BigShouldersDisplay"; src: url("fonts/BigShouldersDisplay.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+@font-face { font-family: "LH PlayfairDisplay"; src: url("fonts/PlayfairDisplay.woff2") format("woff2"); font-weight: 400 900; font-display: swap; }
+@font-face { font-family: "LH Fraunces"; src: url("fonts/Fraunces.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+@font-face { font-family: "LH Cormorant"; src: url("fonts/Cormorant.woff2") format("woff2"); font-weight: 300 700; font-display: swap; }
+@font-face { font-family: "LH DMSerifDisplay"; src: url("fonts/DMSerifDisplay.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "LH RobotoSlab"; src: url("fonts/RobotoSlab.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+@font-face { font-family: "LH JetBrainsMono"; src: url("fonts/JetBrainsMono.woff2") format("woff2"); font-weight: 100 800; font-display: swap; }
+@font-face { font-family: "LH SpaceMono"; src: url("fonts/SpaceMono.woff2") format("woff2"); font-weight: 700; font-display: swap; }
+@font-face { font-family: "LH MajorMonoDisplay"; src: url("fonts/MajorMonoDisplay.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "LH VT323"; src: url("fonts/VT323.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "LH Orbitron"; src: url("fonts/Orbitron.woff2") format("woff2"); font-weight: 400 900; font-display: swap; }
+@font-face { font-family: "LH Righteous"; src: url("fonts/Righteous.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "LH Monoton"; src: url("fonts/Monoton.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "LH PressStart2P"; src: url("fonts/PressStart2P.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "LH Pacifico"; src: url("fonts/Pacifico.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "LH Caveat"; src: url("fonts/Caveat.woff2") format("woff2"); font-weight: 400 700; font-display: swap; }

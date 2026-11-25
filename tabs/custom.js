@@ -126,6 +126,17 @@
 :root[data-font="rounded"] { --font: var(--rounded); --display: var(--rounded); }
 :root[data-font="serif"] { --font: ui-serif, "New York", Georgia, Cambria, "Times New Roman", serif; --display: var(--font); --rounded: var(--font); }
 :root[data-font="mono"] { --font: var(--mono); --display: var(--mono); --rounded: var(--mono); }
+:root[data-font="tight"] { --font: "LH InterTight", system-ui, sans-serif; --display: var(--font); --rounded: var(--font); }
+:root[data-font="outfit"] { --font: "LH Outfit", system-ui, sans-serif; --display: var(--font); --rounded: var(--font); }
+:root[data-font="manrope"] { --font: "LH Manrope", system-ui, sans-serif; --display: var(--font); --rounded: var(--font); }
+:root[data-font="grotesk"] { --font: "LH SpaceGrotesk", system-ui, sans-serif; --display: var(--font); --rounded: var(--font); }
+:root[data-font="sora"] { --font: "LH Sora", system-ui, sans-serif; --display: var(--font); --rounded: var(--font); }
+:root[data-font="nunito"] { --font: "LH Nunito", system-ui, sans-serif; --display: var(--font); --rounded: var(--font); }
+:root[data-font="quicksand"] { --font: "LH Quicksand", system-ui, sans-serif; --display: var(--font); --rounded: var(--font); }
+:root[data-font="playfair"] { --font: "LH PlayfairDisplay", system-ui, sans-serif; --display: var(--font); --rounded: var(--font); }
+:root[data-font="fraunces"] { --font: "LH Fraunces", system-ui, sans-serif; --display: var(--font); --rounded: var(--font); }
+:root[data-font="robotoslab"] { --font: "LH RobotoSlab", system-ui, sans-serif; --display: var(--font); --rounded: var(--font); }
+:root[data-font="jetbrains"] { --font: "LH JetBrainsMono", system-ui, sans-serif; --display: var(--font); --rounded: var(--font); }
 :root[data-density="compact"] .row-line { min-height: 50px; padding-block: 5px; }
 :root[data-density="roomy"] .row-line { min-height: 70px; padding-block: 12px; }
 a.hc-btn { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; color: inherit; }
@@ -347,6 +358,7 @@ html[data-wall] .hw-bar .hw-btn:not(.solid) { background: color-mix(in srgb, var
     r.style.setProperty('--hub-blur', `${st.blur}px`)
     r.style.setProperty('--hub-alpha', `${100 - st.transparency}%`)
     r.style.setProperty('--hub-radius', `${st.radius}px`)
+    r.style.setProperty('--hub-r', (st.radius / 20).toFixed(2))
     // This device's own background, or the shared one.
     const own = S.look?.[PHONE.matches ? 'mobile' : 'desktop']?.wallpaper
     const here = own && (own === 'none' || wallFor(own)) ? own : S.wallpaper.current
@@ -685,6 +697,23 @@ html[data-wall] .hw-bar .hw-btn:not(.solid) { background: color-mix(in srgb, var
   const seg = (key, opts, cur) => `<div class="seg hc-seg" style="--n:${opts.length};--i:${Math.max(0, opts.findIndex(o => o[0] === cur))}"><span class="seg-thumb"></span>${opts.map(([v, l]) => `<button data-hc-set="${key}" data-v="${v}" aria-pressed="${v === cur}">${l}</button>`).join('')}</div>`
   const range = (key, label, min, max, cur, unit = '') => `<div class="hc-line"><span>${label}</span><input class="hc-range" type="range" min="${min}" max="${max}" value="${cur}" data-hc-range="${key}" aria-label="${label}" style="--p:${((cur - min) / (max - min)) * 100}%"><output>${cur}${unit}</output></div>`
 
+  // The TV's look has a Style of its own: everything in it shows on Home beside it.
+  const FONT_CARDS = [['system', 'Modern', 'Inter, system-ui'], ['tight', 'Tight', '"LH InterTight"'], ['outfit', 'Outfit', '"LH Outfit"'], ['manrope', 'Manrope', '"LH Manrope"'], ['grotesk', 'Grotesk', '"LH SpaceGrotesk"'], ['sora', 'Sora', '"LH Sora"'], ['rounded', 'Rounded', 'ui-rounded, "SF Pro Rounded", "LH Nunito"'], ['nunito', 'Soft', '"LH Nunito"'], ['quicksand', 'Quicksand', '"LH Quicksand"'], ['serif', 'Serif', 'Georgia, serif'], ['playfair', 'Playfair', '"LH PlayfairDisplay"'], ['fraunces', 'Fraunces', '"LH Fraunces"'], ['robotoslab', 'Slab', '"LH RobotoSlab"'], ['mono', 'Mono', 'ui-monospace, Consolas, monospace'], ['jetbrains', 'JetBrains', '"LH JetBrainsMono"']]
+  function styleHtml(st, walls, makerHtml, custom) {
+    const w = wallFor(S.wallpaper.current)
+    return `<div class="hc-head"><h2>Style</h2><button class="hc-link" data-hc="undo">Undo</button><button class="hc-link" data-hc="style-reset">Reset</button><button class="hc-done" data-hc="panel-close">Done</button></div>
+<div class="hc-body" style="--sty-wall:${w ? esc(PHOTOS.includes(S.wallpaper.current) ? `url(/tv/photos/thumbs/${S.wallpaper.current}.jpg)` : w.image) : '#2a2b31'}">
+  <div class="hc-sec" data-sec="wallpaper"><h3>Background</h3><div class="sty-walls">${walls.replace(/\/wallpapers\/(aurora|dusk|graphite|ocean|sand)\.svg/g, '/tv/photos/thumbs/$1.jpg')}</div>${makerHtml}</div>
+  <div class="hc-sec"><h3>Color <em>Buttons, switches and highlights</em></h3><div class="sty-sw">${ACCENTS.map(([v, l]) => `<button class="hc-sw${v === 'system' ? ' sys' : ''}${st.accent === v ? ' on' : ''}" style="--c:${v === 'system' ? '#0a84ff' : v}" data-hc-set="accent" data-v="${v}" title="${l}" aria-label="${l}"></button>`).join('')}<label class="hc-sw pick${custom ? ' on' : ''}" style="--c:${custom ? st.accent : '#0a84ff'}" title="Any color"><input type="color" value="${custom ? st.accent : '#0a84ff'}" data-hc-color="accent" aria-label="Any color"></label></div></div>
+  <div class="hc-sec" data-sec="text"><h3>Font <em>Everywhere, the TV too</em></h3><div class="sty-fonts">${FONT_CARDS.map(([v, n, f]) => `<button data-hc-set="font" data-v="${v}" class="${st.font === v ? 'on' : ''}"><b style='font-family:${f}'>Ag</b>${n}</button>`).join('')}</div><div class="sty-card"><div class="hc-line"><span>Date and time</span><button class="hc-btn" style="width:auto;margin:0!important;padding:0 20px;height:40px;border-radius:20px" data-hc="clock">Customize</button></div></div></div>
+  <div class="hc-sec" data-sec="look"><h3>Widgets</h3><div class="sty-mats">${[['solid', 'Solid'], ['glass', 'Glass'], ['outline', 'Outline']].map(([v, l]) => `<button data-hc-set="widgetLook" data-v="${v}" class="${st.widgetLook === v ? 'on' : ''}"><i></i>${l}</button>`).join('')}</div>
+    <div class="sty-card">${st.widgetLook === 'glass' ? range('transparency', 'See-through', 0, 90, st.transparency, '%') + range('blur', 'Blur', 0, 40, st.blur, 'px') : ''}${range('radius', 'Corners', 6, 32, st.radius, 'px')}
+    <div class="hc-line"><span>Shadow</span>${seg('shadow', [['none', 'Flat'], ['soft', 'Soft'], ['deep', 'Deep']], st.shadow)}</div>
+    <div class="hc-line"><span>Effect</span>${seg('effect', [['none', 'None'], ['grain', 'Grain'], ['glow', 'Glow']], st.effect)}</div>
+    <div class="hc-line"><span>Left bar</span>${seg('tabBar', [['solid', 'Solid'], ['glass', 'Glass']], st.tabBar)}</div></div></div>
+  <div class="hc-sec" data-sec="theme"><h3>Themes <em>A whole look in one file</em></h3>${themeList.length ? `<div class="sty-card" style="margin-top:0">${themeList.map(t => `<div class="hc-line"><span>${esc(t.name)}</span><a class="hc-link" href="/api/hub/themes/${esc(t.id)}.json" download>Export</a><button class="hc-link" data-hc="theme-apply" data-id="${esc(t.id)}">Apply</button></div>`).join('')}</div>` : ''}<div class="sty-foot" style="margin-top:12px"><button class="hc-btn" data-hc="theme-import">Import theme</button><a class="hc-btn" href="/api/hub/settings/export" download>Back up</a><button class="hc-btn" data-hc="settings-import">Restore</button></div></div>
+</div>`
+  }
   function panelHtml() {
     const st = { ...STYLE_DEFAULT, ...S.style, ...(preview?.style || {}) }
     const cur = S.wallpaper.current
@@ -703,6 +732,7 @@ html[data-wall] .hw-bar .hw-btn:not(.solid) { background: color-mix(in srgb, var
       <div class="hc-line" style="padding:0">${'<span>Angle</span>'}<input class="hc-range" type="range" min="0" max="360" value="${m.angle}" data-mk="angle" aria-label="Angle" style="--p:${(m.angle / 360) * 100}%"><output>${m.angle}°</output></div>
       <div class="hc-line" style="padding:0"><span>Mesh</span><button class="hc-switch" role="switch" aria-label="Mesh" aria-checked="${m.mesh}" data-hc="mesh"></button></div>
       <div class="hc-mbtns"><button class="hc-btn" data-hc="maker-cancel">Cancel</button><button class="hc-btn solid" data-hc="maker-save">Save Gradient</button></div></div>` : ''
+    if (document.documentElement.hasAttribute('data-tvlook')) return styleHtml(st, walls, makerHtml, custom)
     return `<div class="hc-grab"></div><div class="hc-head"><h2>Style</h2><button class="hc-link" data-hc="style-reset">Reset</button><button class="hc-done" data-hc="panel-close">Done</button></div>
 <div class="hc-body">
   <div class="hc-sec" data-sec="theme"><h3>Theme</h3><div class="hc-group">${themeList.map(t => `<div class="hc-line"><span style="flex:1">${esc(t.name)}</span><a class="hc-link" href="/api/hub/themes/${esc(t.id)}.json" download>Export</a><button class="hc-link" data-hc="theme-apply" data-id="${esc(t.id)}">Apply</button></div>`).join('')}</div><div class="hc-mbtns"><button class="hc-btn" data-hc="theme-import">Import a Theme File</button></div></div>
@@ -761,6 +791,7 @@ html[data-wall] .hw-bar .hw-btn:not(.solid) { background: color-mix(in srgb, var
     if (maker) { maker = null; preview = null; apply() }
     panel.remove()
     panel = null
+    document.documentElement.removeAttribute('data-styling')
     flush()
   }
 
@@ -768,7 +799,9 @@ html[data-wall] .hw-bar .hw-btn:not(.solid) { background: color-mix(in srgb, var
     if (panel) { panel.querySelector(`[data-sec="${section}"]`)?.scrollIntoView({ block: 'start', behavior: 'smooth' }); return }
     window.HUB_CLOSE_OVERLAYS?.()
     panel = document.createElement('aside')
-    panel.className = 'hc-panel'
+    const tvl = document.documentElement.hasAttribute('data-tvlook')
+    panel.className = `hc-panel${tvl ? ' sty' : ''}`
+    if (tvl) { document.documentElement.style.setProperty('--vw', innerWidth - 92); document.documentElement.setAttribute('data-styling', ''); scrollTo(0, 0) }
     panel.setAttribute('role', 'dialog')
     panel.setAttribute('aria-label', 'Style')
     panel.innerHTML = panelHtml()
@@ -801,6 +834,7 @@ html[data-wall] .hw-bar .hw-btn:not(.solid) { background: color-mix(in srgb, var
         }
         return pick.click()
       }
+      if (act === 'clock') { closePanel(); return document.querySelector('.tvt-clock .hc')?.click() }
       if (act === 'connections') { closePanel(); return window.HUB_CONNECTIONS?.() }
       if (act === 'undo') {
         try { await undo(); hud?.('Undone') } catch (err) { hud?.(err.message) }
