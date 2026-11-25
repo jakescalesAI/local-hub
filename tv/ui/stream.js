@@ -26,8 +26,8 @@ const IC = {
 
 /* The two browsers, as tiles on the home screen. */
 export const STREAM_APPS = [
-  { id: "browser", name: "Browser", stream: "chrome", bg: "linear-gradient(160deg,#5aa7ff,#1556c9)", fg: "#ffffff", icon: "browser" },
-  { id: "chromium", name: "Chromium", stream: "chromium", bg: "linear-gradient(160deg,#6d8cff,#2a3f9e)", fg: "#ffffff", icon: "chromium" },
+  { id: "browser", name: "Browser", stream: "chrome", resume: true, bg: "linear-gradient(160deg,#5aa7ff,#1556c9)", fg: "#ffffff", icon: "browser" },
+  { id: "chromium", name: "Chromium", stream: "chromium", resume: true, bg: "linear-gradient(160deg,#6d8cff,#2a3f9e)", fg: "#ffffff", icon: "chromium" },
 ];
 // Widevine: these need Google Chrome (or Edge); a plain Chromium build can't play them.
 const DRM = new Set(["netflix", "primevideo", "disney", "max", "appletv", "hulu", "paramountplus", "crunchyroll", "spotify", "tubi"]);
@@ -145,7 +145,7 @@ export async function open(app, from) {
   H_?.setOverlay("stream");
   requestAnimationFrame(() => el.classList.add("on"));
   try {
-    const r = await hub("/api/tv/stream/open", { engine, url: app.url || "", key: app.id });
+    const r = await hub("/api/tv/stream/open", { engine, url: app.url || "", key: app.live && app.url ? `n-${Date.now().toString(36)}` : app.id, ...(app.resume ? { resume: true } : {}) });
     if (!P.open || P.app !== app) return true;
     onState(r.state || {});
     pump(engine);
@@ -179,7 +179,7 @@ async function pump(engine) {
   while (P.open && P.engine === engine && !ctl.signal.aborted) {
     try {
       const r = await fetch(`/api/tv/stream/frames?engine=${encodeURIComponent(engine)}`, { cache: "no-store", signal: ctl.signal });
-      if (r.status === 409) { await hub("/api/tv/stream/open", { engine, key: P.app.id }); continue; } // the hub restarted
+      if (r.status === 409) { await hub("/api/tv/stream/open", { engine, key: P.app.id, resume: true }); continue; } // the hub restarted
       if (!r.ok || !r.body) throw new Error(String(r.status));
       tries = 0;
       const reader = r.body.getReader();

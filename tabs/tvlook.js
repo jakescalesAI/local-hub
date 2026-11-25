@@ -138,6 +138,9 @@ ${A} .hw-bar .hw-btn { gap: 8px; }
 ${R} .hw-bar > .hw-seg { display: none !important; }
 ${R} .hw-root.hw-edit .hw-tvbtn { display: none; }
 .hw-tvbtn { display: none; } ${R} .hw-tvbtn { display: inline-flex; }
+#tvsync { display: none; } ${A} #tvsync.on { display: flex; flex-direction: column; gap: 14px; position: fixed; z-index: 56; left: var(--tvrail); right: 0; top: 0; bottom: 0; padding: 22px 32px 24px; background: var(--chat-bg); color: #fff; } ${T} #tvsync.on { left: 0; padding: calc(env(safe-area-inset-top, 0px) + 14px) 12px 14px; z-index: 60; }
+.sy-head { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; } .sy-head b { font: 700 24px/1.1 var(--display); letter-spacing: -.02em; } .sy-head em { flex: 1; min-width: 0; margin-left: 6px; font: 500 14px var(--font); font-style: normal; color: rgba(255, 255, 255, .56); } .sy-head button { display: flex; align-items: center; gap: 8px; height: 42px; padding: 0 16px; border-radius: 21px; background: var(--ui-fill); box-shadow: var(--ui-edge); color: #fff; font-size: 14px; font-weight: 600; } .sy-head button:hover { background: var(--ui-sel); color: #000; } .sy-head svg { width: 19px; height: 19px; }
+.sy-fit { position: relative; flex: 1; min-height: 0; border-radius: 18px; overflow: hidden; background: #000; box-shadow: 0 0 0 1px rgba(255, 255, 255, .14); } .sy-fit iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; } @media (max-width: 820px) { .sy-head em, .sy-head button span { display: none; } .sy-head b { flex: 1; } }
 /* ── Your TV, driven from here ── */
 #tvmirror { display: none; }
 ${R} #tvmirror.on { display: flex; flex-direction: column; position: fixed; z-index: 54; left: var(--tvrail); right: 0; top: 0; bottom: 0; background: var(--chat-bg); color: #fff; padding: 26px 40px 22px; gap: 16px; outline: 0; }
@@ -889,7 +892,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     if (id.startsWith('wg:')) { const k = id.slice(3), o = look.off || []; look.off = o.includes(k) ? o.filter(x => x !== k) : [...o, k]; saveLook(); return paintSide() }
     if (id === 'addwidget') { closePanel(); window.HubChat?.close(); closeSettings(); closeMirror(); goHome('.hw-root:not(.hw-edit) [data-hw-act="edit"]'); return void setTimeout(openGal, 900) }
     if (id === 'settings') { leave(); closeMirror(); return openSettings() }
-    if (id === 'pcbrowser') { leave(); closeSettings(); closeMirror(); window.HubChat?.close(); return window.HubBrowser?.open() }
+    if (id === 'pcbrowser') { leave(); closeSettings(); closeMirror(); window.HubChat?.close(); return openSync() }
     if (id === 'pcfiles') { leave(); closeSettings(); closeMirror(); window.HubChat?.close(); return seg.querySelector('[data-env="drives"]')?.click() }
     if (id === 'pcadd') { leave(); return window.HubDesk?.open() }
     if (id === 'pcmute') { const to = MU?.volume > 0 ? 0 : look.unmute || 40; if (MU?.volume > 0) { look.unmute = MU.volume; saveLook() } const n = panel.querySelector('.wps[data-w="volume"]'); return n && setSlide(n, to, true) }
@@ -935,6 +938,32 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   panel.addEventListener('pointerup', e => { if (dragging) { const n = dragging; dragging = null; setSlide(n, at(n, e), true) } })
   panel.addEventListener('pointercancel', () => { dragging = null })
 
+  // ── Browser: the one this computer runs, live, the same tabs here, on a phone and on the TV (tv/ui/browser.html) ──
+  const sync = document.createElement('section')
+  sync.id = 'tvsync'
+  sync.setAttribute('aria-label', 'Browser')
+  const sb = (k, t, d) => `<button type="button" data-sync="${k}">${svg(d)}<span>${t}</span></button>`
+  sync.innerHTML = `<div class="sy-head"><b>Browser</b><em>The same tabs here, on your phone and on the TV</em>${sb('tv', 'Show on TV', IC.tv)}${sb('own', 'Own window', '<path d="M14 4h6v6M20 4l-8 8M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>')}${sb('bot', 'Assistant’s', IC.mic)}</div><div class="sy-fit"></div>`
+  document.body.append(sync)
+  function openSync(url = '') {
+    closeSettings()
+    closeMirror()
+    window.HubBrowser?.close?.()
+    const fit = sync.querySelector('.sy-fit')
+    if (!fit.firstElementChild || url) fit.innerHTML = `<iframe src="/tv/browser.html${url ? `?url=${encodeURIComponent(url)}` : ''}" title="Browser" allow="clipboard-read; clipboard-write; fullscreen"></iframe>`
+    sync.classList.add('on')
+    setTimeout(() => sync.querySelector('iframe')?.focus(), 300)
+    setTimeout(paintRail, 60)
+  }
+  function closeSync() { if (!sync.classList.contains('on')) return; sync.classList.remove('on'); sync.querySelector('.sy-fit').innerHTML = ''; setTimeout(paintRail, 60) }
+  sync.addEventListener('click', e => {
+    const k = e.target.closest('[data-sync]')?.dataset.sync
+    if (k === 'tv') { post({ type: 'launch', app: 'Browser' }); say('Opening on the TV') }
+    else if (k === 'own') { window.open('/tv/browser.html', '_blank'); closeSync(); goHome('.hw-root') }
+    else if (k === 'bot') { closeSync(); window.HubBrowser?.open() }
+  })
+  addEventListener('message', e => { if (e.origin === location.origin && e.data?.hubBrowser === 'closed') closeSync() })
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && sync.classList.contains('on') && !sync.contains(document.activeElement)) closeSync() })
   // ── Your TV, driven from here: its screen as it is (tv/ui/mirror.js sends it) and the remote's keys, sent to it ──
   const mirror = document.createElement('section')
   mirror.id = 'tvmirror'
@@ -1247,6 +1276,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
       { id: 'remotepage', t1: 'Remotes and controllers', t2: 'What each button does, on the Fire TV remote or a game controller', v: KEYS.on ? 'In every app' : '' },
       { id: 'tvcontrol', t1: 'Your TV', t2: 'Its screen here, in any app, with your keyboard and mouse', v: TV?.on ? 'Connected' : 'Not connected', on: !!TV?.on },
       { id: 'tvsetup', t1: 'Set up a TV', t2: 'Put LocalHub TV on a television and pair it', v: '' },
+      { id: 'browserpage', t1: 'Browser', t2: 'Runs on this computer. Any paired device can use it: the same tabs and sign-ins everywhere', v: 'Open' },
       { id: 'musicpage', t1: 'Music platforms', t2: 'What the music widget plays and controls', v: MU?.spotify?.connected ? 'Spotify' : MU?.pc ? 'This PC' : '' },
       ...(window.HUB_CONNECTIONS ? [{ id: 'connections', t1: 'Services', t2: 'Gmail, Notion, GitHub and the rest the assistant can use', v: DV.services }] : []),
       { id: 'lockpage', t1: 'Entry code', t2: 'A 4- or 6-digit code to get into the TV, this computer, or places you choose', v: LK?.conf().on ? `On, ${LK.conf().digits} digits` : 'Off', on: !!LK?.conf().on },
@@ -1700,6 +1730,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     if (id === 'plr') { press('homeplayer'); return paintSettings() }
     if (id === 'syscard') { press('homesys'); return paintSettings() }
     if (id === 'sortapps') { const i = SORTS.findIndex(x => x[0] === (look.sort || 'mine')); look.sort = SORTS[(i + 1) % SORTS.length][0]; saveLook(); arrange(); window.HubDesk?.paint(); return paintSettings() }
+    if (id === 'browserpage') { closeSettings(); return openSync() }
     if (id === 'panel') return void openPanel()
     if (id === 'tvcontrol') { closeSettings(); return openMirror() }
     if (id === 'musicpage') { picking = 'music'; setHtml = ''; await readPc(); return paintSettings() }
@@ -1792,7 +1823,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   // ── The entry code: to get into this page, or a place in it (lock.mjs keeps it; the pad is the TV's, tv/ui/lock.js) ──
   let LK = null, deskOk = false, lkUsed = {}, lkBusy = false, lkAt = Date.now()
   const lkSpan = () => Math.max((LK?.conf().after || 0) * 60_000, 1500)
-  const placeNow = () => (mirror.classList.contains('on') ? ['control', 'Your TV'] : set.classList.contains('on') ? ['settings', 'Settings'] : window.HubChat?.isOpen?.() ? ['assistant', 'Assistant'] : window.HubBrowser?.isOpen?.() ? ['browser', 'Browser'] : spotKey() === 'drives' ? ['files', 'Files'] : ['home', 'Home'])
+  const placeNow = () => (mirror.classList.contains('on') ? ['control', 'Your TV'] : sync.classList.contains('on') ? ['browser', 'Browser'] : set.classList.contains('on') ? ['settings', 'Settings'] : window.HubChat?.isOpen?.() ? ['assistant', 'Assistant'] : window.HubBrowser?.isOpen?.() ? ['browser', 'Browser'] : spotKey() === 'drives' ? ['files', 'Files'] : ['home', 'Home'])
   async function guard() {
     if (!LK || lkBusy || LK.isOpen()) return
     if (!LK.locked('desk')) deskOk = true
@@ -1838,16 +1869,16 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   const behind = Object.assign(document.createElement('div'), { id: 'tvback2' })
   document.body.append(behind)
   function paintRail() {
-    document.documentElement.toggleAttribute('data-cover', set.classList.contains('on') || mirror.classList.contains('on') || !!window.HubChat?.isOpen?.())
+    document.documentElement.toggleAttribute('data-cover', set.classList.contains('on') || mirror.classList.contains('on') || sync.classList.contains('on') || !!window.HubChat?.isOpen?.())
     const chat = !!window.HubChat?.isOpen?.()
     const tabs = [...seg.querySelectorAll('button[data-env]')].filter(b => !b.hidden && b.style.display !== 'none')
     const item = (key, ic, label, on) => `<button type="button" data-rail="${esc(key)}" class="${on ? 'on' : ''}" aria-label="${esc(label)}"${on ? ' aria-current="page"' : ''}>${svg(IC[ic])}<span>${esc(label)}</span></button>`
     const name = b => (b.firstChild?.textContent || b.textContent).trim()
-    const tabItem = b => item(`tab:${b.dataset.env}`, TAB_IC[b.dataset.env] || 'tab', name(b), isOn(b) && !chat && !set.classList.contains('on') && !mirror.classList.contains('on') && !window.HubBrowser?.isOpen?.())
+    const tabItem = b => item(`tab:${b.dataset.env}`, TAB_IC[b.dataset.env] || 'tab', name(b), isOn(b) && !chat && !set.classList.contains('on') && !mirror.classList.contains('on') && !sync.classList.contains('on') && !window.HubBrowser?.isOpen?.())
     const at = k => tabs.find(b => b.dataset.env === k), rest = tabs.filter(b => !['home', 'drives'].includes(b.dataset.env))
     const html = `<img src="${hubIcon}" alt=""><div class="mid">`
       + (at('home') ? tabItem(at('home')) : '') + item('assistant', 'mic', 'Assistant', chat && !set.classList.contains('on'))
-      + (window.HubBrowser ? item('browser', 'globe', 'Browser', !!window.HubBrowser.isOpen?.()) : '') + item('tv', 'tv', 'TV', mirror.classList.contains('on'))
+      + (window.HubBrowser ? item('browser', 'globe', 'Browser', sync.classList.contains('on') || !!window.HubBrowser.isOpen?.()) : '') + item('tv', 'tv', 'TV', mirror.classList.contains('on'))
       + (at('drives') ? tabItem(at('drives')) : '') + rest.map(tabItem).join('')
       + '</div>' + item('overlay', panel.classList.contains('on') ? 'sideclose' : 'sideopen', panel.classList.contains('on') ? 'Close sidebar' : 'Sidebar', false) + item('settings', 'gear', 'Settings', set.classList.contains('on'))
     if (rail._html === html) return
@@ -1875,8 +1906,8 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     if (key !== 'settings') closeSettings()
     if (key !== 'tv') closeMirror()
     if (key !== 'assistant') window.HubChat?.close()
-    if (key !== 'browser') window.HubBrowser?.close?.()
-    if (key === 'browser') { if (!window.HubBrowser?.isOpen?.()) window.HubBrowser?.open() }
+    if (key !== 'browser') { window.HubBrowser?.close?.(); closeSync() }
+    if (key === 'browser') openSync()
     else if (key.startsWith('tab:')) {
       seg.querySelector(`[data-env="${CSS.escape(key.slice(4))}"]`)?.click()
       if (key === 'tab:home') document.querySelector('[data-hw-mode="desktop"]')?.click()

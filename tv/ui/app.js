@@ -14,7 +14,7 @@
 // voice) comes from Java through window.LocalHubNative. On a laptop, apps open their websites.
 // ============================================================================
 
-import * as Stream from "./stream.js?v=7";
+import * as Stream from "./stream.js?v=8";
 import * as Panel from "./panel.js?v=10";
 import * as Wg from "./widgets.js?v=2";
 import * as Files from "./files.js?v=2";

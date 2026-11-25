@@ -153,7 +153,7 @@ test('Home’s widgets: every one in the list is drawn at every size, and a boar
   const D = { music: { title: 'A <b>', playing: true }, music_: { volume: 40, brightness: 50 }, wx: { place: 'X', now: { temp: 1, feels: 1, code: 3, text: 'Cloudy', day: true }, high: 2, low: 0, hours: [], days: [] }, sys: { cpu: 5, mem: 95, disk: 40, diskFree: 1e12 }, board: { data: { notes: { n: '<img>' }, todos: [{ text: '<i>', done: false }], timer: null } }, places: { recent: [{ name: '<x>', path: 'C:/a', size: 3 }] }, drives: { entries: [{ name: 'C:', size: 10, free: 4 }] }, photos: { photos: [{ url: '/a' }] }, apps: { favorites: ['q'], apps: [{ id: 'q', name: '<q>', url: 'https://a.b/' }] } }
   for (const [id, w] of Object.entries(W)) {
     assert.ok(w.sizes.includes(w.def) && w.sizes.every(z => SIZES.includes(z)), id)
-    for (const size of w.sizes) { const h = drawItem({ k: 'n', id, size }, D); assert.ok(h.includes('wg-i') && !h.includes('<b>A') && !/<(x|q|img)>/.test(h), `${id} ${size}`); assert.ok(drawItem({ k: 'n', id, size }, {}).includes('wg-i'), `${id} empty`) }
+    for (const size of w.sizes) { const h = drawItem({ k: 'n', id, size }, D); assert.ok(h.includes('wg-i') && !h.includes('A <b>') && !/<(x|q|img)>/.test(h), `${id} ${size}`); assert.ok(drawItem({ k: 'n', id, size }, {}).includes('wg-i'), `${id} empty`) }
   }
   assert.ok(can('music', 'tv') && !can('remote', 'tv') && nextSize('music', 'x') === 's')
   assert.deepEqual(cleanItems([{ k: 'a', id: 'music', size: 'w' }, { k: 'a', id: 'pc' }, { k: '<', id: 'pc' }, { k: 'b', id: 'nope' }, { k: 'c', id: 'pc', size: 'huge', opts: { zones: ['Europe/London', '../x'], evil: 1 } }]), [{ k: 'a', id: 'music', size: 'w' }, { k: 'c', id: 'pc', size: 'm', opts: { zones: ['Europe/London'] } }])

@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Browser</title>
+<link rel="icon" href="/icons/hub.svg">
+<link rel="stylesheet" href="./theme.css?v=1">
+<link rel="stylesheet" href="./styles.css?v=78">
+<style>
+html, body { margin: 0; height: 100%; overflow: hidden; background: #000; color: #fff; }
+#stage { position: absolute; left: 50%; top: 50%; width: 1920px; height: 1196px; transform-origin: 0 0; overflow: hidden; background: #000; }
+#msg { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); padding: 12px 22px; border-radius: 99px; background: #1c1d22; font: 600 15px Inter, system-ui, sans-serif; opacity: 0; transition: opacity .25s; pointer-events: none; z-index: 9; } #msg.on { opacity: 1; }
+.player { cursor: default; } .player canvas.player-screen { position: absolute; left: 0; top: 116px; width: 1920px; height: 1080px; } .player .player-bar { top: 12px; width: 1880px; max-width: 1880px; background: #1c1d22; opacity: 1 !important; transform: translate(-50%, 0) !important; pointer-events: auto !important; } .player .player-addr { flex: 1 1 980px; } .player .player-cursor, .player .player-ring { display: none !important; }
+</style>
+</head>
+<body>
+<div id="stage"></div><div id="msg" role="status"></div>
+<script type="module">
+// The browser this computer runs, on any paired device: the same tabs, live, as on the TV (stream.mjs). Mouse, touch and keyboard.
+import * as Stream from "./stream.js?v=8";
+const stage = document.getElementById("stage"), msg = document.getElementById("msg"), q = new URLSearchParams(location.search);
+function fit() { const k = Math.min(innerWidth / 1920, innerHeight / 1196); stage.style.transform = `scale(${k}) translate(-50%, -50%)`; }
+addEventListener("resize", fit);
+fit();
+let t = 0;
+const toast = (s) => { msg.textContent = s; msg.classList.add("on"); clearTimeout(t); t = setTimeout(() => msg.classList.remove("on"), 3200); };
+let left = false;
+Stream.init({ toast, NATIVE: false, native() {}, setOverlay() {}, closed() { left = true; if (parent !== window) parent.postMessage({ hubBrowser: "closed" }, location.origin); else start(); }, changed: start });
+let begun = false;
+async function start() {
+  if (begun && !left) return;
+  begun = true;
+  left = false;
+  const url = q.get("url") || "";
+  const ok = await Stream.open({ id: "browser", name: "Browser", stream: q.get("engine") === "chromium" ? "chromium" : "chrome", bg: "#15161b", fg: "#fff", icon: "browser", resume: !url, url, live: true });
+  if (!ok || ok === "missing") toast("Google Chrome isn’t on the computer LocalHub runs on");
+  document.getElementById("player")?.classList.add("mouse");
+}
+setInterval(() => document.getElementById("player")?.classList.add("bar"), 800);
+</script>
+</body>
+</html>

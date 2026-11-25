@@ -13,7 +13,7 @@
 //   [u8 kind][u32 length][payload]   kind 1 = JPEG frame, kind 2 = JSON state { url, title, canBack, … }
 //
 //   GET  /api/tv/stream/status                     -> { engines: { chromium: { available, name, running, … }, chrome: {…} } }
-//   POST /api/tv/stream/open   { engine, url?, key?, fresh? } -> { ok, engine, tab, state } start it and show that
+//   POST /api/tv/stream/open   { engine, url?, key?, fresh?, resume? } -> { ok, engine, tab, state } start it and show that
 //                              app's tab (a tab per app, so it comes back where you left it; fresh starts it over)
 //   GET  /api/tv/stream/frames?engine=             -> application/octet-stream, the packets above, until closed
 //   POST /api/tv/stream/input  { engine, events }  -> { ok, focus?, target? } move, click, scroll, key, text, snap {x,y,dir}
@@ -696,15 +696,19 @@ export function create({ here, dataDir = path.join(here, 'data', 'tv-stream'), f
       inst.tabs.delete(keyName)
       inst.cdp.send('Target.closeTarget', { targetId: old.targetId }).catch(() => {})
     }
-    await openTab(inst, keyName, url || homeUrl())
-    return { ok: true, engine: id, tab: keyName, state: state(inst) }
+    // The one browser, wherever it was left: on another screen, or here before.
+    const on = body.resume === true && (inst.tabs.get(inst.active) || [...inst.tabs.values()].filter(t => !t.waits).sort((a, b) => (b.used || 0) - (a.used || 0))[0])
+    if (on) { if (on.key !== inst.active || !inst.session) await show(inst, on.key); else pushState(inst) }
+    else await openTab(inst, keyName, url || homeUrl())
+    return { ok: true, engine: id, tab: inst.active, state: state(inst) }
   }
 
   async function leave(id) {
     const inst = engines.get(id)
     if (!inst || inst.cdp.closed) return { ok: true }
     inst.lastUse = Date.now()
-    if (inst.session) await evalPage(inst, PAUSE_JS).catch(() => {})
+    // Somebody else still has it open: it plays on for them.
+    if (inst.session && inst.viewers.size <= 1) await evalPage(inst, PAUSE_JS).catch(() => {})
     return { ok: true }
   }
 
