@@ -40,7 +40,7 @@ export function paintFull(box, m = {}, words, o = {}) {
   const b = (id, ic, label) => `<button class="mp-b" data-w="${id}" aria-label="${label}" tabindex="-1">${ic}</button>`, set = (n, k, v) => { if (n["_" + k] !== v) { n["_" + k] = v; n.innerHTML = v; } };
   const first = !p;
   if (first) {
-    box.innerHTML = `<div class="mp mpf still"><div class="mpf-l"><div class="mpf-art"></div><div class="mp-t"><span></span></div><div class="mp-s"><span></span></div><div class="mp-bar" hidden><em class="mp-at">0:00</em><div class="mp-line"><i></i></div><em class="mp-end">0:00</em></div><div class="mp-row"><button class="mp-b mpf-app" data-w="open" tabindex="-1" hidden></button>${b("prev", IC.prev, "Previous")}<button class="mp-b" data-w="play" tabindex="-1"></button>${b("next", IC.next, "Next")}<button class="mp-b mpf-w" data-w="words" tabindex="-1">${IC.words}</button></div></div><div class="mpf-r"></div>${o.nudge ? '<div class="mpf-n"><button type="button" data-w="later" aria-label="Lyrics later">Later</button><em></em><button type="button" data-w="earlier" aria-label="Lyrics earlier">Earlier</button></div>' : ""}</div>`;
+    box.innerHTML = `<div class="mp mpf still"><div class="mpf-l"><div class="mpf-art"></div><div class="mp-t"><span></span></div><div class="mp-s"><span></span></div><div class="mp-bar" hidden><em class="mp-at">0:00</em><div class="mp-line"><i></i></div><em class="mp-end">0:00</em></div><div class="mp-row"><button class="mp-b mpf-app" data-w="open" tabindex="-1" hidden></button>${b("prev", IC.prev, "Previous")}<button class="mp-b" data-w="play" tabindex="-1"></button>${b("next", IC.next, "Next")}<button class="mp-b mpf-w" data-w="words" tabindex="-1">${IC.words}</button></div></div><div class="mpf-r"></div></div>`;
     p = box.firstElementChild;
   }
   const q = (s) => p.querySelector(s), mode = wordsMode(m, words, o);
@@ -61,27 +61,56 @@ export function paintFull(box, m = {}, words, o = {}) {
   w.setAttribute("aria-label", w.title);
   // What is on its way out stays drawn while it fades.
   const r = q(".mpf-r");
-  if (mode !== "none") set(r, "h", mode === "load" ? '<div class="mpf-ly wait"><p>Loading lyrics…</p></div>' : mode === "off" ? '<div class="mpf-ly off"><p>Lyrics come from lrclib.net, which is sent the song’s name, artist, album and length.</p><button type="button" class="mpf-on" data-w="lyrics">Show lyrics</button></div>' : `<div class="mpf-ly${mode === "plain" ? " plain" : ""}">${(mode === "plain" ? words.plain : words.lines.map((l) => l.x)).map((x, i) => `<p data-l="${i}">${esc(x) || "♪"}</p>`).join("")}</div>`);
+  if (mode !== "none") set(r, "h", mode === "load" ? '<div class="mpf-ly wait"><p>Loading lyrics…</p></div>' : mode === "off" ? '<div class="mpf-ly off"><p>Lyrics come from lrclib.net, which is sent the song’s name, artist, album and length.</p><button type="button" class="mpf-on" data-w="lyrics">Show lyrics</button></div>' : `<div class="mpf-ly${mode === "plain" ? " plain" : ""}" tabindex="-1"><div class="mpf-in">${(mode === "plain" ? words.plain : words.lines.map((l) => l.x)).map((x, i) => `<p data-l="${i}">${esc(x) || "♪"}</p>`).join("")}</div></div>`);
   p.classList.toggle("words", mode !== "none");
-  p.classList.toggle("synced", mode === "lines");
-  const nm = q(".mpf-n em"), sh = Number(o.shift) || 0;
-  if (nm) set(nm, "h", sh ? `${Math.abs(sh).toFixed(2).replace(/0$/, "")} s ${sh > 0 ? "earlier" : "later"}` : "Timing");
   if (first) requestAnimationFrame(() => requestAnimationFrame(() => p.classList.remove("still")));
   return mode;
 }
-// The line being sung, kept in the middle.
-export function syncWords(root, m, words, shift = 0) {
-  const box = root?.querySelector?.(".mpf-ly");
-  if (!box || !words?.lines?.length || !Number.isFinite(m?.pos)) return;
-  const at = m.pos + (m.playing ? (performance.now() - (m.got || performance.now())) / 1000 : 0) + 0.18 + (Number(shift) || 0);
+// The line being sung, kept in the middle: the list is put there at once and slid into place from where it was, which is the
+// compositor's work alone. Scrolled by hand it stays where it's left, and goes back 5 seconds after the last scroll.
+const HOLD = 5000;
+function watchWords(box) {
+  if (box._seen) return;
+  box._seen = true;
+  box._own = box.scrollTop;
+  box._hold = 0;
+  let down = false;
+  const held = () => { box._hold = performance.now() + HOLD; box.classList.add("browse"); };
+  // Whatever moves it that isn't this (a wheel, a finger and its glide, the keyboard, a drag), by it not being where it was put.
+  box.addEventListener("scroll", () => { if (Math.abs(box.scrollTop - box._own) < 2) return; box._own = box.scrollTop; held(); }, { passive: true });
+  box.addEventListener("wheel", held, { passive: true });
+  box.addEventListener("touchstart", () => { down = true; }, { passive: true });
+  box.addEventListener("touchmove", held, { passive: true });
+  for (const e of ["touchend", "touchcancel"]) box.addEventListener(e, () => { down = false; if (box._hold) held(); }, { passive: true });
+  box._busy = () => down || performance.now() < box._hold;
+  box._free = () => { box._hold = 0; down = false; box.classList.remove("browse"); box._i = undefined; box._back = true; };
+}
+export function syncWords(root, m, words) {
+  const box = root?.querySelector?.(".mpf-ly"), list = box?.querySelector(".mpf-in");
+  if (!list || !words?.lines?.length || !Number.isFinite(m?.pos)) return;
+  watchWords(box);
+  const at = m.pos + (m.playing ? (performance.now() - (m.got || performance.now())) / 1000 : 0) + 0.18;
   let i = -1;
   while (i + 1 < words.lines.length && words.lines[i + 1].t <= at) i++;
+  if (box._mark !== i) { box._mark = i; box.querySelectorAll("p").forEach((p, k) => { p.classList.toggle("now", k === i); p.classList.toggle("past", k < i); }); }
+  if (box._busy()) return;
+  if (box._hold) box._free();
   if (box._i === i) return;
-  const was = box._i;
+  const back = box._back, first = box._i === undefined && !back, p = box.querySelector(`p[data-l="${Math.max(0, i)}"]`);
   box._i = i;
-  box.querySelectorAll("p").forEach((p, k) => { p.classList.toggle("now", k === i); p.classList.toggle("past", k < i); });
-  const p = box.querySelector(`p[data-l="${Math.max(0, i)}"]`);
-  if (p) box.scrollTo({ top: p.offsetTop - box.clientHeight / 2 + p.clientHeight / 2, behavior: was === undefined || Math.abs(was - i) > 6 ? "auto" : "smooth" });
+  box._back = false;
+  if (!p) return;
+  // Where the slide under way has got to, so a new one carries on from there.
+  const now = list._anim ? new DOMMatrix(getComputedStyle(list).transform).m42 : 0, was = box.scrollTop;
+  box._own = Math.max(0, Math.min(box.scrollHeight - box.clientHeight, list.offsetTop + p.offsetTop - box.clientHeight / 2 + p.offsetHeight / 2));
+  box.scrollTop = box._own;
+  box._own = box.scrollTop;
+  const dy = box.scrollTop - was + now;
+  list._anim?.cancel();
+  list._anim = null;
+  if (first || !list.animate || still() || Math.abs(dy) < 1) return;
+  const a = list._anim = list.animate([{ transform: `translate3d(0, ${dy}px, 0)` }, { transform: "translate3d(0, 0, 0)" }], { duration: back ? 1000 : 780, easing: "cubic-bezier(.3, .7, .1, 1)" });
+  a.onfinish = () => { if (list._anim === a) list._anim = null; };
 }
 // A card grows out of where it was, to the middle, and goes back to it.
 const still = () => matchMedia("(prefers-reduced-motion: reduce)").matches;

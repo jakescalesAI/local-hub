@@ -9,7 +9,6 @@
 //   GET  /api/music/lyrics?title&artist&dur   -> { lines: [{ t, x }], plain } when lyrics are on: asked of lrclib.net, kept only in memory
 //   POST /api/music/lyrics { on }            off until turned on: asking sends the song's name, artist and length there
 //   POST /api/music/monitors { id, on }      whether the brightness slider moves that monitor (they all do at first)
-//   POST /api/music/shift { shift }           lyrics this many seconds earlier (or later, below 0)
 //   POST /api/music/source { source }        auto | pc | spotify | tv
 //   POST /api/music/spotify { clientId }     your Spotify app's Client ID (not a secret); '' disconnects
 //   GET  /api/music/spotify/login            Spotify's own sign-in page (PKCE: there is no client secret)
@@ -80,9 +79,9 @@ export function pickNow(source, list) {
 
 export function create({ here }) {
   const FILE = path.join(here, 'data', 'music.json')
-  let pref = { source: 'auto', skip: [], lyrics: false, shift: 0 }
+  let pref = { source: 'auto', skip: [], lyrics: false }
   const keep = () => { fs.mkdirSync(path.dirname(FILE), { recursive: true }); fs.writeFileSync(FILE, JSON.stringify(pref)) }
-  try { const j = JSON.parse(fs.readFileSync(FILE, 'utf8')); pref = { source: SOURCES.includes(j.source) ? j.source : 'auto', skip: (Array.isArray(j.skip) ? j.skip : []).filter(x => typeof x === 'string' && x.length < 120).slice(0, 20), shift: Math.abs(Number(j.shift)) <= 5 ? Number(j.shift) : 0, lyrics: j.lyrics === true } } catch {}
+  try { const j = JSON.parse(fs.readFileSync(FILE, 'utf8')); pref = { source: SOURCES.includes(j.source) ? j.source : 'auto', skip: (Array.isArray(j.skip) ? j.skip : []).filter(x => typeof x === 'string' && x.length < 120).slice(0, 20), lyrics: j.lyrics === true } } catch {}
   const helper = pcHelper(here)
   const redirect = () => `http://127.0.0.1:${PORT}/api/music/spotify/callback`
   const box = () => (secrets().spotify && typeof secrets().spotify === 'object' ? secrets().spotify : {})
@@ -152,7 +151,7 @@ export function create({ here }) {
     outputs = (Array.isArray(pcs?.outputs) ? pcs.outputs : []).map(x => ({ id: String(x.id), name: String(x.name || 'Speakers').slice(0, 80), on: !!x.on }))
     const lit = mons.filter(x => x.on)
     const b = box()
-    const data = { source: pref.source, now, pc: !!pcs, tv: !!tv, spotify: { clientId: b.clientId || '', connected: !!b.refresh, redirect: redirect() }, volume: pcs?.volume ?? null, brightness: lit.length ? Math.round(lit.reduce((n, x) => n + x.level, 0) / lit.length) : null, monitors: mons, outputs, lyrics: pref.lyrics, shift: pref.shift }
+    const data = { source: pref.source, now, pc: !!pcs, tv: !!tv, spotify: { clientId: b.clientId || '', connected: !!b.refresh, redirect: redirect() }, volume: pcs?.volume ?? null, brightness: lit.length ? Math.round(lit.reduce((n, x) => n + x.level, 0) / lit.length) : null, monitors: mons, outputs, lyrics: pref.lyrics }
     data.read = (asked + Date.now()) / 2
     if (now && now.from === 'pc') data.read = Date.now()
     cache = { at: Date.now(), data }
@@ -211,14 +210,6 @@ export function create({ here }) {
       const r = await helper.ask('output', b.id).catch(e => ({ error: e.message }))
       cache.at = 0
       return send(res, 200, { ok: !!r.ok, ...(r.ok ? {} : { error: 'Windows didn’t change the sound device.' }) }), true
-    }
-    if (p === '/api/music/shift' && req.method === 'POST') {
-      const v = Number(b.shift)
-      if (!(Math.abs(v) <= 5)) return send(res, 400, { error: 'shift is in seconds, at most 5 either way' }), true
-      pref.shift = Math.round(v * 100) / 100
-      keep()
-      cache.at = 0
-      return send(res, 200, { ok: true, shift: pref.shift }), true
     }
     if (p === '/api/music/lyrics' && req.method === 'POST') { pref.lyrics = b.on === true; keep(); cache.at = 0; return send(res, 200, { ok: true, on: pref.lyrics }), true }
     if (p === '/api/music/lyrics' && req.method === 'GET') {

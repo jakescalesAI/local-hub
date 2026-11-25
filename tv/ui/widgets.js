@@ -2,7 +2,7 @@
 // these. board.mjs keeps which ones, their sizes and what's in them. A widget is HTML from data; every length in widgets.css is in
 // em, so one drawing fits every screen. Sizes, on a grid four across (two on a phone): SPAN. What doesn’t fit the room a screen has
 // (ROOM) isn’t drawn there, and can’t be added to it.
-import { IC, player } from "./panel.js?v=12";
+import { IC, player } from "./panel.js?v=13";
 import * as Clock from "./clock.js?v=1";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
