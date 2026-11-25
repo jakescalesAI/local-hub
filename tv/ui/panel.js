@@ -1,4 +1,4 @@
-// The Overlay panel's pieces, as HTML: the TV (app.js) and the hub page on a computer (tabs/tvlook.js) build theirs from
+// The Controls panel's pieces, as HTML: the TV (app.js) and the hub page on a computer (tabs/tvlook.js) build theirs from
 // these, so they look the same. Styles in panel.css. Each thing you can press has data-w="<id>".
 const sym = (d, w = 2) => `<svg class="sym" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);

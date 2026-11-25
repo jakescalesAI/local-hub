@@ -48,7 +48,19 @@ export function cleanDesk(raw) {
 // Not programs: web links, uninstallers, manuals.
 export const realApp = a => a && typeof a.id === 'string' && PC_RE.test(`pc:${a.id}`) && !/^https?:|^microsoft-edge:/i.test(a.id) && !/\.(url|chm|html?|txt|pdf|rtf)$/i.test(a.id) && !/uninstall|readme|release notes|user guide|manual|documentation|help file|administrative|odbc|iscsi|msys2|command prompt|powershell ise|wow\)|application verifier|windows software development|energy star|performance monitor|event viewer|registry editor|component services|computer management|resource monitor|task scheduler|steps recorder|memory diagnostic|recovery drive|disk cleanup|defragment|print management|xps viewer|promotion|troubleshooter|cross tools|native tools|debuggable|module docs|narrator|magnifier|on-screen keyboard|voice access|live captions|character map|with advanced security/i.test(a.name || '')
 
+const DATA = [['The assistant’s browser', 'browser'], ['The TV’s browser', 'tv-stream'], ['Voices', 'tts'], ['Hey LocalHub', 'listen'], ['Chats', 'chat'], ['Wallpapers', 'wallpapers'], ['Logs', 'logs']]
+export async function folderBytes(dir, left = { n: 60_000 }) {
+  let sum = 0
+  for (const e of await fs.promises.readdir(dir, { withFileTypes: true }).catch(() => [])) {
+    if (left.n-- <= 0) break
+    const p = path.join(dir, e.name)
+    if (e.isDirectory()) sum += await folderBytes(p, left)
+    else if (e.isFile()) sum += (await fs.promises.stat(p).catch(() => null))?.size || 0
+  }
+  return sum
+}
 export function create({ here }) {
+  let sizes = { at: 0, list: null }
   const FILE = path.join(here, 'data', 'desk.json')
   const helper = pcHelper(here)
   let cur = null
@@ -129,6 +141,15 @@ export function create({ here }) {
       let disk = null, diskFree = null
       try { const d = fs.statfsSync(IS_WIN ? 'C:\\' : '/'); disk = Math.round(100 * (1 - d.bavail / d.blocks)); diskFree = d.bavail * d.bsize } catch {}
       return send(res, 200, { cpu: load, mem: Math.round(100 * (1 - os.freemem() / os.totalmem())), disk, diskFree }), true
+    }
+    // How this hub is doing, and the room its own data takes. Folder names only, never what's in them.
+    if (p === '/api/desk/status' && req.method === 'GET') {
+      if (Date.now() - sizes.at > 300_000 || !sizes.list) {
+        const list = []
+        for (const [name, dir] of DATA) list.push({ name, bytes: await folderBytes(path.join(here, 'data', dir)) })
+        sizes = { at: Date.now(), list: list.filter(x => x.bytes > 0) }
+      }
+      return send(res, 200, { up: Math.round(process.uptime()), memory: process.memoryUsage().rss, node: process.version, data: sizes.list }), true
     }
     send(res, 404, { error: 'not found' })
     return true

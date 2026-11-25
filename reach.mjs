@@ -1,7 +1,7 @@
 // Settings › Devices and connections: how this hub can be reached, in one place.
 //   GET  /api/reach             this computer only -> { home, tailscale, passcode, adb }
 //   POST /api/reach/tailscale   { on }   answer on this computer's Tailscale address, or stop
-//   POST /api/reach/open        { what } opens a page of this computer's own settings: bluetooth | network | sound
+//   POST /api/reach/open        { what } opens a page of this computer's own settings: bluetooth | network | sound | display
 // Turning an address on needs a passcode, as everywhere else (access.mjs); the server binds and closes it. The home network
 // is tv-setup.mjs's, the passcode hub-setup.mjs's, and pairing device-auth.mjs's: the page uses those as they are.
 import { spawn } from 'node:child_process'
@@ -10,7 +10,7 @@ import { hasPasscode, isLocal, passcodeNeeded } from './access.mjs'
 import { IS_WIN, tailscalePath } from './platform.mjs'
 import qrcode from './vendor/qrcode.mjs'
 
-const PAGES = { bluetooth: 'ms-settings:bluetooth', network: 'ms-settings:network', sound: 'ms-settings:sound' }
+const PAGES = { bluetooth: 'ms-settings:bluetooth', network: 'ms-settings:network', sound: 'ms-settings:sound', display: 'ms-settings:display' }
 // What tailscale status says, cut to what the page shows.
 export function readTailscale(json) {
   const s = json?.Self || {}

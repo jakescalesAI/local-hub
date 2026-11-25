@@ -290,7 +290,8 @@ ${A} #dkadd.on { display: grid; position: fixed; z-index: 72; inset: 0; place-it
     else if (id === 'addfav') openAdd(true)
     else open(id)
   })
-  document.addEventListener('contextmenu', e => { const t = onHome(e); if (!t || t.classList.contains('add')) return; e.preventDefault(); openMenu(t.dataset.dk, e.clientX, e.clientY) })
+  // First, and alone: Home's own menu is for what's around the tiles.
+  addEventListener('contextmenu', e => { const t = onHome(e); closeMenu(); if (!t) return; e.preventDefault(); e.stopImmediatePropagation(); if (!t.classList.contains('add')) openMenu(t.dataset.dk, e.clientX, e.clientY) }, true)
   document.addEventListener('pointerdown', e => { const t = onHome(e); if (!t || e.pointerType !== 'touch' || t.classList.contains('add')) return; pressed = false; clearTimeout(pressT); pressT = setTimeout(() => { pressed = true; openMenu(t.dataset.dk, e.clientX, e.clientY) }, 550) })
   for (const ev of ['pointerup', 'pointercancel', 'scroll']) addEventListener(ev, () => clearTimeout(pressT), true)
   // Drag to reorder, or a tile onto the favorites.

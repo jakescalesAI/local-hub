@@ -1,10 +1,11 @@
 // Music: what is playing on this PC (any player Windows knows: Spotify, Apple Music, a browser), on Spotify (signed in
 // with your own Spotify app, for any of its devices) or on the TV, as one player, with this PC's volume and brightness.
-//   GET  /api/music                       -> { source, pc, tv, spotify, now: { from, title, artist, app, playing, art, pos, dur, seek }, volume, brightness }
+//   GET  /api/music                       -> { source, pc, tv, spotify, now: { from, title, artist, app, playing, art, pos, dur, seek }, volume, brightness, monitors: [{ id, name, level, kind, on }] }
 //   GET  /api/music/art/<key>.jpg            the cover of what's playing on this PC
 //   POST /api/music/open                     brings that player to the front on this PC (from this PC only)
 //   POST /api/music/do { action, from?, to? } toggle | next | prev | seek (to: seconds), on whichever is playing (or the one named)
-//   POST /api/music/level { what, value }    volume | brightness of this PC, 0-100
+//   POST /api/music/level { what, value, id? }  volume | brightness of this PC, 0-100: every monitor that is on, or the one named
+//   POST /api/music/monitors { id, on }      whether the brightness slider moves that monitor (they all do at first)
 //   POST /api/music/source { source }        auto | pc | spotify | tv
 //   POST /api/music/spotify { clientId }     your Spotify app's Client ID (not a secret); '' disconnects
 //   GET  /api/music/spotify/login            Spotify's own sign-in page (PKCE: there is no client secret)
@@ -32,14 +33,16 @@ export function pickNow(source, list) {
 
 export function create({ here }) {
   const FILE = path.join(here, 'data', 'music.json')
-  let pref = { source: 'auto' }
-  try { const j = JSON.parse(fs.readFileSync(FILE, 'utf8')); if (SOURCES.includes(j.source)) pref = { source: j.source } } catch {}
+  let pref = { source: 'auto', skip: [] }
+  const keep = () => { fs.mkdirSync(path.dirname(FILE), { recursive: true }); fs.writeFileSync(FILE, JSON.stringify(pref)) }
+  try { const j = JSON.parse(fs.readFileSync(FILE, 'utf8')); pref = { source: SOURCES.includes(j.source) ? j.source : 'auto', skip: (Array.isArray(j.skip) ? j.skip : []).filter(x => typeof x === 'string' && x.length < 120).slice(0, 20) } } catch {}
   const helper = pcHelper(here)
   const redirect = () => `http://127.0.0.1:${PORT}/api/music/spotify/callback`
   const box = () => (secrets().spotify && typeof secrets().spotify === 'object' ? secrets().spotify : {})
   let token = null // { value, until }
   let login = null // { state, verifier, at }
   let cache = { at: 0, data: null }
+  let monitors = []
   let cover = { key: '', body: null }, player = ''
   const secs = v => (Number.isFinite(v) && v >= 0 && v < 1e6 ? Math.round(v * 10) / 10 : null)
 
@@ -89,8 +92,11 @@ export function create({ here }) {
     player = m.on ? String(m.app || '') : ''
     const pc = pcs ? { from: 'pc', title: String(m.title || '').slice(0, 200), artist: String(m.artist || '').slice(0, 200), app: m.on ? appName(m.app) : 'This PC', playing: !!m.playing, pos: secs(m.pos), dur: secs(m.dur), seek: !!m.seek, art: m.art ? `/api/music/art/${cover.key}.jpg` : '' } : null
     const now = pickNow(pref.source, [pc, sp, tv].filter(Boolean))
+    const mons = (Array.isArray(pcs?.monitors) ? pcs.monitors : []).map(x => ({ id: String(x.id), name: String(x.name).slice(0, 60), level: Number(x.level) || 0, kind: String(x.kind), on: !pref.skip.includes(x.id) }))
+    monitors = mons
+    const lit = mons.filter(x => x.on)
     const b = box()
-    const data = { source: pref.source, now, pc: !!pcs, tv: !!tv, spotify: { clientId: b.clientId || '', connected: !!b.refresh, redirect: redirect() }, volume: pcs?.volume ?? null, brightness: pcs?.brightness ?? null }
+    const data = { source: pref.source, now, pc: !!pcs, tv: !!tv, spotify: { clientId: b.clientId || '', connected: !!b.refresh, redirect: redirect() }, volume: pcs?.volume ?? null, brightness: lit.length ? Math.round(lit.reduce((n, x) => n + x.level, 0) / lit.length) : null, monitors: mons }
     cache = { at: Date.now(), data }
     return data
   }
@@ -134,13 +140,23 @@ export function create({ here }) {
     if (p === '/api/music/level' && req.method === 'POST') {
       const v = Number(b.value)
       if (!['volume', 'brightness'].includes(b.what) || !(v >= 0 && v <= 100)) return send(res, 400, { error: 'what is volume or brightness, value 0 to 100' }), true
-      const r = await helper.ask(b.what, Math.round(b.what === 'brightness' ? Math.max(5, v) : v)).catch(e => ({ error: e.message }))
+      if (b.what === 'brightness' && !monitors.length) await state()
+      const ids = b.id === undefined ? monitors.filter(x => x.on).map(x => x.id) : monitors.filter(x => x.id === b.id).map(x => x.id)
+      const r = await (b.what === 'volume' ? helper.ask('volume', Math.round(v)) : helper.ask('brightness', { ids, value: Math.round(Math.max(5, v)) })).catch(e => ({ error: e.message }))
       cache.at = 0
-      return send(res, 200, { ok: !!r.ok, ...(r.error ? { error: 'This screen doesn’t let apps change that.' } : {}) }), true
+      const no = r.bad?.length ? `${r.bad.join(' and ')} didn’t take it.` : r.ok ? '' : b.what === 'volume' ? 'The volume didn’t change.' : 'No monitor is set to follow the slider.'
+      return send(res, 200, { ok: !!r.ok && !no, ...(no ? { error: no } : {}) }), true
+    }
+    if (p === '/api/music/monitors' && req.method === 'POST') {
+      if (typeof b.id !== 'string' || typeof b.on !== 'boolean' || !monitors.some(x => x.id === b.id)) return send(res, 400, { error: 'id is one of the monitors, on is true or false' }), true
+      pref.skip = b.on ? pref.skip.filter(x => x !== b.id) : [...new Set([...pref.skip, b.id])].slice(-20)
+      keep()
+      cache.at = 0
+      return send(res, 200, { ok: true }), true
     }
     if (p === '/api/music/source' && req.method === 'POST') {
       if (!SOURCES.includes(b.source)) return send(res, 400, { error: 'unknown source' }), true
-      pref = { source: b.source }
+      pref = { ...pref, source: b.source }
       cache.at = 0
       fs.mkdirSync(path.dirname(FILE), { recursive: true })
       fs.writeFileSync(FILE, JSON.stringify(pref))

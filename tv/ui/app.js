@@ -18,7 +18,7 @@ import * as Stream from "./stream.js?v=4";
 import * as Panel from "./panel.js?v=7";
 import * as Files from "./files.js?v=1";
 import { createLock } from "./lock.js?v=2";
-import * as Remote from "./remote.js?v=3";
+import * as Remote from "./remote.js?v=4";
 import * as Mirror from "./mirror.js?v=3";
 // The TV's own assistant screen (assistant.js): the hub's agent and conversation, without the hub's chat UI.
 let Assistant = null;
@@ -119,6 +119,8 @@ let FAVS = []; // the Favorites row: apps you picked (tv.favorites), or one tile
 let APPS = [];
 let INPUTS = [];
 let SETTINGS = null;
+// The hub's own icon (Settings on the computer); the bundled one when there is no hub.
+const HUB_ICON = location.pathname.startsWith("/tv/") ? "/icons/hub.svg" : "./hub.svg";
 const HUB = { on: false, name: "LocalHub", owner: "", paired: false, url: "", searching: false };
 
 /* ── the hub's look, applied the way tabs/custom.js applies it ──────────── */
@@ -193,6 +195,9 @@ async function syncHub() {
     HUB.on = false;
   }
   HUB.name = window.HUB_CONF?.name || HUB.name;
+  document.querySelectorAll('img[src="./hub.svg"]').forEach((n) => { n.src = HUB_ICON; });
+  const brand = document.querySelector(".rail-name");
+  if (brand) brand.textContent = HUB.name;
   HUB.owner = window.HUB_CONF?.owner || "";
   paintChip();
 }
@@ -217,7 +222,7 @@ function takeSettings(next) {
   }
   if (lookChanged) applyLook(); // repaints the shelf too
   paintHomeWidgets();
-  paintWpanel(); // the Overlay stays drawn, ready to open
+  paintWpanel(); // Controls stay drawn, ready to open
 }
 function paintChip() {
   $("#splashName").textContent = HUB.name;
@@ -366,7 +371,7 @@ function tvApps() {
 }
 
 function iconHTML(it) {
-  if (it.kind === "hub") return `<div class="icon hub"><img src="./hub.svg" alt=""></div>`;
+  if (it.kind === "hub") return `<div class="icon hub"><img src="${HUB_ICON}" alt=""></div>`;
   if (it.kind === "favadd") return `<div class="icon favadd"><i class="fill"></i>${SYM.plus}</div>`;
   if (it.kind === "ctl") {
     const k = it.id.slice(4);
@@ -809,8 +814,8 @@ function hubShelfHTML() {
   const h = new Date().getHours();
   const part = h < 5 ? "Good night" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
   const first = (HUB.owner || "").split(/\s+/)[0];
-  // Like every other app: its name as the white banner, with no widgets under it.
-  return `<div class="shelf-title" aria-label="${esc(HUB.name)}"><h1 class="banner-text">${esc(HUB.name)}</h1></div>`;
+  // Nothing picked yet: nothing is named.
+  return `<div class="shelf-title" aria-label="${esc(HUB.name)}"></div>`;
 }
 
 function miniArt(a) {
@@ -1110,7 +1115,7 @@ function ccTiles() {
   const ready = LIVE.info ? LIVE.info.ready !== false : HUB.on;
   tiles.push({
     id: "hub", cls: "status-tile",
-    html: `<img src="./hub.svg" alt=""><div><div class="t1">${esc(HUB.name)}</div><div class="lines">
+    html: `<img src="${HUB_ICON}" alt=""><div><div class="t1">${esc(HUB.name)}</div><div class="lines">
       <span class="k">Hub</span><span class="v"><i style="--c:${HUB.on ? "var(--green)" : "var(--red)"}"></i>${HUB.on ? "Connected" : "Not connected"}</span>
       <span class="k">Assistant</span><span class="v"><i style="--c:${ready ? "var(--green)" : "var(--red)"}"></i>${ready ? "Ready" : "Needs Claude Code"}</span>
       <span class="k">Voice</span><span class="v"><i style="--c:${voiceTint}"></i>${esc(voice)}</span>
@@ -1457,7 +1462,8 @@ function settingsModel() {
     { group: "Home Screen" },
     { key: "clock", t1: "Clock", t2: "Top left, and on the screensaver", values: ["12-hour", "24-hour"] },
     { key: "homeClock", t1: "Home clock", t2: "What the top left of the home screen shows", values: ["Time and date", "Time", "Off"] },
-    ...(S.inputCount ? [{ key: "inputs", t1: "HDMI inputs", t2: "Shown in the Overlay", toggle: true }] : []), // only on a TV that has some
+    ...(S.inputCount ? [{ key: "inputs", t1: "HDMI inputs", t2: "Shown in Controls", toggle: true }] : []), // only on a TV that has some
+    { id: "sortapps", t1: "Sort apps", t2: "The order of the tiles on Home", v: SORTS[sortMode()] },
     { key: "saver", t1: "Screensaver", t2: "After the remote has been still", values: ["Off", "2 min", "5 min", "10 min", "15 min"] },
     IN_HUB && !PREVIEW
       ? { id: "saverSource", t1: "Screensaver photos", t2: saverSourceNote(), v: saverSourceName() }
@@ -1542,6 +1548,7 @@ function settingsActivate() {
   else if (it.id === "model") { const ms = LIVE.info?.models || []; if (ms.length) { const i = ms.findIndex(([id]) => id === chatModel()); prefs.modelId = ms[(i + 1) % ms.length][0]; } }
   else if (it.id === "setup") { closeSettings(); S.backToSettings = true; return Stream.open({ id: "url:setup", name: "Set up LocalHub", url: SETUP_URL, kind: "site", bg: "#26272d", fg: "#ffffff", letter: "L" }); }
 
+  else if (it.id === "sortapps") { const k = Object.keys(SORTS); setSort(k[(k.indexOf(sortMode()) + 1) % k.length]); renderSettings(); }
   else if (it.id === "unhide") return saveTv({ hidden: null }, "Every app is back").then(renderSettings);
   else if (it.id === "reorder") return saveTv({ apps: null }, "Apps are back in recent order").then(renderSettings);
   else if (it.id === "look") { closeSettings(); return openHubApp(); }
@@ -2073,7 +2080,7 @@ async function startCommandLoop() {
 function runCommand(cmd) {
   if (!cmd || typeof cmd !== "object") return;
   if (cmd.type === "listen") return heardMic(cmd);
-  // The Overlay on the computer: what the TV is doing, and the same controls, without leaving what's on screen.
+  // Controls on the computer: what the TV is doing, and the same controls, without leaving what's on screen.
   if (cmd.type === "state") return reportState();
   if (cmd.type === "mirror") return Mirror.watch(cmd.on);
   if (cmd.type === "key") { cmd.name === "home" && document.hidden ? (native("toFront"), window.haven.home()) : handleKey(cmd.name); return Mirror.soon(); }
@@ -2308,7 +2315,7 @@ const RAIL = [
   { id: "browser", label: "Browser", ic: sym('<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>') },
   { id: "files", label: "Files", ic: sym('<path d="M4 7a2 2 0 0 1 2-2h4l2 2.5h6a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/>') },
   { id: "saver", label: "Screensaver", ic: sym('<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>') },
-  { id: "overlay", label: "Overlay", ic: Panel.IC.widgets, foot: true },
+  { id: "overlay", label: "Controls", ic: Panel.IC.widgets, foot: true },
   { id: "settings", label: "Settings", ic: SYM.gear, foot: true },
 ];
 S.view = "home";

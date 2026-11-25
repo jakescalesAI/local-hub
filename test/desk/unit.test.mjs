@@ -110,3 +110,11 @@ test('the TV screen: only known keys, taps on the screen and plain text, and vid
   c.flush()
   assert.deepEqual(got.at(-1), [1, 6])
 })
+
+test('the hub’s icon is one of its drawings, and an upload is a picture', async () => {
+  const { cleanIcon, iconSvg, imageType, GLYPHS, COLORS } = await import('../../identity.mjs')
+  assert.deepEqual([cleanIcon({ glyph: 'star', color: 'blue' }), cleanIcon({ glyph: '<svg', color: 'blue' }), cleanIcon({ glyph: 'toString', color: 'blue' }), cleanIcon('upload'), cleanIcon('x'), cleanIcon(null)], [{ glyph: 'star', color: 'blue' }, null, null, 'upload', null, null])
+  for (const glyph of Object.keys(GLYPHS)) for (const color of Object.keys(COLORS)) assert.ok(iconSvg({ glyph, color }, 'Hub').startsWith('<svg'))
+  assert.ok(!iconSvg({ glyph: 'letter', color: 'blue' }, '<script>').includes('<<') && iconSvg({ glyph: 'letter', color: 'blue' }, '<b').includes('&lt;'))
+  assert.deepEqual([imageType(Buffer.from('<svg onload=alert(1)>xxxx')), imageType(Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47]), Buffer.alloc(20)]))], ['', 'png'])
+})

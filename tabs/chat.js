@@ -578,7 +578,9 @@ textarea::placeholder { color: var(--label-2, rgba(60, 60, 67, .6)); }
 }
 @media (prefers-reduced-motion: reduce) { .bar, .card, .card.on, .fp, .full.on .fp, .scrim, .ghead::after, .ghead .ib, .ghead .sb { transition: none; } .spin, .dots i, .menu, .plus.rec, .msg.bro.on .live { animation: none; } .vbar { transition: none; } }
 /* ----- the TV's chat (tv/ui/assistant.css), on a computer with the TV's look. Measures and colours are theme.css's, shared with the TV. ----- */
-:host-context(html[data-tvlook]) .full { left: var(--tvrail, 0px); }
+:host-context(html[data-tvlook]) .full { left: var(--tvrail, 0px); right: var(--dock, 0px); }
+:host-context(html[data-editing]) .bar { display: none; }
+:host-context(html[data-dock]) .bar { left: calc((100vw - var(--dock) + var(--tvrail)) / 2); width: min(640px, calc(100vw - var(--dock) - var(--tvrail) - 32px)); }
 :host-context(html[data-tvlook]) .scrim { display: none; }
 :host-context(html[data-tvlook]) .fp { left: 0; top: 0; bottom: 0; width: 100%; border-radius: 0; box-shadow: none; background: var(--chat-bg); color: var(--chat-text); transform: none; }
 :host-context(html[data-tvlook]) .full.on .fp { transform: none; }

@@ -74,7 +74,7 @@ These stay off until you set them up, and a tab that's off fetches nothing:
 - **Calendar:** a local calendar plus your feeds and bookings
 - **Stripe:** balance, revenue and payouts, read-only
 
-**Home** has your apps and favorites: websites, and the programs on this PC (+ on Home adds them). The **Overlay** (Ctrl+.)
+**Home** has your apps and favorites: websites, and the programs on this PC (+ on Home adds them). The **Controls** (Ctrl+.)
 has the music player, this PC's volume and brightness, the TV's when it's on, and what shows on Home. The music widget
 plays whatever is open on the PC; *Settings → Music platforms* adds your own Spotify.
 
