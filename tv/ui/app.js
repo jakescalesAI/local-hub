@@ -15,10 +15,10 @@
 // ============================================================================
 
 import * as Stream from "./stream.js?v=4";
-import * as Panel from "./panel.js?v=7";
+import * as Panel from "./panel.js?v=8";
 import * as Files from "./files.js?v=1";
 import { createLock } from "./lock.js?v=2";
-import * as Remote from "./remote.js?v=4";
+import * as Remote from "./remote.js?v=5";
 import * as Mirror from "./mirror.js?v=3";
 // The TV's own assistant screen (assistant.js): the hub's agent and conversation, without the hub's chat UI.
 let Assistant = null;
@@ -1462,7 +1462,7 @@ function settingsModel() {
     { group: "Home Screen" },
     { key: "clock", t1: "Clock", t2: "Top left, and on the screensaver", values: ["12-hour", "24-hour"] },
     { key: "homeClock", t1: "Home clock", t2: "What the top left of the home screen shows", values: ["Time and date", "Time", "Off"] },
-    ...(S.inputCount ? [{ key: "inputs", t1: "HDMI inputs", t2: "Shown in Controls", toggle: true }] : []), // only on a TV that has some
+    ...(S.inputCount ? [{ key: "inputs", t1: "HDMI inputs", t2: "Shown in the Sidebar", toggle: true }] : []), // only on a TV that has some
     { id: "sortapps", t1: "Sort apps", t2: "The order of the tiles on Home", v: SORTS[sortMode()] },
     { key: "saver", t1: "Screensaver", t2: "After the remote has been still", values: ["Off", "2 min", "5 min", "10 min", "15 min"] },
     IN_HUB && !PREVIEW
@@ -2318,7 +2318,7 @@ const RAIL = [
   { id: "browser", label: "Browser", ic: sym('<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>') },
   { id: "files", label: "Files", ic: sym('<path d="M4 7a2 2 0 0 1 2-2h4l2 2.5h6a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/>') },
   { id: "saver", label: "Screensaver", ic: sym('<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>') },
-  { id: "overlay", label: "Controls", ic: Panel.IC.widgets, foot: true },
+  { id: "overlay", label: "Sidebar", ic: Panel.IC.side, foot: true },
   { id: "settings", label: "Settings", ic: SYM.gear, foot: true },
 ];
 S.view = "home";

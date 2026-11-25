@@ -6,7 +6,7 @@ export const DEFAULTS = { menu: "mic" };
 export const FIXED = new Set(["left", "right", "up", "down", "enter", "back", "hold"]);
 export const KINDS = [["remote", "Fire TV remote"], ["pad", "Game controller"], ["other", "Anything else"]];
 export const ACTIONS = [
-  ["mic", "Microphone"], ["assistant", "Assistant"], ["overlay", "Controls"], ["home", "Home"], ["menu", "Sidebar and menus"], ["browser", "Browser"], ["files", "Files"], ["ai", "Play / pause"],
+  ["mic", "Microphone"], ["assistant", "Assistant"], ["overlay", "Sidebar"], ["home", "Home"], ["menu", "Tabs and menus"], ["browser", "Browser"], ["files", "Files"], ["ai", "Play / pause"],
   ["rew", "Page up, rewind"], ["ff", "Page down, fast forward"], ["volup", "Volume up"], ["voldown", "Volume down"], ["saver", "Screensaver"], ["sleep", "Sleep"], ["settings", "Settings"], ["none", "Nothing"],
 ];
 // The Fire TV remote, at its picture's own size (524 × 1920). map: can be given a job. sys: Fire TV takes it for itself, so it needs

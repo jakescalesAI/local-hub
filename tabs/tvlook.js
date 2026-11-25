@@ -88,8 +88,8 @@ ${R} .hw-app-b:hover > .hc-app { background: var(--ui-sel) !important; color: #0
 ${R} .hw-app-l { font-weight: 600; text-shadow: 0 1px 4px rgba(0, 0, 0, .7); }
 
 /* ── Home: the clock, one row of buttons, then your apps; widgets in a column at the top right ── */
-/* The widgets have the right half, the clock and the name the left. */
-${R} { --side: calc((min(100vw, 1500px) - var(--tvrail) - 96px) / 2 - 16px); --sidegap: 32px; }
+/* The widgets are exactly half of what is beside the rail, up to the tiles’ right edge. */
+${R} { --side: calc((min(100vw, 1500px) - var(--tvrail)) / 2); --sidegap: 32px; }
 ${R}:has(.hw-root) .page { position: relative; padding-right: 48px; }
 ${R}:has(.hw-root:is([data-view="tv"], [data-view="ipad"], [data-view="mobile"])) .page, ${R}[data-noside]:has(.hw-root) .page { padding-right: 48px; }
 /* The TV's own proportions: the clock at the top, the name of what you're on above the row, the row three fifths down. */
@@ -118,7 +118,7 @@ ${R} .tve-clock { display: grid; gap: 6px; } ${R} .tve-clock strong { font: 700 
 ${A} .hw-sheet, ${A} .hc-panel, ${A} .tvs-veil .tvs-card { background: var(--ui-panel) !important; border: 0; border-radius: 30px; box-shadow: var(--ui-edge), 0 40px 100px rgba(0, 0, 0, .6); -webkit-backdrop-filter: none; backdrop-filter: none; color: #fff; }
 ${A} .hw-sh-head { padding: 24px 26px 14px; } ${A} .hw-sh-head h2, ${A} .hc-head h2, ${A} .hc-head { font: 700 26px/1.1 var(--display); letter-spacing: -.02em; } ${A} .hc-head { padding: 22px 22px 12px; }
 ${A} :is(.hw-done, .hc-done) { height: 42px; padding: 0 20px; border-radius: 21px; background: var(--ui-sel); color: #000; font: 600 15px var(--font); } ${A} .hc-link { height: 42px; padding: 0 16px; border-radius: 21px; background: var(--ui-fill); box-shadow: var(--ui-edge); color: #fff; font: 600 14px var(--font); }
-${A} .hc-line .hc-link { display: inline-flex; align-items: center; height: 34px; padding: 0 14px; text-decoration: none; } ${A} .hc-group + .hc-btn, ${A} .hc-panel .hc-btn { flex: none; margin-top: 10px; } ${A} :is(.hc-link, .hc-btn, .cn-rowbtn):hover { background: var(--ui-sel); color: #000; }
+${A} .hc-line .hc-link { display: inline-flex; align-items: center; height: 34px; padding: 0 14px; text-decoration: none; } ${A} .hc-group + .hc-btn, ${A} .hc-panel .hc-btn { flex: none; width: 100%; margin-top: 10px; } ${A} :is(.hc-link, .hc-btn, .cn-rowbtn):hover { background: var(--ui-sel); color: #000; }
 ${A} .hw-gsearch { height: 46px; margin: 4px 26px 6px; padding: 0 18px; border-radius: 23px; background: var(--ui-fill); box-shadow: var(--ui-edge); } ${A} .hw-gsearch input { background: none; color: #fff; font: 600 15px var(--font); } ${A} .hw-addseg { margin-left: 26px !important; margin-right: 26px !important; }
 ${R} .hw-sheet { width: min(920px, 100%); max-height: min(calc(100dvh - 130px), 820px); } ${R} .hw-sheet:has(.hw-gsec) .hw-gsec { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 26px 22px; } ${R} .hw-sheet .hw-gsec h3 { grid-column: 1 / -1; margin: 6px 0 -8px; font: 700 20px var(--display); }
 ${R} .hw-sheet .hw-gitem { min-width: 0; padding: 16px; border-radius: 22px; background: var(--ui-fill); box-shadow: var(--ui-edge); } ${R} .hw-sheet .hw-gstage { background: rgba(0, 0, 0, .22); border-radius: 16px; } ${R} .hw-sheet .hw-ghead b { font-size: 16px; } ${R} .hw-sheet .hw-ghead span { line-height: 1.4; overflow-wrap: anywhere; } ${R} .hw-sheet .hw-gfoot { flex-wrap: wrap; margin-top: auto; } ${R} .hw-sheet .seg.hw-gsize { flex: 1 1 150px; }
@@ -346,6 +346,8 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     files: '<path d="M4 7a2 2 0 0 1 2-2h4l2 2.5h6a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/>',
     globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
     overlay: '<rect x="3.5" y="3.5" width="7" height="7" rx="2.2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2.2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2.2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2.2"/>',
+    sideopen: '<rect x="3" y="4" width="18" height="16" rx="4"/><path d="M15 4v16"/><path d="m10.5 9-3 3 3 3"/>',
+    sideclose: '<rect x="3" y="4" width="18" height="16" rx="4"/><path d="M15 4v16"/><path d="m7.5 9 3 3-3 3"/>',
     tab: '<rect x="4" y="4" width="16" height="16" rx="4"/>',
     laptop: '<rect x="4" y="5" width="16" height="11" rx="1.6"/><path d="M2 19h20"/>',
     server: '<rect x="4" y="4" width="16" height="7" rx="2"/><rect x="4" y="13" width="16" height="7" rx="2"/><path d="M7.5 7.5h.01M7.5 16.5h.01"/>',
@@ -379,15 +381,15 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   // ── Controls: the TV's panel (its markup and styles, tv/ui/panel.js and panel.css), working the TV from here ──
   const panel = document.createElement('aside')
   panel.id = 'tvpanel'
-  panel.setAttribute('aria-label', 'Controls')
-  panel.innerHTML = `<div><div class="wpanel-title">Controls<button type="button" data-tvpx title="Close (Esc)" aria-label="Close">${svg('<path d="M6 6l12 12M18 6 6 18"/>')}</button></div><div class="wpanel-list"></div></div>`
+  panel.setAttribute('aria-label', 'Sidebar')
+  panel.innerHTML = `<div><div class="wpanel-title">Sidebar<button type="button" data-tvpx title="Close (Esc)" aria-label="Close sidebar">${svg('<rect x="3" y="4" width="18" height="16" rx="4"/><path d="M15 4v16"/><path d="m7.5 9 3 3-3 3"/>')}</button></div><div class="wpanel-list"></div></div>`
   document.body.append(panel)
   const btn = document.createElement('button')
   btn.id = 'tvlayout'
   btn.className = 'tvround'
   btn.type = 'button'
-  btn.title = 'Controls (Ctrl+.)'
-  btn.setAttribute('aria-label', 'Controls')
+  btn.title = 'Sidebar (Ctrl+.)'
+  btn.setAttribute('aria-label', 'Sidebar')
   btn.innerHTML = svg('<rect x="3.5" y="3.5" width="7" height="7" rx="2.2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2.2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2.2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2.2"/>')
   const mk = (id, label, d) => Object.assign(document.createElement('button'), { id, type: 'button', title: label, className: 'tvround', ariaLabel: label, innerHTML: svg(d) })
   const back = mk('tvback', 'Back', '<path d="M15 5l-7 7 7 7"/>')
@@ -583,7 +585,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     if (had) list.querySelector(`[data-w="${had}"]`)?.focus()
   }
   async function openPanel() {
-    try { P ??= await import('/tv/panel.js?v=7') } catch { return }
+    try { P ??= await import('/tv/panel.js?v=8') } catch { return }
     paintPanel()
     panel.classList.add('on')
     dock()
@@ -627,7 +629,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   async function keepTv() {
     if (document.hidden || !document.documentElement.hasAttribute('data-tvlook') || !document.querySelector('.hw-root') || Date.now() - sideAt < 4000) return
     sideAt = Date.now()
-    try { P ??= await import('/tv/panel.js?v=7') } catch { return }
+    try { P ??= await import('/tv/panel.js?v=8') } catch { return }
     if (TV?.on) post({ type: 'state' })
     await Promise.all([readTv(), readPc()])
   }
@@ -1027,11 +1029,11 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
       { id: 'sortapps', t1: 'Sort apps', t2: 'The order of the tiles on Home', v: SORT_NAMES[look.sort] || 'My order' },
       { id: 'addapps', t1: 'Apps and websites', t2: 'What is on Home', v: '' },
       { id: 'edit', t1: 'Widgets', t2: 'Add and arrange them', v: '' },
-      { id: 'tabs', t1: 'Sidebar', t2: 'Extra tabs under Files', v: '' },
+      { id: 'tabs', t1: 'Tabs', t2: 'What’s on the left, under Files', v: '' },
       { group: 'Display and Sound' },
       { id: 'displaypage', t1: 'Brightness', t2: 'Which monitors the slider moves, and each one on its own', v: !MU?.monitors?.length ? '' : MU.monitors.every(m => m.on) ? (MU.monitors.length > 1 ? 'All monitors' : MU.monitors[0].name) : `${MU.monitors.filter(m => m.on).length} of ${MU.monitors.length} monitors` },
       ...(SND?.available ? [{ id: 'sound', t1: 'Sound plays on', t2: 'This PC’s sound here, on your TV, or both. On both, the TV is a moment behind', v: { pc: 'This PC', tv: 'Your TV', both: 'Both' }[SND.to], on: SND.to !== 'pc' }] : []),
-      { id: 'panel', t1: 'Controls', t2: 'Brightness, volume, music and your TV, beside any page', v: 'Ctrl+.' },
+      { id: 'panel', t1: 'Sidebar', t2: 'Brightness, volume, music and your TV, beside any page', v: 'Ctrl+.' },
       { group: 'Devices and Connections' },
       { id: 'devpage', t1: 'Devices and connections', t2: 'Phones, iPads and computers, your home network, Tailscale and the passcode', v: DV.summary },
       { id: 'remotepage', t1: 'Remotes and controllers', t2: 'What each button does, on the Fire TV remote or a game controller', v: KEYS.on ? 'In every app' : '' },
@@ -1226,7 +1228,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
       + (DV.pass ? '<div class="tvs-form"><div><input id="dvpass" type="password" autocomplete="new-password" minlength="8" placeholder="New passcode, 8 or more characters" aria-label="New passcode"><button type="button" data-set="passsave">Save</button></div></div>' : row('Passcode', 'What another device types if it isn’t paired. Needed before the two above', R?.passcode ? (R.passcode.set ? 'Change' : 'Set one') : '', 'pass', !!R?.passcode?.set))
       + (ts?.running && ts.peers.length ? g('On your Tailscale') + ts.peers.map(x => row(x.name, x.os, x.online ? 'Online' : 'Offline', '', x.online)).join('') : '')
       + g('TV') + row('TV power', DV.power?.known === false ? DV.power.error : 'Works while it’s asleep too', DV.power?.known ? (DV.power.on ? 'On' : 'Off') : DV.power ? 'Not answering' : '…', DV.power?.known ? 'tvpower' : '', DV.power?.on) + row('Remotes and controllers', 'What each button does', KEYS.on ? 'In every app' : '', 'remotepage') + row('Set up a TV', 'Put LocalHub TV on a television and pair it', '', 'tvsetup')
-      + g('Controllers on this computer') + (pads.length ? pads.map(x => row(x.id.replace(/\s*\(.*$/, ''), 'A opens, B goes back, X Controls, Y Assistant, Start Settings', 'Connected', '', true)).join('') : row('No controller yet', 'Plug one in, or pair it over Bluetooth, then press any button on it'))
+      + g('Controllers on this computer') + (pads.length ? pads.map(x => row(x.id.replace(/\s*\(.*$/, ''), 'A opens, B goes back, X Sidebar, Y Assistant, Start Settings', 'Connected', '', true)).join('') : row('No controller yet', 'Plug one in, or pair it over Bluetooth, then press any button on it'))
       + row('Bluetooth', 'Pair a controller, keyboard or headphones with this computer', 'Open', 'os:bluetooth') + row('Wi-Fi and network', 'This computer’s own settings', 'Open', 'os:network') + row('Sound', 'Where this computer plays, and its microphone', 'Open', 'os:sound')
       + g('Accounts') + row('Claude', 'What the assistant runs on', DV.claude, '', DV.claude === 'Signed in') + row('Services', 'What the assistant can use', DV.services, 'connections') + row('Music platforms', 'What the music widget plays', MU?.spotify?.connected ? 'Spotify' : 'This PC', 'musicpage')
   }
@@ -1349,7 +1351,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   }
   function keysHtml(backB) {
     const k = (t, v) => plainRow(t, '', v)
-    return `<div class="tvs-title">${backB}Keyboard shortcuts</div>` + grp('Anywhere') + k('Controls', 'Ctrl + .') + k('Close what’s open', 'Esc') + (window.HubChat ? k('Send to the assistant', 'Enter') + k('A new line', 'Shift + Enter') : '')
+    return `<div class="tvs-title">${backB}Keyboard shortcuts</div>` + grp('Anywhere') + k('Sidebar, open or closed', 'Ctrl + .') + k('Close what’s open', 'Esc') + (window.HubChat ? k('Send to the assistant', 'Enter') + k('A new line', 'Shift + Enter') : '')
       + grp('Home') + k('Open the first app that matches', 'Type in Search, Enter') + k('Scroll the favorites', 'Wheel over the row') + k('Move an app', 'Drag it') + k('An app’s menu', 'Right-click')
       + grp('Your TV’s screen') + k('Move', 'Arrow keys') + k('Open', 'Enter') + k('Back', 'Esc') + k('Menu', 'Menu key') + k('Rewind and fast forward', 'Page Up, Page Down') + k('Type', 'Just type, in a text box')
       + grp('The desktop app') + k('Launcher, from any program', 'Ctrl + Alt + Space')
@@ -1483,7 +1485,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     if (id === 'panel') return void openPanel()
     if (id === 'tvcontrol') { closeSettings(); return openMirror() }
     if (id === 'musicpage') { picking = 'music'; setHtml = ''; await readPc(); return paintSettings() }
-    if (id === 'remotepage') { picking = 'remote'; setHtml = ''; try { RM ??= await import('/tv/remote.js?v=4') } catch {} return keys() }
+    if (id === 'remotepage') { picking = 'remote'; setHtml = ''; try { RM ??= await import('/tv/remote.js?v=5') } catch {} return keys() }
     if (k === 'rmkind') { rmKind = d; rmSel = RM.rowIds(btns(), d)[0] || ''; setHtml = ''; set.querySelector('.tvs-list').scrollTop = 0; return paintSettings() }
     if (id === 'rmeverywhere') return keys({ on: !KEYS.on })
     if (id === 'musicsrc') { press('music'); return void setTimeout(() => { setHtml = ''; paintSettings() }, 500) }
@@ -1620,7 +1622,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
       + (at('home') ? tabItem(at('home')) : '') + item('assistant', 'mic', 'Assistant', chat && !set.classList.contains('on'))
       + (window.HubBrowser ? item('browser', 'globe', 'Browser', !!window.HubBrowser.isOpen?.()) : '') + item('tv', 'tv', 'TV', mirror.classList.contains('on'))
       + (at('drives') ? tabItem(at('drives')) : '') + rest.map(tabItem).join('')
-      + '</div>' + item('overlay', 'overlay', 'Controls', panel.classList.contains('on')) + item('settings', 'gear', 'Settings', set.classList.contains('on'))
+      + '</div>' + item('overlay', panel.classList.contains('on') ? 'sideclose' : 'sideopen', panel.classList.contains('on') ? 'Close sidebar' : 'Sidebar', panel.classList.contains('on')) + item('settings', 'gear', 'Settings', set.classList.contains('on'))
     if (rail._html === html) return
     rail._html = html
     rail.innerHTML = html

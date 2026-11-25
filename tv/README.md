@@ -167,7 +167,7 @@ up or down, or nothing). *Back to the standard buttons* undoes it all.
 | --- | --- |
 | Wallpaper, clock, screensaver, voice, the LocalHub connection | On the TV: the sidebar's gear (Settings) |
 | Favorites, app order, hidden apps, sort, search | On the TV: hold OK on a tile; the Favorites row's buttons |
-| Volume, picture, sleep timer, weather, what's on Home | On the TV: the Favorites row's Controls button |
+| Volume, picture, sleep timer, weather, what's on Home | On the TV: the Favorites row's Sidebar button |
 | What each remote button does | Settings → *Fire TV remote*, on the TV or the laptop |
 | What the music widget plays | LocalHub on the laptop: *Settings → Music platforms* |
 | The widgets on the home screen and screensaver (weather, …) | LocalHub on the laptop: *Home → TV*, then *Edit* |

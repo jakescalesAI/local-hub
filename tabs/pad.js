@@ -1,5 +1,5 @@
 // A game controller on this computer: the stick or D-pad moves between things on the page, A opens, B goes back, X is the
-// Controls, Y the assistant, Start the settings. With the TV open here it drives the TV instead. Bluetooth or USB, any pad the
+// Sidebar, Y the assistant, Start the settings. With the TV open here it drives the TV instead. Bluetooth or USB, any pad the
 // browser knows (navigator.getGamepads). Nothing runs until one is connected.
 ;(() => {
   let raf = 0, was = {}, repeat = {}, ring = null
