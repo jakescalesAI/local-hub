@@ -53,7 +53,7 @@ final class Intro extends FrameLayout implements TextureView.SurfaceTextureListe
         if (gone) return;
         gone = true;
         note("gone");
-        animate().alpha(0f).setDuration(450).withLayer().withEndAction(() -> {
+        animate().alpha(0f).scaleX(1.05f).scaleY(1.05f).setDuration(650).setInterpolator(new android.view.animation.DecelerateInterpolator(1.6f)).withLayer().withEndAction(() -> {
             release();
             activity.introDone(this);
         }).start();

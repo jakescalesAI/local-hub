@@ -32,7 +32,8 @@
     if (!splash.classList.contains("glass")) splash.classList.add("moving", "words");
     gate.then(function () {
       splash.classList.add("leaving");
-      setTimeout(function () { splash.classList.add("is-gone"); if (video) { video.remove(); video = null; } resolveDone(); }, quick ? 320 : 700);
+      document.documentElement.classList.add("home-in"); // Home comes up as this goes
+      setTimeout(function () { splash.classList.add("is-gone"); if (video) { video.remove(); video = null; } resolveDone(); }, quick ? 320 : 820);
     });
   }
 
@@ -82,9 +83,16 @@
   }
   // The hub page has it in its markup, so it starts with the page.
   var own = splash.querySelector("video");
-  if (own) return show(own);
+  if (own) {
+    // All of it is here before it starts, and the page has stopped loading: nothing left to make it wait.
+    var settled = new Promise(function (r) { if (document.readyState === "complete") r(); else addEventListener("load", r); setTimeout(r, 1100); });
+    fetch(own.dataset.src).then(function (r) { if (!r.ok) throw new Error("intro"); return r.blob(); }).then(function (b) {
+      return new Promise(function (r, no) { own.oncanplaythrough = r; own.onerror = no; own.src = URL.createObjectURL(b); own.load(); });
+    }).then(function () { return settled; }).then(function () { requestAnimationFrame(function () { requestAnimationFrame(function () { if (!began && !ended) show(own); }); }); }).catch(plain);
+    return;
+  }
   // On the TV, as a blob: an Android page's video otherwise asks for itself without the page's own sign-in.
-  fetch(new URL("intro.mp4", script.src).href).then(function (r) { if (!r.ok) throw new Error("intro"); return r.blob(); }).then(function (b) {
+  fetch(new URL("intro.mp4?v=2", script.src).href).then(function (r) { if (!r.ok) throw new Error("intro"); return r.blob(); }).then(function (b) {
     if (began || ended) return;
     var v = document.createElement("video");
     v.className = "splash-video";

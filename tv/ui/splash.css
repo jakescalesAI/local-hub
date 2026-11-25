@@ -1,6 +1,12 @@
 /* ══ The opening: the same as trylocalhub.com's (splash.js) ═══════════════════════ */
-.splash { position: fixed; inset: 0; z-index: 2147483647; display: grid; place-items: center; background: #000; animation: none; opacity: 1; transform: none; transition: opacity .7s var(--ease); }
-.splash.leaving { opacity: 0; }
+.splash { position: fixed; inset: 0; z-index: 2147483647; display: grid; place-items: center; background: #000; animation: none; opacity: 1; transform: none; transition: opacity .78s cubic-bezier(.4, 0, .2, 1); }
+.splash.leaving { opacity: 0; will-change: opacity; } .splash.leaving :is(.splash-video, .splash-mark) { transform: scale(1.06); } .splash-video, .splash-mark { transition: transform .82s cubic-bezier(.32, .72, 0, 1); }
+/* Home, as the opening goes: each part settles the last few pixels into place, one after the next. Only transform and opacity. */
+@media (prefers-reduced-motion: no-preference) {
+  .home-in :is(#tvtop, .controls, #dk, #tvside, #tvrail) { animation: homein .85s cubic-bezier(.22, .8, .2, 1) backwards; }
+  .home-in #tvtop { --y: -14px; } .home-in #tvside { --y: -14px; animation-delay: .07s; } .home-in .controls { --y: 18px; animation-delay: .12s; } .home-in #dk { --y: 30px; animation-delay: .18s; } .home-in #tvrail { --y: 0; --x: -22px; }
+  @keyframes homein { from { opacity: 0; transform: translate3d(var(--x, 0), var(--y, 0), 0); } }
+}
 .splash.quick { transition-duration: .3s; }
 .splash.quick .splash-mark { display: none; }
 .splash.is-gone { display: none; }
@@ -13,7 +19,7 @@
 .splash.words .word { opacity: 1; transform: none; }
 .splash { --display: -apple-system, BlinkMacSystemFont, "SF Pro Display", Inter, "Segoe UI", system-ui, sans-serif; --ease: cubic-bezier(.32, .72, 0, 1); }
 /* The whole opening, one video; the drawn wordmark is only for when it can't play. */
-.splash-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000; pointer-events: none; }
+.splash-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000; pointer-events: none; will-change: transform; }
 .splash.glass .splash-mark { display: none; }
 html:has(> body > .splash:not(.is-gone)) { overflow: hidden; scrollbar-gutter: auto !important; background: #000; }
 /* Before the entry code, nothing of the hub shows. */

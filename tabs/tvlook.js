@@ -258,8 +258,6 @@ ${A} #tvpanel .wpt button { flex: 1; height: 74px; border-radius: 37px; font: 60
 ${A} #tvpanel .wpt button.on { background: var(--ui-sel); color: #000; }
 @media (max-width: 1420px) { ${R} #tvside .wxw-hours { grid-template-columns: repeat(5, 1fr); } ${R} #tvside .wxw-hours > :nth-child(n + 6) { display: none; } ${R} #tvside .tvt-wx .wxw { font-size: 12px; } }
 ${R} #tvside .tvt-wx { padding: 18px 20px; border-radius: 26px; background: var(--ui-panel); box-shadow: var(--ui-edge); color: #fff; }
-${R}[data-tvshow="apps"] #tvside { visibility: hidden; }
-${R}[data-tvshow="widgets"] .hw-grid > .hw-cell.a { display: none !important; }
 ${R} .hw-dots { display: none; }
 
 /* ── Settings: the TV's page, at a computer's size ── */
@@ -438,8 +436,8 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   menu.id = 'tvmenu'
   document.body.append(menu)
   function paintMenu() {
-    const it = (k, v, label) => `<button type="button" data-f="${k}:${v}"><span>${label}</span><span>${(look[k] || (k === 'show' ? 'all' : 'mine')) === v ? '✓' : ''}</span></button>`
-    menu.innerHTML = '<h4>Show</h4>' + it('show', 'all', 'Apps and widgets') + it('show', 'apps', 'Apps') + it('show', 'widgets', 'Widgets') + '<h4>Sort apps</h4>' + SORTS.map(([v, l]) => it('sort', v, l)).join('')
+    const it = (k, v, label) => `<button type="button" data-f="${k}:${v}"><span>${label}</span><span>${(look[k] || 'mine') === v ? '✓' : ''}</span></button>`
+    menu.innerHTML = SORTS.map(([v, l]) => it('sort', v, l)).join('')
   }
   const closeMenu = () => { menu.classList.remove('on'); filter.classList.remove('on') }
   filter.addEventListener('click', () => {
@@ -487,7 +485,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   const boards = {}
   const board = (which = myScreen()) => WG && (boards[which] ??= WG.createBoard({ screen: which, changed: () => { cancelAnimationFrame(board.raf); board.raf = requestAnimationFrame(() => { paintSide(); drawWid(); tick() }) }, music: () => MU?.now }))
   let CK = null
-  ;(async () => { try { WG = await import('/tv/widgets.js?v=6'); CK = await import('/tv/clock.js?v=1'); P ??= await import('/tv/panel.js?v=11'); board()?.refresh(); paintSide(); tick() } catch {} })()
+  ;(async () => { try { WG = await import('/tv/widgets.js?v=8'); CK = await import('/tv/clock.js?v=1'); P ??= await import('/tv/panel.js?v=12'); board()?.refresh(); paintSide(); tick() } catch {} })()
   setInterval(() => {
     if (!WG || document.hidden || !document.querySelector('.hw-root')) return
     const b = board(editOn || undefined)
@@ -758,23 +756,23 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     askWords = false
     widBox.innerHTML = ''
     drawMusic()
-    P.syncWords(widBox, MU?.now, words)
+    P.syncWords(widBox, MU?.now, words, MU?.shift)
     P.growSong(widBox, n)
     readMu()
   }
   function drawMusic() {
     if (!widMusic || !P) return
     const m = MU?.now || {}, key = `${m.title}|${m.artist}`
-    P.paintFull(widBox, m, wordsKey === key ? words : null, { show: look.words !== false, ask: askWords, on: MU?.lyrics })
+    P.paintFull(widBox, m, wordsKey === key ? words : null, { show: look.words !== false, ask: askWords, on: MU?.lyrics, nudge: true, shift: MU?.shift })
     P.syncPlayer(widBox, m)
-    P.syncWords(widBox, m, words)
+    P.syncWords(widBox, m, words, MU?.shift)
     if (wordsKey !== key && m.title) {
       wordsKey = key
       words = null
       fetch(`/api/music/lyrics?${new URLSearchParams({ title: m.title, artist: m.artist || '', dur: String(m.dur || ''), album: m.album || '' })}`, { cache: 'no-store' }).then(r => r.json()).catch(() => ({ lines: [], plain: [] })).then(w => { if (wordsKey === key) { words = w; drawMusic() } })
     }
   }
-  setInterval(() => { if (widMusic && !document.hidden) { P.syncPlayer(widBox, MU?.now); P.syncWords(widBox, MU?.now, words) } }, 80)
+  setInterval(() => { if (widMusic && !document.hidden) { P.syncPlayer(widBox, MU?.now); P.syncWords(widBox, MU?.now, words, MU?.shift) } }, 80)
   // While it's open the song is asked after every second: a new one shows at once, and where it is gets more exact.
   let askWords = false, muBusy = false
   async function readMu() {
@@ -789,6 +787,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   widBox.addEventListener('click', async e => {
     const w = e.target.closest('[data-w]')?.dataset.w, l = e.target.closest('.mpf-ly:not(.plain, .off) p')
     if (w === 'words') { if (MU?.lyrics === false) { askWords = !askWords; look.words = true } else look.words = look.words === false; try { localStorage.setItem(PREF, JSON.stringify(look)) } catch {} if (words?.off && MU?.lyrics) wordsKey = ''; return drawMusic() }
+    if (w === 'earlier' || w === 'later') { const to = Math.max(-5, Math.min(5, Math.round(((MU?.shift || 0) + (w === 'earlier' ? .25 : -.25)) * 100) / 100)); if (MU) MU.shift = to; fetch('/api/music/shift', { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: JSON.stringify({ shift: to }) }).catch(() => {}); return drawMusic() }
     if (w === 'open') return void fetch('/api/music/open', { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: '{}' }).then(r => r.json()).then(r => { if (!r.ok) say(r.error || 'That didn’t open.') }, () => {})
     if (w === 'lyrics') { await fetch('/api/music/lyrics', { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub': '1' }, body: '{"on":true}' }).catch(() => {}); if (MU) MU.lyrics = true; askWords = false; words = null; wordsKey = ''; return drawMusic() }
     if (['prev', 'play', 'next'].includes(w)) { music(w === 'play' ? 'toggle' : w); return drawMusic() }
@@ -804,7 +803,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   function arrange() {
     const dup = document.documentElement.matches('[data-tvtouch]') && matchMedia('(max-width: 700px)').matches && !document.querySelector('.hw-root.hw-edit')
     for (const c of document.querySelectorAll('.hw-grid > .hw-cell:not(.a)')) c.toggleAttribute('data-dup', dup && ((id => /(^|-)(clock|date|weather)$/.test(id) && !/world-clock$/.test(id))(c.querySelector('[data-hw-widget], [data-hw-wid]')?.dataset.hwWidget || c.dataset.hwKey || '')))
-    document.documentElement.dataset.tvshow = look.show || 'all'
+  
     const cells = [...document.querySelectorAll('.hw-grid > .hw-cell.a')]
     const names = look.sort === 'az' ? cells.map(c => c.querySelector('.hw-app-l')?.textContent || '').sort((a, b) => a.localeCompare(b)) : null
     for (const c of cells) c.style.order = names ? names.indexOf(c.querySelector('.hw-app-l')?.textContent || '') : ''
@@ -885,7 +884,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     if (had) list.querySelector(`[data-w="${had}"]`)?.focus()
   }
   async function openPanel() {
-    try { P ??= await import('/tv/panel.js?v=11') } catch { return }
+    try { P ??= await import('/tv/panel.js?v=12') } catch { return }
     paintPanel()
     panel.classList.add('on')
     dock()
@@ -930,7 +929,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   async function keepTv() {
     if (document.hidden || !document.documentElement.hasAttribute('data-tvlook') || !document.querySelector('.hw-root') || Date.now() - sideAt < 4000) return
     sideAt = Date.now()
-    try { P ??= await import('/tv/panel.js?v=11') } catch { return }
+    try { P ??= await import('/tv/panel.js?v=12') } catch { return }
     if (TV?.on) post({ type: 'state' })
     await Promise.all([readTv(), readPc()])
   }

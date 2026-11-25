@@ -15,9 +15,9 @@
 // ============================================================================
 
 import * as Stream from "./stream.js?v=8";
-import * as Panel from "./panel.js?v=11";
+import * as Panel from "./panel.js?v=12";
 import * as Clock from "./clock.js?v=1";
-import * as Wg from "./widgets.js?v=6";
+import * as Wg from "./widgets.js?v=8";
 import * as Files from "./files.js?v=2";
 import { createLock } from "./lock.js?v=2";
 import * as Remote from "./remote.js?v=5";
@@ -484,18 +484,14 @@ async function walkRows() {
     await frame();
   }
   window.__boot.rows = Math.round(performance.now());
-  // Settings and the assistant too: their first opening otherwise drew a whole screen at 4K (100-480 ms frames).
+  // Settings too, later: its first opening otherwise drew a whole screen at 4K (100-480 ms frames).
   if (!document.body.classList.contains("booted")) {
     // The header's wordmarks are baked after the home screen is up (in the background), not before it.
     setTimeout(() => [...new Set(ITEMS.map((x) => x.wordmark).filter(Boolean))].reduce((p, w) => p.then(() => bakeMark(w)), Promise.resolve()), 3000);
     // And your favorites' white logos decoded ahead, so the first move along the row doesn't stop to decode one (~150 ms).
     setTimeout(() => FAVS.filter((x) => x.mark).reduce((p, x) => p.then(() => { const i = new Image(); i.src = x.mark; return i.decode().catch(() => {}); }), Promise.resolve()), 2500);
-    renderSettings(); // Settings stays drawn, a hair above invisible (styles.css), from here on
-    window.__boot.settings = Math.round(performance.now());
-    setView("assistant");
-    await frame();
-    setView(S.view);
-    window.__boot.assistant = Math.round(performance.now());
+    // Once Home is up and left alone for a moment: drawn before it, this kept the opening up for seconds.
+    setTimeout(() => { if (!S.overlay && S.view === "home") renderSettings(); }, 6000); // Settings stays drawn, a hair above invisible (styles.css), from here on
   }
   applyFocus(true);
 }
@@ -1300,7 +1296,7 @@ function drawFull() {
   Panel.paintFull(box, MEDIA, WD.key === key ? WD.words : null, { show: localStorage.getItem("lh-words") !== "0", ask: WD.ask, on: HUB_LYRICS });
   box.querySelectorAll("[data-w]").forEach((n) => n.classList.toggle("sel", n.dataset.w === WD.sel));
   Panel.syncPlayer(box, MEDIA);
-  Panel.syncWords(box, MEDIA, WD.words);
+  Panel.syncWords(box, MEDIA, WD.words, HUB_SHIFT);
   if (WD.key !== key && MEDIA.title && IN_HUB) {
     WD.key = key;
     WD.words = null;
@@ -1388,10 +1384,10 @@ let MEDIA = {};
 const songKey = (m) => JSON.stringify({ ...m, pos: 0, got: 0 });
 let mediaTimer = null;
 // With nothing on the TV itself, it's what the computer (or your Spotify) is playing, and the buttons work that.
-let HUB_MEDIA = null, HUB_LYRICS, SYS = null, sysAt = 0;
+let HUB_MEDIA = null, HUB_LYRICS, HUB_SHIFT = 0, SYS = null, sysAt = 0;
 async function readHubMusic() {
   if (!IN_HUB || document.hidden || (S.overlay && S.overlay !== "wpanel" && S.overlay !== "wdetail" && S.overlay !== "saver") || (S.view !== "home" && S.overlay !== "saver")) return;
-  try { const t = performance.now(), r = await fetch("/api/music", { cache: "no-store" }), j = r.ok ? await r.json() : null, n = j?.now; if (j) HUB_LYRICS = !!j.lyrics; HUB_MEDIA = n && n.from !== "tv" && n.title ? Panel.noted(n, (t + performance.now()) / 2) : null; } catch { /* as it was: one missed ask isn't silence */ }
+  try { const t = performance.now(), r = await ((e) => { if (e) delete window.__early["/api/music"]; return e || fetch("/api/music", { cache: "no-store" }); })(window.__early?.["/api/music"]), j = r.ok ? await r.json() : null, n = j?.now; if (j) { HUB_LYRICS = !!j.lyrics; HUB_SHIFT = Number(j.shift) || 0; } HUB_MEDIA = n && n.from !== "tv" && n.title ? Panel.noted(n, (t + performance.now()) / 2) : null; } catch { /* as it was: one missed ask isn't silence */ }
   // The computer's card, a few times a minute: the TV has better things to do.
   let sysNew = false;
   if (false) { sysAt = Date.now(); try { const r = await fetch("/api/desk/system", { cache: "no-store" }); SYS = r.ok ? await r.json() : null; sysNew = true; } catch { SYS = null; } }
@@ -1401,11 +1397,11 @@ async function readHubMusic() {
 }
 setInterval(readHubMusic, 5000);
 setInterval(() => { if (S.overlay === "wdetail" && WD.music) readHubMusic(); }, 1500);
-setInterval(() => { if (S.overlay === "wdetail" && WD.music && !document.hidden) { readMediaPos(); Panel.syncWords($("#wdetail"), MEDIA, WD.words); } }, 200);
+setInterval(() => { if (S.overlay === "wdetail" && WD.music && !document.hidden) { readMediaPos(); Panel.syncWords($("#wdetail"), MEDIA, WD.words, HUB_SHIFT); } }, 200);
 const readMediaPos = () => { if (MEDIA.hub && HUB_MEDIA && HUB_MEDIA.title === MEDIA.title) { MEDIA.pos = HUB_MEDIA.pos; MEDIA.got = HUB_MEDIA.got; } };
 // The position moves on by itself between asks.
 setInterval(() => { if (S.overlay === "saver" && !document.hidden) Panel.syncPlayer($("#saverHud"), MEDIA); }, 1000);
-setInterval(() => { if (document.hidden || (S.overlay && S.overlay !== "wpanel" && S.overlay !== "wdetail") || S.view !== "home") return; if (S.overlay === "wdetail") { if (WD.music) { Panel.syncPlayer($("#wdetail"), MEDIA); Panel.syncWords($("#wdetail"), MEDIA, WD.words); } return; } Panel.syncPlayer($("#homeW"), MEDIA); if (S.overlay === "wpanel") Panel.syncPlayer($("#wpList"), MEDIA); }, 1000);
+setInterval(() => { if (document.hidden || (S.overlay && S.overlay !== "wpanel" && S.overlay !== "wdetail") || S.view !== "home") return; if (S.overlay === "wdetail") { if (WD.music) { Panel.syncPlayer($("#wdetail"), MEDIA); Panel.syncWords($("#wdetail"), MEDIA, WD.words, HUB_SHIFT); } return; } Panel.syncPlayer($("#homeW"), MEDIA); if (S.overlay === "wpanel") Panel.syncPlayer($("#wpList"), MEDIA); }, 1000);
 setTimeout(readHubMusic, 2500);
 function readMedia() {
   const own = NATIVE ? safeJson(native("media", "state"), {}) || {} : {};
@@ -3040,7 +3036,7 @@ function openSortMenu() {
   S.menu = Object.entries(SORTS).map(([id, label]) => ({ id: `sort:${id}`, label: label + (sortMode() === id ? "  ✓" : ""), ic: SYM.sort }));
   S.menuAt = Math.max(0, Object.keys(SORTS).indexOf(sortMode()));
   S.menuFor = null;
-  $("#tileMenuName").textContent = "Sort apps";
+  $("#tileMenuName").textContent = "";
   $("#tileMenuList").innerHTML = S.menu.map((m, i) => `<div class="tilemenu-item" data-m="${i}">${m.ic}<span>${esc(m.label)}</span></div>`).join("");
   paintTileMenu();
   $("#tileMenu").classList.add("on");
@@ -3404,7 +3400,7 @@ async function boot() {
   const appsReady = NATIVE && !APPS.some((a) => a.pkg) ? Promise.race([new Promise((r) => { APPS_READY.resolve = r; }), wait(6000)]) : null;
   (PREVIEW ? Promise.resolve() : Promise.all([window.LocalHubSplash?.done || new Promise((r) => setTimeout(r, 2300)), appsReady])).then(() => { document.body.classList.add("booted"); $("#splash").classList.add("is-gone"); });
   // The opening stays up until the home screen is whole: the settings from the hub and, on a TV, its own apps.
-  splashReady = Promise.all([appsReady, IN_HUB ? new Promise((r) => { HUB_READY.resolve = r; setTimeout(r, 4000); }) : null]);
+  splashReady = Promise.all([appsReady, IN_HUB ? new Promise((r) => { HUB_READY.resolve = r; setTimeout(r, 4000); }) : null, IN_HUB ? Promise.race([Promise.all([BOARD.warm(), readHubMusic()]), wait(5000)]).catch(() => {}) : null]);
   // Boot timings, for the harness (window.__boot): when the apps, the hub and the home screen were ready.
   window.__boot = { start: Math.round(performance.now()) };
   appsReady?.then(() => { window.__boot.apps = Math.round(performance.now()); });

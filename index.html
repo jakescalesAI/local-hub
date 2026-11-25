@@ -12,10 +12,10 @@
 <link rel="icon" href="/icons/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
 <link rel="manifest" href="/icons/manifest.webmanifest">
-<link rel="stylesheet" href="/tv/splash.css?v=2">
+<link rel="stylesheet" href="/tv/splash.css?v=3">
 <link rel="stylesheet" href="/tv/theme.css?v=1">
-<link rel="stylesheet" href="/tv/panel.css?v=15">
-<link rel="stylesheet" href="/tv/widgets.css?v=6">
+<link rel="stylesheet" href="/tv/panel.css?v=16">
+<link rel="stylesheet" href="/tv/widgets.css?v=7">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -257,11 +257,16 @@ html.offline .reconnect { opacity: 1; transform: translate(-50%, 0); }
   try { seen = !!sessionStorage.getItem('intro'); sessionStorage.setItem('intro', '1') } catch {}
   const n = document.getElementById('splash')
   if (seen || window.parent !== window || location.hash) return n.remove()
-  n.insertAdjacentHTML('afterbegin', `<video class="splash-video" muted autoplay playsinline preload="auto" src="/tv/intro${innerWidth * devicePixelRatio > 2000 ? '-hd' : ''}.mp4"></video>`)
-  document.write('<script src="/tv/splash.js?v=9"><\/script>')
-  // It leaves once Home is drawn under it.
-  addEventListener('load', () => { let k = 40; const look = () => (document.querySelector('#dk .dk-t, main > *') || !k-- ? window.LocalHubSplash?.release() : setTimeout(look, 100)); look() })
-  addEventListener('DOMContentLoaded', () => window.LocalHubSplash?.done.then(() => n.remove()))
+  n.insertAdjacentHTML('afterbegin', `<video class="splash-video" muted playsinline preload="auto" data-src="/tv/intro${innerWidth * devicePixelRatio > 2000 ? '-hd' : ''}.mp4?v=2"></video>`)
+  document.write('<script src="/tv/splash.js?v=10"><\/script>')
+  // It leaves once Home is whole under it: its apps and widgets there, and the pictures you can see decoded, so nothing pops in.
+  addEventListener('load', () => {
+    let k = 40
+    const ready = () => Promise.race([Promise.all([...document.images].filter(i => i.getBoundingClientRect().top < innerHeight).slice(0, 60).map(i => i.decode().catch(() => {}))), new Promise(r => setTimeout(r, 1500))]).then(() => window.LocalHubSplash?.release())
+    const look = () => (document.querySelector('#dk .dk-t') && document.querySelector('#tvside .wg-i, main > .x') || document.querySelector('main > *') && k < 25 || !k-- ? ready() : setTimeout(look, 100))
+    look()
+  })
+  addEventListener('DOMContentLoaded', () => window.LocalHubSplash?.done.then(() => { n.remove(); setTimeout(() => document.documentElement.classList.remove('home-in'), 900) }))
 })()
 </script>
 <header class="nav" id="nav"><div class="nav-in">
