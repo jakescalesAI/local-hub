@@ -150,11 +150,22 @@ function start() {
     return { ok: true }
   })
 
-  const hotkeyResult = hotkey.set(settings.values.hotkey)
-  if (!hotkeyResult.ok) console.error(hotkeyResult.error)
-
   const tv = new TvStatus({ connection })
   const tell = body => { if (Notification.isSupported()) new Notification({ title: APP_NAME, body }).show() }
+
+  // The launcher's key. Another app can already own it (the Claude app's quick-entry key is Ctrl+Alt+Space too): then
+  // the first free one of these, said once, and the chosen key stays saved for the next start.
+  const wanted = settings.values.hotkey
+  let hotkeyResult = hotkey.set(wanted)
+  if (!hotkeyResult.ok) {
+    console.error(hotkeyResult.error)
+    for (const k of ['Ctrl+Shift+Space', 'Ctrl+Alt+L', 'Ctrl+Shift+L']) {
+      if (k === wanted || !(hotkeyResult = hotkey.set(k)).ok) continue
+      console.log(`launcher key: ${k} (${wanted} is taken)`)
+      tell(`${wanted} is in use by another app, so the launcher opens with ${k}. You can choose another key in Settings.`)
+      break
+    }
+  }
   const sendToTv = async command => { if (!(await tv.command(command))) tell('The hub didn’t pass that to the TV. Try again in a moment.') }
 
   const trayControls = createTray({
