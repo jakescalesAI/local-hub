@@ -242,3 +242,11 @@ test('every script and stylesheet the TV page uses is packed into the Fire TV ap
   assert.ok(used.has('app.js') && used.has('panel.js'))
   assert.deepEqual([...used].filter(f => !packed.has(f)), [])
 })
+
+test('the TV page preloads exactly the module versions app.js imports, so none is fetched twice or late', () => {
+  const read = f => fs.readFileSync(new URL(`../../tv/ui/${f}`, import.meta.url), 'utf8')
+  const imports = [...read('app.js').matchAll(/^import .* from "\.\/([a-z]+\.js\?v=\d+)"/gm)].map(m => m[1]).sort()
+  const preloads = [...read('index.html').matchAll(/rel="modulepreload" href="\.\/([a-z]+\.js\?v=\d+)"/g)].map(m => m[1]).filter(f => !f.startsWith('app.js')).sort()
+  assert.ok(imports.length >= 5)
+  assert.deepEqual(preloads, imports)
+})

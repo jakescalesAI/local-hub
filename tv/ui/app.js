@@ -548,7 +548,7 @@ function applyFocus(instant) {
   if (instant) page.style.transition = "none";
   page.style.transform = `translateY(${y}px)`;
   if (instant) requestAnimationFrame(() => { page.style.transition = ""; });
-  if ((S.zone === "grid" || S.zone === "favs") && row === 0) paintShelf();
+  if ((S.zone === "grid" || S.zone === "favs" || S.zone === "player") && row === 0) paintShelf();
   snapshotSoon();
 }
 // Home's cover is a picture of this home screen (the TV app takes it): resting on the Favorites row for a few seconds,
@@ -640,6 +640,7 @@ function move(dx, dy) {
 
 /* ── the Top Shelf ─────────────────────────────────────────────────────── */
 
+const WIDGET_SHELF = { id: "widgets", kind: "hub", name: "" };
 function paintShelf(force) {
   // In Light glass the header waits until focus rests, so holding an arrow doesn't redraw it for every tile passed.
   if (!force && document.documentElement.classList.contains("lite")) {
@@ -647,7 +648,8 @@ function paintShelf(force) {
     paintShelf.t = setTimeout(() => paintShelf(true), 140);
     return;
   }
-  const it = S.zone === "favs" ? FAVS[S.f] : ITEMS[S.i];
+  // On a widget nothing is named: the last tile passed on the way up isn't what's focused.
+  const it = S.zone === "player" ? WIDGET_SHELF : S.zone === "favs" ? FAVS[S.f] : ITEMS[S.i];
   if (!it || (!force && it.id === S.shelfId)) return;
   S.shelfId = it.id;
   document.body.classList.toggle("shelf-hub", it.kind === "hub");
@@ -1054,7 +1056,9 @@ $("#hubFrame").addEventListener("load", () => {
 /* ── overlays ──────────────────────────────────────────────────────────── */
 
 function setOverlay(name) {
+  const was = S.overlay;
   S.overlay = name;
+  if ((was === "settings") !== (name === "settings")) paintRail();
   applyFocus();
 }
 
@@ -2619,9 +2623,11 @@ function renderRail() {
   paintRail();
 }
 function paintRail() {
+  // Settings opens over the page it came from, but it's where you are while it's open.
+  const here = S.overlay === "settings" ? "settings" : S.view;
   document.querySelectorAll(".rail-item").forEach((n) => {
     n.classList.toggle("sel", S.zone === "rail" && Number(n.dataset.r) === S.rail);
-    n.classList.toggle("here", n.dataset.id === S.view);
+    n.classList.toggle("here", n.dataset.id === here);
   });
 }
 function railOpen(on) {
