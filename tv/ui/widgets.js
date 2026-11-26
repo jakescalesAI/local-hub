@@ -102,22 +102,26 @@ export const W = {
 };
 /** How many cells each size takes, and how many a screen has: Home's is its top right corner, the screensaver's its right half. */
 export const SPAN = { s: [1, 1], m: [2, 1], l: [2, 2], w: [4, 1], xl: [4, 2], xxl: [4, 3] };
-/** A computer's Home is six by six smaller squares: a small card takes two by two of them. Everywhere else a square is a small card. */
-export const FINE = { desk: 2 };
-export const ROOM = { desk: [6, 6], tv: [4, 3], saver: [4, 5], side: [4, 40], phone: [2, 200] };
+/** A computer's Home is six by four squares, every size whole squares: small 1, medium 2, wide 4 across, large 2 by 2,
+ *  XXL (and XL with it) 3 by 2. */
+const DESK_SPAN = { s: [1, 1], m: [2, 1], l: [2, 2], w: [4, 1], xl: [3, 2], xxl: [3, 2] };
+const spans = (screen) => (screen === "desk" ? DESK_SPAN : SPAN);
+/** No screen splits its squares any more (a computer's Home did, 6 by 6 halves, until 11-26-2026). */
+export const FINE = {};
+export const ROOM = { desk: [6, 4], tv: [4, 3], saver: [4, 5], side: [4, 40], phone: [2, 200] };
 // What is inside a card's edges, in em: the clock is drawn to fill it.
 const BOX = { s: [10.6, 10.4], m: [23.6, 10.2], l: [23.6, 23.6], w: [52.4, 10.2], xl: [52.4, 23.6], xxl: [52.4, 38] };
 /** A cell is square: 13em, with 1.4em between. How many rows there is height for is the screen's to say (3 to 5 on a computer). */
 export const CELL = 13, GAP = 1.4, across = (n) => n * CELL + (n - 1) * GAP;
 export const cellOf = (screen) => (FINE[screen] ? (CELL - GAP) / 2 : CELL), acrossOn = (screen, n) => n * cellOf(screen) + (n - 1) * GAP;
-export const spanOn = (screen, size) => (SPAN[size] || SPAN.m).map((n, i) => Math.min((ROOM[screen] || ROOM.desk)[i], n * (FINE[screen] || 1)));
+export const spanOn = (screen, size) => (spans(screen)[size] || SPAN.m).map((n, i) => Math.min((ROOM[screen] || ROOM.desk)[i], n));
 export const fitGrid = (width, height) => Math.max(4, Math.min(width / acrossOn("desk", ROOM.desk[0]), height / acrossOn("desk", ROOM.desk[1])));
 const sized = (it, phone) => { const w = W[it.id], own = !w || w.sizes.includes(it.size) ? it.size : w.def; return phone ? onPhone({ ...it, size: own }) : own; };
 /** Places a list on a screen's grid: the ones that were put somewhere first, then the rest in order, each in the first gap that takes
  * it. A phone's is only an order. -> { at: Map(k -> [col, row, w, h]), out: Set(k) } */
 export function pack(list, screen) {
   const [cols, rows] = ROOM[screen] || ROOM.desk, used = [], at = new Map(), out = new Set();
-  const span = (it) => { const [w, h] = SPAN[sized(it, screen === "phone")] || SPAN.m, n = FINE[screen] || 1; return [Math.min(cols, w * n), n > 1 ? Math.min(rows, h * n) : h]; };
+  const span = (it) => { const [w, h] = spans(screen)[sized(it, screen === "phone")] || SPAN.m; return [Math.min(cols, w), Math.min(rows, h)]; };
   const free = (c, r, w, h) => { for (let y = r; y < r + h; y++) for (let x = c; x < c + w; x++) if (used[y]?.[x]) return false; return true; };
   const take = (it, c, r, w, h) => { for (let y = r; y < r + h; y++) { used[y] ??= []; for (let x = c; x < c + w; x++) used[y][x] = 1; } at.set(it.k, [c + 1, r + 1, w, h]); };
   if (screen !== "phone") for (const it of list) if (it.at) {

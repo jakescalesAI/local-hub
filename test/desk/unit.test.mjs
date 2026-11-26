@@ -168,9 +168,11 @@ test('Widgets: what doesn’t fit a screen isn’t placed, the rest stay where t
   const { cleanClock, cleanItems, cleanData } = await import('../../board.mjs')
   const l = [{ k: 'a', id: 'music', size: 'w' }, { k: 'b', id: 'weather', size: 'l' }, { k: 'c', id: 'pc', size: 'l' }]
   assert.deepEqual([...pack(l, 'tv').at.values()], [[1, 1, 4, 1], [1, 2, 2, 2], [3, 2, 2, 2]])
-  assert.deepEqual([...pack([l[0], l[1], { k: 'c', id: 'pc', size: 's' }], 'desk').at.values()], [[1, 1, 6, 2], [1, 3, 4, 4], [5, 3, 2, 2]])
+  // A computer's Home: six by four squares; wide is 4 by 1, large 2 by 2, small 1, XL and XXL 3 by 2.
+  assert.deepEqual([...pack([l[0], l[1], { k: 'c', id: 'pc', size: 's' }], 'desk').at.values()], [[1, 1, 4, 1], [5, 1, 2, 2], [1, 2, 1, 1]])
   assert.deepEqual([...pack([...l, { k: 'd', id: 'calendar', size: 'xl' }], 'tv').out], ['d'])
-  assert.deepEqual([...pack([...l, { k: 'd', id: 'calendar', size: 'xl' }], 'desk').out], ['c', 'd'])
+  assert.deepEqual([...pack([...l, { k: 'd', id: 'calendar', size: 'xl' }], 'desk').at.get('d')], [3, 3, 3, 2])
+  assert.deepEqual([...pack([...l, { k: 'd', id: 'calendar', size: 'xl' }, { k: 'e', id: 'calendar', size: 'xxl' }], 'desk').out], ['e'])
   assert.equal(pack([...l, { k: 'd', id: 'calendar', size: 'xl' }], 'saver').out.size, 0)
   assert.deepEqual(fitting(l, { k: 'n', id: 'clock', size: 's' }, 'tv'), [])
   assert.deepEqual(fitting(l, l[1], 'tv'), ['s', 'm', 'l'])

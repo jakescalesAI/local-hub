@@ -223,7 +223,7 @@ ${R} .hw-root[data-view="desktop"] .hw-grid > .hw-cell.l:not(.a) { width: var(--
 #tvside { display: none; }
 ${R} .hw-root[data-view="desktop"] > #tvside { display: grid; position: absolute; z-index: 11; top: max(30px, 5vh); right: 48px; width: var(--side); max-height: none; overflow: visible; scrollbar-width: none; grid-template-columns: repeat(auto-fit, minmax(min(100%, 232px), 1fr)); gap: 14px; align-content: start; padding: 8px; margin: -8px; box-sizing: content-box; }
 ${R} #tvside::-webkit-scrollbar { display: none; }
-${R} .hw-root[data-view="desktop"] > #tvside > .wg[data-fine] { height: var(--wgh, 45vh); grid-template-columns: repeat(6, minmax(0, 1fr)); grid-template-rows: repeat(6, minmax(0, 1fr)); grid-auto-rows: 0; justify-content: stretch; }
+${R} .hw-root[data-view="desktop"] > #tvside > .wg:is([data-screen=""], [data-screen="desk"]) { --cols: 6; grid-template-rows: repeat(4, 13em); grid-auto-rows: 0; width: var(--wgw, auto); margin-left: var(--wgx, 0); justify-content: start; }
 ${R} #tvside .hw-cell { height: 184px; min-width: 0; grid-column: auto !important; grid-row: auto !important; }
 ${R} #tvside .hw-cell.l { grid-column: 1 / -1 !important; }
 ${R} #tvside .hw-cell.l { height: 380px; }
@@ -543,7 +543,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   const boards = {}
   const board = (which = myScreen()) => WG && (boards[which] ??= WG.createBoard({ screen: which, changed: () => { cancelAnimationFrame(board.raf); board.raf = requestAnimationFrame(() => { paintSide(); drawWid(); tick() }) }, music: () => MU?.now }))
   let CK = null, SB = null, PC = null
-  ;(async () => { try { WG = await import('/tv/widgets.js?v=19'); CK = await import('/tv/clock.js?v=3'); SB = await import('/tv/side.js?v=5'); P ??= await import('/tv/panel.js?v=16'); board()?.refresh(); paintSide(); tick() } catch {} })()
+  ;(async () => { try { WG = await import('/tv/widgets.js?v=20'); CK = await import('/tv/clock.js?v=3'); SB = await import('/tv/side.js?v=5'); P ??= await import('/tv/panel.js?v=16'); board()?.refresh(); paintSide(); tick() } catch {} })()
   setInterval(() => {
     if (!WG || document.hidden || !document.querySelector('.hw-root')) return
     const b = board(editOn || undefined)
@@ -576,10 +576,14 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     if (!WG) return
     const b = board(editOn || undefined)
     if (document.documentElement.hasAttribute('data-tvlook') && side.offsetWidth && !['saver', 'side', 'phone'].includes(editOn)) {
-      // The widgets have the top right quarter: half the width beside the rail, down to the middle of the window.
-      const h = Math.max(230, innerHeight / 2 - Math.max(30, innerHeight * .05))
-      side.style.setProperty('--wgf', `${WG.fitGrid(parseFloat(getComputedStyle(side).width), h).toFixed(2)}px`)
-      side.style.setProperty('--wgh', `${Math.round(h)}px`)
+      // The widgets are six by four squares at the top right: as tall as fits above the favorites row with the same room
+      // under them as over them, at most a little wider than the right half, and lined up with its right edge.
+      const sw = parseFloat(getComputedStyle(side).width), top0 = side.getBoundingClientRect().top + 8
+      const fav = document.getElementById('dkfav') || root.querySelector('.controls'), below = fav?.offsetHeight ? fav.getBoundingClientRect().top : innerHeight * .62
+      const h = Math.max(230, below - top0 - (top0 > 0 ? top0 : 36)), f = WG.fitGrid(sw * 1.15, h), gw = WG.across(WG.ROOM.desk[0]) * f
+      side.style.setProperty('--wgf', `${f.toFixed(2)}px`)
+      side.style.setProperty('--wgw', `${Math.round(gw)}px`)
+      side.style.setProperty('--wgx', `${Math.round(sw - gw)}px`)
     }
     onScreen = []
     // Widgets of the hub's own, from its older gallery, stay under these.
@@ -2664,7 +2668,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     const box = top.querySelector('.tvt-clock')
     if (!CK) { if (!box.firstChild) box.textContent = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); return }
     const c = clockLook(), side = document.getElementById('tvside'), name = top.querySelector('.tvt-name')
-    const room = document.documentElement.hasAttribute('data-tvtouch') || !side?.offsetWidth ? innerWidth - 60 : side.getBoundingClientRect().left - box.getBoundingClientRect().left - 34
+    const room = document.documentElement.hasAttribute('data-tvtouch') || !side?.offsetWidth ? innerWidth - 60 : (side.querySelector('.wg') || side).getBoundingClientRect().left - box.getBoundingClientRect().left - 34
     if (document.documentElement.dataset.editon === 'saver') return CK.paint(box, c, { now: d, h24: H24, scale: c.saver / 100, maxW: room, maxH: innerHeight * .5 })
     const tall = document.documentElement.hasAttribute('data-tvtouch') ? 0 : (top.clientHeight || 400) - 58 - (name?.offsetHeight || 0) - 14
     CK.paint(box, look.clock === 'Time' ? { ...c, date: 'off' } : c, { now: d, h24: H24, scale: c.size / 100, maxW: Math.max(120, room), maxH: tall > 60 ? tall : 0 })
