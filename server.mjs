@@ -11,7 +11,7 @@ import { appendFile, existsSync, mkdirSync, renameSync, statSync } from 'node:fs
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createFiles } from './files.mjs'
-import { HERE, PORT, configPath, hubConfig, tabOn, addonOn } from './config.mjs'
+import { HERE, PORT, configPath, hubConfig, saveHubConfig, tabOn, addonOn } from './config.mjs'
 import { createDeviceAuth } from './device-auth.mjs'
 import { IS_WIN, PYTHON, ROOT_DISK, listeners as listPorts, mutagenPath, tailscalePath } from './platform.mjs'
 import { gate, hasPasscode, knownHost, passcodeNeeded } from './access.mjs'
@@ -420,11 +420,24 @@ async function handle(req, res) {
 // A `local-only` file next to this one keeps it on loopback. A new hub stays on loopback until
 // you choose "tailnet" (hub.json access).
 const LOCAL_ONLY = path.join(HERE, 'local-only')
+// A home-network address in hub.json that this computer no longer has (the router gave it a new one after a restart)
+// follows to the address it has now on the same network, and is saved, so the TV and phones keep finding the hub.
+const PRIVATE_V4 = /^(10|192\.168|172\.(1[6-9]|2\d|3[01]))\./
+function followAddresses(list) {
+  const mine = Object.values(os.networkInterfaces()).flat().filter(a => a && a.family === 'IPv4' && !a.internal).map(a => a.address)
+  const net = ip => ip.split('.').slice(0, 3).join('.')
+  const out = list.map(ip => (typeof ip !== 'string' || !PRIVATE_V4.test(ip) || mine.includes(ip) ? ip : mine.find(m => net(m) === net(ip)) || ip))
+  if (out.some((ip, i) => ip !== list[i])) {
+    console.log(`${hubConfig().name}: this computer's home-network address changed (${list.filter((ip, i) => ip !== out[i]).join(', ')} -> ${out.filter((ip, i) => ip !== list[i]).join(', ')})`)
+    saveHubConfig({ listen: out })
+  }
+  return out
+}
 async function bindListeners() {
   const localOnly = existsSync(LOCAL_ONLY)
   const tailnet = localOnly || hubConfig().access !== 'tailnet' ? '' : state.tailnet.ip
   // More addresses only with a passcode in front of them.
-  const more = localOnly || (passcodeNeeded() && !hasPasscode()) ? [] : hubConfig().listen
+  const more = localOnly || (passcodeNeeded() && !hasPasscode()) ? [] : followAddresses(hubConfig().listen)
   const wanted = ['127.0.0.1', tailnet, ...more].filter(Boolean)
   // An address taken out of hub.json (Set up a TV turning the home network off, say) stops answering.
   for (const [host, server] of listeners) {

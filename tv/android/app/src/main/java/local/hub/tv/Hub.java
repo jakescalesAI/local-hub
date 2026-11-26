@@ -139,6 +139,22 @@ final class Hub {
         }
     }
 
+    /** True when the hub at `base` takes this TV's key: the same hub, found at another address. */
+    static boolean keyWorks(String base, String token, int timeoutMs) {
+        HttpURLConnection c = null;
+        try {
+            c = (HttpURLConnection) new URL(base + "/api/tv/status").openConnection();
+            c.setConnectTimeout(timeoutMs);
+            c.setReadTimeout(timeoutMs * 2);
+            c.setRequestProperty("Authorization", "Bearer " + token);
+            return c.getResponseCode() == 200;
+        } catch (Exception e) {
+            return false;
+        } finally {
+            if (c != null) c.disconnect();
+        }
+    }
+
     /**
      * Looks for LocalHub on this network: every address in the TV's own /24, port 3100, in parallel.
      * Takes a second or two. LocalHub only answers on the LAN once you've turned that on (see tv/README).

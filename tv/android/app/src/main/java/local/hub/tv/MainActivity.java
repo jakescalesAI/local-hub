@@ -250,6 +250,18 @@ public class MainActivity extends Activity {
         // screen (Windows drops the connection rather than refusing it). Ask it first, briefly.
         io.execute(() -> {
             boolean up = Hub.looksLikeHub(base, 1500);
+            // Not there: the computer may have a new address on the home network (a router hands out another after a
+            // restart). Look for it, at most once a minute, and move only to a hub that still takes this TV's key, so
+            // the pairing stays.
+            if (!up && SystemClock.uptimeMillis() - lastScanAt > 60_000) {
+                lastScanAt = SystemClock.uptimeMillis();
+                String found = Hub.scan();
+                if (found != null && !found.equals(base) && Hub.keyWorks(found, prefs.hubToken(), 1500)) {
+                    prefs.setHub(found);
+                    runOnUiThread(this::loadHub);
+                    return;
+                }
+            }
             runOnUiThread(() -> {
                 if (web == null) return;
                 if (!up) { hubAway(); return; }
@@ -267,6 +279,8 @@ public class MainActivity extends Activity {
         ui.removeCallbacks(retryHub);
         if (resumed && hub.paired()) ui.postDelayed(retryHub, 5000);
     }
+
+    private volatile long lastScanAt = -60_000;
 
     private final Runnable retryHub = () -> {
         if (resumed && hub.paired() && web != null && !onHubPage()) loadHub();
