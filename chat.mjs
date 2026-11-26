@@ -231,7 +231,7 @@ SITES
 - To open a website for the user ("open Coolify", "show me the Stripe dashboard"), call show_site with name for a saved website app, or url. They see it open in the hub's browser pop-up, a real streamed Chrome where they can scroll, click and sign in themselves, with a card in the chat. Any site works, so never say a site blocks previews. You cannot see, read or click anything inside it, so never describe its contents; say it is open and what they can do there.
 ` : ''}
 LIVE DATA
-- To read live numbers, call the hub_read tool with the path, for example /api/state. Paths are in the guide.
+- To read live numbers, call the hub_read tool with the path, for example /api/state. Paths are in the guide. The weather here (now, the next hours, the week) is hub_read /api/tv/weather: use it, not the web, for anything about the weather.
 - If a tool comes back saying a card is on screen, stop and wait for the user. Only the card's Allow counts, and a typed yes doesn't. For file_op and hub_action the hub does the step itself once they allow it, so don't call it again.
 ${on('files') ? '- attach_file puts a file into your reply as a picture or a chip they can open and save. When they ask for a file, or you made one they will want, write it in workspace/ and attach it instead of pasting it or naming a path. Key files are refused.\n' : ''}${on('files') ? '' : '- file_op is turned off in this hub.\n'}- file_op moves, copies, renames and trashes files. Moves, renames and trash work inside workspace/ and writeFolders, copies can come from any folder you can read, and nothing is overwritten. Key files, folders holding one, links, and places where files run as code (.git, .claude, startup folders) are refused. /api/agent/log through hub_read lists what you've done, so you can move something back.
 - hub_action runs one of the hub's named actions: refresh, refresh_ai, refresh_cloud, refresh_stripe, refresh_calendar, calendar_add, calendar_update, calendar_delete, calendar_quick. Cloud and Stripe stay read-only, and there's no action for changing your own limits.
@@ -934,9 +934,11 @@ export function create({ run, sshHost, here }) {
     const toml = v => JSON.stringify(v)
     const attemptCodex = resume =>
       new Promise(resolve => {
-        const hubTools = [`mcp_servers.hub.command=${toml(process.execPath)}`, `mcp_servers.hub.args=[${toml(path.join(here, 'chat-tools.mjs'))}]`, `mcp_servers.hub.env={HUB_PORT=${toml(String(PORT))}}`]
+        const hubTools = [`mcp_servers.hub.command=${toml(process.execPath)}`, `mcp_servers.hub.args=[${toml(path.join(here, 'chat-tools.mjs'))}]`, `mcp_servers.hub.env={HUB_PORT=${toml(String(PORT))}}`, 'mcp_servers.hub.default_tools_approval_mode="approve"']
         const conf = ['approval_policy="never"', 'sandbox_mode="read-only"', ...(effort ? [`model_reasoning_effort=${toml(effort === 'max' || effort === 'xhigh' ? 'high' : effort)}`] : []), ...hubTools]
-        const opts = ['--json', '--skip-git-repo-check', '-m', model, ...conf.flatMap(c => ['-c', c])]
+        // Only the hub's tools: not the Codex config, plugins or ChatGPT apps of whoever is signed in. The hub's own
+        // server is approved up front (it asks on its own cards); every other tool would be refused.
+        const opts = ['--ignore-user-config', '--disable', 'apps', '--disable', 'goals', '--json', '--skip-git-repo-check', '-m', model, ...conf.flatMap(c => ['-c', c])]
         const args = [...codex[1], 'exec', ...(resume ? ['resume', resume] : []), ...opts, '-']
         console.log(`chat ${conv.id}: codex exec -m ${model}${effort ? ` (effort ${effort})` : ''}${resume ? ' resume' : ''}${saved.length ? ` (${saved.length} file${saved.length === 1 ? '' : 's'})` : ''}`)
         const proc = spawn(bin, args, { cwd: here, env: { ...process.env }, windowsHide: true })
