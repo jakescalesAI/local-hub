@@ -53,13 +53,17 @@ const MAX_TEXT = LONG_TEXT // longest message accepted
 const MAX_REPLY = 1500 // longest quoted reply context
 // The only models a message may ask for; anything else is refused. assistant.models replaces this list.
 const CLAUDE_MODELS = [['claude-opus-5-5', 'Opus 5.5'], ['claude-sonnet-5-5', 'Sonnet 5.5'], ['claude-haiku-5-5', 'Haiku 5.5']]
+// assistant.provider.type "codex": the chat runs on Codex with the ChatGPT sign-in Codex already has, on OpenAI's own
+// models (11-26-2026: for everyday, surface-level asks, on the cheap one).
+const CODEX_MODELS = [['gpt-6-luna', 'GPT-6 Luna'], ['gpt-6.2-sol', 'GPT-6.2 Sol']]
+export const usesCodex = () => hubConfig().assistant.provider?.type === 'codex'
 const models = () => {
   const own = hubConfig().assistant.models.map(m => (Array.isArray(m) ? m : [m, m])).filter(([id]) => typeof id === 'string' && id)
-  return own.length ? own : CLAUDE_MODELS
+  return own.length ? own : usesCodex() ? CODEX_MODELS : CLAUDE_MODELS
 }
 const defaultModel = () => {
   const list = models(), want = hubConfig().assistant.defaultModel
-  return list.some(([id]) => id === want) ? want : list.some(([id]) => id === 'claude-sonnet-5-5') ? 'claude-sonnet-5-5' : list[0][0]
+  return list.some(([id]) => id === want) ? want : ['claude-sonnet-5-5', 'gpt-6-luna'].find(m => list.some(([id]) => id === m)) || list[0][0]
 }
 const EFFORTS = [['', 'Auto'], ['low', 'Low'], ['medium', 'Medium'], ['high', 'High'], ['xhigh', 'Extra high'], ['max', 'Max']]
 const MODES = [['auto', 'Auto', 'Does the work. Asks before sending, posting, buying or deleting.'], ['plan', 'Plan', 'Looks, reads and plans. Changes nothing.']]
@@ -276,6 +280,18 @@ THE HUB GUIDE (what the hub is and how it works) follows, then the hub browser r
 }
 
 let claudeBin
+// Codex: its own launcher run by this Node (npm puts it beside codex.cmd), else a codex program on PATH. -> [bin, args] or null
+export function findCodex() {
+  const own = hubConfig().assistant.command
+  if (own) return fs.existsSync(own) ? (/\.m?js$/i.test(own) ? [process.execPath, [own]] : [own, []]) : null
+  const js = path.join(process.env.APPDATA || path.join(os.homedir(), '.npm-global'), 'npm', 'node_modules', '@openai', 'codex', 'bin', 'codex.js')
+  if (fs.existsSync(js)) return [process.execPath, [js]]
+  try {
+    const out = execFileSync(process.platform === 'win32' ? 'where.exe' : 'which', ['codex'], { encoding: 'utf8', windowsHide: true, timeout: 5000 })
+    const bin = out.split(/\r?\n/).map(l => l.trim()).find(l => l && fs.existsSync(l) && !/\.(cmd|ps1)$/i.test(l))
+    return bin ? [bin, []] : null
+  } catch { return null }
+}
 export function findClaude() {
   const own = hubConfig().assistant.command
   if (own) return fs.existsSync(own) ? own : null
@@ -632,6 +648,7 @@ export function create({ run, sshHost, here }) {
     return proc
   }
   function startWarm(body) {
+    if (usesCodex()) return false // Codex starts quickly enough: no head start
     const bin = findClaude()
     const conv = body.sessionId ? load(String(body.sessionId)) : { cli: null, items: [], test: body.test === true }
     if (!bin || !conv || running.size || (body.model && !models().some(([v]) => v === body.model)) || (body.mode && !MODES.some(([v]) => v === body.mode))) return false
@@ -666,8 +683,9 @@ export function create({ run, sshHost, here }) {
     const reply = scrub(String(body.reply ?? '')).trim().slice(0, MAX_REPLY)
     if (!text && att.files.length) text = att.files.length === 1 ? 'Have a look at the attached file.' : 'Have a look at the attached files.'
     if (!text) return send(res, 400, { error: 'Type a message first.' })
-    const bin = findClaude()
-    if (!bin) return send(res, 503, { error: 'The assistant needs Claude Code. Install it, or set assistant.command in config/hub.json.' })
+    const codex = usesCodex() ? findCodex() : null
+    const bin = codex ? codex[0] : usesCodex() ? null : findClaude()
+    if (!bin) return send(res, 503, { error: usesCodex() ? 'The assistant needs Codex, signed in with ChatGPT. Install it (npm i -g @openai/codex), then run codex login.' : 'The assistant needs Claude Code. Install it, or set assistant.command in config/hub.json.' })
 
     let conv = null
     if (body.sessionId) {
@@ -676,7 +694,7 @@ export function create({ run, sshHost, here }) {
     } else {
       conv = { id: newId(), title: trim(text, 60), created: Date.now(), updated: Date.now(), cli: null, items: [], ...(body.test === true ? { test: true } : {}) }
     }
-    if (running.has(conv.id)) return send(res, 409, { error: 'Claude is still answering in this chat.' })
+    if (running.has(conv.id)) return send(res, 409, { error: 'The assistant is still answering in this chat.' })
     if (running.size >= MAX_RUNS) return send(res, 429, { error: 'Too many answers running at once. Try again in a moment.' })
 
     const model = body.model || defaultModel()
@@ -755,7 +773,7 @@ export function create({ run, sshHost, here }) {
         let lastText = '' // the last text shown, so a failed result that only repeats it isn't shown twice
 
         const onEvent = ev => {
-          if (ev.session_id && CLI_ID_RE.test(ev.session_id)) conv.cli = ev.session_id
+          if (ev.session_id && CLI_ID_RE.test(ev.session_id)) { conv.cli = ev.session_id; delete conv.runner }
           if (ev.type === 'system' && ev.subtype === 'init') console.log(`chat ${conv.id}: running on ${ev.model}${mode === 'plan' ? `, tools: ${(ev.tools || []).join(' ')}` : ''}`)
           if (ev.type === 'stream_event') {
             const e = ev.event || {}
@@ -911,13 +929,113 @@ export function create({ run, sshHost, here }) {
         proc.stdin.end(JSON.stringify({ type: 'user', message: { role: 'user', content: prompt } }) + '\n')
       })
 
+    // Codex: one `codex exec --json` per message, resumed by its thread id. Read-only on this computer; acting goes
+    // through the hub's own tools (chat-tools.mjs), which ask on a card before anything that sends, buys or deletes.
+    const toml = v => JSON.stringify(v)
+    const attemptCodex = resume =>
+      new Promise(resolve => {
+        const hubTools = [`mcp_servers.hub.command=${toml(process.execPath)}`, `mcp_servers.hub.args=[${toml(path.join(here, 'chat-tools.mjs'))}]`, `mcp_servers.hub.env={HUB_PORT=${toml(String(PORT))}}`]
+        const conf = ['approval_policy="never"', 'sandbox_mode="read-only"', ...(effort ? [`model_reasoning_effort=${toml(effort === 'max' || effort === 'xhigh' ? 'high' : effort)}`] : []), ...hubTools]
+        const opts = ['--json', '--skip-git-repo-check', '-m', model, ...conf.flatMap(c => ['-c', c])]
+        const args = [...codex[1], 'exec', ...(resume ? ['resume', resume] : []), ...opts, '-']
+        console.log(`chat ${conv.id}: codex exec -m ${model}${effort ? ` (effort ${effort})` : ''}${resume ? ' resume' : ''}${saved.length ? ` (${saved.length} file${saved.length === 1 ? '' : 's'})` : ''}`)
+        const proc = spawn(bin, args, { cwd: here, env: { ...process.env }, windowsHide: true })
+        entry.proc = proc
+        if (entry.killed) killTree(proc)
+        let pending = '', stderr = '', lastResult = null
+        const t0 = Date.now()
+        const onEvent = ev => {
+          if (ev.type === 'thread.started' && CLI_ID_RE.test(String(ev.thread_id || ''))) { conv.cli = ev.thread_id; conv.runner = 'codex'; save(conv); return }
+          const it = ev.item || {}
+          if (ev.type === 'item.started' && it.type === 'mcp_tool_call') {
+            gotOutput = true
+            const name = `mcp__${it.server}__${it.tool}`, input = it.arguments || {}
+            const item = { kind: 'tool', id: String(it.id), name, label: scrub(toolLabel(name, input)), detail: toolDetail(name, input) }
+            toolItems.set(item.id, item); conv.items.push(item); save(conv)
+            emit({ type: 'tool', id: item.id, name, label: item.label, detail: item.detail })
+            return
+          }
+          if (ev.type === 'item.completed' && it.type === 'mcp_tool_call') {
+            const item = toolItems.get(String(it.id)), name = `mcp__${it.server}__${it.tool}`
+            const rawOut = it.error?.message || resultText(it.result?.content ?? it.result ?? '')
+            const ok = !it.error && it.status !== 'failed'
+            const textOut = scrub(rawOut.replace(CONFIRM_MARK, '').replace(CONNECT_MARK, '').replace(ATTACH_MARK, '')).slice(0, 1500)
+            if (item) { item.result = textOut; item.ok = ok }
+            emit({ type: 'tool_result', id: String(it.id), ok, text: textOut })
+            if (ok && name === 'mcp__hub__settings_update') emit({ type: 'settings' })
+            if (ok && name === 'mcp__hub__show_site') { const st = siteOf(textOut); if (st) { emit({ type: 'site', ...st }); conv.items.push({ kind: 'site', ...st, at: Date.now() }) } }
+            const via = ['mcp__hub__file_op', 'mcp__hub__hub_action'].includes(name) ? 'agent' : name === 'mcp__hub__connection_call' ? 'connections' : ''
+            const want = via && !ok && CONFIRM_MARK.exec(rawOut)
+            if (want) {
+              fetch(`http://127.0.0.1:${PORT}/api/${via}/confirm/${want[1]}`, { signal: AbortSignal.timeout(5e3) })
+                .then(x => (x.ok ? x.json() : null))
+                .then(c => {
+                  if (!c) return
+                  const card = { kind: 'confirm', id: want[1], via, what: scrub(trim(c.what, 200)), label: scrub(trim(c.label, 40000)), url: scrub(trim(c.url, 200)), at: Date.now() }
+                  conv.items.push(card); save(conv)
+                  emit({ type: 'confirm', id: card.id, via, what: card.what, label: card.label, url: card.url })
+                }, () => {})
+            }
+            save(conv)
+            return
+          }
+          if (ev.type === 'item.completed' && it.type === 'agent_message' && it.text) {
+            gotOutput = true
+            const full = scrub(it.text)
+            emit({ type: 'text_start' })
+            emit({ type: 'delta', text: full })
+            conv.items.push({ kind: 'assistant', text: full, at: Date.now() })
+            save(conv)
+            emit({ type: 'text_end', text: full })
+            return
+          }
+          if (ev.type === 'turn.completed') {
+            const u = ev.usage || {}
+            lastResult = { usage: { input_tokens: Math.max(0, (u.input_tokens || 0) - (u.cached_input_tokens || 0)), cache_read_input_tokens: u.cached_input_tokens || 0, output_tokens: (u.output_tokens || 0) + (u.reasoning_output_tokens || 0) }, duration_ms: Date.now() - t0 }
+            return
+          }
+          if ((ev.type === 'turn.failed' || ev.type === 'error') && !sawError) {
+            const raw = String(ev.error?.message || ev.message || 'Codex stopped.')
+            if (/metadata for .* not found/i.test(raw)) return // a warning, not a failure
+            sawError = true
+            const msg = /usage limit|rate limit|quota/i.test(raw) ? `ChatGPT usage limit reached. ${scrub(raw).slice(0, 300)}` : scrub(raw).slice(0, 600)
+            emit({ type: 'error', message: msg })
+            conv.items.push({ kind: 'error', text: msg })
+          }
+        }
+        proc.stdout.setEncoding('utf8')
+        proc.stdout.on('data', chunk => {
+          pending += chunk
+          let i
+          while ((i = pending.indexOf('\n')) >= 0) {
+            const line = pending.slice(0, i).trim()
+            pending = pending.slice(i + 1)
+            if (!line) continue
+            let ev
+            try { ev = JSON.parse(line) } catch { continue }
+            try { onEvent(ev) } catch (e) { console.error('chat event', e.message) }
+          }
+        })
+        proc.stderr.setEncoding('utf8')
+        proc.stderr.on('data', d => { stderr = (stderr + d).slice(-3000) })
+        proc.on('error', e => resolve({ code: -1, stderr: `Couldn't start Codex: ${e.message}`, lastResult }))
+        proc.on('close', code => resolve({ code, stderr, lastResult }))
+        proc.stdin.on('error', () => {})
+        // A new thread starts with the hub's own instructions; a resumed one already has them.
+        let sys = ''
+        if (!resume) { try { sys = fs.readFileSync(systemPromptFile(), 'utf8') } catch {} }
+        proc.stdin.end(sys ? `${sys}\n\n---\n\n${prompt}` : prompt)
+      })
+
     let r = null
     try {
-      r = await attempt(conv.cli || null)
+      // A thread only resumes on the engine that started it (Claude's ids mean nothing to Codex, and back).
+      const own = (conv.runner || 'claude') === (codex ? 'codex' : 'claude')
+      r = await (codex ? attemptCodex : attempt)(own ? conv.cli || null : null)
       // A saved Claude session can be gone (cleaned up, other login): start again, same chat.
       if (r.code && !gotOutput && !sawError && conv.cli && /no conversation found|session/i.test(r.stderr) && !entry.killed) {
         conv.cli = null
-        r = await attempt(null)
+        r = await (codex ? attemptCodex : attempt)(null)
       }
       if (entry.killed === 'timeout') {
         const msg = 'That took too long, so I stopped it.'
@@ -926,7 +1044,7 @@ export function create({ run, sshHost, here }) {
       } else if (entry.killed) {
         conv.items.push({ kind: 'error', text: 'Stopped.' })
       } else if (r.code && !sawError) {
-        const msg = scrub(r.stderr.trim().split('\n').slice(-3).join('\n')).slice(0, 600) || `Claude exited with code ${r.code}.`
+        const msg = scrub(r.stderr.trim().split('\n').slice(-3).join('\n')).slice(0, 600) || `${codex ? 'Codex' : 'Claude'} exited with code ${r.code}.`
         emit({ type: 'error', message: msg })
         conv.items.push({ kind: 'error', text: msg })
       }
