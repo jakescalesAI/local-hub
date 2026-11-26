@@ -171,7 +171,7 @@ export function create({ here }) {
       if (key !== cover.key) cover = { key, body: Buffer.from(m.art, 'base64') }
     }
     player = m.on ? String(m.app || '') : ''
-    const song = `${m.app}|${m.title}|${m.artist}|${Math.round(m.dur || 0)}`, site = SITES[m.site] ? m.site : ''
+    const song = m.on || m.title ? `${m.app || ''}|${m.title || ''}|${m.artist || ''}|${Math.round(m.dur || 0)}` : '' // nothing playing: no song, site = SITES[m.site] ? m.site : ''
     clock.see(song, m.raw, m.upd, !!m.playing, m.rate || 1)
     const pc = pcs ? { from: 'pc', title: String(m.title || '').slice(0, 200), artist: String(m.artist || '').slice(0, 200), app: m.on ? site || appName(m.app) : 'This PC', icon: !m.on ? '' : site ? siteIcon(SITES[site]) : `/api/desk/icon?id=${encodeURIComponent(`pc:${player}`)}`, song, album: String(m.album || '').slice(0, 200), playing: !!m.playing, pos: secs(m.pos), dur: secs(m.dur), seek: !!m.seek, art: m.art ? `/api/music/art/${cover.key}.jpg` : '' } : null
     const now = pickNow(pref.source, [pc, sp, tv].filter(Boolean))
