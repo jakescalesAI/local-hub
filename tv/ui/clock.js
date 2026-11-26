@@ -90,9 +90,12 @@ export function clockHTML(opts, { now = new Date(), h24 = false, scale = 1 } = {
 /** Draws it in a place and shrinks it to fit there. Only measures when something that changes its size did. */
 export function paint(box, opts, { now, h24, scale = 1, maxW = 0, maxH = 0 } = {}) {
   const html = clockHTML(opts, { now, h24, scale });
-  if (box._hc === html) return;
+  // The room it has counts as much as what it shows: the page settling or the window changing size refits it.
+  const room = `${maxW}|${maxH}`;
+  if (box._hc === html && box._hr === room) return;
+  box.innerHTML = html; // fresh, so it's measured at its full size
   box._hc = html;
-  box.innerHTML = html;
+  box._hr = room;
   const key = `${html.replace(/<svg[\s\S]*?<\/svg>/, "").replace(/>[^<]*</g, (s) => `>${s.length}<`)}|${maxW}|${maxH}`, el = box.firstElementChild;
   if (box._hk !== key) {
     const w = el.offsetWidth, h = el.offsetHeight;

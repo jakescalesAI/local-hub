@@ -223,6 +223,7 @@ ${R} .hw-root[data-view="desktop"] .hw-grid > .hw-cell.l:not(.a) { width: var(--
 #tvside { display: none; }
 ${R} .hw-root[data-view="desktop"] > #tvside { display: grid; position: absolute; z-index: 11; top: max(30px, 5vh); right: 48px; width: var(--side); max-height: none; overflow: visible; scrollbar-width: none; grid-template-columns: repeat(auto-fit, minmax(min(100%, 232px), 1fr)); gap: 14px; align-content: start; padding: 8px; margin: -8px; box-sizing: content-box; }
 ${R} #tvside::-webkit-scrollbar { display: none; }
+${R} .hw-root[data-view="desktop"] > #tvside > .wg[data-fine] { height: var(--wgh, 45vh); grid-template-columns: repeat(6, minmax(0, 1fr)); grid-template-rows: repeat(6, minmax(0, 1fr)); grid-auto-rows: 0; justify-content: stretch; }
 ${R} #tvside .hw-cell { height: 184px; min-width: 0; grid-column: auto !important; grid-row: auto !important; }
 ${R} #tvside .hw-cell.l { grid-column: 1 / -1 !important; }
 ${R} #tvside .hw-cell.l { height: 380px; }
@@ -542,7 +543,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   const boards = {}
   const board = (which = myScreen()) => WG && (boards[which] ??= WG.createBoard({ screen: which, changed: () => { cancelAnimationFrame(board.raf); board.raf = requestAnimationFrame(() => { paintSide(); drawWid(); tick() }) }, music: () => MU?.now }))
   let CK = null, SB = null, PC = null
-  ;(async () => { try { WG = await import('/tv/widgets.js?v=18'); CK = await import('/tv/clock.js?v=2'); SB = await import('/tv/side.js?v=5'); P ??= await import('/tv/panel.js?v=16'); board()?.refresh(); paintSide(); tick() } catch {} })()
+  ;(async () => { try { WG = await import('/tv/widgets.js?v=19'); CK = await import('/tv/clock.js?v=3'); SB = await import('/tv/side.js?v=5'); P ??= await import('/tv/panel.js?v=16'); board()?.refresh(); paintSide(); tick() } catch {} })()
   setInterval(() => {
     if (!WG || document.hidden || !document.querySelector('.hw-root')) return
     const b = board(editOn || undefined)
@@ -575,7 +576,10 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     if (!WG) return
     const b = board(editOn || undefined)
     if (document.documentElement.hasAttribute('data-tvlook') && side.offsetWidth && !['saver', 'side', 'phone'].includes(editOn)) {
-      side.style.setProperty('--wgf', `${WG.fitGrid(parseFloat(getComputedStyle(side).width), Math.max(230, innerHeight * .53)).toFixed(2)}px`)
+      // The widgets have the top right quarter: half the width beside the rail, down to the middle of the window.
+      const h = Math.max(230, innerHeight / 2 - Math.max(30, innerHeight * .05))
+      side.style.setProperty('--wgf', `${WG.fitGrid(parseFloat(getComputedStyle(side).width), h).toFixed(2)}px`)
+      side.style.setProperty('--wgh', `${Math.round(h)}px`)
     }
     onScreen = []
     // Widgets of the hub's own, from its older gallery, stay under these.
