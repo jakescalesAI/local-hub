@@ -752,6 +752,7 @@ export function create({ run, sshHost, here }) {
         let partial = '' // this text block so far, so a stopped reply keeps what had arrived
         let partialAt = 0
         let lastResult = null
+        let lastText = '' // the last text shown, so a failed result that only repeats it isn't shown twice
 
         const onEvent = ev => {
           if (ev.session_id && CLI_ID_RE.test(ev.session_id)) conv.cli = ev.session_id
@@ -785,6 +786,7 @@ export function create({ run, sshHost, here }) {
                 partial = ''
                 entry.partial = null
                 delete conv.partial
+                lastText = full.trim()
                 conv.items.push({ kind: 'assistant', text: full, at: Date.now() })
                 save(conv)
                 emit({ type: 'text_end', text: full })
@@ -873,6 +875,8 @@ export function create({ run, sshHost, here }) {
             if (ev.is_error && ev.result) {
               sawError = true
               const msg = scrub(String(ev.result)).slice(0, 600)
+              // The CLI often says why in the reply itself (the usage limit and when it resets); once is enough.
+              if (msg.trim() === lastText) return
               emit({ type: 'error', message: msg })
               conv.items.push({ kind: 'error', text: msg })
             }
