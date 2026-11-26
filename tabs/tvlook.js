@@ -1515,7 +1515,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   sync.id = 'tvsync'
   sync.setAttribute('aria-label', 'Browser')
   const sb = (k, t, d) => `<button type="button" data-sync="${k}">${svg(d)}<span>${t}</span></button>`
-  sync.innerHTML = `<div class="sy-head"><b>Browser</b><em>The same tabs here, on your phone and on the TV</em>${sb('tv', 'Show on TV', IC.tv)}${sb('own', 'Own window', '<path d="M14 4h6v6M20 4l-8 8M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>')}${sb('bot', 'Assistant’s', IC.mic)}</div><div class="sy-fit"></div>`
+  sync.innerHTML = `<div class="sy-head"><b>Browser</b><em>The same tabs here, on your phone and on the TV</em>${sb('tv', 'Show on TV', IC.tv)}${sb('own', 'Own window', '<path d="M14 4h6v6M20 4l-8 8M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>')}${sb('bot', 'Assistant’s browser', IC.mic)}</div><div class="sy-fit"></div>`
   document.body.append(sync)
   function openSync(url = '') {
     closeSettings()
