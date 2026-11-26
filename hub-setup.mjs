@@ -1,7 +1,7 @@
 // First-run setup, add-ons, themes and what the page may know about this hub.
 //   GET  /hub-config.js               window.HUB_CONF, loaded before every other script. Never holds a key.
 //   GET  /icons/manifest.webmanifest  the app manifest, named after this hub
-//   GET  /api/hub/setup               { needsSetup, claude: { installed, signedIn }, tailscale: { installed } }
+//   GET  /api/hub/setup               { needsSetup, claude: { installed, signedIn }, assistant: { engine, model, installed, signedIn }, tailscale: { installed } }
 //   POST /api/hub/setup               the wizard's answers. Only while there is no config, only from this computer.
 //   POST /api/hub/addons              { id, on } turns an add-on on or off
 //   GET  /api/hub/themes              the themes this hub knows
@@ -14,7 +14,7 @@ import path from 'node:path'
 import { HERE, ADDONS, hubConfig, needsSetup, saveHubConfig, saveSecrets, pageConfig, themes, themeById, baseTheme } from './config.mjs'
 import { IS_MAC, tailscalePath } from './platform.mjs'
 import { MIN_PASSCODE, hashPasscode, isLocal, setPasscode } from './access.mjs'
-import { findClaude } from './chat.mjs'
+import { findClaude, findCodex, usesCodex } from './chat.mjs'
 import { STYLE, BUILTIN_WALLPAPERS, pluginTabs, webUrl } from './hub-settings.mjs'
 
 const THEME_DIR = path.join(HERE, 'data', 'themes')
@@ -92,6 +92,14 @@ function saveTheme(theme) {
   return id
 }
 
+// What the Assistant runs on: Claude Code with its own sign-in, or Codex with a ChatGPT one (assistant.provider.type "codex").
+function assistantStatus() {
+  const a = hubConfig().assistant
+  if (!usesCodex()) return { engine: 'claude', model: a.defaultModel || '', ...claudeStatus() }
+  const auth = path.join(process.env.CODEX_HOME || path.join(os.homedir(), '.codex'), 'auth.json')
+  return { engine: 'codex', model: a.defaultModel || 'gpt-6-luna', installed: !!findCodex(), signedIn: fs.existsSync(auth) }
+}
+
 export function create({ onAccessChange }) {
   return async function route(url, req, res, { send, readBody }) {
     const p = url.pathname
@@ -112,7 +120,7 @@ export function create({ onAccessChange }) {
       return true
     }
     if (p === '/api/hub/setup' && req.method === 'GET') {
-      send(res, 200, { needsSetup: needsSetup(), local: isLocal(req), claude: claudeStatus(), tailscale: { installed: !!tailscalePath() } })
+      send(res, 200, { needsSetup: needsSetup(), local: isLocal(req), claude: claudeStatus(), assistant: assistantStatus(), tailscale: { installed: !!tailscalePath() } })
       return true
     }
     if (p === '/api/hub/setup' && req.method === 'POST') {

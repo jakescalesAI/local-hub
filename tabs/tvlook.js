@@ -1966,7 +1966,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
       { id: 'lockpage', t1: 'Entry code', t2: 'A 4- or 6-digit code to get into the TV, this computer, or places you choose', v: LK?.conf().on ? `On, ${LK.conf().digits} digits` : 'Off', on: !!LK?.conf().on },
       { group: 'Assistant' },
       { id: 'alexapage', t1: 'Alexa', t2: '“Alexa, ask local hub to open Netflix”, from the remote or any Echo', v: AX?.on ? 'On' : AX?.skillId ? 'Not answering' : 'Set up', on: !!AX?.on },
-      { id: 'claude', t1: 'Claude', t2: 'What the assistant runs on', v: DV.claude },
+      { id: 'claude', t1: DV.engine || 'Claude', t2: 'What the assistant runs on', v: DV.assistant ?? DV.claude },
       ...(listen ? [{ id: 'listen', t1: 'Hey LocalHub', t2: 'This computer’s microphone listens for it', v: listen.on ? 'On' : 'Off', on: listen.on }] : []),
       { group: 'Background and Screensaver' }, ...dev('desktop'), ...dev('mobile'),
       { group: 'Your Setup' },
@@ -2124,6 +2124,10 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
     const n = (c?.connections || []).filter(x => x.connected).length
     DV.services = n ? `${n} connected` : 'None yet'
     DV.claude = !h ? '' : !h.claude?.installed ? 'Not installed' : h.claude.signedIn ? 'Signed in' : 'Not signed in'
+    // The row says what the assistant really runs on: ChatGPT (through Codex) and its model, or Claude.
+    const as = h?.assistant, nice = m => String(m || '').replace(/^gpt-/i, 'GPT-').replace(/-([a-z])/g, (x, c) => ' ' + c.toUpperCase())
+    DV.engine = as?.engine === 'codex' ? 'ChatGPT' : 'Claude'
+    DV.assistant = as?.engine === 'codex' ? (!as.installed ? 'Codex not installed' : !as.signedIn ? 'Not signed in' : `Signed in · ${nice(as.model)}`) : DV.claude
     DV.summary = DV.devices.length ? `${DV.devices.length} paired` : ''
     if (all && DV.local) { const [r, l, p] = await Promise.all([get('/api/reach'), get('/api/tv/setup'), get('/api/tv/power')]); DV.reach = r; DV.lan = l?.lan || null; DV.power = p }
     paintSettings()
@@ -2152,7 +2156,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
       + g('TV') + row('TV power', DV.power?.known === false ? DV.power.error : 'Works while it’s asleep too', DV.power?.known ? (DV.power.on ? 'On' : 'Off') : DV.power ? 'Not answering' : '…', DV.power?.known ? 'tvpower' : '', DV.power?.on) + row('Remotes and controllers', 'What each button does', KEYS.on ? 'In every app' : '', 'remotepage') + row('Set up a TV', 'Put LocalHub TV on a television and pair it', '', 'tvsetup')
       + g('Controllers on this computer') + (pads.length ? pads.map(x => row(x.id.replace(/\s*\(.*$/, ''), 'A opens, B goes back, X Sidebar, Y Assistant, Start Settings', 'Connected', '', true)).join('') : row('No controller yet', 'Plug one in, or pair it over Bluetooth, then press any button on it'))
       + row('Bluetooth', 'Pair a controller, keyboard or headphones with this computer', 'Open', 'os:bluetooth') + row('Wi-Fi and network', 'This computer’s own settings', 'Open', 'os:network') + row('Sound', 'Where this computer plays, and its microphone', 'Open', 'os:sound')
-      + g('Accounts') + row('Claude', 'What the assistant runs on', DV.claude, '', DV.claude === 'Signed in') + row('Services', 'What the assistant can use', DV.services, 'connections') + row('Music platforms', 'What the music widget plays', MU?.spotify?.connected ? 'Spotify' : 'This PC', 'musicpage')
+      + g('Accounts') + row(DV.engine || 'Claude', 'What the assistant runs on', DV.assistant ?? DV.claude, '', /^Signed in/.test(DV.assistant ?? DV.claude)) + row('Services', 'What the assistant can use', DV.services, 'connections') + row('Music platforms', 'What the music widget plays', MU?.spotify?.connected ? 'Spotify' : 'This PC', 'musicpage')
   }
   async function onDevice(id) {
     const [k, v] = [id.split(':')[0], id.slice(id.indexOf(':') + 1)]
@@ -2292,7 +2296,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
       + (STAT ? ok('This computer', `Running for ${since(STAT.up)}, using ${size(STAT.memory)} of memory`, true) : plainRow('Looking…'))
       + ok('Music and volume', 'What this PC is playing', !!MU?.pc, MU?.pc ? '' : 'Not available') + ok('Brightness', '', !!MU?.monitors?.length, MU?.monitors?.length ? `${MU.monitors.length} ${MU.monitors.length === 1 ? 'monitor' : 'monitors'}` : 'Not available')
       + ok('Your TV', '', !!TV?.on, TV?.on ? 'Connected' : 'Not connected') + ok('The remote in every app', KEYS.state === 'error' ? KEYS.why || '' : '', KEYS.on && KEYS.state !== 'error', !KEYS.on ? 'Off' : KEYS.state === 'error' ? 'Not working' : 'On')
-      + ok('Hey LocalHub', '', !!listen?.on, listen?.on ? 'Listening' : 'Off') + ok('Claude', '', DV.claude === 'Signed in', DV.claude || 'Not signed in') + ok('Entry code', '', !!LK?.conf().on, LK?.conf().on ? 'On' : 'Off')
+      + ok('Hey LocalHub', '', !!listen?.on, listen?.on ? 'Listening' : 'Off') + ok(DV.engine || 'Claude', '', /^Signed in/.test(DV.assistant ?? DV.claude), (DV.assistant ?? DV.claude) || 'Not signed in') + ok('Entry code', '', !!LK?.conf().on, LK?.conf().on ? 'On' : 'Off')
       + grp('Storage') + (STAT?.data?.length ? STAT.data.map(d => plainRow(d.name, '', size(d.bytes))).join('') + plainRow('All of it', '', size(STAT.data.reduce((n, d) => n + d.bytes, 0))) : plainRow(STAT ? 'Nothing kept yet' : 'Looking…')) + (SYS ? plainRow('This computer’s disk', '', `${SYS.disk}% used`) : '')
   }
   async function importSettings() {
