@@ -39,7 +39,7 @@ function tvItems(status, tv, { onTv, onTvListen, onTvLink, onTvSetup }) {
   return items
 }
 
-export function createTray({ connection, tv, tvActions, onOpen, onLauncher, onSettings, getLogin, setLogin, getHotkey, onQuit }) {
+export function createTray({ connection, tv, tvActions, onOpen, onLauncher, onSettings, getLogin, setLogin, getHotkey, getUpdate = () => null, onUpdate = () => {}, onQuit }) {
   const tray = new Tray(nativeImage.createFromPath(ICON))
   const refresh = () => {
     if (tray.isDestroyed()) return
@@ -59,6 +59,7 @@ export function createTray({ connection, tv, tvActions, onOpen, onLauncher, onSe
       { type: 'separator' },
       { id: 'login', label: 'Start at login', type: 'checkbox', checked: getLogin(), click: item => { setLogin(item.checked); refresh() } },
       { type: 'separator' },
+      ...(getUpdate()?.status === 'ready' ? [{ id: 'update', label: `Restart to update to ${getUpdate().version}`, click: onUpdate }] : []),
       { id: 'quit', label: 'Quit', click: onQuit },
     ]))
   }

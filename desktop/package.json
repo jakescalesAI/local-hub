@@ -79,7 +79,14 @@
       }
     ],
     "npmRebuild": false,
-    "publish": null,
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "jakescalesAI",
+        "repo": "local-hub",
+        "releaseType": "release"
+      }
+    ],
     "win": {
       "target": "nsis",
       "icon": "assets/icon.png"
@@ -89,5 +96,8 @@
       "perMachine": false,
       "deleteAppDataOnUninstall": false
     }
+  },
+  "dependencies": {
+    "electron-updater": "6.8.12"
   }
 }

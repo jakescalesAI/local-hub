@@ -13,6 +13,8 @@ import { canOpenExternally, guardContents, hardenSession, isLocalPage, pagePath,
 import { Settings, validPort } from './settings.js'
 import { createTray } from './tray.js'
 import { TvStatus, linkFrom } from './tv.js'
+import { createUpdater } from './updater.js'
+import updaterPkg from 'electron-updater'
 
 // At login a Hub started some other way may be a few seconds behind us; give it the chance to answer.
 const LOGIN_GRACE_MS = 10_000
@@ -168,7 +170,10 @@ function start() {
   }
   const sendToTv = async command => { if (!(await tv.command(command))) tell('The hub didn’t pass that to the TV. Try again in a moment.') }
 
-  const trayControls = createTray({
+  // New versions from the GitHub releases (the installed app only). The tray says when one is ready.
+  let trayControls = null
+  const updater = createUpdater({ app, updater: app.isPackaged ? updaterPkg.autoUpdater : null, tell, onChange: () => trayControls?.refresh() })
+  trayControls = createTray({
     connection,
     tv,
     tvActions: {
@@ -190,6 +195,8 @@ function start() {
     getLogin: () => platform.getLoginItem(app),
     setLogin: on => platform.setLoginItem(app, on),
     getHotkey: () => hotkey.current,
+    getUpdate: () => updater.state,
+    onUpdate: () => updater.installNow(),
     onQuit: () => app.quit(),
   })
 
@@ -214,6 +221,8 @@ function start() {
     session.fromPartition('persist:hub').flushStorageData()
     // Waits for our own child to be gone. An attached Hub has no child, so this leaves it running.
     connection.stop({ limitMs: QUIT_HUB_LIMIT_MS }).finally(() => setImmediate(() => {
+      // A downloaded update installs now, quietly, and its installer takes the exit from here.
+      if (updater.finishOnExit()) return
       spawnQuitGuard(QUIT_MAIN_AFTER_MS)
       app.exit(0)
     }))

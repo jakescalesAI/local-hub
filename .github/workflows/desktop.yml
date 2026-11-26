@@ -112,4 +112,5 @@ jobs:
         shell: bash
         run: |
           gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --title "LocalHub $GITHUB_REF_NAME" --notes "Windows installer. Unsigned for now: choose More info, then Run anyway."
-          gh release upload "$GITHUB_REF_NAME" desktop/dist/LocalHub-Setup.exe --clobber
+          # latest.yml (and the blockmap) is what installed copies read to update themselves.
+          gh release upload "$GITHUB_REF_NAME" desktop/dist/LocalHub-Setup.exe desktop/dist/latest.yml desktop/dist/LocalHub-Setup.exe.blockmap --clobber
