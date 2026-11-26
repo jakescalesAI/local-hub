@@ -183,6 +183,8 @@ test('Widgets: what doesn’t fit a screen isn’t placed, the rest stay where t
   const [e] = events({ cal: { calendars: [], events: [{ id: 'l1', title: 'Off', start: '2026-11-25', end: '2026-11-26', allDay: true }] } })
   assert.deepEqual([e.at.getDate(), e.at.getHours()], [25, 0])
   assert.deepEqual(cleanClock({ font: 'serif', color: '#12345g', size: 9999, evil: 1, style: 'x"><img>' }), { font: 'serif', size: 250 })
+  assert.deepEqual(cleanClock({ dateGap: 99 }), { dateGap: 20 })
+  assert.ok(clockHTML({ dateGap: -4 }).includes('--cg:-4;') && clockHTML({}).includes('--cg:0;'))
   assert.deepEqual(cleanData({ clock: { style: 'flip' } }).clock, { style: 'flip' })
   assert.equal(cleanData({ todos: [] }, cleanData({ clock: { style: 'flip' } })).clock.style, 'flip')
   for (const style of Object.keys(STYLES)) for (const font of Object.keys(FONTS)) assert.ok(clockHTML({ style, font, color: '"><img>', secs: true }).startsWith('<div class="hc') && !clockHTML({ style, font, color: '"><img>' }).includes('<img'))

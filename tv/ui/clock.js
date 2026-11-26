@@ -49,7 +49,7 @@ export const STYLES = { digital: "Digital", stacked: "Stacked", flip: "Flip", an
 export const COLORS = ["#ffffff", "#ffd60a", "#ff9f0a", "#ff453a", "#ff375f", "#bf5af2", "#5e5ce6", "#0a84ff", "#64d2ff", "#30d158", "#ac8e68", "#000000"];
 export const SHADOWS = { none: "None", soft: "Soft", strong: "Strong", glow: "Glow" };
 export const DATES = { full: "Full", short: "Short", day: "Weekday", off: "Off" };
-export const DEF = { style: "digital", text: "solid", font: "display", weight: 700, color: "#ffffff", color2: "", dateColor: "", size: 100, saver: 100, date: "full", where: "under", secs: false, ampm: true, h24: "", spacing: 0, italic: false, shadow: "none", align: "left" };
+export const DEF = { style: "digital", text: "solid", font: "display", weight: 700, color: "#ffffff", color2: "", dateColor: "", size: 100, saver: 100, date: "full", where: "under", secs: false, ampm: true, h24: "", spacing: 0, dateGap: 0, italic: false, shadow: "none", align: "left" };
 export const of = (c) => ({ ...DEF, ...(c || {}) });
 /* The time zone the clocks show: a TV set to another zone than the computer it belongs to shows the computer's,
    unless asked not to. A web page can't change its own zone, so "now" is moved by the difference instead. */
@@ -103,7 +103,7 @@ export function clockHTML(opts, { now: at = now(), h24 = false, scale = 1 } = {}
   const digits = `<b${c.style === "pill" ? ' class="pl"' : ""}><s>${t.h}</s><u>${c.style === "dots" ? "·" : ":"}</u><s class="mm">${t.m}</s>${sec}${ap}</b>`, tile = (s) => [...s].map((x) => `<span>${x}</span>`).join("");
   const body = c.style === "stacked" ? `<b class="st"><span>${t.h}</span><span class="mm">${t.m}</span></b>` : c.style === "flip" ? `<b class="fl">${tile(t.h)}<u>:</u>${tile(t.m)}${c.secs ? `<u>:</u>${tile(t.s)}` : ""}</b>` : c.style === "analog" ? face(now, c.secs) : c.style === "both" ? `${face(now, c.secs)}${digits}` : c.style === "words" ? `<b class="wd">${esc(words(now))}</b>` : digits;
   const d = date ? `<em>${esc(date)}</em>` : "";
-  return `<div class="hc hc-${STYLES[c.style] ? c.style : "digital"} sh-${SHADOWS[c.shadow] ? c.shadow : "none"}${two ? " two" : ""} tx-${TEXTS[c.text] ? c.text : "solid"} at-${["left", "center", "right"].includes(c.align) ? c.align : "left"}" style="--cf:${(FONTS[c.font] || FONTS.display)[1].replace(/"/g, "'")};--cw:${Number(c.weight) || 700};--cc:${col};--c2:${two || col};--cd:${safe(c.dateColor, col)};--cs:${(Number(c.spacing) || 0) / 100 - 0.035}em;--ci:${c.italic ? "italic" : "normal"};--cz:${scale}">${c.where === "over" ? d + body : body + d}</div>`;
+  return `<div class="hc hc-${STYLES[c.style] ? c.style : "digital"} sh-${SHADOWS[c.shadow] ? c.shadow : "none"}${two ? " two" : ""} tx-${TEXTS[c.text] ? c.text : "solid"} at-${["left", "center", "right"].includes(c.align) ? c.align : "left"}" style="--cf:${(FONTS[c.font] || FONTS.display)[1].replace(/"/g, "'")};--cw:${Number(c.weight) || 700};--cc:${col};--c2:${two || col};--cd:${safe(c.dateColor, col)};--cs:${(Number(c.spacing) || 0) / 100 - 0.035}em;--cg:${Math.max(-10, Math.min(20, Number(c.dateGap) || 0))};--ci:${c.italic ? "italic" : "normal"};--cz:${scale}">${c.where === "over" ? d + body : body + d}</div>`;
 }
 /** Draws it in a place and shrinks it to fit there. Only measures when something that changes its size did. */
 export function paint(box, opts, { now, h24, scale = 1, maxW = 0, maxH = 0 } = {}) {

@@ -14,7 +14,7 @@ const START = [{ k: 'a', id: 'music', size: 'w' }, { k: 'b', id: 'weather', size
 const START_SAVER = [...START, { k: 'd', id: 'calendar', size: 'xl' }]
 const START_SIDE = [{ k: 'a', id: 'pc', size: 'xl' }, { k: 'b', id: 'timer', size: 'm' }, { k: 'c', id: 'todo', size: 'm' }, { k: 'd', id: 'weather', size: 'l' }, { k: 'e', id: 'calendar', size: 'l' }]
 const CLOCK = { style: ['digital', 'stacked', 'flip', 'analog', 'both', 'words', 'pill', 'dots'], text: ['solid', 'split', 'outline', 'glass', 'neon', 'metal', 'deep', 'stripe', 'fade'], font: ['display', 'rounded', 'serif', 'elegant', 'slab', 'mono', 'condensed', 'poster', 'script', 'casual', 'tight', 'outfit', 'sora', 'manrope', 'grotesk', 'bricolage', 'unbounded', 'nunito', 'quicksand', 'oswald', 'bebas', 'anton', 'shoulders', 'playfair', 'fraunces', 'cormorant', 'dmserif', 'robotoslab', 'jetbrains', 'spacemono', 'majormono', 'vt', 'orbitron', 'righteous', 'monoton', 'pixel', 'pacifico', 'caveat'], date: ['full', 'short', 'day', 'off'], where: ['under', 'over'], h24: ['', '12', '24'], shadow: ['none', 'soft', 'strong', 'glow'], align: ['left', 'center', 'right'] }
-const CLOCK_N = { weight: [100, 900], size: [40, 250], saver: [40, 250], spacing: [-8, 20] }
+const CLOCK_N = { weight: [100, 900], size: [40, 250], saver: [40, 250], spacing: [-8, 20], dateGap: [-10, 20] }
 /** How the big clock looks (tv/ui/clock.js draws it): only what it knows, so nothing typed elsewhere reaches a page. */
 export function cleanClock(o) {
   if (!o || typeof o !== 'object' || Array.isArray(o)) return undefined
