@@ -97,7 +97,7 @@ export function create({ onAccessChange }) {
     const p = url.pathname
     if (p === '/hub-config.js' && req.method === 'GET') {
       // index.html loads the browser's own script; any other plug-in tab file loads from this list.
-      const conf = { ...pageConfig(), pluginTabs: pluginTabs(HERE).filter(t => t !== 'browser') }
+      const conf = { ...pageConfig(), pluginTabs: pluginTabs(HERE).filter(t => t !== 'browser'), tz: (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || '' } catch { return '' } })() }
       send(res, 200, `window.HUB_CONF = ${JSON.stringify(conf).replace(/</g, '\\u003c')};\n`, 'text/javascript; charset=utf-8')
       return true
     }

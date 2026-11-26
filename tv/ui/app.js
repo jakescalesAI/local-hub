@@ -16,8 +16,8 @@
 
 import * as Stream from "./stream.js?v=8";
 import * as Panel from "./panel.js?v=16";
-import * as Clock from "./clock.js?v=3";
-import * as Wg from "./widgets.js?v=20";
+import * as Clock from "./clock.js?v=4";
+import * as Wg from "./widgets.js?v=21";
 import * as Files from "./files.js?v=2";
 import { createLock } from "./lock.js?v=2";
 import * as Remote from "./remote.js?v=5";
@@ -95,7 +95,7 @@ const DEMO_INPUTS = [
 
 /* ── prefs (this screen only; the look and widgets come from the hub) ──── */
 const PREFS_KEY = "localhub.tv";
-const DEFAULTS = { clock: "12-hour", homeClock: "Time and date", ttsVoice: "Heart", inputs: true, saver: "5 min", speak: "After voice", help: true };
+const DEFAULTS = { clock: "12-hour", zone: "This computer’s", homeClock: "Time and date", ttsVoice: "Heart", inputs: true, saver: "5 min", speak: "After voice", help: true };
 const DEVICE = NATIVE ? (safeJson(native("status"), {}) || {}) : {};
 // On a TV the page is laid out at the WebView's small CSS size (960×540 on a 4K Fire TV); the chat bar, which
 // lives outside the 1920×1080 canvas, is scaled the same way as the canvas so it keeps its proportions.
@@ -736,11 +736,11 @@ const ZONES = () => (window.HUB_CONF?.worldClock?.length ? window.HUB_CONF.world
 const zoneTime = (tz) => { try { return new Date().toLocaleTimeString(undefined, { timeZone: tz, hour: "numeric", minute: "2-digit" }); } catch { return "–"; } };
 const WIDGETS = {
   clock: { label: "Clock & date", tint: "var(--blue)", render() {
-    const t = clockParts(new Date());
-    return `<div class="w-clock"><div class="v">${t.hm}${t.ap ? `<small>${t.ap}</small>` : ""}</div><div class="d">${esc(new Date().toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }))}</div></div>`;
+    const t = clockParts(Clock.now());
+    return `<div class="w-clock"><div class="v">${t.hm}${t.ap ? `<small>${t.ap}</small>` : ""}</div><div class="d">${esc(Clock.now().toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }))}</div></div>`;
   } },
   date: { label: "Date", tint: "var(--red)", render() {
-    const n = new Date();
+    const n = Clock.now();
     return `<div class="w-date"><div class="wd">${esc(n.toLocaleDateString(undefined, { weekday: "long" }))}</div><div class="n">${n.getDate()}</div><div class="m">${esc(n.toLocaleDateString(undefined, { month: "long", year: "numeric" }))}</div></div>`;
   } },
   "world-clock": { label: "World clock", tint: "var(--orange)", render() {
@@ -818,7 +818,7 @@ function widgetCard(id, size) {
   return `<div class="w card${def.wide ? " wide" : ""}${size ? ` sz-${size}` : ""}"><div class="w-label">${mark || `<i class="dot" style="--c:${def.tint}"></i>`}${esc(def.label)}</div><div class="w-body">${def.render(size)}</div></div>`;
 }
 function hubShelfHTML() {
-  const h = new Date().getHours();
+  const h = Clock.now().getHours();
   const part = h < 5 ? "Good night" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
   const first = (HUB.owner || "").split(/\s+/)[0];
   // Nothing picked yet: nothing is named.
@@ -1671,6 +1671,7 @@ function settingsModel() {
     { title: "Settings" },
     { group: "Home Screen" },
     { key: "clock", t1: "Clock", t2: "Top left, and on the screensaver", values: ["12-hour", "24-hour"] },
+    { key: "zone", t1: "Time zone", t2: "The computer’s, or the one the TV is set to", values: ["This computer’s", "The TV’s own"] },
     { id: "clockStyle", t1: "Clock style", t2: "The same on every screen; more in LocalHub on the computer", v: clockVal("clockStyle") }, { id: "clockFont", t1: "Clock font", t2: "", v: clockVal("clockFont") }, { id: "clockColor", t1: "Clock color", t2: "", v: clockVal("clockColor") }, { id: "clockSize", t1: "Clock size", t2: "On Home and the screensaver", v: clockVal("clockSize") }, { id: "clockDate", t1: "Date", t2: "With the clock", v: clockVal("clockDate") },
     { key: "homeClock", t1: "Home clock", t2: "What the top left of the home screen shows", values: ["Time and date", "Time", "Off"] },
     ...(S.inputCount ? [{ key: "inputs", t1: "HDMI inputs", t2: "Shown in the Sidebar", toggle: true }] : []), // only on a TV that has some
@@ -1768,6 +1769,7 @@ function settingsActivate() {
   else if (it.id === "forget") { native("forgetHub"); HUB.paired = false; toast("This TV forgot LocalHub"); }
   savePrefs();
   applyLook();
+  if (it.key === "zone") tick();
   $("#keys").hidden = NATIVE || !prefs.help;
   const keep = ITEMS[S.i]?.id;
   loadItems();
@@ -1826,8 +1828,11 @@ function clockParts(d) {
   return { hm: `${h}:${m}`, ap };
 }
 const clockText = (d) => { const p = clockParts(d); return p.ap ? `${p.hm} ${p.ap}` : p.hm; };
+// The clocks show the computer's time zone unless Settings says the TV's own (the hub says which it is).
+const applyZone = () => Clock.setZone(prefs.zone === "The TV’s own" ? "" : window.HUB_CONF?.tz || "");
 function tick() {
-  const d = new Date();
+  applyZone();
+  const d = Clock.now();
   const when = $(".when"), hc = prefs.homeClock || "Time and date";
   when.classList.toggle("time-only", hc === "Time");
   when.classList.toggle("off", hc === "Off");
@@ -1837,7 +1842,7 @@ function tick() {
 }
 // How it looks is the hub's (data.clock): the same on every screen.
 const CLOCK = () => Clock.of(BOARD.D.board?.data?.clock || SBOARD.D.board?.data?.clock);
-function paintClock(d = new Date()) {
+function paintClock(d = Clock.now()) {
   const c = CLOCK();
   Clock.paint($("#clock"), prefs.homeClock === "Time" ? { ...c, date: "off" } : c, { now: d, h24: prefs.clock === "24-hour", scale: c.size / 100, maxW: 690, maxH: 400 });
 }

@@ -51,6 +51,23 @@ export const SHADOWS = { none: "None", soft: "Soft", strong: "Strong", glow: "Gl
 export const DATES = { full: "Full", short: "Short", day: "Weekday", off: "Off" };
 export const DEF = { style: "digital", text: "solid", font: "display", weight: 700, color: "#ffffff", color2: "", dateColor: "", size: 100, saver: 100, date: "full", where: "under", secs: false, ampm: true, h24: "", spacing: 0, italic: false, shadow: "none", align: "left" };
 export const of = (c) => ({ ...DEF, ...(c || {}) });
+/* The time zone the clocks show: a TV set to another zone than the computer it belongs to shows the computer's,
+   unless asked not to. A web page can't change its own zone, so "now" is moved by the difference instead. */
+let zone = "", shift = 0, shiftAt = 0;
+const offsetIn = (tz, at) => {
+  const p = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone: tz, hourCycle: "h23", year: "numeric", month: "numeric", day: "numeric", hour: "numeric", minute: "numeric", second: "numeric" }).formatToParts(at).map((x) => [x.type, x.value]));
+  return Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour % 24, +p.minute, +p.second) - Math.floor(at / 1000) * 1000;
+};
+/** "" or an IANA name ("America/New_York"); a name the browser doesn't know is the same as "". */
+export function setZone(tz) {
+  const t = typeof tz === "string" ? tz : "";
+  if (t === zone && Date.now() - shiftAt < 60000) return;
+  zone = t; shiftAt = Date.now();
+  try { shift = t ? offsetIn(t, Date.now()) + new Date().getTimezoneOffset() * 60000 : 0; } catch { shift = 0; }
+  if (Math.abs(shift) > 27 * 3600000) shift = 0;
+}
+/** Now, as the chosen zone's wall clock reads it. Only for showing the time and the date. */
+export const now = () => (shift ? new Date(Date.now() + shift) : new Date());
 
 const pad = (n) => String(n).padStart(2, "0");
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -79,7 +96,8 @@ export function extent(c, t) {
 }
 const safe = (v, or) => (/^#[0-9a-f]{6}$/i.test(v) ? v : or);
 /** @param scale its own size, in em of the place it sits */
-export function clockHTML(opts, { now = new Date(), h24 = false, scale = 1 } = {}) {
+export function clockHTML(opts, { now: at = now(), h24 = false, scale = 1 } = {}) {
+  const now = at;
   const c = of(opts), t = parts(now, c, h24), col = safe(c.color, "#ffffff"), two = safe(c.color2, ""), date = dateText(now, c);
   const ap = t.ap ? `<small>${t.ap}</small>` : "", sec = c.secs ? `<i>:${t.s}</i>` : "";
   const digits = `<b${c.style === "pill" ? ' class="pl"' : ""}><s>${t.h}</s><u>${c.style === "dots" ? "·" : ":"}</u><s class="mm">${t.m}</s>${sec}${ap}</b>`, tile = (s) => [...s].map((x) => `<span>${x}</span>`).join("");

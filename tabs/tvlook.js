@@ -544,7 +544,7 @@ ${T}:has(#tvset.on) body { overflow: hidden; }
   const boards = {}
   const board = (which = myScreen()) => WG && (boards[which] ??= WG.createBoard({ screen: which, changed: () => { cancelAnimationFrame(board.raf); board.raf = requestAnimationFrame(() => { paintSide(); drawWid(); tick() }) }, music: () => MU?.now }))
   let CK = null, SB = null, PC = null
-  ;(async () => { try { WG = await import('/tv/widgets.js?v=20'); CK = await import('/tv/clock.js?v=3'); SB = await import('/tv/side.js?v=5'); P ??= await import('/tv/panel.js?v=16'); board()?.refresh(); paintSide(); tick() } catch {} })()
+  ;(async () => { try { WG = await import('/tv/widgets.js?v=21'); CK = await import('/tv/clock.js?v=4'); SB = await import('/tv/side.js?v=5'); P ??= await import('/tv/panel.js?v=16'); board()?.refresh(); paintSide(); tick() } catch {} })()
   setInterval(() => {
     if (!WG || document.hidden || !document.querySelector('.hw-root')) return
     const b = board(editOn || undefined)

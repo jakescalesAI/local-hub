@@ -189,6 +189,15 @@ test('Widgets: what doesn’t fit a screen isn’t placed, the rest stay where t
   assert.deepEqual([words(new Date(2026, 0, 1, 21, 5)), words(new Date(2026, 0, 1, 11, 45)), words(new Date(2026, 0, 1, 0, 0))], ['five past nine', 'quarter to twelve', 'twelve o’clock'])
 })
 
+test('The clocks can show another time zone than the screen is set to, and show their own when told nothing', async () => {
+  const { setZone, now } = await import('../../tv/ui/clock.js')
+  const fmt = (tz) => new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', minute: '2-digit', hourCycle: 'h23' }).format(new Date())
+  const local = (d) => `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`
+  for (const tz of ['America/New_York', 'America/Chicago', 'Asia/Kolkata', 'Pacific/Chatham']) { setZone(tz); assert.equal(local(now()), fmt(tz).replace(/^24/, '0').replace(/^0(?=[0-9])/, ''), tz) }
+  setZone(''); assert.ok(Math.abs(now() - Date.now()) < 1000)
+  setZone('Not/AZone'); assert.ok(Math.abs(now() - Date.now()) < 1000)
+})
+
 test('A song’s place is found from whole seconds, and its words are the ones for that recording', async () => {
   const { songClock, readLyrics, pickLyrics } = await import('../../music.mjs')
   // Began at 1000.4; the player says floor(position), a little over a second apart.
