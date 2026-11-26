@@ -224,6 +224,7 @@ ${R} .hw-root[data-view="desktop"] .hw-grid > .hw-cell.l:not(.a) { width: var(--
 ${R} .hw-root[data-view="desktop"] > #tvside { display: grid; position: absolute; z-index: 11; top: max(30px, 5vh); right: 48px; width: var(--side); max-height: none; overflow: visible; scrollbar-width: none; grid-template-columns: repeat(auto-fit, minmax(min(100%, 232px), 1fr)); gap: 14px; align-content: start; padding: 8px; margin: -8px; box-sizing: content-box; }
 ${R} #tvside::-webkit-scrollbar { display: none; }
 ${R} .hw-root[data-view="desktop"] > #tvside > .wg:is([data-screen=""], [data-screen="desk"]) { --cols: 6; grid-template-rows: repeat(4, 13em); grid-auto-rows: 0; width: var(--wgw, auto); margin-left: var(--wgx, 0); justify-content: start; }
+${R} .hw-root[data-view="desktop"] > #tvside > .wg:is([data-screen=""], [data-screen="desk"]) > .w-weather.z-l { font-size: 1.3em; justify-content: space-evenly; } ${R} .hw-root[data-view="desktop"] > #tvside > .wg:is([data-screen=""], [data-screen="desk"]) > .w-weather.z-l :is(.wdays, .whours > :nth-child(n + 5)) { display: none; }
 ${R} #tvside .hw-cell { height: 184px; min-width: 0; grid-column: auto !important; grid-row: auto !important; }
 ${R} #tvside .hw-cell.l { grid-column: 1 / -1 !important; }
 ${R} #tvside .hw-cell.l { height: 380px; }
